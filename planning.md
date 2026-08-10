@@ -67,7 +67,11 @@ Reference scenario:
 - Create/edit itinerary items: transport, lodging, food, activity, note, and task.
 - Store time, location, participants, owner/responsible person, confirmation number, notes, and attachment/link.
 - A focused "Next step" card showing destination, departure time, participants, required item, and status confirmations.
+- A team dashboard showing the next destination, meeting time, travel time, responsible person, required booking/document, and confirmed-member count.
 - Participant confirmation: going, arrived, delayed, or not participating.
+- Shared checklists and tasks with an assignee, due time, and completion state.
+- Lightweight polls for candidate restaurants/activities with eligible voters, a deadline, and a visible final selection.
+- Mark material itinerary changes and require affected participants to acknowledge them; routine edits remain non-blocking.
 - Realtime synchronization and a concise activity history for important changes.
 - Deep-link out to the device's installed navigation app; full in-app navigation is not part of MVP.
 
@@ -112,7 +116,7 @@ Reference scenario:
 ### P1 — add after the core flow is stable
 
 - Receipt and payment-screenshot OCR.
-- Voting on candidate places with a decision deadline.
+- AI-assisted recommendation synthesis from poll results, location, opening hours, budget, and travel time.
 - AI-assisted day planning and disruption-based replanning.
 - Push notifications for departure reminders and material itinerary changes.
 - Richer expense analytics and category budgets.
@@ -147,7 +151,16 @@ Reference scenario:
 4. Each participant's default view follows their active branch.
 5. A later "Reunite groups" action creates a shared segment with selected members.
 
-### Flow 3: Record a voice expense
+### Flow 3: Coordinate the group's day
+
+1. Each traveler opens the team dashboard and sees the current branch's next destination, meeting time, travel time, responsible person, and required booking/document.
+2. Members confirm "going" or use a one-tap state such as "arrived," "delayed," or "not participating."
+3. Assigned tasks and checklists show who is responsible and what remains incomplete.
+4. A member creates a lightweight poll for undecided places; eligible participants vote before the deadline and an editor records the final selection.
+5. Material itinerary changes notify affected participants and remain visibly unacknowledged until each person confirms; routine edits sync without blocking the group.
+6. Cross-branch information remains hidden or read-only according to the segment's explicit visibility setting.
+
+### Flow 4: Record a voice expense
 
 1. Traveler holds the voice button and says what happened.
 2. Speech is transcribed.
@@ -167,7 +180,7 @@ Expected result:
 - C owes HKD 0.
 - Any rounding remainder is explicit and deterministic.
 
-### Flow 4: Settle balances
+### Flow 5: Settle balances
 
 1. The ledger shows each person's paid, owed, and net position in original and home currency views.
 2. The settlement engine proposes a minimized set of transfers.
