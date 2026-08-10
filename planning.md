@@ -63,7 +63,7 @@ Reference scenario:
 
 #### C. Shared itinerary and "Next step"
 
-- Day and timeline views.
+- Today and timeline views, with the current day presented as an executable sequence rather than a static list.
 - Create/edit itinerary items: transport, lodging, food, activity, note, and task.
 - Store time, location, participants, owner/responsible person, confirmation number, notes, and attachment/link.
 - A focused "Next step" card showing destination, departure time, participants, required item, and status confirmations.
@@ -105,7 +105,7 @@ Reference scenario:
 
 #### F. Reliability and safety
 
-- Cache upcoming itinerary items, essential booking details, and recent balances locally.
+- Cache upcoming itinerary items, essential booking details, travel-readiness content, and recent balances locally.
 - Allow offline creation of expense drafts and synchronize them when connectivity returns.
 - Conflict-safe updates with visible last-edited information.
 - Sensitive documents are private by default and shared only with explicitly selected people.
@@ -113,11 +113,21 @@ Reference scenario:
 - Row-level authorization must be enforced by the backend, not only hidden in the UI.
 - Basic data export and account/trip deletion flows.
 
+#### G. Cross-region readiness and offline travel pack
+
+- Generate a downloadable offline pack from the trip's actual itinerary and selected shared information.
+- Include addresses and hotel names in both the traveler's language and local script, booking/confirmation numbers, saved QR attachments, emergency contacts, and selected phrases.
+- Provide concise region cards for Hong Kong, Japan, and mainland China covering the group's chosen payment methods, transit setup, connectivity, emergency basics, and practical etiquette reminders.
+- Automatically surface the relevant region card from the active segment while allowing travelers to switch regions manually.
+- Keep the "Today" and "Next step" cards usable offline, including the local-language address and any item/document that must be shown.
+- Allow travelers to choose which sensitive documents enter the offline pack; private documents never become group-visible implicitly.
+
 ### P1 — add after the core flow is stable
 
 - Receipt and payment-screenshot OCR.
 - AI-assisted recommendation synthesis from poll results, location, opening hours, budget, and travel time.
-- AI-assisted day planning and disruption-based replanning.
+- AI-assisted day planning and disruption-based replanning for weather, closures, delays, missed transport, or traveler fatigue; all changes are shown as a reviewable diff before being applied.
+- Camera translation for menus, signs, and essential labels, with side-by-side original/translation and a full-screen "show the other person" mode.
 - Push notifications for departure reminders and material itinerary changes.
 - Richer expense analytics and category budgets.
 - Calendar import/export.
@@ -130,7 +140,7 @@ Reference scenario:
 - Booking flights, hotels, restaurants, or tickets inside the app.
 - Continuous background location tracking.
 - Automated bank, card, Alipay, WeChat Pay, Suica, or Octopus account integrations.
-- Camera translation, menu translation, and broad travel-guide content.
+- Broad editorial city-guide content or a general travel-content marketplace.
 - Public social feeds or itinerary marketplaces.
 - Fully autonomous changes to confirmed itinerary or financial records.
 
@@ -160,7 +170,15 @@ Reference scenario:
 5. Material itinerary changes notify affected participants and remain visibly unacknowledged until each person confirms; routine edits sync without blocking the group.
 6. Cross-branch information remains hidden or read-only according to the segment's explicit visibility setting.
 
-### Flow 4: Record a voice expense
+### Flow 4: Prepare for a region and operate offline
+
+1. Before departure, a traveler downloads an offline pack generated from the trip, their segments, selected shared bookings, and explicitly selected private documents.
+2. On entering Hong Kong, Japan, or mainland China, the app surfaces the matching payment, transit, connectivity, emergency, and etiquette card.
+3. The traveler opens "Today" or "Next step" without a network connection and can show a driver or staff member the destination in local script plus the relevant QR code or confirmation number.
+4. Any offline expense drafts are queued locally and synchronized idempotently when connectivity returns.
+5. After MVP, the same moment can invoke camera translation or an AI-proposed itinerary adjustment; neither may silently alter confirmed trip data.
+
+### Flow 5: Record a voice expense
 
 1. Traveler holds the voice button and says what happened.
 2. Speech is transcribed.
@@ -180,7 +198,7 @@ Expected result:
 - C owes HKD 0.
 - Any rounding remainder is explicit and deterministic.
 
-### Flow 5: Settle balances
+### Flow 6: Settle balances
 
 1. The ledger shows each person's paid, owed, and net position in original and home currency views.
 2. The settlement engine proposes a minimized set of transfers.
@@ -272,6 +290,7 @@ Exit: four test users can join and collaboratively edit one shared itinerary.
 - Split-from-here flow, parallel branch views, and reunions.
 - Permission and visibility tests across branches.
 - Context-aware "Next step" card.
+- Today view, region-card selection, and offline-pack generation from itinerary data.
 
 Exit: the 30-day reference scenario works without duplicated trips or leaked private branch data.
 
