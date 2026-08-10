@@ -39,6 +39,35 @@ Reference scenario:
 
 ## 3. MVP scope
 
+### Consolidated scope at a glance
+
+The following six capability groups are the canonical product scope. The detailed requirements and flows below elaborate these groups; when prioritization is unclear, this section decides whether work belongs in P0, P1, or outside the MVP.
+
+1. **Shared trip foundation (P0)**
+   - Create one trip, invite 2-8 travelers, assign owner/editor/viewer roles, and keep a shared master overview.
+   - Store itinerary items, booking details, links, documents, tasks, member status, and activity history in one collaborative space.
+2. **Dynamic travel groups (P0)**
+   - Model a long trip as dated segments whose membership can change.
+   - Let travelers split into parallel branches, keep branch-specific visibility and expenses, and reunite later without duplicating the trip.
+3. **Daily group execution (P0)**
+   - Provide Today, timeline, team-dashboard, and Next-step views.
+   - Support participant confirmations, one-tap arrival/delay states, shared tasks, lightweight place/activity polls, and acknowledgement of material changes.
+4. **Fast group ledger (P0)**
+   - Record expenses manually, through natural-language text, or by push-to-talk voice.
+   - Resolve the active segment's members by default; support multiple payers, exclusions, equal/exact/percentage/share splits, sub-splits, personal expenses, and follow-up corrections.
+   - Preserve original currencies and exchange-rate snapshots, calculate deterministic balances, and minimize final settlement transfers.
+5. **Cross-region and offline operation (P0)**
+   - Provide Hong Kong, Japan, and mainland China readiness cards for payment, transit, connectivity, emergencies, and essential etiquette.
+   - Generate a privacy-aware offline pack containing the traveler's relevant itinerary, local-script addresses, booking numbers, selected QR/documents, contacts, and phrases.
+   - Keep Next step available and expense drafting functional during temporary network loss.
+6. **Trust, privacy, and correctness (P0)**
+   - Enforce trip/segment authorization on the backend, keep sensitive documents private by default, and make location sharing opt-in.
+   - Use auditable edits, integer minor-unit money arithmetic, explicit rounding, validation, idempotent offline sync, and export/deletion controls.
+
+P1 extends these foundations with receipt/screenshot OCR, AI-assisted recommendations and disruption replanning, camera translation with full-screen show mode, push notifications, analytics/budgets, calendar exchange, and booking-email parsing. P1 features must reuse P0 permissions and confirmation rules and may not silently change confirmed itinerary or ledger data.
+
+The MVP deliberately does not include group chat, in-app booking, proprietary turn-by-turn navigation, continuous background location, direct payment-account integrations, public social/content marketplaces, or autonomous financial/itinerary changes.
+
 ### P0 — required for private beta
 
 #### A. Account, trip, and membership
@@ -361,4 +390,13 @@ Exit: the group can rely on the app for a multi-day pilot before the year-end tr
 
 ## 11. Definition of done for MVP
 
-The MVP is done when four real accounts can create and join a trip, build the reference 30-day branched itinerary, see only authorized segment data, record and correct manual/voice expenses in three currencies, reconcile balances exactly, record settlements, and continue viewing essential itinerary data and drafting expenses during a temporary loss of connectivity.
+The MVP is done when one scripted private-beta journey proves the complete consolidated scope:
+
+1. Four real accounts create and join a 30-day trip through an invite link or QR code.
+2. All four travelers share days 1-10, then split into Owner+A and B+C branches for days 11-30, with an optional later reunion.
+3. Each traveler sees the correct Today/team-dashboard/Next-step information, authorized branch data, shared tasks, poll outcomes, and material-change acknowledgements.
+4. The group records simple and complex expenses through manual, text, and voice entry in HKD, JPY, and CNY, including multiple payers, exclusions, unequal splits, and sub-splits.
+5. Every saved expense passes deterministic total/share validation; edits remain auditable and all participant balances reconcile exactly to zero.
+6. The app proposes minimized settlement transfers and records full or partial settlements without losing source-expense history.
+7. A traveler downloads the correct region/offline pack, accesses essential local-script addresses and selected booking details without connectivity, and creates an offline expense draft that later synchronizes exactly once.
+8. Separate-account tests confirm that branch data and sensitive documents are never exposed outside their explicit permissions.
