@@ -1,6 +1,14 @@
 # TripFlow
 
-TripFlow is a collaborative travel operating system for groups that travel together, split into parallel branches, and reunite later. The MVP combines an executable shared itinerary, region-aware offline travel information, and voice-first multi-currency expense splitting.
+TripFlow is a collaborative travel workspace for groups that travel together, split into parallel branches, and reunite later. The first deployable MVP covers passwordless sign-in, shared trips and invitations, a live itinerary, and equal-split multi-currency expenses backed by Supabase Row Level Security.
+
+## MVP flow
+
+1. Sign in from an emailed secure link or six-digit OTP.
+2. Create a trip, or join one with a 48-character invite code.
+3. Add itinerary items to the shared Today timeline.
+4. Record an expense, choose the payer and participants, and save an exact equal split.
+5. Review per-currency balances and suggested settlement transfers.
 
 ## Get started
 
@@ -41,7 +49,25 @@ You can start developing by editing the files inside the **app** directory. This
 - `planning.md`: consolidated product scope and delivery plan.
 - `PROJECT_CONTEXT.md`: verified current state, decisions, next work, and continuity protocol.
 
-The current UI uses static fixture data while the domain and backend contracts are established. Never commit Supabase secrets; local environment files are ignored.
+The MVP screens read and write live Supabase data. Never commit Supabase secrets; local environment files are ignored.
+
+## Deploy the web MVP
+
+The repository includes `vercel.json` for a static Expo web deployment.
+
+1. Import the GitHub repository into Vercel.
+2. Add `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` to the Vercel project environment.
+3. Deploy. Vercel runs `npm run build:web` and serves `dist`.
+
+Before a release, run:
+
+```bash
+npm run validate
+npm run build:web
+npx expo-doctor
+```
+
+For email-link sign-in on the deployed site, add the deployment URL to Supabase Auth's allowed redirect URLs. To show a six-digit code in the email, configure the email template with Supabase's `{{ .Token }}` variable; the default magic link already works on web.
 
 ## Learn more
 

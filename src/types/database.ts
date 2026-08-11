@@ -644,6 +644,60 @@ export type Database = {
           },
         ]
       }
+      trip_invites: {
+        Row: {
+          created_at: string
+          created_by: string
+          expires_at: string
+          id: string
+          max_uses: number
+          revoked_at: string | null
+          role: Database["public"]["Enums"]["trip_role"]
+          token_digest: string
+          trip_id: string
+          use_count: number
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          expires_at: string
+          id?: string
+          max_uses?: number
+          revoked_at?: string | null
+          role?: Database["public"]["Enums"]["trip_role"]
+          token_digest: string
+          trip_id: string
+          use_count?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          expires_at?: string
+          id?: string
+          max_uses?: number
+          revoked_at?: string | null
+          role?: Database["public"]["Enums"]["trip_role"]
+          token_digest?: string
+          trip_id?: string
+          use_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_invites_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trip_invites_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trip_members: {
         Row: {
           joined_at: string
@@ -729,10 +783,62 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_trip_invite: { Args: { invite_token: string }; Returns: string }
       can_edit_trip: { Args: { requested_trip_id: string }; Returns: boolean }
       can_read_segment: {
         Args: { requested_segment_id: string }
         Returns: boolean
+      }
+      create_equal_expense: {
+        Args: {
+          expense_currency: string
+          expense_occurred_at?: string
+          expense_title: string
+          expense_total_minor: number
+          participant_user_ids: string[]
+          payer_user_id: string
+          requested_segment_id?: string
+          requested_trip_id: string
+        }
+        Returns: string
+      }
+      create_trip: {
+        Args: {
+          trip_default_time_zone: string
+          trip_ends_on: string
+          trip_home_currency: string
+          trip_name: string
+          trip_starts_on: string
+        }
+        Returns: {
+          created_at: string
+          created_by: string
+          default_time_zone: string
+          ends_on: string
+          home_currency: string
+          id: string
+          name: string
+          starts_on: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "trips"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_trip_invite: {
+        Args: {
+          allowed_uses?: number
+          invited_role?: Database["public"]["Enums"]["trip_role"]
+          requested_trip_id: string
+          valid_for_hours?: number
+        }
+        Returns: {
+          invite_expires_at: string
+          invite_token: string
+        }[]
       }
       is_trip_creator: { Args: { requested_trip_id: string }; Returns: boolean }
       is_trip_member: { Args: { requested_trip_id: string }; Returns: boolean }

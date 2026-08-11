@@ -45,21 +45,32 @@ See `planning.md` for the complete P0/P1 scope, non-goals, architecture, milesto
 - Supabase JavaScript client installed with AsyncStorage session persistence and lazy environment validation
 - Generated TypeScript database types match the deployed schema
 - Email OTP send/verify service implemented with normalized input and six-digit token validation
+- First deployable MVP UI connected end to end to live Supabase data
+- Passwordless session gate with secure-link and six-digit OTP handling
+- Automatic profile provisioning on Auth user creation
+- Atomic trip creation with owner membership, hashed expiring invite codes, and invite acceptance
+- Live trip switching, member list, profile editing, and shared itinerary creation
+- Atomic equal-split expense creation, per-currency balances, and settlement suggestions
+- Vercel-ready Expo static web configuration
+- Transactional two-user backend smoke test covers trip creation, invite acceptance, and an exact expense split without leaving test data
 
 ## Applied Supabase migrations
 
 - `initial_schema`
 - `harden_rls_helpers`
+- `mvp_foundation`
+- `fix_invite_crypto_path`
 
 The database currently contains no application rows.
 
 ## Active next milestone
 
-1. Configure the Supabase email template to send the six-digit `{{ .Token }}` OTP.
-2. Build the sign-in/session UI and automatic profile creation.
-3. Replace static fixtures with a repository/data-access layer.
-4. Test RLS with separate owner, editor, viewer, and branch-member accounts.
-5. Add deferred financial aggregate validation before accepting real expense data.
+1. Install/authorize a deployment provider and publish the existing `dist` build.
+2. Add the deployed URL to Supabase Auth redirect allow-list; optionally switch the email template to the six-digit `{{ .Token }}` OTP.
+3. Run human acceptance with real owner/editor/viewer accounts on the deployed URL.
+4. Add segment/branch creation and segment-scoped itinerary membership.
+5. Add deferred financial aggregate validation before expanding beyond equal-split expenses.
+6. Address performance-advisor warnings before the dataset grows; current security-advisor result is zero findings.
 
 ## Standing decisions and safety boundaries
 

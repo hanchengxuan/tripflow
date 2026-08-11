@@ -1,0 +1,56 @@
+import type { Expense } from '@/domain/models';
+import type { Balance } from '@/domain/money';
+
+const zeroDecimalCurrencies = new Set(['JPY', 'KRW']);
+
+export function currencyMinorDigits(currency: string): number {
+  return zeroDecimalCurrencies.has(currency.toUpperCase()) ? 0 : 2;
+}
+
+export function parseAmountToMinor(value: string, currency: string): number {
+  const normalized = value.trim();
+  const digits = currencyMinorDigits(currency);
+  const pattern = digits === 0 ? /^\d+$/ : /^\d+(?:\.\d{1,2})?$/;
+  if (!pattern.test(normalized)) {
+    throw new Error(digits === 0 ? 'Enter a whole-number amount.' : 'Enter an amount with up to two decimals.');
+  }
+
+  const [whole, fraction = ''] = normalized.split('.');
+  const scale = 10 ** digits;
+  const amount = Number(whole) * scale + Number(fraction.padEnd(digits, '0') || 0);
+  if (!Number.isSafeInteger(amount) || amount <= 0) throw new Error('Enter a valid positive amount.');
+  return amount;
+}
+
+export function formatMinorAmount(amountMinor: number, currency: string): string {
+  const normalizedCurrency = currency.toUpperCase();
+  const digits = currencyMinorDigits(normalizedCurrency);
+  return new Intl.NumberFormat(undefined, {
+    style: 'currency',
+    currency: normalizedCurrency,
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  }).format(amountMinor / 10 ** digits);
+}
+
+export function calculateBalancesByCurrency(expenses: Expense[], participantIds: string[]) {
+  const currencies = new Map<string, Map<string, number>>();
+  for (const expense of expenses) {
+    const balances = currencies.get(expense.currency) ?? new Map(participantIds.map((id) => [id, 0]));
+    for (const payer of expense.payers) {
+      balances.set(payer.userId, (balances.get(payer.userId) ?? 0) + payer.amountMinor);
+    }
+    for (const share of expense.shares) {
+      balances.set(share.userId, (balances.get(share.userId) ?? 0) - share.amountMinor);
+    }
+    currencies.set(expense.currency, balances);
+  }
+
+  return [...currencies.entries()].map(([currency, participantBalances]) => ({
+    currency,
+    balances: [...participantBalances.entries()].map<Balance>(([participantId, netMinor]) => ({
+      participantId,
+      netMinor,
+    })),
+  }));
+}

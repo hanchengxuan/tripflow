@@ -1,4 +1,5 @@
 import { getSupabaseClient } from '@/lib/supabase';
+import * as Linking from 'expo-linking';
 
 export function normalizeEmail(email: string): string {
   const normalized = email.trim().toLowerCase();
@@ -14,7 +15,10 @@ export async function sendEmailOtp(email: string): Promise<string> {
   const normalizedEmail = normalizeEmail(email);
   const { error } = await getSupabaseClient().auth.signInWithOtp({
     email: normalizedEmail,
-    options: { shouldCreateUser: true },
+    options: {
+      shouldCreateUser: true,
+      emailRedirectTo: Linking.createURL('/'),
+    },
   });
 
   if (error) throw error;
