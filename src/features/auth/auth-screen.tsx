@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { Link, type Href } from 'expo-router';
 
 import { ActionButton, FormField, InlineNotice } from '@/components/form-controls';
 import { InfoCard } from '@/components/info-card';
@@ -81,6 +82,10 @@ export function AuthScreen() {
           {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
         </View>
       </InfoCard>
+      <View style={styles.legalLinks}>
+        <Link href={'/privacy' as Href} asChild><ThemedText type="linkPrimary">隐私政策</ThemedText></Link>
+        <Link href={'/support' as Href} asChild><ThemedText type="linkPrimary">支持与帮助</ThemedText></Link>
+      </View>
     </Screen>
   );
 }
@@ -100,4 +105,7 @@ export function AuthLoadingScreen({ configured }: { configured: boolean }) {
   );
 }
 
-const styles = StyleSheet.create({ form: { gap: 12 } });
+const styles = StyleSheet.create({
+  form: { gap: 12 },
+  legalLinks: { flexDirection: 'row', flexWrap: 'wrap', gap: 18, justifyContent: 'center' },
+});

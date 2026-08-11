@@ -60,7 +60,11 @@ See `planning.md` for the complete P0/P1 scope, non-goals, architecture, milesto
 - Trip dates, itinerary date/time, home currency, expense currency, timezone, and invite role use controlled selectors instead of free-form entry
 - An independent Profile tab lets each signed-in user edit their display name and review account/trip information
 - App Store identity is prepared with bundle ID `com.hanchengxuan.tripflow`, an original 1024px RGB icon, and EAS build/submit profiles
-- Web and iOS exports, Expo Doctor, lint, TypeScript, and 13 automated tests pass for the mobile-readiness milestone; web document language/title are Chinese-aware
+- Web and iOS exports, Expo Doctor, lint, TypeScript, and 14 automated tests pass for the current mobile-readiness milestone; web document language/title are Chinese-aware
+- In-app account deletion is deployed end to end: auth credentials are removed, the profile is anonymized, memberships are revoked, sole-owned trips are deleted, and shared trips transfer to another member
+- Public Chinese privacy and support pages are live at `/privacy` and `/support`, and the login/Profile screens link to them
+- A Simplified Chinese App Store metadata and review-notes draft is maintained in `docs/app-store-metadata-zh-CN.md`
+- Account-deletion backend behavior passed transactional shared-trip, sole-trip, ownership-transfer, and stale-JWT tests with all fixture data rolled back
 
 ## Applied Supabase migrations
 
@@ -68,18 +72,18 @@ See `planning.md` for the complete P0/P1 scope, non-goals, architecture, milesto
 - `harden_rls_helpers`
 - `mvp_foundation`
 - `fix_invite_crypto_path`
+- `account_deletion`
 
 The database currently contains no application rows.
 
 ## Active next milestone
 
-1. Sign into Expo/EAS, connect the EAS project, add the two public Supabase variables, and produce the first iOS TestFlight build.
-2. Implement in-app account deletion and publish permanent privacy-policy/support URLs before App Review.
-3. Prepare Simplified Chinese App Store metadata/screenshots and run TestFlight acceptance on a current iPhone.
-4. Run human acceptance with real owner/editor/viewer accounts on the deployed URL.
-5. Add segment/branch creation and segment-scoped itinerary membership.
-6. Add deferred financial aggregate validation before expanding beyond equal-split expenses.
-7. Address performance-advisor warnings before the dataset grows; current security-advisor result is zero findings.
+1. Resolve the Apple Developer Program enrollment hold; then sign into Expo/EAS, connect the EAS project, add the public Supabase variables, and produce the first iOS TestFlight build.
+2. Choose and configure the long-term public support email through `EXPO_PUBLIC_SUPPORT_EMAIL`, then finalize App Privacy disclosures, age rating, and Chinese screenshots.
+3. Run TestFlight acceptance on a current iPhone and human acceptance with real owner/editor/viewer accounts.
+4. Add segment/branch creation and segment-scoped itinerary membership.
+5. Add deferred financial aggregate validation before expanding beyond equal-split expenses.
+6. Address performance-advisor warnings before the dataset grows. The current security advisor has one password-protection warning that is not exercised by the passwordless-only login flow; revisit it before enabling passwords.
 
 ## Standing decisions and safety boundaries
 

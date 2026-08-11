@@ -47,3 +47,12 @@ export async function signOut() {
   const { error } = await getSupabaseClient().auth.signOut();
   if (error) throw error;
 }
+
+export async function deleteAccount() {
+  const client = getSupabaseClient();
+  const { error } = await client.rpc('delete_current_account');
+  if (error) throw error;
+
+  const { error: signOutError } = await client.auth.signOut({ scope: 'local' });
+  if (signOutError) throw signOutError;
+}

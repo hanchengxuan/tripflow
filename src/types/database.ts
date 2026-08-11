@@ -440,18 +440,21 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string
+          deleted_at: string | null
           display_name: string
           id: string
           updated_at: string
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
           display_name: string
           id: string
           updated_at?: string
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
           display_name?: string
           id?: string
           updated_at?: string
@@ -840,6 +843,8 @@ export type Database = {
           invite_token: string
         }[]
       }
+      delete_current_account: { Args: never; Returns: undefined }
+      is_active_user: { Args: never; Returns: boolean }
       is_trip_creator: { Args: { requested_trip_id: string }; Returns: boolean }
       is_trip_member: { Args: { requested_trip_id: string }; Returns: boolean }
       is_trip_owner: { Args: { requested_trip_id: string }; Returns: boolean }

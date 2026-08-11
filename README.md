@@ -4,6 +4,8 @@ TripFlow is a collaborative travel workspace for groups that travel together, sp
 
 Production MVP: <https://tripflow-liart.vercel.app>
 
+Public pages: [Privacy](https://tripflow-liart.vercel.app/privacy) · [Support](https://tripflow-liart.vercel.app/support)
+
 ## MVP flow
 
 1. Sign in from an emailed secure link or six-digit OTP.
@@ -20,7 +22,7 @@ Production MVP: <https://tripflow-liart.vercel.app>
    npm install
    ```
 
-2. Copy `.env.example` to `.env.local` and set the Supabase project URL and publishable key. Never use a service-role key in the app.
+2. Copy `.env.example` to `.env.local` and set the Supabase project URL and publishable key. Set `EXPO_PUBLIC_SUPPORT_EMAIL` before public distribution. Never use a service-role key in the app.
 
 3. Validate the project
 
@@ -58,7 +60,7 @@ The MVP screens read and write live Supabase data. Never commit Supabase secrets
 The repository includes `vercel.json` for a static Expo web deployment.
 
 1. Import the GitHub repository into Vercel.
-2. Add `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` to the Vercel project environment.
+2. Add `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and the public `EXPO_PUBLIC_SUPPORT_EMAIL` to the Vercel project environment.
 3. Deploy. Vercel runs `npm run build:web` and serves `dist`.
 
 Before a release, run:

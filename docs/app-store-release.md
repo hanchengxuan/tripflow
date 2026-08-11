@@ -30,10 +30,10 @@ Submission uploads the binary to App Store Connect/TestFlight. It does not compl
 
 ## Required before App Review
 
-- Add in-app account deletion; deleting an account must also remove or anonymize associated personal data according to the product policy.
-- Publish permanent privacy-policy and support URLs.
+- In-app account deletion is implemented and backed by the `account_deletion` migration. Re-test it in TestFlight before submission.
+- Privacy and support pages are published by the app at `/privacy` and `/support`; configure `EXPO_PUBLIC_SUPPORT_EMAIL` before public review.
 - Complete App Privacy disclosures for Supabase/Vercel and any later analytics, crash, speech, or AI providers.
-- Prepare Simplified Chinese App Store name, subtitle, description, keywords, support contact, age rating, and screenshots.
+- Simplified Chinese name, subtitle, description, keywords, URLs, and review-note draft live in `docs/app-store-metadata-zh-CN.md`; add the final support contact, age rating, and screenshots.
 - Run TestFlight acceptance on at least one current iPhone for login links, date/time controls, invitations, profile editing, itinerary creation, and expense splitting.
 - Provide App Review with a usable review account or clear passwordless-login instructions.
 
