@@ -322,6 +322,17 @@ Exit: the app boots on iOS/Android, CI passes, and data/permission design is rev
 - Shared itinerary CRUD, timeline/day views, and attachments/links.
 - Realtime updates and activity events.
 
+Current implementation and acceptance requirements:
+
+- A changed profile avatar and display name must propagate to every shared identity surface, including trip rosters and ledger settlement rows; initials remain the accessible fallback.
+- Every row in My Trips opens a dedicated view/manage workspace rather than silently switching context.
+- Owners and editors can edit the trip name, start/end dates, home currency, and timezone through one focused form; viewers receive the same details read-only.
+- Owners can view all travellers, change another member between owner/editor/viewer, and remove a fully settled member with explicit confirmation; removal is blocked while any currency balance remains open.
+- A user cannot change or remove their own membership; historical expenses and settlements remain intact when a traveller is removed, while future itinerary/segment participation is revoked.
+- A removed traveller's name and avatar are retained as a trip-scoped read-only audit snapshot so historical payer, split, and settlement evidence never degrades to an anonymous label.
+- Member removal and expense creation share a transaction lock so an expense cannot add a new balance while that member is being removed.
+- Create trip, join by invite, edit trip, invite traveller, and manage existing traveller remain separate progressive tasks rather than simultaneous stacked forms.
+
 Exit: four test users can join and collaboratively edit one shared itinerary.
 
 ### Milestone 2 — segments and branching (Weeks 4-5)

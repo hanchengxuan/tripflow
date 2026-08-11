@@ -28,7 +28,10 @@ export interface TripMember {
   tripId: TripId;
   userId: UserId;
   displayName: string;
+  avatarPath?: string;
+  avatarUrl?: string;
   role: TripRole;
+  archived?: boolean;
 }
 
 export interface Segment {

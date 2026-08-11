@@ -87,17 +87,94 @@ export async function listTripMembers(tripId: string): Promise<TripMember[]> {
   if (userIds.length === 0) return [];
   const { data: profiles, error: profileError } = await client
     .from('profiles')
-    .select('id,display_name')
+    .select('id,display_name,avatar_path')
     .in('id', userIds);
   if (profileError) throw profileError;
-  const names = new Map(profiles.map((profile) => [profile.id, profile.display_name]));
+  const profileById = new Map(profiles.map((profile) => [profile.id, profile]));
 
-  return memberships.map((membership) => ({
-    tripId: membership.trip_id,
-    userId: membership.user_id,
-    role: membership.role,
-    displayName: names.get(membership.user_id) ?? '旅行者',
-  }));
+  return memberships.map((membership) => {
+    const profile = profileById.get(membership.user_id);
+    const avatarPath = profile?.avatar_path ?? undefined;
+    return {
+      tripId: membership.trip_id,
+      userId: membership.user_id,
+      role: membership.role,
+      displayName: profile?.display_name ?? '旅行者',
+      avatarPath,
+      avatarUrl: avatarPath
+        ? client.storage.from('avatars').getPublicUrl(avatarPath).data.publicUrl
+        : undefined,
+    };
+  });
+}
+
+export async function listLedgerMembers(tripId: string): Promise<TripMember[]> {
+  const client = getSupabaseClient();
+  const current = await listTripMembers(tripId);
+  const { data, error } = await client
+    .from('trip_member_archives')
+    .select('trip_id,user_id,display_name,avatar_path,removed_at')
+    .eq('trip_id', tripId);
+  if (error) throw error;
+  const currentIds = new Set(current.map(({ userId }) => userId));
+  return [
+    ...current,
+    ...data.filter(({ user_id }) => !currentIds.has(user_id)).map((member) => ({
+      tripId: member.trip_id,
+      userId: member.user_id,
+      displayName: member.display_name,
+      avatarPath: member.avatar_path ?? undefined,
+      avatarUrl: member.avatar_path
+        ? client.storage.from('avatars').getPublicUrl(member.avatar_path).data.publicUrl
+        : undefined,
+      role: 'viewer' as const,
+      archived: true,
+    })),
+  ];
+}
+
+export async function updateTrip(input: {
+  tripId: string;
+  name: string;
+  startsOn: string;
+  endsOn: string;
+  homeCurrency: string;
+  defaultTimeZone: string;
+}): Promise<Trip> {
+  const { data, error } = await getSupabaseClient().rpc('update_trip_details', {
+    requested_trip_id: input.tripId,
+    trip_name: input.name,
+    trip_starts_on: input.startsOn,
+    trip_ends_on: input.endsOn,
+    trip_home_currency: input.homeCurrency,
+    trip_default_time_zone: input.defaultTimeZone,
+  });
+  if (error) throw error;
+  return mapTrip(data);
+}
+
+export async function updateTripMember(input: {
+  tripId: string;
+  userId: string;
+  role: 'owner' | 'editor' | 'viewer';
+}) {
+  const { error } = await getSupabaseClient().rpc('manage_trip_member', {
+    requested_trip_id: input.tripId,
+    target_user_id: input.userId,
+    requested_role: input.role,
+    remove_member: false,
+  });
+  if (error) throw error;
+}
+
+export async function removeTripMember(tripId: string, userId: string) {
+  const { error } = await getSupabaseClient().rpc('manage_trip_member', {
+    requested_trip_id: tripId,
+    target_user_id: userId,
+    requested_role: 'viewer',
+    remove_member: true,
+  });
+  if (error) throw error;
 }
 
 export async function updateProfile(

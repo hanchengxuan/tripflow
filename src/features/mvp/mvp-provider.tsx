@@ -10,12 +10,16 @@ import {
   getProfile,
   listExpenses,
   listItineraryItems,
+  listLedgerMembers,
   listSettlements,
   listTripMembers,
   listTrips,
   recordSettlement,
+  removeTripMember,
   unrecordSettlement,
   updateProfile,
+  updateTrip,
+  updateTripMember,
 } from '@/data/trip-repository';
 import type { Expense, ItineraryItem, Profile, Settlement, Trip, TripMember } from '@/domain/models';
 import { useAuth } from '@/features/auth/auth-provider';
@@ -28,6 +32,7 @@ interface MvpContextValue {
   trips: Trip[];
   activeTrip?: Trip;
   members: TripMember[];
+  ledgerMembers: TripMember[];
   itineraryItems: ItineraryItem[];
   expenses: Expense[];
   settlements: Settlement[];
@@ -38,6 +43,9 @@ interface MvpContextValue {
   createTrip: (input: { name: string; startsOn: string; endsOn: string; homeCurrency: string; defaultTimeZone: string }) => Promise<void>;
   joinTrip: (token: string) => Promise<void>;
   createInvite: (role: 'editor' | 'viewer') => Promise<{ token: string; expiresAt: string }>;
+  saveTrip: (input: { name: string; startsOn: string; endsOn: string; homeCurrency: string; defaultTimeZone: string }) => Promise<void>;
+  setMemberRole: (userId: string, role: 'owner' | 'editor' | 'viewer') => Promise<void>;
+  removeMember: (userId: string) => Promise<void>;
   saveProfile: (input: { displayName: string; avatar?: { uri: string; mimeType?: string | null } }) => Promise<void>;
   addItineraryItem: (input: { title: string; kind: Database['public']['Enums']['itinerary_kind']; startsAt: string; endsAt?: string; locationLabel?: string }) => Promise<void>;
   addEqualExpense: (input: { title: string; currency: string; totalMinor: number; payerUserId: string; participantUserIds: string[]; receipt?: { uri: string; base64?: string | null; mimeType?: string | null; fileSize?: number } }) => Promise<{ receiptUploaded: boolean; receiptError?: unknown }>;
@@ -56,6 +64,7 @@ export function MvpProvider({ children }: PropsWithChildren) {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [activeTrip, setActiveTrip] = useState<Trip>();
   const [members, setMembers] = useState<TripMember[]>([]);
+  const [ledgerMembers, setLedgerMembers] = useState<TripMember[]>([]);
   const [itineraryItems, setItineraryItems] = useState<ItineraryItem[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [settlements, setSettlements] = useState<Settlement[]>([]);
@@ -65,18 +74,21 @@ export function MvpProvider({ children }: PropsWithChildren) {
     setActiveTrip(trip);
     if (!trip) {
       setMembers([]);
+      setLedgerMembers([]);
       setItineraryItems([]);
       setExpenses([]);
       setSettlements([]);
       return;
     }
-    const [nextMembers, nextItems, nextExpenses, nextSettlements] = await Promise.all([
+    const [nextMembers, nextLedgerMembers, nextItems, nextExpenses, nextSettlements] = await Promise.all([
       listTripMembers(trip.id),
+      listLedgerMembers(trip.id),
       listItineraryItems(trip.id),
       listExpenses(trip.id),
       listSettlements(trip.id),
     ]);
     setMembers(nextMembers);
+    setLedgerMembers(nextLedgerMembers);
     setItineraryItems(nextItems);
     setExpenses(nextExpenses);
     setSettlements(nextSettlements);
@@ -137,13 +149,41 @@ export function MvpProvider({ children }: PropsWithChildren) {
     return createTripInvite(activeTrip.id, role);
   }, [activeTrip]);
 
+  const saveTrip = useCallback(async (input: { name: string; startsOn: string; endsOn: string; homeCurrency: string; defaultTimeZone: string }) => {
+    if (!activeTrip) throw new Error('请先选择一个行程。');
+    const updated = await updateTrip({ ...input, tripId: activeTrip.id });
+    const nextTrips = await listTrips();
+    setTrips(nextTrips);
+    await loadTripDetails(nextTrips.find(({ id }) => id === updated.id) ?? updated);
+  }, [activeTrip, loadTripDetails]);
+
+  const setMemberRole = useCallback(async (userId: string, role: 'owner' | 'editor' | 'viewer') => {
+    if (!activeTrip) throw new Error('请先选择一个行程。');
+    await updateTripMember({ tripId: activeTrip.id, userId, role });
+    const [nextMembers, nextLedgerMembers] = await Promise.all([listTripMembers(activeTrip.id), listLedgerMembers(activeTrip.id)]);
+    setMembers(nextMembers);
+    setLedgerMembers(nextLedgerMembers);
+  }, [activeTrip]);
+
+  const removeMember = useCallback(async (userId: string) => {
+    if (!activeTrip) throw new Error('请先选择一个行程。');
+    await removeTripMember(activeTrip.id, userId);
+    const [nextMembers, nextLedgerMembers] = await Promise.all([listTripMembers(activeTrip.id), listLedgerMembers(activeTrip.id)]);
+    setMembers(nextMembers);
+    setLedgerMembers(nextLedgerMembers);
+  }, [activeTrip]);
+
   const saveProfile = useCallback(async (input: { displayName: string; avatar?: { uri: string; mimeType?: string | null } }) => {
     await updateProfile(currentUserId, {
       ...input,
       currentAvatarPath: profile?.avatarPath,
     });
     setProfile(await getProfile(currentUserId));
-    if (activeTrip) setMembers(await listTripMembers(activeTrip.id));
+    if (activeTrip) {
+      const [nextMembers, nextLedgerMembers] = await Promise.all([listTripMembers(activeTrip.id), listLedgerMembers(activeTrip.id)]);
+      setMembers(nextMembers);
+      setLedgerMembers(nextLedgerMembers);
+    }
   }, [activeTrip, currentUserId, profile?.avatarPath]);
 
   const addItineraryItem = useCallback(async (input: { title: string; kind: Database['public']['Enums']['itinerary_kind']; startsAt: string; endsAt?: string; locationLabel?: string }) => {
@@ -186,6 +226,7 @@ export function MvpProvider({ children }: PropsWithChildren) {
     trips,
     activeTrip,
     members,
+    ledgerMembers,
     itineraryItems,
     expenses,
     settlements,
@@ -196,13 +237,16 @@ export function MvpProvider({ children }: PropsWithChildren) {
     createTrip: createTripAction,
     joinTrip,
     createInvite,
+    saveTrip,
+    setMemberRole,
+    removeMember,
     saveProfile,
     addItineraryItem,
     addEqualExpense,
     attachExpenseReceipt,
     markSettlement,
     unmarkSettlement,
-  }), [loading, error, trips, activeTrip, members, itineraryItems, expenses, settlements, profile, currentUserId, selectTrip, refresh, createTripAction, joinTrip, createInvite, saveProfile, addItineraryItem, addEqualExpense, attachExpenseReceipt, markSettlement, unmarkSettlement]);
+  }), [loading, error, trips, activeTrip, members, ledgerMembers, itineraryItems, expenses, settlements, profile, currentUserId, selectTrip, refresh, createTripAction, joinTrip, createInvite, saveTrip, setMemberRole, removeMember, saveProfile, addItineraryItem, addEqualExpense, attachExpenseReceipt, markSettlement, unmarkSettlement]);
 
   return <MvpContext.Provider value={value}>{children}</MvpContext.Provider>;
 }

@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import { LayoutAnimation, Linking, Pressable, StyleSheet, View } from 'react-native';
 
 import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/form-controls';
+import { MemberAvatar } from '@/components/member-avatar';
 import { Screen } from '@/components/screen';
 import { SelectionField } from '@/components/selection-field';
 import { ThemedText } from '@/components/themed-text';
@@ -16,7 +17,7 @@ import {
   parseAmountToMinor,
 } from '@/domain/ledger';
 import { minimizeSettlementTransfers, type SettlementTransfer } from '@/domain/money';
-import type { Expense, Settlement } from '@/domain/models';
+import type { Expense, Settlement, TripMember } from '@/domain/models';
 import { parseExpenseText } from '@/features/ai/expense-parser';
 import { useI18n } from '@/features/i18n/i18n-provider';
 import { useMvp } from '@/features/mvp/mvp-provider';
@@ -41,6 +42,7 @@ export default function LedgerScreen() {
   const {
     activeTrip,
     members,
+    ledgerMembers,
     expenses,
     settlements,
     currentUserId,
@@ -73,8 +75,9 @@ export default function LedgerScreen() {
   const participantIds = activeTrip
     ? participantsByTrip[activeTrip.id] ?? members.map(({ userId }) => userId)
     : [];
-  const names = useMemo(() => new Map(members.map(({ userId, displayName }) => [userId, displayName])), [members]);
-  const memberIds = useMemo(() => members.map(({ userId }) => userId), [members]);
+  const names = useMemo(() => new Map(ledgerMembers.map(({ userId, displayName }) => [userId, displayName])), [ledgerMembers]);
+  const memberById = useMemo(() => new Map(ledgerMembers.map((member) => [member.userId, member])), [ledgerMembers]);
+  const memberIds = useMemo(() => ledgerMembers.map(({ userId }) => userId), [ledgerMembers]);
   const currencyOptions = getCurrencyOptions(locale === 'en');
   const darkMode = theme.background === '#0C1924';
   const positiveColor = darkMode ? '#69D4BC' : '#087F6A';
@@ -328,6 +331,7 @@ export default function LedgerScreen() {
         <SettlementWorkspace
           tx={tx}
           names={names}
+          memberById={memberById}
           currentUserId={currentUserId}
           balanceSnapshots={balanceSnapshots}
           settlements={settlements}
@@ -347,6 +351,7 @@ export default function LedgerScreen() {
           tx={tx}
           expenses={expenses}
           names={names}
+          memberById={memberById}
           formatDateTime={formatDateTime}
           expandedExpenseId={expandedExpenseId}
           setExpandedExpenseId={setExpandedExpenseId}
@@ -391,7 +396,7 @@ function ExpenseComposer(props: {
   currency: string;
   currencyOptions: { label: string; value: string }[];
   setCurrencyOverride: (value: string) => void;
-  members: { userId: string; displayName: string }[];
+  members: TripMember[];
   payerUserId: string;
   setPayerOverride: (value: string) => void;
   participantIds: string[];
@@ -449,16 +454,12 @@ function ExpenseComposer(props: {
           </View>
           <FieldGroup label={tx('谁付款？', 'Who paid?')}>
             {props.members.map((member) => (
-              <ChoiceChip key={member.userId} selected={props.payerUserId === member.userId} onPress={() => props.setPayerOverride(member.userId)}>
-                {member.displayName}
-              </ChoiceChip>
+              <MemberChoice key={member.userId} member={member} selected={props.payerUserId === member.userId} role="radio" onPress={() => props.setPayerOverride(member.userId)} />
             ))}
           </FieldGroup>
           <FieldGroup label={tx('谁参与分摊？', 'Who shares it?')}>
             {props.members.map((member) => (
-              <ChoiceChip key={member.userId} selected={props.participantIds.includes(member.userId)} onPress={() => props.toggleParticipant(member.userId)}>
-                {member.displayName}
-              </ChoiceChip>
+              <MemberChoice key={member.userId} member={member} selected={props.participantIds.includes(member.userId)} onPress={() => props.toggleParticipant(member.userId)} />
             ))}
           </FieldGroup>
           <View style={styles.receiptGroup}>
@@ -505,9 +506,25 @@ function FieldGroup({ label, children }: { label: string; children: React.ReactN
   );
 }
 
+function MemberChoice({ member, selected, role = 'checkbox', onPress }: { member: TripMember; selected: boolean; role?: 'radio' | 'checkbox'; onPress: () => void }) {
+  const theme = useTheme();
+  return (
+    <Pressable
+      accessibilityRole={role}
+      accessibilityState={{ checked: selected }}
+      accessibilityLabel={member.displayName}
+      onPress={onPress}
+      style={({ pressed }) => [styles.memberChoice, { backgroundColor: selected ? '#087F6A' : theme.backgroundSelected }, pressed && styles.pressed]}>
+      <MemberAvatar avatarUrl={member.avatarUrl} displayName={member.displayName} size={30} />
+      <ThemedText type="smallBold" style={selected ? styles.memberChoiceTextSelected : undefined}>{member.displayName}</ThemedText>
+    </Pressable>
+  );
+}
+
 function SettlementWorkspace(props: {
   tx: (zh: string, en: string) => string;
   names: Map<string, string>;
+  memberById: Map<string, TripMember>;
   currentUserId: string;
   balanceSnapshots: BalanceSnapshot[];
   settlements: Settlement[];
@@ -571,8 +588,10 @@ function SettlementWorkspace(props: {
           </View>
         ) : props.myPendingTransfers.map((transfer) => {
           const key = `${transfer.currency}-${transfer.fromParticipantId}-${transfer.toParticipantId}`;
+          const recipient = props.memberById.get(transfer.toParticipantId);
           return (
             <View key={key} style={styles.transferRow}>
+              <MemberAvatar avatarUrl={recipient?.avatarUrl} displayName={recipient?.displayName ?? tx('同行者', 'Traveller')} size={42} />
               <View style={styles.transferCopy}>
                 <ThemedText type="smallBold">{tx(`转给 ${props.names.get(transfer.toParticipantId) ?? '同行者'}`, `Pay ${props.names.get(transfer.toParticipantId) ?? 'Traveller'}`)}</ThemedText>
                 <ThemedText style={styles.transferAmount}>{formatMinorAmount(transfer.amountMinor, transfer.currency)}</ThemedText>
@@ -598,8 +617,10 @@ function SettlementWorkspace(props: {
           </View>
           {mySettlements.map((settlement) => {
             const sentByMe = settlement.fromUserId === props.currentUserId;
+            const otherMember = props.memberById.get(sentByMe ? settlement.toUserId : settlement.fromUserId);
             return (
               <View key={settlement.id} style={styles.completedRow}>
+                <MemberAvatar avatarUrl={otherMember?.avatarUrl} displayName={otherMember?.displayName ?? tx('同行者', 'Traveller')} size={38} />
                 <View style={styles.grow}>
                   <ThemedText type="smallBold">
                     {sentByMe
@@ -634,13 +655,17 @@ function SettlementWorkspace(props: {
           <View key={snapshot.currency} style={styles.groupCurrency}>
             <ThemedText type="smallBold" style={[styles.currencyDivider, { color: props.positiveColor }]}>{snapshot.currency}</ThemedText>
             {[...props.names.entries()].map(([userId, displayName]) => {
+              const member = props.memberById.get(userId);
               const pendingOut = sumTransfers(snapshot.outstandingTransfers, 'from', userId);
               const pendingIn = sumTransfers(snapshot.outstandingTransfers, 'to', userId);
               const sent = sumSettlements(props.settlements, snapshot.currency, 'from', userId);
               const received = sumSettlements(props.settlements, snapshot.currency, 'to', userId);
               return (
                 <View key={userId} style={styles.memberSettlementRow}>
-                  <ThemedText type="smallBold" style={styles.memberName}>{displayName}</ThemedText>
+                  <View style={styles.memberIdentity}>
+                    <MemberAvatar avatarUrl={member?.avatarUrl} displayName={displayName} size={36} />
+                    <View style={styles.grow}><ThemedText type="smallBold">{displayName}</ThemedText>{member?.archived ? <ThemedText type="small" themeColor="textSecondary">{tx('已离开行程', 'Left trip')}</ThemedText> : null}</View>
+                  </View>
                   <View style={styles.memberMetrics}>
                     <MiniMetric label={tx('待转', 'Due')} value={pendingOut} currency={snapshot.currency} />
                     <MiniMetric label={tx('已转', 'Sent')} value={sent} currency={snapshot.currency} />
@@ -655,14 +680,11 @@ function SettlementWorkspace(props: {
         {props.pendingTransfers.length > 0 ? (
           <View style={styles.groupRouteList}>
             <ThemedText type="smallBold">{tx('剩余转账路径', 'Remaining transfers')}</ThemedText>
-            {props.pendingTransfers.map((transfer) => (
-              <ThemedText key={`${transfer.currency}-${transfer.fromParticipantId}-${transfer.toParticipantId}`} type="small" themeColor="textSecondary">
-                {tx(
-                  `${props.names.get(transfer.fromParticipantId) ?? '同行者'} → ${props.names.get(transfer.toParticipantId) ?? '同行者'} · ${formatMinorAmount(transfer.amountMinor, transfer.currency)}`,
-                  `${props.names.get(transfer.fromParticipantId) ?? 'Traveller'} → ${props.names.get(transfer.toParticipantId) ?? 'Traveller'} · ${formatMinorAmount(transfer.amountMinor, transfer.currency)}`,
-                )}
-              </ThemedText>
-            ))}
+            {props.pendingTransfers.map((transfer) => {
+              const from = props.memberById.get(transfer.fromParticipantId);
+              const to = props.memberById.get(transfer.toParticipantId);
+              return <View key={`${transfer.currency}-${transfer.fromParticipantId}-${transfer.toParticipantId}`} style={styles.routeRow}><MemberAvatar avatarUrl={from?.avatarUrl} displayName={from?.displayName ?? tx('同行者', 'Traveller')} size={30} /><ThemedText type="small" themeColor="textSecondary" style={styles.routeText}>{tx(`${from?.displayName ?? '同行者'} → ${to?.displayName ?? '同行者'}`, `${from?.displayName ?? 'Traveller'} → ${to?.displayName ?? 'Traveller'}`)}</ThemedText><MemberAvatar avatarUrl={to?.avatarUrl} displayName={to?.displayName ?? tx('同行者', 'Traveller')} size={30} /><ThemedText type="smallBold">{formatMinorAmount(transfer.amountMinor, transfer.currency)}</ThemedText></View>;
+            })}
           </View>
         ) : props.balanceSnapshots.length > 0 ? (
           <ThemedText type="smallBold" style={{ color: props.positiveColor }}>{tx('全部结清', 'All settled')}</ThemedText>
@@ -676,6 +698,7 @@ function ExpenseActivity(props: {
   tx: (zh: string, en: string) => string;
   expenses: Expense[];
   names: Map<string, string>;
+  memberById: Map<string, TripMember>;
   formatDateTime: (value: string) => string;
   expandedExpenseId?: string;
   setExpandedExpenseId: (expenseId?: string) => void;
@@ -702,6 +725,7 @@ function ExpenseActivity(props: {
       </View>
       {props.expenses.map((expense) => {
         const expanded = props.expandedExpenseId === expense.id;
+        const primaryPayer = props.memberById.get(expense.payers[0]?.userId);
         const payerNames = expense.payers.map(({ userId }) => props.names.get(userId) ?? tx('同行者', 'Traveller')).join(tx('、', ', '));
         const shareText = expense.shares
           .map((share) => `${props.names.get(share.userId) ?? tx('同行者', 'Traveller')} ${formatMinorAmount(share.amountMinor, expense.currency)}`)
@@ -713,6 +737,7 @@ function ExpenseActivity(props: {
               accessibilityState={{ expanded }}
               onPress={() => props.setExpandedExpenseId(expanded ? undefined : expense.id)}
               style={({ pressed }) => [styles.expenseSummary, pressed && styles.pressed]}>
+              <MemberAvatar avatarUrl={primaryPayer?.avatarUrl} displayName={primaryPayer?.displayName ?? tx('同行者', 'Traveller')} size={38} />
               <View style={styles.grow}>
                 <ThemedText type="smallBold">{expense.title}</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
@@ -726,10 +751,8 @@ function ExpenseActivity(props: {
             </Pressable>
             {expanded ? (
               <View style={styles.expenseDetails}>
-                <View style={styles.detailLine}>
-                  <ThemedText type="smallBold">{tx('分摊', 'Split')}</ThemedText>
-                  <ThemedText type="small" themeColor="textSecondary" style={styles.grow}>{shareText}</ThemedText>
-                </View>
+                <View style={styles.detailLine}><ThemedText type="smallBold">{tx('分摊', 'Split')}</ThemedText><ThemedText type="small" themeColor="textSecondary" style={styles.grow}>{shareText}</ThemedText></View>
+                <View style={styles.sharePeople}>{expense.shares.map((share) => { const member = props.memberById.get(share.userId); return <View key={share.userId} style={styles.sharePerson}><MemberAvatar avatarUrl={member?.avatarUrl} displayName={member?.displayName ?? tx('同行者', 'Traveller')} size={30} /><ThemedText type="small" style={styles.grow}>{member?.displayName ?? tx('同行者', 'Traveller')}</ThemedText><ThemedText type="smallBold">{formatMinorAmount(share.amountMinor, expense.currency)}</ThemedText></View>; })}</View>
                 {(expense.receipts?.length ?? 0) > 0 ? (
                   <View style={styles.receiptGallery}>
                     {expense.receipts?.map((item, index) => item.signedUrl ? (
@@ -817,6 +840,8 @@ const styles = StyleSheet.create({
   multiline: { minHeight: 96, textAlignVertical: 'top' },
   fieldGroup: { gap: 8 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  memberChoice: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 9, paddingVertical: 6, borderRadius: 999 },
+  memberChoiceTextSelected: { color: '#FFFFFF' },
   receiptGroup: { gap: 10, paddingTop: 4 },
   receiptCopy: { gap: 2 },
   receiptActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
@@ -831,7 +856,7 @@ const styles = StyleSheet.create({
   metric: { minWidth: 94, flexGrow: 1, gap: 2 },
   sectionBlock: { gap: 0 },
   sectionHeading: { gap: 4, paddingBottom: 10 },
-  transferRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 16, paddingVertical: 16, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#AFCACA' },
+  transferRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingVertical: 16, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#AFCACA' },
   transferCopy: { gap: 2, flex: 1 },
   transferAmount: { fontSize: 22, lineHeight: 28, fontWeight: '700' },
   markPaidButton: { minHeight: 44, minWidth: 112, alignItems: 'center', justifyContent: 'center', borderRadius: 12, paddingHorizontal: 14, backgroundColor: '#087F6A' },
@@ -841,15 +866,18 @@ const styles = StyleSheet.create({
   groupCurrency: { gap: 0, paddingBottom: 18 },
   currencyDivider: { paddingVertical: 10 },
   memberSettlementRow: { gap: 8, paddingVertical: 13, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#AFCACA' },
-  memberName: { width: '100%' },
+  memberIdentity: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  memberName: { flex: 1 },
   memberMetrics: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   miniMetric: { minWidth: '45%', flexGrow: 1, gap: 1 },
   groupRouteList: { gap: 5, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#AFCACA' },
+  routeRow: { minHeight: 44, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 }, routeText: { flexGrow: 1, flexShrink: 1 },
   expenseItem: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#AFCACA' },
   expenseSummary: { minHeight: 68, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14 },
   expenseAmountBlock: { alignItems: 'flex-end', gap: 2 },
   expenseDetails: { gap: 14, paddingBottom: 18 },
   detailLine: { flexDirection: 'row', alignItems: 'flex-start', gap: 16 },
+  sharePeople: { gap: 6 }, sharePerson: { minHeight: 38, flexDirection: 'row', alignItems: 'center', gap: 10 },
   receiptGallery: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   receiptLarge: { width: 160, height: 190, borderRadius: 12, backgroundColor: '#D9EEEA' },
   grow: { flex: 1 },

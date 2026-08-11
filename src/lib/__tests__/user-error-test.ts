@@ -12,4 +12,9 @@ describe('toUserMessage', () => {
   it('uses a safe Chinese fallback for unknown backend errors', () => {
     expect(toUserMessage(new Error('unexpected internal detail'))).toBe('操作失败，请稍后重试。');
   });
+
+  it('explains why a traveller with an open balance cannot be removed', () => {
+    expect(toUserMessage(new Error("Settle this traveller's outstanding balance before removing them")))
+      .toBe('该同行者还有未结清款项，请先完成结算再移出行程。');
+  });
 });

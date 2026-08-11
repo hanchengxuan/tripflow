@@ -80,6 +80,11 @@ See `planning.md` for the complete P0/P1 scope, non-goals, architecture, milesto
 - Expense receipts can be captured with the camera or selected from the photo library during entry or attached later; files are normalized client-side and stored privately with expense-scoped access policies
 - Settlement status is stored independently from immutable expense evidence, recalculates remaining transfer routes after every payment, and is serialized by trip/currency to prevent concurrent overpayment
 - The shared web shell reserves space for its fixed navigation, removing the previous title overlap at desktop and mobile widths
+- Profile avatars now propagate through the shared trip roster and ledger settlement identities, with an initials fallback and dark-mode-aware presentation
+- Every trip in My Trips opens a focused management workspace instead of only switching context; owners and editors can edit name, dates, home currency, and timezone
+- Trip owners can progressively manage another traveller's owner/editor/viewer role or remove them after their balance is fully settled, while preserving historical ledger evidence; direct membership mutation is revoked in favor of validated RPCs
+- Transactional three-account acceptance verifies editor trip editing, owner role management/removal, and self-membership protection without leaving fixture data
+- Removed travellers retain a read-only trip-scoped name/avatar snapshot for historical ledger auditability, and expense creation shares a membership lock with removal to prevent concurrent stranded balances
 
 ## Applied Supabase migrations
 
@@ -93,6 +98,9 @@ See `planning.md` for the complete P0/P1 scope, non-goals, architecture, milesto
 - `ledger_receipts_and_settlement_tracking`
 - `harden_settlement_rpcs`
 - `serialize_settlements_and_bind_receipt_uploads`
+- `trip_details_and_member_management`
+- `guard_member_removal_with_balances`
+- `archive_removed_member_identity`
 
 Temporary acceptance fixtures are removed after each test; production may contain real user-created rows.
 
@@ -100,7 +108,7 @@ Temporary acceptance fixtures are removed after each test; production may contai
 
 1. Resolve the Apple Developer Program enrollment hold; then sign into Expo/EAS, connect the EAS project, add the public Supabase variables, and produce the first iOS TestFlight build.
 2. Choose and configure the long-term public support email through `EXPO_PUBLIC_SUPPORT_EMAIL`, then finalize App Privacy disclosures, age rating, and Chinese screenshots.
-3. Run TestFlight acceptance on a current iPhone and human acceptance with real owner/editor/viewer accounts.
+3. Run TestFlight acceptance on a current iPhone and human acceptance with real owner/editor/viewer accounts, including avatar propagation and trip/member management.
 4. Add segment/branch creation and segment-scoped itinerary membership.
 5. Expand the validated ledger beyond equal splits to multiple payers, exclusions, unequal shares, partial transfers, and exchange-rate snapshots.
 6. Address performance-advisor warnings before the dataset grows. The current security advisor has one password-protection warning that is not exercised by the passwordless-only login flow; revisit it before enabling passwords.

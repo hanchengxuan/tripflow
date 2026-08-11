@@ -749,6 +749,38 @@ export type Database = {
           },
         ]
       }
+      trip_member_archives: {
+        Row: {
+          avatar_path: string | null
+          display_name: string
+          removed_at: string
+          trip_id: string
+          user_id: string
+        }
+        Insert: {
+          avatar_path?: string | null
+          display_name: string
+          removed_at?: string
+          trip_id: string
+          user_id: string
+        }
+        Update: {
+          avatar_path?: string | null
+          display_name?: string
+          removed_at?: string
+          trip_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_member_archives_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trip_members: {
         Row: {
           joined_at: string
@@ -900,6 +932,15 @@ export type Database = {
         Args: { requested_trip_id: string; requested_user_id: string }
         Returns: boolean
       }
+      manage_trip_member: {
+        Args: {
+          remove_member?: boolean
+          requested_role: Database["public"]["Enums"]["trip_role"]
+          requested_trip_id: string
+          target_user_id: string
+        }
+        Returns: undefined
+      }
       record_settlement: {
         Args: {
           recipient_user_id: string
@@ -912,6 +953,33 @@ export type Database = {
       unrecord_settlement: {
         Args: { requested_settlement_id: string }
         Returns: undefined
+      }
+      update_trip_details: {
+        Args: {
+          requested_trip_id: string
+          trip_default_time_zone: string
+          trip_ends_on: string
+          trip_home_currency: string
+          trip_name: string
+          trip_starts_on: string
+        }
+        Returns: {
+          created_at: string
+          created_by: string
+          default_time_zone: string
+          ends_on: string
+          home_currency: string
+          id: string
+          name: string
+          starts_on: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "trips"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
     }
     Enums: {
