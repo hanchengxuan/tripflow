@@ -8,6 +8,7 @@ type ItineraryRow = Tables<'itinerary_items'>;
 function mapTrip(row: TripRow): Trip {
   return {
     id: row.id,
+    createdBy: row.created_by,
     name: row.name,
     startsOn: row.starts_on,
     endsOn: row.ends_on,
@@ -154,6 +155,11 @@ export async function updateTrip(input: {
   return mapTrip(data);
 }
 
+export async function deleteTrip(tripId: string) {
+  const { error } = await getSupabaseClient().functions.invoke('delete-trip', { body: { tripId } });
+  if (error) throw error;
+}
+
 export async function updateTripMember(input: {
   tripId: string;
   userId: string;
@@ -285,6 +291,28 @@ export async function createStayTransfer(input: { stayId: string; sourceItemId: 
     source_item_id: input.sourceItemId,
     route_title: input.title.trim(),
   });
+  if (error) throw error;
+}
+
+export async function updateItineraryItem(input: {
+  itemId: string;
+  title: string;
+  startsAt: string;
+  endsAt: string;
+  locationLabel?: string;
+}) {
+  const { error } = await getSupabaseClient().rpc('update_itinerary_item', {
+    requested_item_id: input.itemId,
+    item_title: input.title.trim(),
+    item_starts_at: input.startsAt,
+    item_ends_at: input.endsAt,
+    item_location_label: input.locationLabel?.trim() ?? '',
+  });
+  if (error) throw error;
+}
+
+export async function deleteItineraryItem(itemId: string) {
+  const { error } = await getSupabaseClient().rpc('delete_itinerary_item', { requested_item_id: itemId });
   if (error) throw error;
 }
 

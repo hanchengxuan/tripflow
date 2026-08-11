@@ -335,6 +335,8 @@ Current implementation and acceptance requirements:
 - Saved lodging acts as a route anchor. From the stays overview, editors can atomically add one transfer from the latest valid prior itinerary place to the hotel; the database prevents duplicate transfers across simultaneous editors.
 - Hotel entry defaults to familiar 15:00 check-in / 11:00 check-out values but keeps both times editable and bilingual.
 - Lodging input and display use the trip timezone, stay within the trip date range, and require a navigable hotel/location before saving.
+- Owners/editors can update or delete every itinerary item from the timeline; lodging edits invalidate and remove the old generated hotel transfer, while lodging deletion cascades to it.
+- Trip details expose a clear edit action. The original trip creator can permanently delete the whole trip only after an explicit irreversible-action confirmation; private receipt objects are cleaned server-side only after the database deletion succeeds.
 - Create trip, join by invite, edit trip, invite traveller, and manage existing traveller remain separate progressive tasks rather than simultaneous stacked forms.
 
 Exit: four test users can join and collaboratively edit one shared itinerary.

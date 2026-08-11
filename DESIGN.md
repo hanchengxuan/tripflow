@@ -11,6 +11,7 @@ colors:
   selected-mint: "#D9EEEA"
   secondary-text: "#526F7E"
   danger: "#B4413E"
+  danger-dark: "#FF9B96"
 typography:
   headline:
     fontFamily: "system-ui"

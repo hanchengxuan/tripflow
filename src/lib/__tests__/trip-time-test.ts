@@ -1,8 +1,9 @@
-import { formatZonedDateTimeRange, stayNightsInZone, zonedDateTimeToIso } from '@/lib/trip-time';
+import { formatZonedDateTimeRange, isoToZonedDateTime, stayNightsInZone, zonedDateTimeToIso } from '@/lib/trip-time';
 
 describe('trip time helpers', () => {
   it('stores wall-clock hotel time in the trip time zone', () => {
     expect(zonedDateTimeToIso('2026-08-10', '15:00', 'Asia/Tokyo')).toBe('2026-08-10T06:00:00.000Z');
+    expect(isoToZonedDateTime('2026-08-10T06:00:00.000Z', 'Asia/Tokyo')).toEqual({ date: '2026-08-10', time: '15:00' });
   });
 
   it('keeps lodging dates and nights stable in the trip time zone', () => {

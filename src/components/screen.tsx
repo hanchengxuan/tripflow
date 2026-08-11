@@ -1,4 +1,4 @@
-import type { PropsWithChildren } from 'react';
+import { useEffect, useRef, type PropsWithChildren } from 'react';
 import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -7,16 +7,25 @@ import { useTheme } from '@/hooks/use-theme';
 
 interface ScreenProps extends PropsWithChildren {
   meta?: string;
+  scrollToEndKey?: string;
   title: string;
   subtitle: string;
 }
 
-export function Screen({ meta, title, subtitle, children }: ScreenProps) {
+export function Screen({ meta, scrollToEndKey, title, subtitle, children }: ScreenProps) {
   const insets = useSafeAreaInsets();
   const theme = useTheme();
+  const scrollRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    if (!scrollToEndKey) return;
+    const timeout = setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 0);
+    return () => clearTimeout(timeout);
+  }, [scrollToEndKey]);
 
   return (
     <ScrollView
+      ref={scrollRef}
       style={[styles.scroll, { backgroundColor: theme.background }]}
       contentContainerStyle={[
         styles.content,

@@ -17,6 +17,7 @@ export interface Profile {
 
 export interface Trip {
   id: TripId;
+  createdBy: UserId;
   name: string;
   startsOn: string;
   endsOn: string;

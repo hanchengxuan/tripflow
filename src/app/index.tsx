@@ -8,11 +8,11 @@ import { LocationField } from '@/components/location-field';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { itineraryKindLabels, itineraryKindLabelsEn, itineraryKinds } from '@/constants/options';
-import type { ItineraryKind } from '@/domain/models';
+import type { ItineraryItem, ItineraryKind } from '@/domain/models';
 import { useI18n } from '@/features/i18n/i18n-provider';
 import { useMvp } from '@/features/mvp/mvp-provider';
 import { toUserMessage } from '@/lib/user-error';
-import { formatZonedDateTimeRange, stayNightsInZone, zonedDateTimeToIso } from '@/lib/trip-time';
+import { formatZonedDateTimeRange, isoToZonedDateTime, stayNightsInZone, zonedDateTimeToIso } from '@/lib/trip-time';
 import { useTheme } from '@/hooks/use-theme';
 
 function formatTripDates(startsOn: string, endsOn: string, locale: string) {
@@ -55,7 +55,7 @@ const quickTemplates: { kind: ItineraryKind; zh: string; en: string }[] = [
 export default function TodayScreen() {
   const { locale, languageTag, tx } = useI18n();
   const theme = useTheme();
-  const { activeTrip, members, itineraryItems, loading, error, currentUserId, addItineraryItem, addStayTransfer } = useMvp();
+  const { activeTrip, members, itineraryItems, loading, error, currentUserId, addItineraryItem, addStayTransfer, saveItineraryItem, removeItineraryItem } = useMvp();
   const [title, setTitle] = useState('');
   const [location, setLocation] = useState('');
   const [date, setDate] = useState(activeTrip?.startsOn ?? new Date().toISOString().slice(0, 10));
@@ -68,6 +68,8 @@ export default function TodayScreen() {
   const [success, setSuccess] = useState<string>();
   const [busyRouteId, setBusyRouteId] = useState<string>();
   const [currentTimestamp, setCurrentTimestamp] = useState(0);
+  const [editingItemId, setEditingItemId] = useState<string>();
+  const [confirmDeleteItem, setConfirmDeleteItem] = useState(false);
 
   const currentMember = members.find(({ userId }) => userId === currentUserId);
   const canEdit = currentMember?.role === 'owner' || currentMember?.role === 'editor';
@@ -77,6 +79,7 @@ export default function TodayScreen() {
   const visibleStays = useMemo(() => upcomingStays.slice(0, 3), [upcomingStays]);
   const tripRange = activeTrip ? formatTripDates(activeTrip.startsOn, activeTrip.endsOn, languageTag) : undefined;
   const tripTimeZone = activeTrip?.defaultTimeZone ?? 'UTC';
+  const editingItem = itineraryItems.find(({ id }) => id === editingItemId);
 
   useEffect(() => {
     if (!activeTrip) return;
@@ -84,6 +87,8 @@ export default function TodayScreen() {
       setDate(activeTrip.startsOn);
       setEndDate(activeTrip.startsOn);
       setCurrentTimestamp(Date.now());
+      setEditingItemId(undefined);
+      setConfirmDeleteItem(false);
     }, 0);
     return () => clearTimeout(timeout);
   }, [activeTrip]);
@@ -95,16 +100,65 @@ export default function TodayScreen() {
     try {
       if (kind === 'lodging' && !location.trim()) throw new Error(tx('请先选择酒店或住宿地点。', 'Choose the hotel or stay location first.'));
       const startsAt = zonedDateTimeToIso(date, startTime, tripTimeZone);
-      const endsAt = zonedDateTimeToIso(kind === 'lodging' ? endDate : date, endTime, tripTimeZone);
+      const endsAt = editingItem?.linkedStayId && editingItem.endsAt
+        ? editingItem.endsAt
+        : zonedDateTimeToIso(kind === 'lodging' ? endDate : date, endTime, tripTimeZone);
       if (new Date(endsAt) <= new Date(startsAt)) throw new Error(tx('结束时间需要晚于开始时间。', 'End time must be later than start time.'));
-      await addItineraryItem({ title, locationLabel: location, kind, startsAt, endsAt });
+      if (editingItem) {
+        await saveItineraryItem({ itemId: editingItem.id, title, locationLabel: editingItem.linkedStayId ? editingItem.locationLabel : location, startsAt, endsAt });
+      } else {
+        await addItineraryItem({ title, locationLabel: location, kind, startsAt, endsAt });
+      }
       setTitle('');
       setLocation('');
-      setSuccess(kind === 'lodging'
-        ? tx('住宿已按入住区间加入，不需要每天重复添加。', 'Stay added for the full date range. No daily duplicates needed.')
-        : tx('安排已加入共享时间线。', 'Plan added to the shared timeline.'));
+      setEditingItemId(undefined);
+      setConfirmDeleteItem(false);
+      setSuccess(editingItem
+        ? (kind === 'lodging' ? tx('住宿已更新；旧的酒店交通已移除，请按需要重新添加。', 'Stay updated. Its old hotel transfer was removed so you can add a fresh route.') : tx('安排已更新。', 'Plan updated.'))
+        : (kind === 'lodging' ? tx('住宿已按入住区间加入，不需要每天重复添加。', 'Stay added for the full date range. No daily duplicates needed.') : tx('安排已加入共享时间线。', 'Plan added to the shared timeline.')));
     } catch (caught) {
       setFormError(toUserMessage(caught, tx('无法添加行程安排，请稍后重试。', 'Could not add this plan. Please try again.')));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function beginEdit(item: ItineraryItem, deleteFirst = false) {
+    const start = isoToZonedDateTime(item.startsAt, tripTimeZone);
+    const end = isoToZonedDateTime(item.endsAt ?? item.startsAt, tripTimeZone);
+    setEditingItemId(item.id);
+    setConfirmDeleteItem(deleteFirst);
+    setTitle(item.title);
+    setLocation(item.locationLabel ?? '');
+    setKind(item.kind);
+    setDate(start.date);
+    setStartTime(start.time);
+    setEndDate(end.date);
+    setEndTime(end.time);
+    setFormError(undefined);
+    setSuccess(undefined);
+  }
+
+  function cancelEdit() {
+    setEditingItemId(undefined);
+    setConfirmDeleteItem(false);
+    setTitle('');
+    setLocation('');
+    setKind('activity');
+  }
+
+  async function deleteSelectedItem() {
+    if (!editingItem) return;
+    setBusy(true);
+    setFormError(undefined);
+    try {
+      await removeItineraryItem(editingItem.id);
+      cancelEdit();
+      setSuccess(editingItem.kind === 'lodging'
+        ? tx('住宿及其关联的酒店交通已删除。', 'Stay and its linked hotel transfer were deleted.')
+        : tx('安排已删除。', 'Plan deleted.'));
+    } catch (caught) {
+      setFormError(toUserMessage(caught, tx('无法删除这项安排，请稍后重试。', 'Could not delete this plan. Please try again.')));
     } finally {
       setBusy(false);
     }
@@ -151,8 +205,19 @@ export default function TodayScreen() {
 
   const kindLabel = (itemKind: ItineraryKind) => locale === 'zh-CN' ? itineraryKindLabels[itemKind] : itineraryKindLabelsEn[itemKind];
 
+  function itemActions(item: ItineraryItem) {
+    if (!canEdit) return null;
+    return (
+      <View style={styles.itemActions}>
+        <Pressable accessibilityRole="button" onPress={() => beginEdit(item)} style={({ pressed }) => [styles.itemTextAction, pressed && styles.pressed]}><ThemedText type="smallBold" style={styles.linkText}>{tx('编辑', 'Edit')}</ThemedText></Pressable>
+        <Pressable accessibilityRole="button" onPress={() => beginEdit(item, true)} style={({ pressed }) => [styles.itemTextAction, pressed && styles.pressed]}><ThemedText type="smallBold" style={{ color: theme.danger }}>{tx('删除', 'Delete')}</ThemedText></Pressable>
+      </View>
+    );
+  }
+
   return (
     <Screen
+      scrollToEndKey={editingItemId}
       meta={activeTrip ? tripRange : tx('今天', 'Today')}
       title={activeTrip?.name ?? tx('把旅程安排成一条可执行的流', 'Turn the trip into one shared flow')}
       subtitle={activeTrip ? tx('先看下一步，再决定集合、出发和分工。', 'See the next move first, then align on when, where, and who is involved.') : tx('请先从“行程”页面创建或加入一个行程。', 'Create or join a trip from the Trips tab.')}>
@@ -226,6 +291,7 @@ export default function TodayScreen() {
                             <ThemedText type="smallBold" style={styles.linkText}>{tx('查看地图', 'Map')}</ThemedText>
                           </Pressable>
                         ) : null}
+                        {itemActions(stay)}
                         {canEdit && previous?.locationLabel && stay.locationLabel ? (
                           <Pressable
                             disabled={Boolean(busyRouteId) || transferExists}
@@ -281,6 +347,7 @@ export default function TodayScreen() {
                 </View>
               </View>
             )}
+            {itemActions(upcomingItems[0])}
           </View>
 
           {upcomingItems.length > 1 ? (
@@ -295,6 +362,7 @@ export default function TodayScreen() {
                     <ThemedText type="small" themeColor="textSecondary">{formatZonedDateTimeRange(item.startsAt, item.endsAt, languageTag, tripTimeZone)}</ThemedText>
                     <ThemedText type="smallBold">{item.title}</ThemedText>
                     {item.locationLabel ? <ThemedText type="small" themeColor="textSecondary">{item.locationLabel}</ThemedText> : null}
+                    {itemActions(item)}
                   </View>
                   <View style={[styles.kindOutline, { borderColor: getKindAccent(item.kind) }]}>
                     <ThemedText type="small" style={{ color: getKindAccent(item.kind) }}>{kindLabel(item.kind)}</ThemedText>
@@ -311,12 +379,12 @@ export default function TodayScreen() {
       )}
 
       {activeTrip && canEdit ? (
-        <InfoCard label={tx('规划下一站', 'Plan the next stop')} title={tx('把新安排放进共享时间线', 'Add a useful next move')} accent="#D86E35">
+        <InfoCard label={editingItem ? tx('编辑安排', 'Edit plan') : tx('规划下一站', 'Plan the next stop')} title={editingItem ? editingItem.title : tx('把新安排放进共享时间线', 'Add a useful next move')} accent={editingItem ? getKindAccent(editingItem.kind) : '#D86E35'}>
           <View style={styles.form}>
             <ThemedText type="small" themeColor="textSecondary">
-              {tx('优先记录真正会影响出发、集合、交通、入住和门票的安排，而不是普通备忘录。', 'Prioritize plans that change departure, meetups, transport, check-ins, or tickets instead of generic notes.')}
+              {editingItem ? tx('修改后所有同行者都会看到最新版本。安排类型保持不变。', 'Everyone will see the latest version after you save. The plan type stays unchanged.') : tx('优先记录真正会影响出发、集合、交通、入住和门票的安排，而不是普通备忘录。', 'Prioritize plans that change departure, meetups, transport, check-ins, or tickets instead of generic notes.')}
             </ThemedText>
-            <View style={styles.templateWrap}>
+            {!editingItem ? <View style={styles.templateWrap}>
               {quickTemplates.map((template) => (
                 <ChoiceChip
                   key={template.zh}
@@ -328,10 +396,10 @@ export default function TodayScreen() {
                   {locale === 'zh-CN' ? template.zh : template.en}
                 </ChoiceChip>
               ))}
-            </View>
+            </View> : null}
             <FormField label={tx('要做什么？', 'What are you doing?')} value={title} onChangeText={setTitle} placeholder={tx('例如：乘机场快线前往中环', 'For example: Airport Express to Central')} />
-            <LocationField value={location} onChange={setLocation} />
-            {kind === 'lodging' ? <><View style={styles.stayFormGroup}><ThemedText type="smallBold">{tx('入住', 'Check-in')}</ThemedText><View style={styles.row}><View style={styles.dateField}><DateTimeField label={tx('入住日期', 'Check-in date')} value={date} mode="date" minimumDate={new Date(`${activeTrip.startsOn}T12:00:00`)} maximumDate={new Date(`${activeTrip.endsOn}T12:00:00`)} onChange={(value) => { setDate(value); if (endDate < value) setEndDate(value); }} /></View><View style={styles.grow}><DateTimeField label={tx('入住时间', 'Check-in time')} value={startTime} mode="time" onChange={setStartTime} /></View></View></View><View style={styles.stayFormGroup}><ThemedText type="smallBold">{tx('退房', 'Check-out')}</ThemedText><View style={styles.row}><View style={styles.dateField}><DateTimeField label={tx('退房日期', 'Check-out date')} value={endDate} mode="date" minimumDate={new Date(`${date}T12:00:00`)} maximumDate={new Date(`${activeTrip.endsOn}T12:00:00`)} onChange={setEndDate} /></View><View style={styles.grow}><DateTimeField label={tx('退房时间', 'Check-out time')} value={endTime} mode="time" onChange={setEndTime} /></View></View></View><ThemedText type="small" themeColor="textSecondary">{tx(`这段住宿会覆盖 ${stayNightsInZone(zonedDateTimeToIso(date, startTime, tripTimeZone), zonedDateTimeToIso(endDate, endTime, tripTimeZone), tripTimeZone)} 晚，不会生成重复的每日项目。`, `This stay covers ${stayNightsInZone(zonedDateTimeToIso(date, startTime, tripTimeZone), zonedDateTimeToIso(endDate, endTime, tripTimeZone), tripTimeZone)} nights without duplicate daily items.`)}</ThemedText></> : <View style={styles.row}><View style={styles.dateField}><DateTimeField label={tx('日期', 'Date')} value={date} mode="date" minimumDate={new Date(`${activeTrip.startsOn}T12:00:00`)} maximumDate={new Date(`${activeTrip.endsOn}T12:00:00`)} onChange={setDate} /></View><View style={styles.grow}><DateTimeField label={tx('开始', 'Starts')} value={startTime} mode="time" onChange={setStartTime} /></View><View style={styles.grow}><DateTimeField label={tx('结束', 'Ends')} value={endTime} mode="time" onChange={setEndTime} /></View></View>}
+            {editingItem?.linkedStayId ? <View style={[styles.lockedDestination, { backgroundColor: theme.backgroundSelected }]}><ThemedText type="smallBold">{tx('酒店交通', 'Hotel transfer')}</ThemedText><ThemedText type="small" themeColor="textSecondary">{tx(`终点和到达时间跟随酒店：${editingItem.locationLabel ?? '—'} · ${formatZonedDateTimeRange(editingItem.endsAt ?? editingItem.startsAt, undefined, languageTag, tripTimeZone)}`, `Destination and arrival follow the stay: ${editingItem.locationLabel ?? '—'} · ${formatZonedDateTimeRange(editingItem.endsAt ?? editingItem.startsAt, undefined, languageTag, tripTimeZone)}`)}</ThemedText></View> : <LocationField value={location} onChange={setLocation} />}
+            {editingItem?.linkedStayId ? <View style={styles.row}><View style={styles.dateField}><DateTimeField label={tx('出发日期', 'Departure date')} value={date} mode="date" minimumDate={new Date(`${activeTrip.startsOn}T12:00:00`)} maximumDate={new Date(`${activeTrip.endsOn}T12:00:00`)} onChange={setDate} /></View><View style={styles.grow}><DateTimeField label={tx('出发时间', 'Departure time')} value={startTime} mode="time" onChange={setStartTime} /></View></View> : kind === 'lodging' ? <><View style={styles.stayFormGroup}><ThemedText type="smallBold">{tx('入住', 'Check-in')}</ThemedText><View style={styles.row}><View style={styles.dateField}><DateTimeField label={tx('入住日期', 'Check-in date')} value={date} mode="date" minimumDate={new Date(`${activeTrip.startsOn}T12:00:00`)} maximumDate={new Date(`${activeTrip.endsOn}T12:00:00`)} onChange={(value) => { setDate(value); if (endDate < value) setEndDate(value); }} /></View><View style={styles.grow}><DateTimeField label={tx('入住时间', 'Check-in time')} value={startTime} mode="time" onChange={setStartTime} /></View></View></View><View style={styles.stayFormGroup}><ThemedText type="smallBold">{tx('退房', 'Check-out')}</ThemedText><View style={styles.row}><View style={styles.dateField}><DateTimeField label={tx('退房日期', 'Check-out date')} value={endDate} mode="date" minimumDate={new Date(`${date}T12:00:00`)} maximumDate={new Date(`${activeTrip.endsOn}T12:00:00`)} onChange={setEndDate} /></View><View style={styles.grow}><DateTimeField label={tx('退房时间', 'Check-out time')} value={endTime} mode="time" onChange={setEndTime} /></View></View></View><ThemedText type="small" themeColor="textSecondary">{tx(`这段住宿会覆盖 ${stayNightsInZone(zonedDateTimeToIso(date, startTime, tripTimeZone), zonedDateTimeToIso(endDate, endTime, tripTimeZone), tripTimeZone)} 晚，不会生成重复的每日项目。`, `This stay covers ${stayNightsInZone(zonedDateTimeToIso(date, startTime, tripTimeZone), zonedDateTimeToIso(endDate, endTime, tripTimeZone), tripTimeZone)} nights without duplicate daily items.`)}</ThemedText></> : <View style={styles.row}><View style={styles.dateField}><DateTimeField label={tx('日期', 'Date')} value={date} mode="date" minimumDate={new Date(`${activeTrip.startsOn}T12:00:00`)} maximumDate={new Date(`${activeTrip.endsOn}T12:00:00`)} onChange={setDate} /></View><View style={styles.grow}><DateTimeField label={tx('开始', 'Starts')} value={startTime} mode="time" onChange={setStartTime} /></View><View style={styles.grow}><DateTimeField label={tx('结束', 'Ends')} value={endTime} mode="time" onChange={setEndTime} /></View></View>}
             {kind !== 'lodging' ? <View style={styles.durationRow}>
               <ThemedText type="small" themeColor="textSecondary">{tx('快速设置时长', 'Quick duration')}</ThemedText>
               {[30, 60, 120, 180].map((minutes) => (
@@ -340,12 +408,12 @@ export default function TodayScreen() {
                 </ChoiceChip>
               ))}
             </View> : null}
-            <View style={styles.chips}>
+            {!editingItem ? <View style={styles.chips}>
               {itineraryKinds.map((itemKind) => (
                 <ChoiceChip key={itemKind} selected={kind === itemKind} onPress={() => chooseKind(itemKind)}>{kindLabel(itemKind)}</ChoiceChip>
               ))}
-            </View>
-            <ActionButton busy={busy} disabled={!title.trim() || (kind === 'lodging' && !location.trim())} onPress={submitItem}>{tx('加入时间线', 'Add to timeline')}</ActionButton>
+            </View> : null}
+            {confirmDeleteItem && editingItem ? <View style={[styles.deleteConfirm, { borderTopColor: theme.backgroundSelected }]}><ThemedText type="smallBold">{tx(`删除“${editingItem.title}”？`, `Delete “${editingItem.title}”?`)}</ThemedText><ThemedText type="small" themeColor="textSecondary">{editingItem.kind === 'lodging' ? tx('关联的前往酒店交通也会一起删除，且无法恢复。', 'Its linked hotel transfer will also be deleted. This cannot be undone.') : tx('这项安排会从所有同行者的时间线中移除，且无法恢复。', 'This plan will be removed from every traveller’s timeline and cannot be undone.')}</ThemedText><View style={styles.formActions}><View style={styles.actionGrow}><ActionButton tone="secondary" onPress={() => setConfirmDeleteItem(false)}>{tx('保留安排', 'Keep plan')}</ActionButton></View><View style={styles.actionGrow}><Pressable accessibilityRole="button" disabled={busy} onPress={() => void deleteSelectedItem()} style={({ pressed }) => [styles.dangerConfirm, pressed && styles.pressed, busy && styles.disabled]}><ThemedText type="smallBold" style={styles.dangerConfirmText}>{busy ? tx('删除中…', 'Deleting…') : tx('确认删除', 'Delete')}</ThemedText></Pressable></View></View></View> : <><View style={styles.formActions}>{editingItem ? <View style={styles.actionGrow}><ActionButton tone="secondary" onPress={cancelEdit}>{tx('取消', 'Cancel')}</ActionButton></View> : null}<View style={styles.actionGrow}><ActionButton busy={busy} disabled={!title.trim() || (kind === 'lodging' && !location.trim())} onPress={submitItem}>{editingItem ? tx('保存修改', 'Save changes') : tx('加入时间线', 'Add to timeline')}</ActionButton></View></View>{editingItem ? <Pressable accessibilityRole="button" onPress={() => setConfirmDeleteItem(true)} style={({ pressed }) => [styles.itemTextAction, pressed && styles.pressed]}><ThemedText type="smallBold" style={{ color: theme.danger }}>{tx('删除这项安排', 'Delete this plan')}</ThemedText></Pressable> : null}</>}
             {formError ? <InlineNotice tone="error">{formError}</InlineNotice> : null}
           </View>
         </InfoCard>
@@ -363,6 +431,12 @@ const styles = StyleSheet.create({
   dateField: { flexGrow: 2, flexBasis: 200 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   templateWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  formActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  actionGrow: { flexGrow: 1, flexBasis: 150 },
+  lockedDestination: { borderRadius: 12, padding: 14, gap: 3 },
+  deleteConfirm: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 14, gap: 10 },
+  dangerConfirm: { minHeight: 48, borderRadius: 12, paddingHorizontal: 14, justifyContent: 'center', alignItems: 'center', backgroundColor: '#B4413E' },
+  dangerConfirmText: { color: '#FFFFFF' },
   heroPanel: { borderRadius: 24, padding: 20, gap: 18, shadowColor: '#17324D', shadowOpacity: 0.07, shadowRadius: 24, shadowOffset: { width: 0, height: 8 } },
   heroTop: { flexDirection: 'row', gap: 16, alignItems: 'flex-start' },
   heroCopy: { flex: 1, gap: 6 },
@@ -393,6 +467,8 @@ const styles = StyleSheet.create({
   stayCopy: { flex: 1, minWidth: 210, gap: 2 },
   stayActions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 },
   stayTextAction: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 },
+  itemActions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 4 },
+  itemTextAction: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 },
   routeAction: { minHeight: 48, maxWidth: 240, minWidth: 150, justifyContent: 'center', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6 },
   stayDivider: { height: StyleSheet.hairlineWidth },
   stayFormGroup: { gap: 8 },

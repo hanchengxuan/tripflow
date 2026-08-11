@@ -942,6 +942,11 @@ export type Database = {
         }[]
       }
       delete_current_account: { Args: never; Returns: undefined }
+      delete_itinerary_item: {
+        Args: { requested_item_id: string }
+        Returns: undefined
+      }
+      delete_trip: { Args: { requested_trip_id: string }; Returns: undefined }
       is_active_user: { Args: never; Returns: boolean }
       is_trip_creator: { Args: { requested_trip_id: string }; Returns: boolean }
       is_trip_member: { Args: { requested_trip_id: string }; Returns: boolean }
@@ -998,6 +1003,16 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      update_itinerary_item: {
+        Args: {
+          item_ends_at: string
+          item_location_label: string
+          item_starts_at: string
+          item_title: string
+          requested_item_id: string
+        }
+        Returns: Database["public"]["Tables"]["itinerary_items"]["Row"]
       }
     }
     Enums: {

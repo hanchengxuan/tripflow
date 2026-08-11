@@ -29,6 +29,14 @@ export function zonedDateTimeToIso(date: string, time: string, timeZone: string)
   return new Date(guess).toISOString();
 }
 
+export function isoToZonedDateTime(value: string, timeZone: string) {
+  const parts = dateTimeParts(new Date(value), timeZone);
+  return {
+    date: `${parts.year}-${parts.month}-${parts.day}`,
+    time: `${parts.hour}:${parts.minute}`,
+  };
+}
+
 export function formatZonedDateTimeRange(
   startsAt: string,
   endsAt: string | undefined,

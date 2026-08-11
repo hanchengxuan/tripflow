@@ -27,7 +27,7 @@ export default function TripsScreen() {
   const { locale, formatDateTime, tx } = useI18n();
   const {
     trips, activeTrip, members, currentUserId, loading, error,
-    selectTrip, createTrip, joinTrip, createInvite, saveTrip, setMemberRole, removeMember,
+    selectTrip, createTrip, joinTrip, createInvite, saveTrip, deleteTrip, setMemberRole, removeMember,
   } = useMvp();
   const currentMember = members.find(({ userId }) => userId === currentUserId);
   const canEditTrip = currentMember?.role === 'owner' || currentMember?.role === 'editor';
@@ -44,6 +44,7 @@ export default function TripsScreen() {
   const [editCurrency, setEditCurrency] = useState('HKD');
   const [editTimeZone, setEditTimeZone] = useState('Asia/Hong_Kong');
   const [editingTrip, setEditingTrip] = useState(false);
+  const [confirmDeleteTrip, setConfirmDeleteTrip] = useState(false);
   const [editingMemberId, setEditingMemberId] = useState<string>();
   const [confirmRemoveId, setConfirmRemoveId] = useState<string>();
   const [inviteCode, setInviteCode] = useState('');
@@ -71,6 +72,7 @@ export default function TripsScreen() {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setOpenPanel((current) => current === panel ? null : panel);
     setEditingTrip(false);
+    setConfirmDeleteTrip(false);
     setEditingMemberId(undefined);
     setConfirmRemoveId(undefined);
     setGeneratedInvite(undefined);
@@ -81,6 +83,7 @@ export default function TripsScreen() {
   async function openTrip(trip: Trip) {
     setOpenPanel('manage');
     setEditingTrip(false);
+    setConfirmDeleteTrip(false);
     setEditingMemberId(undefined);
     setConfirmRemoveId(undefined);
     setGeneratedInvite(undefined);
@@ -117,6 +120,14 @@ export default function TripsScreen() {
       await saveTrip({ name: editName, startsOn: editStartsOn, endsOn: editEndsOn, homeCurrency: editCurrency, defaultTimeZone: editTimeZone });
       setEditingTrip(false);
     }, tx('行程资料已更新。', 'Trip details updated.'));
+  }
+
+  async function permanentlyDeleteTrip() {
+    await run('delete-trip', async () => {
+      await deleteTrip();
+      setConfirmDeleteTrip(false);
+      setOpenPanel(null);
+    }, tx('行程及其安排已永久删除。', 'Trip and its plans were permanently deleted.'));
   }
 
   async function submitInvite() {
@@ -206,9 +217,19 @@ export default function TripsScreen() {
               <Detail label={tx('记账币种', 'Home currency')} value={activeTrip.homeCurrency} />
               <Detail label={tx('时区', 'Time zone')} value={activeTrip.defaultTimeZone} />
               <Detail label={tx('我的权限', 'My access')} value={currentMember ? (locale === 'zh-CN' ? tripRoleLabels[currentMember.role] : tripRoleLabelsEn[currentMember.role]) : '—'} />
-              {canEditTrip ? <Pressable accessibilityRole="button" onPress={() => setEditingTrip(true)} style={({ pressed }) => [styles.inlineAction, { backgroundColor: theme.backgroundSelected }, pressed && styles.pressed]}><ThemedText type="smallBold">{tx('编辑行程资料', 'Edit trip details')}</ThemedText></Pressable> : null}
+              {canEditTrip ? <View style={styles.editorActions}><View style={styles.actionGrow}><ActionButton tone="secondary" onPress={() => { prepareEdit(activeTrip); setEditingTrip(true); setConfirmDeleteTrip(false); }}>{tx('编辑行程资料', 'Edit trip details')}</ActionButton></View>{activeTrip.createdBy === currentUserId ? <View style={styles.actionGrow}><Pressable accessibilityRole="button" onPress={() => setConfirmDeleteTrip(true)} style={({ pressed }) => [styles.dangerAction, { borderColor: theme.backgroundSelected }, pressed && styles.pressed]}><ThemedText type="smallBold" style={{ color: theme.danger }}>{tx('删除行程', 'Delete trip')}</ThemedText></Pressable></View> : null}</View> : null}
             </View>
           )}
+
+          {confirmDeleteTrip ? (
+            <View style={[styles.dangerZone, { borderTopColor: theme.backgroundSelected }]}>
+              <PanelHeading title={tx('永久删除这个行程？', 'Permanently delete this trip?')} caption={tx('所有安排、分账、转账记录和收据都会删除，且无法恢复。只有创建者可以执行。', 'All plans, expenses, transfers, and receipts will be deleted and cannot be recovered. Only the creator can do this.')} />
+              <View style={styles.editorActions}>
+                <View style={styles.actionGrow}><ActionButton tone="secondary" onPress={() => setConfirmDeleteTrip(false)}>{tx('保留行程', 'Keep trip')}</ActionButton></View>
+                <View style={styles.actionGrow}><Pressable accessibilityRole="button" disabled={busyAction === 'delete-trip'} onPress={() => void permanentlyDeleteTrip()} style={({ pressed }) => [styles.dangerConfirm, pressed && styles.pressed, busyAction === 'delete-trip' && styles.disabled]}><ThemedText type="smallBold" style={styles.dangerConfirmText}>{busyAction === 'delete-trip' ? tx('删除中…', 'Deleting…') : tx('确认永久删除', 'Delete permanently')}</ThemedText></Pressable></View>
+              </View>
+            </View>
+          ) : null}
 
           <View style={[styles.travellersBlock, { borderTopColor: theme.backgroundSelected }]}>
             <View style={styles.sectionHeading}>
@@ -235,7 +256,7 @@ export default function TripsScreen() {
                         </View>
                         {confirmRemoveId === member.userId ? (
                           <View style={styles.removeConfirm}><ThemedText type="small" themeColor="textSecondary">{tx(`确定将 ${member.displayName} 移出行程？历史账目会保留。`, `Remove ${member.displayName}? Historical ledger records will stay.`)}</ThemedText><View style={styles.editorActions}><View style={styles.actionGrow}><ActionButton tone="secondary" onPress={() => setConfirmRemoveId(undefined)}>{tx('取消', 'Cancel')}</ActionButton></View><View style={styles.actionGrow}><ActionButton busy={busyAction === `remove-${member.userId}`} onPress={() => void confirmRemove(member.userId)}>{tx('确认移出', 'Remove')}</ActionButton></View></View></View>
-                        ) : <Pressable accessibilityRole="button" onPress={() => setConfirmRemoveId(member.userId)} style={({ pressed }) => [styles.textButton, pressed && styles.pressed]}><ThemedText type="smallBold" style={{ color: theme.background === '#0C1924' ? '#FF9B96' : '#B4413E' }}>{tx('移出此行程', 'Remove from trip')}</ThemedText></Pressable>}
+                        ) : <Pressable accessibilityRole="button" onPress={() => setConfirmRemoveId(member.userId)} style={({ pressed }) => [styles.textButton, pressed && styles.pressed]}><ThemedText type="smallBold" style={{ color: theme.danger }}>{tx('移出此行程', 'Remove from trip')}</ThemedText></Pressable>}
                       </View>
                     ) : null}
                   </View>
@@ -283,11 +304,14 @@ const styles = StyleSheet.create({
   section: { paddingTop: 20, gap: 12 }, sectionHeading: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 }, sectionHeadingCopy: { flex: 1, gap: 2 }, sectionTitle: { fontSize: 20, lineHeight: 26 },
   tripRow: { minHeight: 68, flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 8 }, tripRowCopy: { flex: 1, gap: 2 }, divider: { height: StyleSheet.hairlineWidth },
   detailsBlock: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 }, detail: { flexGrow: 1, flexBasis: 150, gap: 2 },
-  inlineAction: { minHeight: 44, borderRadius: 12, paddingHorizontal: 14, justifyContent: 'center', alignSelf: 'stretch' },
   editorBlock: { gap: 14 }, editorActions: { flexDirection: 'row', gap: 10 },
+  dangerAction: { minHeight: 48, borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, justifyContent: 'center', alignItems: 'center' },
+  dangerZone: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 18, gap: 14 },
+  dangerConfirm: { minHeight: 48, borderRadius: 12, paddingHorizontal: 14, justifyContent: 'center', alignItems: 'center', backgroundColor: '#B4413E' },
+  dangerConfirmText: { color: '#FFFFFF' },
   travellersBlock: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 18, gap: 12 },
   memberRow: { minHeight: 62, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 6 }, memberCopy: { flex: 1, gap: 2 },
   memberEditor: { borderRadius: 12, marginBottom: 10, padding: 14, gap: 12 }, roleRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   removeConfirm: { gap: 10 }, textButton: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' },
-  inviteArea: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 18, marginTop: 6, gap: 12 }, pressed: { opacity: 0.65 },
+  inviteArea: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 18, marginTop: 6, gap: 12 }, pressed: { opacity: 0.65 }, disabled: { opacity: 0.5 },
 });
