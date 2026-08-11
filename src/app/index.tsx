@@ -23,11 +23,42 @@ function formatDateTimeRange(startsAt: string, endsAt: string | undefined, local
   return `${date} · ${startTime}–${endTime}`;
 }
 
+function formatTripDates(startsOn: string, endsOn: string, locale: string) {
+  const start = new Date(`${startsOn}T12:00:00`);
+  const end = new Date(`${endsOn}T12:00:00`);
+  return `${start.toLocaleDateString(locale, { month: 'short', day: 'numeric' })} — ${end.toLocaleDateString(locale, { month: 'short', day: 'numeric' })}`;
+}
+
 function addMinutes(time: string, minutes: number) {
   const [hours, currentMinutes] = time.split(':').map(Number);
   const total = (hours * 60 + currentMinutes + minutes) % (24 * 60);
   return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
 }
+
+function getKindAccent(kind: ItineraryKind) {
+  switch (kind) {
+    case 'transport':
+      return '#1B70A6';
+    case 'lodging':
+      return '#087F6A';
+    case 'food':
+      return '#D86E35';
+    case 'activity':
+      return '#0F8A6E';
+    case 'task':
+      return '#6E5AE6';
+    case 'note':
+    default:
+      return '#526F7E';
+  }
+}
+
+const quickTemplates: { kind: ItineraryKind; zh: string; en: string }[] = [
+  { kind: 'transport', zh: '机场 / 车站接驳', en: 'Airport / station transfer' },
+  { kind: 'lodging', zh: '酒店入住 / 退房', en: 'Hotel check-in / out' },
+  { kind: 'food', zh: '一起吃饭', en: 'Shared meal' },
+  { kind: 'activity', zh: '景点 / 演出', en: 'Activity / tickets' },
+];
 
 export default function TodayScreen() {
   const { locale, languageTag, tx } = useI18n();
@@ -45,6 +76,7 @@ export default function TodayScreen() {
   const currentMember = members.find(({ userId }) => userId === currentUserId);
   const canEdit = currentMember?.role === 'owner' || currentMember?.role === 'editor';
   const upcomingItems = useMemo(() => itineraryItems, [itineraryItems]);
+  const tripRange = activeTrip ? formatTripDates(activeTrip.startsOn, activeTrip.endsOn, languageTag) : undefined;
 
   async function submitItem() {
     setBusy(true);
@@ -68,19 +100,43 @@ export default function TodayScreen() {
 
   return (
     <Screen
-      meta={activeTrip ? `${activeTrip.startsOn} — ${activeTrip.endsOn}` : tx('今天', 'Today')}
-      title={activeTrip?.name ?? tx('开始你的第一次行程', 'Start your first trip')}
-      subtitle={activeTrip ? tx(`${members.length} 位同行者 · 本位币 ${activeTrip.homeCurrency}`, `${members.length} travellers · ${activeTrip.homeCurrency} home currency`) : tx('请先从“行程”页面创建或加入一个行程。', 'Create or join a trip from the Trips tab.') }>
+      meta={activeTrip ? tripRange : tx('今天', 'Today')}
+      title={activeTrip?.name ?? tx('把旅程安排成一条可执行的流', 'Turn the trip into one shared flow')}
+      subtitle={activeTrip ? tx('先看下一步，再决定集合、出发和分工。', 'See the next move first, then align on when, where, and who is involved.') : tx('请先从“行程”页面创建或加入一个行程。', 'Create or join a trip from the Trips tab.')}>
       {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
       {loading ? <InlineNotice>{tx('正在刷新共享时间线…', 'Refreshing the shared timeline…')}</InlineNotice> : null}
 
       {activeTrip ? (
-        <View style={styles.summaryStrip}>
-          <View style={styles.summaryItem}><ThemedText type="smallBold">{upcomingItems.length}</ThemedText><ThemedText type="small" themeColor="textSecondary">{tx('项安排', 'plans')}</ThemedText></View>
-          <View style={[styles.summaryDivider, { backgroundColor: theme.backgroundSelected }]} />
-          <View style={styles.summaryItem}><ThemedText type="smallBold">{members.length}</ThemedText><ThemedText type="small" themeColor="textSecondary">{tx('位同行者', 'travellers')}</ThemedText></View>
-          <View style={[styles.summaryDivider, { backgroundColor: theme.backgroundSelected }]} />
-          <View style={styles.summaryItem}><ThemedText type="smallBold">{activeTrip.homeCurrency}</ThemedText><ThemedText type="small" themeColor="textSecondary">{tx('旅行币种', 'currency')}</ThemedText></View>
+        <View style={[styles.heroPanel, { backgroundColor: theme.backgroundElement }]}>
+          <View style={styles.heroTop}>
+            <View style={styles.heroCopy}>
+              <ThemedText type="smallBold" style={{ color: '#087F6A' }}>{tx('行程驾驶舱', 'Trip cockpit')}</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">
+                {tx('别再把安排散在聊天和备忘录里。这里应该回答大家现在最关心的下一步。', 'Stop scattering plans across chat and notes. This page should answer what everyone needs next.')}
+              </ThemedText>
+            </View>
+            <View style={[styles.heroBadge, { backgroundColor: theme.backgroundSelected }]}>
+              <ThemedText type="smallBold">{activeTrip.homeCurrency}</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">{tx('本位币', 'base')}</ThemedText>
+            </View>
+          </View>
+
+          <View style={styles.summaryStrip}>
+            <View style={styles.summaryItem}>
+              <ThemedText type="smallBold">{upcomingItems.length}</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">{tx('项已确认安排', 'confirmed plans')}</ThemedText>
+            </View>
+            <View style={[styles.summaryDivider, { backgroundColor: theme.backgroundSelected }]} />
+            <View style={styles.summaryItem}>
+              <ThemedText type="smallBold">{members.length}</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">{tx('位同行者在线协作', 'travellers aligned')}</ThemedText>
+            </View>
+            <View style={[styles.summaryDivider, { backgroundColor: theme.backgroundSelected }]} />
+            <View style={styles.summaryItem}>
+              <ThemedText type="smallBold">{tripRange}</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">{tx('这趟旅程窗口', 'trip window')}</ThemedText>
+            </View>
+          </View>
         </View>
       ) : null}
 
@@ -90,37 +146,60 @@ export default function TodayScreen() {
         </InfoCard>
       ) : upcomingItems.length > 0 ? (
         <>
-          <InfoCard label={tx('下一步', 'Up next')} title={upcomingItems[0].title} accent="#087F6A">
-            <View style={styles.nextMeta}>
-              <ThemedText type="smallBold">{formatDateTimeRange(upcomingItems[0].startsAt, upcomingItems[0].endsAt, languageTag)}</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">{kindLabel(upcomingItems[0].kind)}</ThemedText>
+          <View style={[styles.nextRail, { backgroundColor: theme.backgroundElement }]}>
+            <View style={styles.nextHeading}>
+              <View style={[styles.kindPill, { backgroundColor: getKindAccent(upcomingItems[0].kind) }]}>
+                <ThemedText type="smallBold" style={styles.kindPillText}>{kindLabel(upcomingItems[0].kind)}</ThemedText>
+              </View>
+              <ThemedText type="small" themeColor="textSecondary">{tx('下一步', 'Up next')}</ThemedText>
+            </View>
+            <ThemedText type="subtitle" style={styles.nextTitle}>{upcomingItems[0].title}</ThemedText>
+            <View style={styles.nextMetaGrid}>
+              <View style={styles.metaChip}>
+                <ThemedText type="smallBold">{tx('时间', 'When')}</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">{formatDateTimeRange(upcomingItems[0].startsAt, upcomingItems[0].endsAt, languageTag)}</ThemedText>
+              </View>
+              <View style={styles.metaChip}>
+                <ThemedText type="smallBold">{tx('同行者', 'Who')}</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">{tx(`${members.length} 人可见`, `${members.length} travellers can see this`)}</ThemedText>
+              </View>
             </View>
             {upcomingItems[0].locationLabel ? (
               <Pressable
                 accessibilityRole="link"
                 onPress={() => void Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(upcomingItems[0].locationLabel ?? '')}`)}
                 style={[styles.mapAction, { backgroundColor: theme.backgroundSelected }]}>
-                <View style={styles.placeDot} />
                 <View style={styles.placeCopy}>
                   <ThemedText type="smallBold">{upcomingItems[0].locationLabel}</ThemedText>
-                  <ThemedText type="small" themeColor="textSecondary">{tx('在 Google 地图中打开', 'Open in Google Maps')} ›</ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary">{tx('一键打开 Google 地图查看路线', 'Open in Google Maps for directions')} ›</ThemedText>
                 </View>
               </Pressable>
-            ) : null}
-          </InfoCard>
+            ) : (
+              <View style={[styles.mapAction, { backgroundColor: theme.backgroundSelected }]}>
+                <View style={styles.placeCopy}>
+                  <ThemedText type="smallBold">{tx('还没设置地点', 'No place yet')}</ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary">{tx('补上地点后，大家会更容易集合和导航。', 'Add a place so the group can meet and navigate faster.')}</ThemedText>
+                </View>
+              </View>
+            )}
+          </View>
 
           {upcomingItems.length > 1 ? (
             <View style={styles.timelineSection}>
-              <ThemedText type="smallBold">{tx('接下来的安排', 'Later in the trip')}</ThemedText>
+              <ThemedText type="smallBold">{tx('后续安排', 'Later in the flow')}</ThemedText>
               {upcomingItems.slice(1).map((item) => (
                 <View key={item.id} style={styles.timelineRow}>
-                  <View style={[styles.timelineRail, { borderRightColor: theme.backgroundSelected }]}><View style={styles.timelineDot} /></View>
+                  <View style={[styles.timelineRail, { borderRightColor: theme.backgroundSelected }]}>
+                    <View style={styles.timelineDot} />
+                  </View>
                   <View style={styles.timelineContent}>
                     <ThemedText type="small" themeColor="textSecondary">{formatDateTimeRange(item.startsAt, item.endsAt, languageTag)}</ThemedText>
                     <ThemedText type="smallBold">{item.title}</ThemedText>
                     {item.locationLabel ? <ThemedText type="small" themeColor="textSecondary">{item.locationLabel}</ThemedText> : null}
                   </View>
-                  <ThemedText type="small" themeColor="textSecondary">{kindLabel(item.kind)}</ThemedText>
+                  <View style={[styles.kindOutline, { borderColor: getKindAccent(item.kind) }]}>
+                    <ThemedText type="small" style={{ color: getKindAccent(item.kind) }}>{kindLabel(item.kind)}</ThemedText>
+                  </View>
                 </View>
               ))}
             </View>
@@ -133,8 +212,24 @@ export default function TodayScreen() {
       )}
 
       {activeTrip && canEdit ? (
-        <InfoCard label={tx('规划下一站', 'Plan the next stop')} title={tx('添加到共享时间线', 'Add to the shared timeline')} accent="#D86E35">
+        <InfoCard label={tx('规划下一站', 'Plan the next stop')} title={tx('把新安排放进共享时间线', 'Add a useful next move')} accent="#D86E35">
           <View style={styles.form}>
+            <ThemedText type="small" themeColor="textSecondary">
+              {tx('优先记录真正会影响出发、集合、交通、入住和门票的安排，而不是普通备忘录。', 'Prioritize plans that change departure, meetups, transport, check-ins, or tickets instead of generic notes.')}
+            </ThemedText>
+            <View style={styles.templateWrap}>
+              {quickTemplates.map((template) => (
+                <ChoiceChip
+                  key={template.zh}
+                  selected={title === (locale === 'zh-CN' ? template.zh : template.en)}
+                  onPress={() => {
+                    setTitle(locale === 'zh-CN' ? template.zh : template.en);
+                    setKind(template.kind);
+                  }}>
+                  {locale === 'zh-CN' ? template.zh : template.en}
+                </ChoiceChip>
+              ))}
+            </View>
             <FormField label={tx('要做什么？', 'What are you doing?')} value={title} onChangeText={setTitle} placeholder={tx('例如：乘机场快线前往中环', 'For example: Airport Express to Central')} />
             <LocationField value={location} onChange={setLocation} />
             <View style={styles.row}>
@@ -144,7 +239,7 @@ export default function TodayScreen() {
             </View>
             <View style={styles.durationRow}>
               <ThemedText type="small" themeColor="textSecondary">{tx('快速设置时长', 'Quick duration')}</ThemedText>
-              {[30, 60, 120].map((minutes) => (
+              {[30, 60, 120, 180].map((minutes) => (
                 <ChoiceChip key={minutes} selected={endTime === addMinutes(startTime, minutes)} onPress={() => setEndTime(addMinutes(startTime, minutes))}>
                   {minutes < 60 ? `${minutes}m` : `${minutes / 60}h`}
                 </ChoiceChip>
@@ -172,14 +267,25 @@ const styles = StyleSheet.create({
   grow: { flexGrow: 1, flexBasis: 140 },
   dateField: { flexGrow: 2, flexBasis: 200 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  summaryStrip: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 8 },
+  templateWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  heroPanel: { borderRadius: 24, padding: 20, gap: 18, shadowColor: '#17324D', shadowOpacity: 0.07, shadowRadius: 24, shadowOffset: { width: 0, height: 8 } },
+  heroTop: { flexDirection: 'row', gap: 16, alignItems: 'flex-start' },
+  heroCopy: { flex: 1, gap: 6 },
+  heroBadge: { minWidth: 74, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 12, alignItems: 'center', gap: 2 },
+  summaryStrip: { flexDirection: 'row', alignItems: 'stretch', paddingHorizontal: 4, gap: 12 },
   summaryItem: { flex: 1, alignItems: 'center', gap: 2 },
-  summaryDivider: { width: StyleSheet.hairlineWidth, height: 30 },
-  nextMeta: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' },
-  mapAction: { minHeight: 52, borderRadius: 14, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  placeDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#087F6A' },
+  summaryDivider: { width: StyleSheet.hairlineWidth, alignSelf: 'stretch' },
+  nextRail: { borderRadius: 26, padding: 22, gap: 16, shadowColor: '#17324D', shadowOpacity: 0.08, shadowRadius: 28, shadowOffset: { width: 0, height: 10 } },
+  nextHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  nextTitle: { fontSize: 34, lineHeight: 40 },
+  nextMetaGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  metaChip: { minWidth: 136, gap: 2 },
+  kindPill: { alignSelf: 'flex-start', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7 },
+  kindPillText: { color: '#FFFFFF' },
+  kindOutline: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6, alignSelf: 'center' },
+  mapAction: { minHeight: 68, borderRadius: 16, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 },
   placeCopy: { flex: 1 },
-  timelineSection: { gap: 4, paddingTop: 8 },
+  timelineSection: { gap: 6, paddingTop: 8 },
   timelineRow: { minHeight: 76, flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
   timelineRail: { width: 16, alignItems: 'center', height: '100%', borderRightWidth: 1 },
   timelineDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: '#1B70A6', marginRight: -1, marginTop: 7 },

@@ -38,13 +38,22 @@ export async function listTrips(): Promise<Trip[]> {
 }
 
 export async function getProfile(userId: string): Promise<Profile> {
-  const { data, error } = await getSupabaseClient()
+  const client = getSupabaseClient();
+  const { data, error } = await client
     .from('profiles')
-    .select('id,display_name')
+    .select('id,display_name,avatar_path')
     .eq('id', userId)
     .single();
   if (error) throw error;
-  return { id: data.id, displayName: data.display_name };
+  const avatarUrl = data.avatar_path
+    ? client.storage.from('avatars').getPublicUrl(data.avatar_path).data.publicUrl
+    : undefined;
+  return {
+    id: data.id,
+    displayName: data.display_name,
+    avatarPath: data.avatar_path ?? undefined,
+    avatarUrl,
+  };
 }
 
 export async function createTrip(input: {
@@ -91,12 +100,51 @@ export async function listTripMembers(tripId: string): Promise<TripMember[]> {
   }));
 }
 
-export async function updateProfile(userId: string, displayName: string) {
-  const { error } = await getSupabaseClient()
+export async function updateProfile(
+  userId: string,
+  input: {
+    displayName: string;
+    currentAvatarPath?: string;
+    avatar?: { uri: string; mimeType?: string | null };
+  },
+) {
+  const client = getSupabaseClient();
+  let avatarPath = input.currentAvatarPath;
+
+  if (input.avatar) {
+    const mimeType = input.avatar.mimeType === 'image/png' || input.avatar.mimeType === 'image/webp'
+      ? input.avatar.mimeType
+      : 'image/jpeg';
+    const extension = mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg';
+    const nextPath = `${userId}/avatar-${Date.now()}.${extension}`;
+    const file = await fetch(input.avatar.uri);
+    const body = await file.arrayBuffer();
+    const { error: uploadError } = await client.storage.from('avatars').upload(nextPath, body, {
+      contentType: mimeType,
+      upsert: false,
+    });
+    if (uploadError) throw uploadError;
+    avatarPath = nextPath;
+  }
+
+  const { error } = await client
     .from('profiles')
-    .update({ display_name: displayName.trim(), updated_at: new Date().toISOString() })
+    .update({
+      display_name: input.displayName.trim(),
+      avatar_path: avatarPath ?? null,
+      updated_at: new Date().toISOString(),
+    })
     .eq('id', userId);
-  if (error) throw error;
+  if (error) {
+    if (avatarPath && avatarPath !== input.currentAvatarPath) {
+      await client.storage.from('avatars').remove([avatarPath]);
+    }
+    throw error;
+  }
+
+  if (input.currentAvatarPath && avatarPath !== input.currentAvatarPath) {
+    await client.storage.from('avatars').remove([input.currentAvatarPath]);
+  }
 }
 
 export async function createTripInvite(tripId: string, role: 'editor' | 'viewer') {

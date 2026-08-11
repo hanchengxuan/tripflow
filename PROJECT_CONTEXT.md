@@ -72,6 +72,11 @@ See `planning.md` for the complete P0/P1 scope, non-goals, architecture, milesto
 - Today now prioritizes one “Up next” destination followed by a flat shared timeline, start/end ranges, and quick duration controls
 - An authenticated `places-autocomplete` Edge Function is deployed as a server-side Google Places proxy; manual place entry remains available until `GOOGLE_MAPS_API_KEY` is configured
 - `PRODUCT.md`, `DESIGN.md`, and `.impeccable/design.json` record the product and current visual system for future design continuity
+- Trips now uses a task-based information architecture: the active trip is the workspace anchor, create/join are always-visible top actions, trip switching is a flat list, and invite management lives inside Travellers
+- Profile now uses an explicit edit state for display name and avatar, with language, trip context, account actions, and destructive actions separated by frequency and risk
+- Profile avatars are stored in a dedicated 5 MB image-only Supabase bucket with per-user write policies; account deletion removes the object and clears its database reference
+- Ledger now presents one focused expense-entry surface at a time and flat balance/history rows instead of a stack of equal-weight cards
+- The shared web shell reserves space for its fixed navigation, removing the previous title overlap at desktop and mobile widths
 
 ## Applied Supabase migrations
 
@@ -80,8 +85,10 @@ See `planning.md` for the complete P0/P1 scope, non-goals, architecture, milesto
 - `mvp_foundation`
 - `fix_invite_crypto_path`
 - `account_deletion`
+- `profile_avatars`
+- `clear_avatar_on_account_deletion`
 
-The database currently contains no application rows.
+Temporary acceptance fixtures are removed after each test; production may contain real user-created rows.
 
 ## Active next milestone
 

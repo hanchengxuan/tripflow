@@ -11,6 +11,8 @@ export type ParticipantStatus = 'going' | 'arrived' | 'delayed' | 'not_participa
 export interface Profile {
   id: UserId;
   displayName: string;
+  avatarPath?: string;
+  avatarUrl?: string;
 }
 
 export interface Trip {

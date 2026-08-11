@@ -50,6 +50,17 @@ export async function signOut() {
 
 export async function deleteAccount() {
   const client = getSupabaseClient();
+  const { data: profile, error: profileError } = await client
+    .from('profiles')
+    .select('avatar_path')
+    .single();
+  if (profileError) throw profileError;
+
+  if (profile.avatar_path) {
+    const { error: avatarError } = await client.storage.from('avatars').remove([profile.avatar_path]);
+    if (avatarError) throw avatarError;
+  }
+
   const { error } = await client.rpc('delete_current_account');
   if (error) throw error;
 

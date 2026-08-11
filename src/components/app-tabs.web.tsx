@@ -7,7 +7,7 @@ import {
   TabListProps,
 } from 'expo-router/ui';
 import type { Href } from 'expo-router';
-import { Pressable, View, StyleSheet } from 'react-native';
+import { Pressable, View, StyleSheet, useWindowDimensions } from 'react-native';
 
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
@@ -55,12 +55,16 @@ export function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps
 }
 
 export function CustomTabList(props: TabListProps) {
+  const { width } = useWindowDimensions();
+  const compact = width < 440;
   return (
-    <View {...props} style={styles.tabListContainer}>
-      <ThemedView type="backgroundElement" style={styles.innerContainer}>
-        <ThemedText type="smallBold" style={styles.brandText}>
-          TripFlow
-        </ThemedText>
+    <View {...props} style={[styles.tabListContainer, compact && styles.tabListContainerCompact]}>
+      <ThemedView type="backgroundElement" style={[styles.innerContainer, compact && styles.innerContainerCompact]}>
+        {!compact ? (
+          <ThemedText type="smallBold" style={styles.brandText}>
+            TripFlow
+          </ThemedText>
+        ) : null}
 
         {props.children}
       </ThemedView>
@@ -77,6 +81,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
   },
+  tabListContainerCompact: { paddingHorizontal: 10 },
   innerContainer: {
     paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.five,
@@ -87,6 +92,7 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     maxWidth: MaxContentWidth,
   },
+  innerContainerCompact: { paddingHorizontal: 8, justifyContent: 'space-between', gap: 0 },
   brandText: {
     marginRight: 'auto',
   },

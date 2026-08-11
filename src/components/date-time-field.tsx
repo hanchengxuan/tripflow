@@ -19,6 +19,23 @@ function formatValue(date: Date, mode: PickerMode) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
+function formatDisplayValue(value: string, mode: PickerMode, locale: string) {
+  const parsed = parseValue(value, mode);
+  if (mode === 'time') {
+    return parsed.toLocaleTimeString(locale === 'zh-CN' ? 'zh-CN' : 'en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+  }
+
+  return parsed.toLocaleDateString(locale === 'zh-CN' ? 'zh-CN' : 'en-US', {
+    month: 'short',
+    day: 'numeric',
+    weekday: 'short',
+  });
+}
+
 export function DateTimeField({
   label,
   value,
@@ -35,6 +52,7 @@ export function DateTimeField({
   const theme = useTheme();
   const { locale, tx } = useI18n();
   const [open, setOpen] = useState(false);
+  const displayValue = formatDisplayValue(value, mode, locale);
   const picker = open ? (
     <ExpoDateTimePicker
       value={parseValue(value, mode)}
@@ -58,11 +76,16 @@ export function DateTimeField({
       <ThemedText type="smallBold">{label}</ThemedText>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`${label}：${value}`}
+        accessibilityLabel={`${label}：${displayValue}`}
         onPress={() => setOpen(true)}
         style={[styles.control, { backgroundColor: theme.background, borderColor: theme.backgroundSelected }]}>
-        <ThemedText>{value}</ThemedText>
-        <ThemedText themeColor="textSecondary">{tx('选择', 'Choose')} ›</ThemedText>
+        <View style={styles.copy}>
+          <ThemedText type="smallBold">{displayValue}</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            {mode === 'date' ? tx('点按选择日期', 'Tap to choose a date') : tx('点按选择时间', 'Tap to choose a time')}
+          </ThemedText>
+        </View>
+        <ThemedText themeColor="textSecondary">{tx('更改', 'Change')} ›</ThemedText>
       </Pressable>
       {picker}
     </View>
@@ -72,13 +95,14 @@ export function DateTimeField({
 const styles = StyleSheet.create({
   field: { gap: 6 },
   control: {
-    minHeight: 48,
+    minHeight: 58,
     borderWidth: 1,
     borderRadius: 12,
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingVertical: 11,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  copy: { flex: 1, gap: 2 },
 });

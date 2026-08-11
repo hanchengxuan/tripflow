@@ -1,5 +1,5 @@
 import type { PropsWithChildren } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -20,7 +20,10 @@ export function Screen({ meta, title, subtitle, children }: ScreenProps) {
       style={[styles.scroll, { backgroundColor: theme.background }]}
       contentContainerStyle={[
         styles.content,
-        { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 104 },
+        {
+          paddingTop: insets.top + (Platform.OS === 'web' ? 104 : 20),
+          paddingBottom: insets.bottom + 104,
+        },
       ]}>
       <View style={styles.header}>
         <ThemedText type="subtitle">{title}</ThemedText>

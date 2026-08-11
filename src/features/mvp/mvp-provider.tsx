@@ -33,7 +33,7 @@ interface MvpContextValue {
   createTrip: (input: { name: string; startsOn: string; endsOn: string; homeCurrency: string; defaultTimeZone: string }) => Promise<void>;
   joinTrip: (token: string) => Promise<void>;
   createInvite: (role: 'editor' | 'viewer') => Promise<{ token: string; expiresAt: string }>;
-  saveProfile: (displayName: string) => Promise<void>;
+  saveProfile: (input: { displayName: string; avatar?: { uri: string; mimeType?: string | null } }) => Promise<void>;
   addItineraryItem: (input: { title: string; kind: Database['public']['Enums']['itinerary_kind']; startsAt: string; endsAt?: string; locationLabel?: string }) => Promise<void>;
   addEqualExpense: (input: { title: string; currency: string; totalMinor: number; payerUserId: string; participantUserIds: string[] }) => Promise<void>;
 }
@@ -125,11 +125,14 @@ export function MvpProvider({ children }: PropsWithChildren) {
     return createTripInvite(activeTrip.id, role);
   }, [activeTrip]);
 
-  const saveProfile = useCallback(async (displayName: string) => {
-    await updateProfile(currentUserId, displayName);
+  const saveProfile = useCallback(async (input: { displayName: string; avatar?: { uri: string; mimeType?: string | null } }) => {
+    await updateProfile(currentUserId, {
+      ...input,
+      currentAvatarPath: profile?.avatarPath,
+    });
     setProfile(await getProfile(currentUserId));
     if (activeTrip) setMembers(await listTripMembers(activeTrip.id));
-  }, [activeTrip, currentUserId]);
+  }, [activeTrip, currentUserId, profile?.avatarPath]);
 
   const addItineraryItem = useCallback(async (input: { title: string; kind: Database['public']['Enums']['itinerary_kind']; startsAt: string; endsAt?: string; locationLabel?: string }) => {
     if (!activeTrip) throw new Error('请先创建或加入一个行程。');

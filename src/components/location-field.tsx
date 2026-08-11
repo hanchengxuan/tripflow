@@ -50,6 +50,9 @@ export function LocationField({ value, onChange }: { value: string; onChange: (v
         />
         {loading ? <ActivityIndicator color="#087F6A" /> : null}
       </View>
+      <ThemedText type="small" themeColor="textSecondary">
+        {tx('输入酒店、景点、车站或地址。已接入 Google Places 后会自动给出建议。', 'Type a hotel, attraction, station, or address. Suggestions appear automatically once Google Places is configured.')}
+      </ThemedText>
       {value.trim().length >= 3 && suggestions.length > 0 ? (
         <View style={[styles.suggestions, { backgroundColor: theme.backgroundElement, borderColor: theme.backgroundSelected }]}>
           {suggestions.map((suggestion) => (
@@ -62,11 +65,12 @@ export function LocationField({ value, onChange }: { value: string; onChange: (v
                 sessionToken.current = newSessionToken();
               }}
               style={({ pressed }) => [styles.suggestion, pressed && styles.pressed]}>
-              <View style={styles.dot} />
+              <View style={[styles.dot, { backgroundColor: '#1B70A6' }]} />
               <View style={styles.copy}>
                 <ThemedText type="smallBold">{suggestion.mainText}</ThemedText>
                 {suggestion.secondaryText ? <ThemedText type="small" themeColor="textSecondary">{suggestion.secondaryText}</ThemedText> : null}
               </View>
+              <ThemedText type="small" themeColor="textSecondary">{tx('使用', 'Use')}</ThemedText>
             </Pressable>
           ))}
         </View>

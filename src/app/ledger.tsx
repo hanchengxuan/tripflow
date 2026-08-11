@@ -1,8 +1,7 @@
 import { useMemo, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { LayoutAnimation, Pressable, StyleSheet, View } from 'react-native';
 
 import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/form-controls';
-import { InfoCard } from '@/components/info-card';
 import { Screen } from '@/components/screen';
 import { SelectionField } from '@/components/selection-field';
 import { ThemedText } from '@/components/themed-text';
@@ -27,6 +26,12 @@ export default function LedgerScreen() {
   const [formError, setFormError] = useState<string>();
   const [success, setSuccess] = useState<string>();
   const [aiNotice, setAiNotice] = useState<string>();
+  const [entryMode, setEntryMode] = useState<'ai' | 'manual'>('manual');
+
+  function chooseEntryMode(mode: 'ai' | 'manual') {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setEntryMode(mode);
+  }
 
   const currency = currencyOverride || activeTrip?.homeCurrency || 'HKD';
   const payerUserId = members.some(({ userId }) => userId === payerOverride) ? payerOverride : currentUserId;
@@ -68,6 +73,7 @@ export default function LedgerScreen() {
       setCurrencyOverride(draft.currency);
       setPayerOverride(draft.payerUserId);
       setParticipantsByTrip((current) => ({ ...current, [activeTrip.id]: draft.participantUserIds }));
+      setEntryMode('manual');
       const confidence = Math.round(draft.confidence * 100);
       setAiNotice([
         tx(`AI 已生成草稿（置信度 ${confidence}%），请核对后再保存。`, `AI created a draft (${confidence}% confidence). Review it before saving.`),
@@ -116,7 +122,33 @@ export default function LedgerScreen() {
       {loading ? <InlineNotice>{tx('正在刷新账本…', 'Refreshing the ledger…')}</InlineNotice> : null}
 
       {activeTrip ? (
-        <InfoCard label={tx('AI 快速录入', 'AI quick entry')} title={tx('用一句话生成记账草稿', 'Turn one sentence into a draft')} accent="#1B70A6">
+        <View style={styles.ledgerHero}>
+          <View style={styles.heroCopy}>
+            <ThemedText type="smallBold" style={styles.heroEyebrow}>{tx('快速记一笔', 'Add an expense')}</ThemedText>
+            <ThemedText type="subtitle">{tx('选择最顺手的录入方式', 'Choose how you want to add it')}</ThemedText>
+          </View>
+          <View style={styles.modeRow}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ selected: entryMode === 'manual' }}
+              onPress={() => chooseEntryMode('manual')}
+              style={[styles.modeButton, entryMode === 'manual' && styles.modeButtonActive]}>
+              <ThemedText type="smallBold">{tx('手动录入', 'Manual')}</ThemedText>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ selected: entryMode === 'ai' }}
+              onPress={() => chooseEntryMode('ai')}
+              style={[styles.modeButton, entryMode === 'ai' && styles.modeButtonActive]}>
+              <ThemedText type="smallBold">{tx('AI 一句话', 'AI sentence')}</ThemedText>
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
+
+      {activeTrip && entryMode === 'ai' ? (
+        <View style={styles.focusSurface}>
+          <ThemedText type="subtitle">{tx('用一句话生成记账草稿', 'Turn one sentence into a draft')}</ThemedText>
           <View style={styles.form}>
             <FormField
               label={tx('描述这笔支出', 'Describe the expense')}
@@ -139,11 +171,12 @@ export default function LedgerScreen() {
             </ActionButton>
             {aiNotice ? <InlineNotice>{aiNotice}</InlineNotice> : null}
           </View>
-        </InfoCard>
+        </View>
       ) : null}
 
-      {activeTrip ? (
-        <InfoCard label={tx('确认草稿', 'Confirm draft')} title={tx('核对并保存均分支出', 'Review and save the split')} accent="#087F6A">
+      {activeTrip && entryMode === 'manual' ? (
+        <View style={styles.focusSurface}>
+          <ThemedText type="subtitle">{tx('核对并保存均分支出', 'Review and save the split')}</ThemedText>
           <View style={styles.form}>
             <FormField label={tx('支出内容', 'Expense')} value={title} onChangeText={setTitle} placeholder={tx('例如：晚餐', 'For example: Dinner')} />
             <View style={styles.row}>
@@ -177,15 +210,19 @@ export default function LedgerScreen() {
               {tx('保存均分支出', 'Save split expense')}
             </ActionButton>
           </View>
-        </InfoCard>
-      ) : (
+        </View>
+      ) : !activeTrip ? (
         <InlineNotice>{tx('请先创建或加入一个行程，再开始记账。', 'Create or join a trip before adding expenses.')}</InlineNotice>
-      )}
+      ) : null}
 
       {balancesByCurrency.map(({ currency: balanceCurrency, balances }) => {
         const transfers = minimizeSettlementTransfers(balances);
         return (
-          <InfoCard key={balanceCurrency} label={tx(`${balanceCurrency} 余额`, `${balanceCurrency} balances`)} title={tx('成员收支关系', 'Who is ahead or behind')} accent="#1B70A6">
+          <View key={balanceCurrency} style={styles.section}>
+            <View style={styles.sectionHeading}>
+              <ThemedText type="smallBold" themeColor="textSecondary">{tx(`${balanceCurrency} 余额`, `${balanceCurrency} balances`)}</ThemedText>
+              <ThemedText type="subtitle">{tx('成员收支关系', 'Who is ahead or behind')}</ThemedText>
+            </View>
             {balances.map((balance) => (
               <View key={balance.participantId} style={styles.balanceRow}>
                 <ThemedText>{names.get(balance.participantId) ?? tx('同行者', 'Traveller')}</ThemedText>
@@ -204,32 +241,56 @@ export default function LedgerScreen() {
                 ))}
               </View>
             ) : null}
-          </InfoCard>
+          </View>
         );
       })}
 
       {expenses.length === 0 && activeTrip ? (
-        <InfoCard label={tx('账本已就绪', 'Ledger ready')} title={tx('还没有支出', 'No expenses yet')}>
+        <View style={styles.emptyState}>
+          <ThemedText type="subtitle">{tx('还没有支出', 'No expenses yet')}</ThemedText>
           <ThemedText themeColor="textSecondary">{tx('保存第一笔支出后，这里会显示付款人与分摊明细。', 'Save the first expense to see payers and shares here.')}</ThemedText>
-        </InfoCard>
-      ) : expenses.map((expense) => (
-        <InfoCard key={expense.id} label={formatDateTime(expense.occurredAt)} title={`${expense.title} · ${formatMinorAmount(expense.totalMinor, expense.currency)}`} accent="#D86E35">
-          <ThemedText themeColor="textSecondary">
-            {tx(`${expense.payers.map(({ userId }) => names.get(userId) ?? '同行者').join('、')} 付款 · ${expense.shares.length} 人分摊`, `Paid by ${expense.payers.map(({ userId }) => names.get(userId) ?? 'Traveller').join(', ')} · split with ${expense.shares.length}`)}
-          </ThemedText>
-        </InfoCard>
-      ))}
+        </View>
+      ) : expenses.length > 0 ? (
+        <View style={styles.section}>
+          <View style={styles.sectionHeading}>
+            <ThemedText type="smallBold" themeColor="textSecondary">{tx('最近记录', 'Recent activity')}</ThemedText>
+            <ThemedText type="subtitle">{tx('支出明细', 'Expense history')}</ThemedText>
+          </View>
+          {expenses.map((expense) => (
+            <View key={expense.id} style={styles.expenseRow}>
+              <View style={styles.grow}>
+                <ThemedText type="smallBold">{expense.title}</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  {formatDateTime(expense.occurredAt)} · {tx(`${expense.payers.map(({ userId }) => names.get(userId) ?? '同行者').join('、')} 付款`, `Paid by ${expense.payers.map(({ userId }) => names.get(userId) ?? 'Traveller').join(', ')}`)}
+                </ThemedText>
+              </View>
+              <ThemedText type="smallBold">{formatMinorAmount(expense.totalMinor, expense.currency)}</ThemedText>
+            </View>
+          ))}
+        </View>
+      ) : null}
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   form: { gap: 12 },
+  ledgerHero: { gap: 16, paddingVertical: 8 },
+  heroCopy: { gap: 4 },
+  heroEyebrow: { color: '#087F6A' },
+  modeRow: { flexDirection: 'row', gap: 10 },
+  modeButton: { flex: 1, minHeight: 48, borderRadius: 14, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: '#E7F0F3' },
+  modeButtonActive: { backgroundColor: '#BFE6DD' },
+  focusSurface: { gap: 16, borderRadius: 22, padding: 20, backgroundColor: '#FFFFFF' },
+  section: { gap: 0, paddingTop: 12 },
+  sectionHeading: { gap: 4, paddingBottom: 10 },
+  emptyState: { gap: 6, paddingVertical: 28, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#B8D2D2' },
   row: { flexDirection: 'row', gap: 12 },
   grow: { flex: 1 },
   currency: { width: 110 },
   multiline: { minHeight: 88, textAlignVertical: 'top' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  balanceRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
+  balanceRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, paddingVertical: 14, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#B8D2D2' },
   transferList: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#A8BAB3', paddingTop: 10, gap: 4 },
+  expenseRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#B8D2D2' },
 });
