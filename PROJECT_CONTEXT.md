@@ -11,6 +11,8 @@ This file is the durable, version-controlled source of truth for engineering con
 - Local checkout: `/data/openclaw/workspace/tripflow`
 - Discord: `#tripflow`, channel ID `1536353393176608799`
 - Supabase project: `TripFlow`, region `ap-northeast-2`
+- Production web: `https://tripflow-liart.vercel.app`
+- Vercel project: `liamhans-projects/tripflow`
 
 ## Product direction
 
@@ -52,6 +54,7 @@ See `planning.md` for the complete P0/P1 scope, non-goals, architecture, milesto
 - Live trip switching, member list, profile editing, and shared itinerary creation
 - Atomic equal-split expense creation, per-currency balances, and settlement suggestions
 - Vercel-ready Expo static web configuration
+- First production deployment is live on Vercel and passes HTTP/browser smoke tests with no console errors
 - Transactional two-user backend smoke test covers trip creation, invite acceptance, and an exact expense split without leaving test data
 
 ## Applied Supabase migrations
@@ -65,8 +68,8 @@ The database currently contains no application rows.
 
 ## Active next milestone
 
-1. Install/authorize a deployment provider and publish the existing `dist` build.
-2. Add the deployed URL to Supabase Auth redirect allow-list; optionally switch the email template to the six-digit `{{ .Token }}` OTP.
+1. Add `https://tripflow-liart.vercel.app` as the Supabase Auth Site URL and redirect allow-list entry; optionally switch the email template to the six-digit `{{ .Token }}` OTP.
+2. Grant the Vercel GitHub App access to the private repository so pushes to `main` deploy automatically; the current production deploy was uploaded through the authenticated CLI.
 3. Run human acceptance with real owner/editor/viewer accounts on the deployed URL.
 4. Add segment/branch creation and segment-scoped itinerary membership.
 5. Add deferred financial aggregate validation before expanding beyond equal-split expenses.
