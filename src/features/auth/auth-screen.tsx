@@ -2,14 +2,16 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Link, type Href } from 'expo-router';
 
-import { ActionButton, FormField, InlineNotice } from '@/components/form-controls';
+import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/form-controls';
 import { InfoCard } from '@/components/info-card';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { sendEmailOtp, verifyEmailOtp } from '@/features/auth/auth-service';
 import { toUserMessage } from '@/lib/user-error';
+import { useI18n } from '@/features/i18n/i18n-provider';
 
 export function AuthScreen() {
+  const { locale, setLocale, tx } = useI18n();
   const [email, setEmail] = useState('');
   const [token, setToken] = useState('');
   const [step, setStep] = useState<'email' | 'verify'>('email');
@@ -24,7 +26,7 @@ export function AuthScreen() {
       setEmail(normalized);
       setStep('verify');
     } catch (caught) {
-      setError(toUserMessage(caught, '登录邮件发送失败，请稍后重试。'));
+      setError(toUserMessage(caught, tx('登录邮件发送失败，请稍后重试。', 'Could not send the login email. Please try again.')));
     } finally {
       setBusy(false);
     }
@@ -36,7 +38,7 @@ export function AuthScreen() {
     try {
       await verifyEmailOtp(email, token);
     } catch (caught) {
-      setError(toUserMessage(caught, '验证码校验失败，请重新获取验证码。'));
+      setError(toUserMessage(caught, tx('验证码校验失败，请重新获取验证码。', 'The code could not be verified. Request a new code and try again.')));
     } finally {
       setBusy(false);
     }
@@ -44,15 +46,15 @@ export function AuthScreen() {
 
   return (
     <Screen
-      eyebrow="TripFlow 内测版"
-      title="把大家的旅程放在一起"
-      subtitle="无需密码，通过邮箱安全登录；同行者可使用邀请码加入。">
-      <InfoCard label={step === 'email' ? '登录' : '查看邮箱'} title={step === 'email' ? '使用邮箱继续' : email}>
+      meta={tx('TripFlow 内测版', 'TripFlow beta')}
+      title={tx('把大家的旅程放在一起', 'One trip, shared by everyone')}
+      subtitle={tx('无需密码，通过邮箱安全登录；同行者可使用邀请码加入。', 'Sign in securely by email. Travellers can join with an invite code.') }>
+      <InfoCard label={step === 'email' ? tx('登录', 'Sign in') : tx('查看邮箱', 'Check your inbox')} title={step === 'email' ? tx('使用邮箱继续', 'Continue with email') : email}>
         <View style={styles.form}>
           {step === 'email' ? (
             <>
               <FormField
-                label="邮箱"
+                label={tx('邮箱', 'Email')}
                 value={email}
                 onChangeText={setEmail}
                 autoCapitalize="none"
@@ -60,45 +62,50 @@ export function AuthScreen() {
                 keyboardType="email-address"
                 placeholder="you@example.com"
               />
-              <ActionButton busy={busy} onPress={sendCode}>发送登录邮件</ActionButton>
+              <ActionButton busy={busy} onPress={sendCode}>{tx('发送登录邮件', 'Send login email')}</ActionButton>
             </>
           ) : (
             <>
               <ThemedText themeColor="textSecondary">
-                如果邮件中有六位验证码，请在下方输入；如果收到的是安全登录链接，请在当前设备上打开。
+                {tx('如果邮件中有六位验证码，请在下方输入；如果收到的是安全登录链接，请在当前设备上打开。', 'Enter the six-digit code below, or open the secure sign-in link on this device.')}
               </ThemedText>
               <FormField
-                label="六位验证码"
+                label={tx('六位验证码', 'Six-digit code')}
                 value={token}
                 onChangeText={setToken}
                 keyboardType="number-pad"
                 maxLength={6}
                 placeholder="123456"
               />
-              <ActionButton busy={busy} onPress={verifyCode}>验证并登录</ActionButton>
-              <ActionButton tone="secondary" disabled={busy} onPress={() => setStep('email')}>更换邮箱</ActionButton>
+              <ActionButton busy={busy} onPress={verifyCode}>{tx('验证并登录', 'Verify and sign in')}</ActionButton>
+              <ActionButton tone="secondary" disabled={busy} onPress={() => setStep('email')}>{tx('更换邮箱', 'Use another email')}</ActionButton>
             </>
           )}
           {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
         </View>
       </InfoCard>
+      <View style={styles.languageRow}>
+        <ChoiceChip selected={locale === 'zh-CN'} onPress={() => setLocale('zh-CN')}>简体中文</ChoiceChip>
+        <ChoiceChip selected={locale === 'en'} onPress={() => setLocale('en')}>English</ChoiceChip>
+      </View>
       <View style={styles.legalLinks}>
-        <Link href={'/privacy' as Href} asChild><ThemedText type="linkPrimary">隐私政策</ThemedText></Link>
-        <Link href={'/support' as Href} asChild><ThemedText type="linkPrimary">支持与帮助</ThemedText></Link>
+        <Link href={'/privacy' as Href} asChild><ThemedText type="linkPrimary">{tx('隐私政策', 'Privacy')}</ThemedText></Link>
+        <Link href={'/support' as Href} asChild><ThemedText type="linkPrimary">{tx('支持与帮助', 'Support')}</ThemedText></Link>
       </View>
     </Screen>
   );
 }
 
 export function AuthLoadingScreen({ configured }: { configured: boolean }) {
+  const { tx } = useI18n();
   return (
     <Screen
-      eyebrow="TripFlow"
-      title={configured ? '正在恢复你的旅程' : '需要完成配置'}
-      subtitle={configured ? '正在检查安全登录状态…' : '请添加 Supabase 公共地址与发布密钥后再启动应用。'}>
+      meta="TripFlow"
+      title={configured ? tx('正在恢复你的旅程', 'Restoring your trip') : tx('需要完成配置', 'Setup required')}
+      subtitle={configured ? tx('正在检查安全登录状态…', 'Checking your secure session…') : tx('请添加 Supabase 公共地址与发布密钥后再启动应用。', 'Add the Supabase public URL and publishable key before starting the app.')}>
       {!configured ? (
         <InlineNotice tone="error">
-          请设置 EXPO_PUBLIC_SUPABASE_URL 和 EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY。
+          {tx('请设置 EXPO_PUBLIC_SUPABASE_URL 和 EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY。', 'Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY.')}
         </InlineNotice>
       ) : null}
     </Screen>
@@ -107,5 +114,6 @@ export function AuthLoadingScreen({ configured }: { configured: boolean }) {
 
 const styles = StyleSheet.create({
   form: { gap: 12 },
+  languageRow: { flexDirection: 'row', gap: 8, justifyContent: 'center' },
   legalLinks: { flexDirection: 'row', flexWrap: 'wrap', gap: 18, justifyContent: 'center' },
 });

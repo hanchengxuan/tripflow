@@ -3,6 +3,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
+import { useI18n } from '@/features/i18n/i18n-provider';
 
 export interface SelectionOption<T extends string> {
   value: T;
@@ -21,6 +22,7 @@ export function SelectionField<T extends string>({
   onChange: (value: T) => void;
 }) {
   const theme = useTheme();
+  const { tx } = useI18n();
   const [open, setOpen] = useState(false);
   const selectedLabel = useMemo(
     () => options.find((option) => option.value === value)?.label ?? value,
@@ -36,7 +38,7 @@ export function SelectionField<T extends string>({
         onPress={() => setOpen(true)}
         style={[styles.control, { backgroundColor: theme.background, borderColor: theme.backgroundSelected }]}>
         <ThemedText>{selectedLabel}</ThemedText>
-        <ThemedText themeColor="textSecondary">选择 ›</ThemedText>
+        <ThemedText themeColor="textSecondary">{tx('选择', 'Choose')} ›</ThemedText>
       </Pressable>
       <Modal transparent visible={open} animationType="slide" onRequestClose={() => setOpen(false)}>
         <Pressable style={styles.backdrop} onPress={() => setOpen(false)}>
@@ -46,7 +48,7 @@ export function SelectionField<T extends string>({
             <View style={styles.sheetHeader}>
               <ThemedText type="smallBold">{label}</ThemedText>
               <Pressable accessibilityRole="button" onPress={() => setOpen(false)}>
-                <ThemedText type="link">完成</ThemedText>
+                <ThemedText type="link">{tx('完成', 'Done')}</ThemedText>
               </Pressable>
             </View>
             <ScrollView contentContainerStyle={styles.optionList}>

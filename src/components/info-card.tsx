@@ -13,7 +13,7 @@ interface InfoCardProps extends PropsWithChildren {
 export function InfoCard({ label, title, accent = '#0F9D7A', children }: InfoCardProps) {
   const theme = useTheme();
   return (
-    <View style={[styles.card, { backgroundColor: theme.backgroundElement, borderColor: theme.backgroundSelected }]}>
+    <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
       <ThemedText type="smallBold" style={{ color: accent }}>
         {label}
       </ThemedText>
@@ -26,6 +26,6 @@ export function InfoCard({ label, title, accent = '#0F9D7A', children }: InfoCar
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: 22, borderWidth: 1, padding: 18, gap: 8, shadowColor: '#17324D', shadowOpacity: 0.06, shadowRadius: 16, shadowOffset: { width: 0, height: 6 } },
+  card: { borderRadius: 16, padding: 18, gap: 10, shadowColor: '#17324D', shadowOpacity: 0.07, shadowRadius: 18, shadowOffset: { width: 0, height: 7 } },
   title: { fontSize: 20, lineHeight: 26 },
 });

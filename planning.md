@@ -164,11 +164,12 @@ The MVP deliberately does not include group chat, in-app booking, proprietary tu
 
 ### Current itinerary experience upgrade
 
-- Replace isolated timestamp entry with a clear start/end range and make the complete date/time control tappable.
-- Present the day as travel cards with category, duration, place, and a navigation action rather than a notebook-like list.
-- Add Chinese/English switching across navigation, forms, validation, and public pages.
-- Add Google Places autocomplete only through a server-restricted integration; do not reuse or expose the Gemini server key in the client.
-- Continue simplifying the visual system around an airy coastal palette, strong spacing, and clear next-step hierarchy.
+- Completed: replace isolated timestamp entry with a clear start/end range, whole-field picker controls, and quick duration choices.
+- Completed: prioritize an actionable “Up next” destination and show later plans as a continuous timeline instead of a notebook-like card stack.
+- Completed: add persistent Chinese/English switching across navigation, forms, validation fallbacks, privacy, and support pages.
+- Ready for secret configuration: Google Places autocomplete routes through an authenticated Supabase Edge proxy and never reuses or exposes the Gemini key.
+- Completed foundation: an airy coastal palette, stronger spacing, fewer elevated surfaces, and a durable product/design contract.
+- Next: persist canonical Google Place IDs/details, then add participant status, booking/document essentials, and travel-time context to make each itinerary item executable.
 
 ### Explicitly out of MVP
 

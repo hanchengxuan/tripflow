@@ -13,24 +13,26 @@ import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { useI18n } from '@/features/i18n/i18n-provider';
 
 export default function AppTabs() {
+  const { tx } = useI18n();
   return (
     <Tabs>
       <TabSlot style={{ height: '100%' }} />
       <TabList asChild>
         <CustomTabList>
           <TabTrigger name="home" href="/" asChild>
-            <TabButton>今天</TabButton>
+            <TabButton>{tx('今天', 'Today')}</TabButton>
           </TabTrigger>
           <TabTrigger name="explore" href="/explore" asChild>
-            <TabButton>行程</TabButton>
+            <TabButton>{tx('行程', 'Trips')}</TabButton>
           </TabTrigger>
           <TabTrigger name="ledger" href="/ledger" asChild>
-            <TabButton>账本</TabButton>
+            <TabButton>{tx('账本', 'Ledger')}</TabButton>
           </TabTrigger>
           <TabTrigger name="profile" href={'/profile' as Href} asChild>
-            <TabButton>我的</TabButton>
+            <TabButton>{tx('我的', 'Me')}</TabButton>
           </TabTrigger>
         </CustomTabList>
       </TabList>

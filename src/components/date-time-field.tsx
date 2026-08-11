@@ -4,6 +4,7 @@ import { Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
+import { useI18n } from '@/features/i18n/i18n-provider';
 
 type PickerMode = 'date' | 'time';
 
@@ -32,17 +33,18 @@ export function DateTimeField({
   minimumDate?: Date;
 }) {
   const theme = useTheme();
+  const { locale, tx } = useI18n();
   const [open, setOpen] = useState(false);
   const picker = open ? (
     <ExpoDateTimePicker
       value={parseValue(value, mode)}
       mode={mode}
-      locale="zh_CN"
+      locale={locale === 'zh-CN' ? 'zh_CN' : 'en_US'}
       is24Hour
       minimumDate={minimumDate}
       display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-      positiveButton={{ label: '确定' }}
-      negativeButton={{ label: '取消' }}
+      positiveButton={{ label: tx('确定', 'Done') }}
+      negativeButton={{ label: tx('取消', 'Cancel') }}
       onDismiss={() => setOpen(false)}
       onValueChange={(_event, date) => {
         onChange(formatValue(date, mode));
@@ -60,7 +62,7 @@ export function DateTimeField({
         onPress={() => setOpen(true)}
         style={[styles.control, { backgroundColor: theme.background, borderColor: theme.backgroundSelected }]}>
         <ThemedText>{value}</ThemedText>
-        <ThemedText themeColor="textSecondary">点此选择 ›</ThemedText>
+        <ThemedText themeColor="textSecondary">{tx('选择', 'Choose')} ›</ThemedText>
       </Pressable>
       {picker}
     </View>

@@ -65,9 +65,13 @@ See `planning.md` for the complete P0/P1 scope, non-goals, architecture, milesto
 - Public Chinese privacy and support pages are live at `/privacy` and `/support`, and the login/Profile screens link to them
 - A Simplified Chinese App Store metadata and review-notes draft is maintained in `docs/app-store-metadata-zh-CN.md`
 - Account-deletion backend behavior passed transactional shared-trip, sole-trip, ownership-transfer, and stale-JWT tests with all fixture data rolled back
-- A protected Supabase Edge Function and editable confirmation flow implement Gemini 2.5 Flash natural-language expense parsing; the key stays server-side and parsed drafts never auto-save
+- A protected Supabase Edge Function and editable confirmation flow implement Gemini natural-language expense parsing; production currently resolves to `gemini-3.1-flash-lite`, the key stays server-side, and parsed drafts never auto-save
 - Itinerary items now support explicit start/end times, whole-field date/time controls, richer travel cards, trip/member summaries, and one-tap Google Maps search links
 - The visual foundation now uses a brighter coastal travel palette, softer cards, and clearer information hierarchy
+- Simplified Chinese and English can be switched from login or Profile, persist on device, and cover navigation, core forms, validation fallbacks, privacy, and support pages
+- Today now prioritizes one “Up next” destination followed by a flat shared timeline, start/end ranges, and quick duration controls
+- An authenticated `places-autocomplete` Edge Function is deployed as a server-side Google Places proxy; manual place entry remains available until `GOOGLE_MAPS_API_KEY` is configured
+- `PRODUCT.md`, `DESIGN.md`, and `.impeccable/design.json` record the product and current visual system for future design continuity
 
 ## Applied Supabase migrations
 
@@ -87,8 +91,8 @@ The database currently contains no application rows.
 4. Add segment/branch creation and segment-scoped itinerary membership.
 5. Add deferred financial aggregate validation before expanding beyond equal-split expenses.
 6. Address performance-advisor warnings before the dataset grows. The current security advisor has one password-protection warning that is not exercised by the passwordless-only login flow; revisit it before enabling passwords.
-7. Replace the currently invalid `GEMINI_API_KEY` in Supabase Secrets and rerun the authenticated production parser smoke test.
-8. Continue the itinerary experience milestone: full Chinese/English switching, Places autocomplete (requires a separately restricted Google Maps Platform key and billing), and richer next-step/branch interactions.
+7. Configure a separately restricted Google Maps Platform key as the Supabase Edge Function secret `GOOGLE_MAPS_API_KEY`, then run authenticated Places autocomplete acceptance and set a conservative quota alert.
+8. Continue the itinerary experience milestone with saved Google Place IDs/details, participant/status controls, booking essentials, and richer branch interactions.
 
 ## Standing decisions and safety boundaries
 

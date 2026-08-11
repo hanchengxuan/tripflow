@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-11T12:02:57Z",
+  "title": "Design System: TripFlow",
+  "extensions": {
+    "colorMeta": {
+      "coastal-teal": { "role": "primary", "displayName": "Coastal Teal", "canonical": "#087F6A", "tonalRamp": ["#06251F", "#074336", "#08634F", "#087F6A", "#43A28F", "#83C5B7", "#BDE4DC", "#EDF9F6"] },
+      "journey-blue": { "role": "secondary", "displayName": "Journey Blue", "canonical": "#1B70A6", "tonalRamp": ["#102632", "#163F58", "#1A587E", "#1B70A6", "#5995BA", "#92BBD2", "#C8DDEA", "#F0F7FA"] },
+      "sunset-coral": { "role": "tertiary", "displayName": "Sunset Coral", "canonical": "#D86E35", "tonalRamp": ["#3B2115", "#6C361E", "#A14E28", "#D86E35", "#E39770", "#EDBBA0", "#F7DACB", "#FFF4EE"] },
+      "ink": { "role": "neutral", "displayName": "Deep Travel Ink", "canonical": "#15344A", "tonalRamp": ["#101B22", "#15344A", "#355467", "#597586", "#8097A4", "#AABBC4", "#D5E0E5", "#F4F8FA"] },
+      "mist": { "role": "neutral", "displayName": "Open-Air Mist", "canonical": "#F4FAFA", "tonalRamp": ["#18302F", "#2E5350", "#527B77", "#7FA5A1", "#ACCBC8", "#D1E5E3", "#E7F2F1", "#F4FAFA"] }
+    },
+    "typographyMeta": {
+      "headline": { "displayName": "Screen Headline", "purpose": "Top-level screen identity." },
+      "title": { "displayName": "Content Title", "purpose": "Primary itinerary and surface titles." },
+      "body": { "displayName": "Body", "purpose": "Readable content and instructions." },
+      "label": { "displayName": "Label", "purpose": "Controls and compact metadata." }
+    },
+    "shadows": [
+      { "name": "ambient-card", "value": "0 7px 18px rgba(23,50,77,0.07)", "purpose": "Low lift for focused summaries and forms." }
+    ],
+    "motion": [],
+    "breakpoints": [
+      { "name": "content-max", "value": "760px" }
+    ]
+  },
+  "components": [
+    { "name": "Primary Button", "kind": "button", "refersTo": "button-primary", "description": "The main committed action in a section.", "html": "<button class=\"ds-btn-primary\">ADD TO TIMELINE</button>", "css": ".ds-btn-primary{min-height:48px;padding:12px 18px;border:0;border-radius:14px;background:#087F6A;color:#fff;font:700 14px/20px system-ui;transition:opacity .16s ease}.ds-btn-primary:hover{opacity:.9}.ds-btn-primary:focus-visible{outline:3px solid #49A9CF;outline-offset:3px}" },
+    { "name": "Secondary Button", "kind": "button", "description": "A reversible or supporting action.", "html": "<button class=\"ds-btn-secondary\">OPEN MAP</button>", "css": ".ds-btn-secondary{min-height:48px;padding:12px 18px;border:0;border-radius:14px;background:#E2F0EC;color:#15344A;font:700 14px/20px system-ui}.ds-btn-secondary:hover{background:#D9EEEA}.ds-btn-secondary:focus-visible{outline:3px solid #49A9CF;outline-offset:3px}" },
+    { "name": "Text Field", "kind": "input", "refersTo": "input", "description": "A labelled structured input.", "html": "<input class=\"ds-field\" aria-label=\"Where\" placeholder=\"Search a place\">", "css": ".ds-field{box-sizing:border-box;width:100%;min-height:48px;padding:10px 14px;border:1px solid #D9EEEA;border-radius:12px;background:#F4FAFA;color:#15344A;font:500 16px/24px system-ui}.ds-field:focus-visible{outline:3px solid #49A9CF;outline-offset:2px}" },
+    { "name": "Choice Chip", "kind": "chip", "description": "A compact selected option.", "html": "<button class=\"ds-chip\">ACTIVITY</button>", "css": ".ds-chip{min-height:44px;padding:10px 14px;border:0;border-radius:999px;background:#087F6A;color:#fff;font:700 14px/20px system-ui}.ds-chip:focus-visible{outline:3px solid #49A9CF;outline-offset:2px}" },
+    { "name": "Travel Surface", "kind": "card", "refersTo": "card", "description": "A focused summary or creation surface.", "html": "<section class=\"ds-card\"><strong>Up next</strong><h3>Airport Express</h3><p>09:00–09:30 · Hong Kong Station</p></section>", "css": ".ds-card{padding:18px;border-radius:16px;background:#fff;color:#15344A;box-shadow:0 7px 18px rgba(23,50,77,.07);font:500 16px/24px system-ui}.ds-card strong{color:#087F6A;font-size:14px}.ds-card h3{margin:8px 0;font-size:20px;line-height:26px}.ds-card p{margin:0;color:#526F7E}" }
+  ],
+  "narrative": {
+    "northStar": "The Open Coast Itinerary",
+    "overview": "TripFlow feels like opening a calm, well-prepared route beside clear water: spacious enough to think, structured enough to act, and bright without becoming decorative.",
+    "keyCharacteristics": ["Airy, calm hierarchy with one clear action per section.", "Coastal teal, journey blue, and sunset coral carry functional meaning.", "Timeline continuity instead of repeated same-size cards.", "Equal coverage for Simplified Chinese and English."],
+    "rules": [
+      { "name": "The One Route Rule", "body": "Teal marks the primary path through a screen; do not create competing primary accents.", "section": "colors" },
+      { "name": "The Native Voice Rule", "body": "Keep body and controls in the platform system face; branding comes from composition and color.", "section": "typography" },
+      { "name": "The Flat Journey Rule", "body": "Reserve elevation for focused summaries and forms; ordinary itinerary history stays on the page plane.", "section": "elevation" }
+    ],
+    "dos": ["Do lead with the next useful travel action.", "Do use native date/time pickers and explicit start–end ranges.", "Do let bilingual copy expand and wrap naturally.", "Do keep map and AI actions reversible and user-confirmed."],
+    "donts": ["Don't turn every piece of information into a card.", "Don't use emoji or arbitrary glyphs as the product icon system.", "Don't combine decorative borders, halos, and shadows on one surface.", "Don't use color as the only indication of state or permission."]
+  }
+}

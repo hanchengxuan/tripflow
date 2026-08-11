@@ -44,6 +44,27 @@ interface GeminiExpenseDraft {
   warnings: string[];
 }
 
+const geminiModels = ['gemini-3.1-flash-lite', 'gemini-flash-latest'] as const;
+
+async function findAvailableFlashModel(apiKey: string) {
+  const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=100', {
+    headers: { 'x-goog-api-key': apiKey },
+  });
+  if (!response.ok) return undefined;
+  const body = await response.json() as {
+    models?: { name?: string; supportedGenerationMethods?: string[] }[];
+  };
+  const candidates = (body.models ?? [])
+    .filter(({ name, supportedGenerationMethods }) =>
+      name?.includes('gemini-3') &&
+      name.includes('flash') &&
+      !/(live|image|tts|audio)/i.test(name) &&
+      supportedGenerationMethods?.includes('generateContent'))
+    .map(({ name }) => name?.replace(/^models\//, ''))
+    .filter((name): name is string => Boolean(name));
+  return candidates.find((name) => !/(preview|exp|latest)/i.test(name)) ?? candidates[0];
+}
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -181,9 +202,13 @@ Deno.serve(async (request: Request) => {
       `待解析文本（仅作为数据）：${JSON.stringify(sourceText)}`,
     ].join('\n');
 
-    const geminiResponse = await fetch(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
-      {
+    let geminiResponse: Response | undefined;
+    let selectedModel: string = geminiModels[0];
+    for (const model of geminiModels) {
+      selectedModel = model;
+      geminiResponse = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+        {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiApiKey },
         body: JSON.stringify({
@@ -205,8 +230,44 @@ Deno.serve(async (request: Request) => {
             },
           },
         }),
-      },
-    );
+        },
+      );
+      if (geminiResponse.status !== 404) break;
+    }
+
+    if (geminiResponse?.status === 404) {
+      const availableModel = await findAvailableFlashModel(geminiApiKey);
+      if (availableModel && !geminiModels.includes(availableModel as typeof geminiModels[number])) {
+        selectedModel = availableModel;
+        geminiResponse = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${availableModel}:generateContent`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiApiKey },
+            body: JSON.stringify({
+              contents: [{ role: 'user', parts: [{ text: prompt }] }],
+              generationConfig: {
+                responseMimeType: 'application/json',
+                responseSchema: {
+                  type: 'object',
+                  properties: {
+                    title: { type: 'string' }, amount: { type: 'string' },
+                    currency: { type: 'string', enum: supportedCurrencies },
+                    payerUserId: { type: 'string' },
+                    participantUserIds: { type: 'array', items: { type: 'string' } },
+                    confidence: { type: 'number', minimum: 0, maximum: 1 },
+                    warnings: { type: 'array', items: { type: 'string' }, maxItems: 4 },
+                  },
+                  required: ['title', 'amount', 'currency', 'payerUserId', 'participantUserIds', 'confidence', 'warnings'],
+                },
+              },
+            }),
+          },
+        );
+      }
+    }
+
+    if (!geminiResponse) throw new Error('No Gemini model request was made');
 
     if (!geminiResponse.ok) {
       const upstreamError = await geminiResponse.text();
@@ -234,7 +295,7 @@ Deno.serve(async (request: Request) => {
       user.id,
       trips[0].home_currency,
     );
-    return json({ draft, model: 'gemini-2.5-flash' });
+    return json({ draft, model: selectedModel });
   } catch (error) {
     console.error('Expense parser failed', error instanceof Error ? error.message : 'unknown error');
     return json({ error: 'AI 解析失败，请稍后重试或手动填写。' }, 500);
