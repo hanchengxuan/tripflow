@@ -1,18 +1,27 @@
 {
   "expo": {
-    "name": "TripFlow",
+    "name": "TripFlow 旅途流",
     "slug": "tripflow",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/tripflow-icon.png",
     "scheme": "tripflow",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "bundleIdentifier": "app.tripflow.mobile",
-      "icon": "./assets/expo.icon"
+      "bundleIdentifier": "com.hanchengxuan.tripflow",
+      "buildNumber": "1",
+      "supportsTablet": false,
+      "icon": "./assets/images/tripflow-icon.png",
+      "config": {
+        "usesNonExemptEncryption": false
+      },
+      "infoPlist": {
+        "CFBundleAllowMixedLocalizations": true,
+        "CFBundleDevelopmentRegion": "zh_CN"
+      }
     },
     "android": {
-      "package": "app.tripflow.mobile",
+      "package": "com.hanchengxuan.tripflow",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -23,22 +32,34 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/tripflow-favicon.png"
     },
     "plugins": [
       "expo-router",
       [
+        "expo-localization",
+        {
+          "supportedLocales": {
+            "ios": ["zh-Hans"],
+            "android": ["zh-Hans"]
+          }
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#208AEF",
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "image": "./assets/images/tripflow-icon.png",
+          "imageWidth": 96
         }
       ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "locales": {
+      "zh-Hans": "./locales/zh-Hans.json"
     }
   }
 }

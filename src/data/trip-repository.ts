@@ -1,4 +1,4 @@
-import type { Expense, ItineraryItem, Trip, TripMember } from '@/domain/models';
+import type { Expense, ItineraryItem, Profile, Trip, TripMember } from '@/domain/models';
 import { getSupabaseClient } from '@/lib/supabase';
 import type { Database, Tables } from '@/types/database';
 
@@ -35,6 +35,16 @@ export async function listTrips(): Promise<Trip[]> {
   const { data, error } = await getSupabaseClient().from('trips').select('*').order('starts_on');
   if (error) throw error;
   return data.map(mapTrip);
+}
+
+export async function getProfile(userId: string): Promise<Profile> {
+  const { data, error } = await getSupabaseClient()
+    .from('profiles')
+    .select('id,display_name')
+    .eq('id', userId)
+    .single();
+  if (error) throw error;
+  return { id: data.id, displayName: data.display_name };
 }
 
 export async function createTrip(input: {
@@ -77,7 +87,7 @@ export async function listTripMembers(tripId: string): Promise<TripMember[]> {
     tripId: membership.trip_id,
     userId: membership.user_id,
     role: membership.role,
-    displayName: names.get(membership.user_id) ?? 'Traveler',
+    displayName: names.get(membership.user_id) ?? '旅行者',
   }));
 }
 
@@ -98,7 +108,7 @@ export async function createTripInvite(tripId: string, role: 'editor' | 'viewer'
   });
   if (error) throw error;
   const invite = data[0];
-  if (!invite) throw new Error('The invite could not be created.');
+  if (!invite) throw new Error('无法生成邀请码，请稍后重试。');
   return { token: invite.invite_token, expiresAt: invite.invite_expires_at };
 }
 

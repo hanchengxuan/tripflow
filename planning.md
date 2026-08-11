@@ -380,13 +380,13 @@ Exit: the group can rely on the app for a multi-day pilot before the year-end tr
 
 ## 10. Decisions still to make
 
-- Product name and visual identity.
+- App Store subtitle, screenshots, support contact, and final privacy-policy wording.
 - Whether the first beta uses passwordless email, Apple/Google sign-in, or both.
 - Default cross-branch visibility: private or read-only to all trip members.
 - Home currency and exchange-rate source/override policy.
 - Rounding remainder policy for equal splits.
 - Voice provider availability and data-retention settings in all target regions.
-- Distribution approach for the first beta: Expo development build, TestFlight, and/or Google Play internal testing.
+- Android distribution timing after the first iOS TestFlight beta.
 
 ## 11. Definition of done for MVP
 

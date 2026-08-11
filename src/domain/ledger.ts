@@ -12,20 +12,20 @@ export function parseAmountToMinor(value: string, currency: string): number {
   const digits = currencyMinorDigits(currency);
   const pattern = digits === 0 ? /^\d+$/ : /^\d+(?:\.\d{1,2})?$/;
   if (!pattern.test(normalized)) {
-    throw new Error(digits === 0 ? 'Enter a whole-number amount.' : 'Enter an amount with up to two decimals.');
+    throw new Error(digits === 0 ? '该币种请输入整数金额。' : '请输入最多保留两位小数的金额。');
   }
 
   const [whole, fraction = ''] = normalized.split('.');
   const scale = 10 ** digits;
   const amount = Number(whole) * scale + Number(fraction.padEnd(digits, '0') || 0);
-  if (!Number.isSafeInteger(amount) || amount <= 0) throw new Error('Enter a valid positive amount.');
+  if (!Number.isSafeInteger(amount) || amount <= 0) throw new Error('请输入有效的正数金额。');
   return amount;
 }
 
 export function formatMinorAmount(amountMinor: number, currency: string): string {
   const normalizedCurrency = currency.toUpperCase();
   const digits = currencyMinorDigits(normalizedCurrency);
-  return new Intl.NumberFormat(undefined, {
+  return new Intl.NumberFormat('zh-CN', {
     style: 'currency',
     currency: normalizedCurrency,
     minimumFractionDigits: digits,

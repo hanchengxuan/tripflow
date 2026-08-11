@@ -56,6 +56,11 @@ See `planning.md` for the complete P0/P1 scope, non-goals, architecture, milesto
 - Vercel-ready Expo static web configuration
 - First production deployment is live on Vercel and passes HTTP/browser smoke tests with no console errors
 - Transactional two-user backend smoke test covers trip creation, invite acceptance, and an exact expense split without leaving test data
+- Simplified Chinese is now the primary interface and native app locale, including safe Chinese translations for backend errors
+- Trip dates, itinerary date/time, home currency, expense currency, timezone, and invite role use controlled selectors instead of free-form entry
+- An independent Profile tab lets each signed-in user edit their display name and review account/trip information
+- App Store identity is prepared with bundle ID `com.hanchengxuan.tripflow`, an original 1024px RGB icon, and EAS build/submit profiles
+- Web and iOS exports, Expo Doctor, lint, TypeScript, and 13 automated tests pass for the mobile-readiness milestone
 
 ## Applied Supabase migrations
 
@@ -68,12 +73,13 @@ The database currently contains no application rows.
 
 ## Active next milestone
 
-1. Add `https://tripflow-liart.vercel.app` as the Supabase Auth Site URL and redirect allow-list entry; optionally switch the email template to the six-digit `{{ .Token }}` OTP.
-2. Grant the Vercel GitHub App access to the private repository so pushes to `main` deploy automatically; the current production deploy was uploaded through the authenticated CLI.
-3. Run human acceptance with real owner/editor/viewer accounts on the deployed URL.
-4. Add segment/branch creation and segment-scoped itinerary membership.
-5. Add deferred financial aggregate validation before expanding beyond equal-split expenses.
-6. Address performance-advisor warnings before the dataset grows; current security-advisor result is zero findings.
+1. Sign into Expo/EAS, connect the EAS project, add the two public Supabase variables, and produce the first iOS TestFlight build.
+2. Implement in-app account deletion and publish permanent privacy-policy/support URLs before App Review.
+3. Prepare Simplified Chinese App Store metadata/screenshots and run TestFlight acceptance on a current iPhone.
+4. Run human acceptance with real owner/editor/viewer accounts on the deployed URL.
+5. Add segment/branch creation and segment-scoped itinerary membership.
+6. Add deferred financial aggregate validation before expanding beyond equal-split expenses.
+7. Address performance-advisor warnings before the dataset grows; current security-advisor result is zero findings.
 
 ## Standing decisions and safety boundaries
 

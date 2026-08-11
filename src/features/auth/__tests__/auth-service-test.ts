@@ -6,6 +6,6 @@ describe('normalizeEmail', () => {
   });
 
   it('rejects an invalid address', () => {
-    expect(() => normalizeEmail('not-an-email')).toThrow('Enter a valid email address.');
+    expect(() => normalizeEmail('not-an-email')).toThrow('请输入有效的邮箱地址。');
   });
 });

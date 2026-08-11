@@ -4,10 +4,13 @@ import { StyleSheet, View } from 'react-native';
 import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/form-controls';
 import { InfoCard } from '@/components/info-card';
 import { Screen } from '@/components/screen';
+import { SelectionField } from '@/components/selection-field';
 import { ThemedText } from '@/components/themed-text';
+import { currencyOptions } from '@/constants/options';
 import { calculateBalancesByCurrency, formatMinorAmount, parseAmountToMinor } from '@/domain/ledger';
 import { minimizeSettlementTransfers } from '@/domain/money';
 import { useMvp } from '@/features/mvp/mvp-provider';
+import { toUserMessage } from '@/lib/user-error';
 
 export default function LedgerScreen() {
   const { activeTrip, members, expenses, currentUserId, addEqualExpense, loading, error } = useMvp();
@@ -57,9 +60,9 @@ export default function LedgerScreen() {
       });
       setTitle('');
       setAmount('');
-      setSuccess('Expense saved and split exactly.');
+      setSuccess('支出已保存，并完成精确均分。');
     } catch (caught) {
-      setFormError(caught instanceof Error ? caught.message : 'Could not save the expense.');
+      setFormError(toUserMessage(caught, '无法保存支出，请稍后重试。'));
     } finally {
       setBusy(false);
     }
@@ -67,27 +70,27 @@ export default function LedgerScreen() {
 
   return (
     <Screen
-      eyebrow="Group ledger"
-      title={activeTrip ? `${activeTrip.name} balances` : 'No active ledger'}
-      subtitle="Original currencies stay separate. Equal splits use deterministic minor-unit rounding.">
+      eyebrow="共享账本"
+      title={activeTrip ? `${activeTrip.name} · 成员余额` : '暂无可用账本'}
+      subtitle="不同币种分别计算；均分使用最小货币单位，结果可追溯且总额一致。">
       {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
       {formError ? <InlineNotice tone="error">{formError}</InlineNotice> : null}
       {success ? <InlineNotice>{success}</InlineNotice> : null}
-      {loading ? <InlineNotice>Refreshing the ledger…</InlineNotice> : null}
+      {loading ? <InlineNotice>正在刷新账本…</InlineNotice> : null}
 
       {activeTrip ? (
-        <InfoCard label="QUICK EXPENSE" title="Record and split equally" accent="#0F9D7A">
+        <InfoCard label="快速记账" title="记录并均分支出" accent="#0F9D7A">
           <View style={styles.form}>
-            <FormField label="What was it?" value={title} onChangeText={setTitle} placeholder="Dinner" />
+            <FormField label="支出内容" value={title} onChangeText={setTitle} placeholder="例如：晚餐" />
             <View style={styles.row}>
               <View style={styles.grow}>
-                <FormField label="Amount" value={amount} onChangeText={setAmount} keyboardType="decimal-pad" placeholder="860.00" />
+                <FormField label="金额" value={amount} onChangeText={setAmount} keyboardType="decimal-pad" placeholder="860.00" />
               </View>
               <View style={styles.currency}>
-                <FormField label="Currency" value={currency} onChangeText={setCurrencyOverride} autoCapitalize="characters" maxLength={3} />
+                <SelectionField label="币种" value={currency} options={currencyOptions} onChange={setCurrencyOverride} />
               </View>
             </View>
-            <ThemedText type="smallBold">Who paid?</ThemedText>
+            <ThemedText type="smallBold">谁付款？</ThemedText>
             <View style={styles.chips}>
               {members.map((member) => (
                 <ChoiceChip key={member.userId} selected={payerUserId === member.userId} onPress={() => setPayerOverride(member.userId)}>
@@ -95,7 +98,7 @@ export default function LedgerScreen() {
                 </ChoiceChip>
               ))}
             </View>
-            <ThemedText type="smallBold">Who shares it?</ThemedText>
+            <ThemedText type="smallBold">哪些人参与分摊？</ThemedText>
             <View style={styles.chips}>
               {members.map((member) => (
                 <ChoiceChip key={member.userId} selected={participantIds.includes(member.userId)} onPress={() => toggleParticipant(member.userId)}>
@@ -107,21 +110,21 @@ export default function LedgerScreen() {
               busy={busy}
               disabled={!title.trim() || !amount.trim() || participantIds.length === 0 || !payerUserId}
               onPress={submitExpense}>
-              Save equal split
+              保存均分支出
             </ActionButton>
           </View>
         </InfoCard>
       ) : (
-        <InlineNotice>Create or join a trip before recording expenses.</InlineNotice>
+        <InlineNotice>请先创建或加入一个行程，再开始记账。</InlineNotice>
       )}
 
       {balancesByCurrency.map(({ currency: balanceCurrency, balances }) => {
         const transfers = minimizeSettlementTransfers(balances);
         return (
-          <InfoCard key={balanceCurrency} label={`${balanceCurrency} BALANCES`} title="Who owes whom" accent="#4B67D1">
+          <InfoCard key={balanceCurrency} label={`${balanceCurrency} 余额`} title="成员收支关系" accent="#4B67D1">
             {balances.map((balance) => (
               <View key={balance.participantId} style={styles.balanceRow}>
-                <ThemedText>{names.get(balance.participantId) ?? 'Traveler'}</ThemedText>
+                <ThemedText>{names.get(balance.participantId) ?? '同行者'}</ThemedText>
                 <ThemedText type="smallBold" style={{ color: balance.netMinor >= 0 ? '#0F9D7A' : '#B4413E' }}>
                   {balance.netMinor >= 0 ? '+' : '−'}{formatMinorAmount(Math.abs(balance.netMinor), balanceCurrency)}
                 </ThemedText>
@@ -129,10 +132,10 @@ export default function LedgerScreen() {
             ))}
             {transfers.length > 0 ? (
               <View style={styles.transferList}>
-                <ThemedText type="smallBold">Suggested settlement</ThemedText>
+                <ThemedText type="smallBold">建议结算方式</ThemedText>
                 {transfers.map((transfer) => (
                   <ThemedText key={`${transfer.fromParticipantId}-${transfer.toParticipantId}`} type="small" themeColor="textSecondary">
-                    {names.get(transfer.fromParticipantId)} pays {names.get(transfer.toParticipantId)} {formatMinorAmount(transfer.amountMinor, balanceCurrency)}
+                    {names.get(transfer.fromParticipantId)} 向 {names.get(transfer.toParticipantId)} 支付 {formatMinorAmount(transfer.amountMinor, balanceCurrency)}
                   </ThemedText>
                 ))}
               </View>
@@ -142,13 +145,13 @@ export default function LedgerScreen() {
       })}
 
       {expenses.length === 0 && activeTrip ? (
-        <InfoCard label="LEDGER READY" title="No expenses yet">
-          <ThemedText themeColor="textSecondary">The first saved expense will appear here with payer and share details.</ThemedText>
+        <InfoCard label="账本已就绪" title="还没有支出">
+          <ThemedText themeColor="textSecondary">保存第一笔支出后，这里会显示付款人与分摊明细。</ThemedText>
         </InfoCard>
       ) : expenses.map((expense) => (
-        <InfoCard key={expense.id} label={new Date(expense.occurredAt).toLocaleString()} title={`${expense.title} · ${formatMinorAmount(expense.totalMinor, expense.currency)}`} accent="#E7863C">
+        <InfoCard key={expense.id} label={new Date(expense.occurredAt).toLocaleString('zh-CN')} title={`${expense.title} · ${formatMinorAmount(expense.totalMinor, expense.currency)}`} accent="#E7863C">
           <ThemedText themeColor="textSecondary">
-            {expense.payers.map(({ userId }) => names.get(userId) ?? 'Traveler').join(', ')} paid · {expense.shares.length} shares
+            {expense.payers.map(({ userId }) => names.get(userId) ?? '同行者').join('、')} 付款 · {expense.shares.length} 人分摊
           </ThemedText>
         </InfoCard>
       ))}

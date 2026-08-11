@@ -6,14 +6,16 @@ import {
   createItineraryItem,
   createTrip,
   createTripInvite,
+  getProfile,
   listExpenses,
   listItineraryItems,
   listTripMembers,
   listTrips,
   updateProfile,
 } from '@/data/trip-repository';
-import type { Expense, ItineraryItem, Trip, TripMember } from '@/domain/models';
+import type { Expense, ItineraryItem, Profile, Trip, TripMember } from '@/domain/models';
 import { useAuth } from '@/features/auth/auth-provider';
+import { toUserMessage } from '@/lib/user-error';
 import type { Database } from '@/types/database';
 
 interface MvpContextValue {
@@ -24,6 +26,7 @@ interface MvpContextValue {
   members: TripMember[];
   itineraryItems: ItineraryItem[];
   expenses: Expense[];
+  profile?: Profile;
   currentUserId: string;
   selectTrip: (tripId: string) => Promise<void>;
   refresh: () => Promise<void>;
@@ -37,10 +40,6 @@ interface MvpContextValue {
 
 const MvpContext = createContext<MvpContextValue | null>(null);
 
-function errorMessage(caught: unknown) {
-  return caught instanceof Error ? caught.message : 'Something went wrong. Please try again.';
-}
-
 export function MvpProvider({ children }: PropsWithChildren) {
   const { session } = useAuth();
   const currentUserId = session?.user.id ?? '';
@@ -51,6 +50,7 @@ export function MvpProvider({ children }: PropsWithChildren) {
   const [members, setMembers] = useState<TripMember[]>([]);
   const [itineraryItems, setItineraryItems] = useState<ItineraryItem[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [profile, setProfile] = useState<Profile>();
 
   const loadTripDetails = useCallback(async (trip?: Trip) => {
     setActiveTrip(trip);
@@ -74,16 +74,17 @@ export function MvpProvider({ children }: PropsWithChildren) {
     setLoading(true);
     setError(undefined);
     try {
-      const nextTrips = await listTrips();
+      const [nextTrips, nextProfile] = await Promise.all([listTrips(), getProfile(currentUserId)]);
       setTrips(nextTrips);
+      setProfile(nextProfile);
       const nextActive = nextTrips.find(({ id }) => id === activeTrip?.id) ?? nextTrips[0];
       await loadTripDetails(nextActive);
     } catch (caught) {
-      setError(errorMessage(caught));
+      setError(toUserMessage(caught));
     } finally {
       setLoading(false);
     }
-  }, [activeTrip?.id, loadTripDetails]);
+  }, [activeTrip?.id, currentUserId, loadTripDetails]);
 
   useEffect(() => {
     if (!currentUserId) return;
@@ -99,7 +100,7 @@ export function MvpProvider({ children }: PropsWithChildren) {
     try {
       await loadTripDetails(trip);
     } catch (caught) {
-      setError(errorMessage(caught));
+      setError(toUserMessage(caught));
     } finally {
       setLoading(false);
     }
@@ -120,23 +121,24 @@ export function MvpProvider({ children }: PropsWithChildren) {
   }, [loadTripDetails]);
 
   const createInvite = useCallback(async (role: 'editor' | 'viewer') => {
-    if (!activeTrip) throw new Error('Select a trip first.');
+    if (!activeTrip) throw new Error('请先选择一个行程。');
     return createTripInvite(activeTrip.id, role);
   }, [activeTrip]);
 
   const saveProfile = useCallback(async (displayName: string) => {
     await updateProfile(currentUserId, displayName);
+    setProfile(await getProfile(currentUserId));
     if (activeTrip) setMembers(await listTripMembers(activeTrip.id));
   }, [activeTrip, currentUserId]);
 
   const addItineraryItem = useCallback(async (input: { title: string; kind: Database['public']['Enums']['itinerary_kind']; startsAt: string; locationLabel?: string }) => {
-    if (!activeTrip) throw new Error('Create or join a trip first.');
+    if (!activeTrip) throw new Error('请先创建或加入一个行程。');
     await createItineraryItem(currentUserId, { ...input, tripId: activeTrip.id });
     setItineraryItems(await listItineraryItems(activeTrip.id));
   }, [activeTrip, currentUserId]);
 
   const addEqualExpense = useCallback(async (input: { title: string; currency: string; totalMinor: number; payerUserId: string; participantUserIds: string[] }) => {
-    if (!activeTrip) throw new Error('Create or join a trip first.');
+    if (!activeTrip) throw new Error('请先创建或加入一个行程。');
     await createEqualExpense({ ...input, tripId: activeTrip.id });
     setExpenses(await listExpenses(activeTrip.id));
   }, [activeTrip]);
@@ -149,6 +151,7 @@ export function MvpProvider({ children }: PropsWithChildren) {
     members,
     itineraryItems,
     expenses,
+    profile,
     currentUserId,
     selectTrip,
     refresh,
@@ -158,7 +161,7 @@ export function MvpProvider({ children }: PropsWithChildren) {
     saveProfile,
     addItineraryItem,
     addEqualExpense,
-  }), [loading, error, trips, activeTrip, members, itineraryItems, expenses, currentUserId, selectTrip, refresh, createTripAction, joinTrip, createInvite, saveProfile, addItineraryItem, addEqualExpense]);
+  }), [loading, error, trips, activeTrip, members, itineraryItems, expenses, profile, currentUserId, selectTrip, refresh, createTripAction, joinTrip, createInvite, saveProfile, addItineraryItem, addEqualExpense]);
 
   return <MvpContext.Provider value={value}>{children}</MvpContext.Provider>;
 }

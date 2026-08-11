@@ -1,14 +1,16 @@
 import { useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { DateTimeField } from '@/components/date-time-field';
 import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/form-controls';
 import { InfoCard } from '@/components/info-card';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { useMvp } from '@/features/mvp/mvp-provider';
+import { toUserMessage } from '@/lib/user-error';
 import type { ItineraryKind } from '@/domain/models';
+import { itineraryKindLabels, itineraryKinds } from '@/constants/options';
 
-const itemKinds: ItineraryKind[] = ['transport', 'lodging', 'food', 'activity', 'note', 'task'];
 
 export default function TodayScreen() {
   const { activeTrip, members, itineraryItems, loading, error, currentUserId, addItineraryItem } = useMvp();
@@ -29,12 +31,12 @@ export default function TodayScreen() {
     setFormError(undefined);
     try {
       const startsAt = new Date(`${date}T${time}:00`);
-      if (Number.isNaN(startsAt.getTime())) throw new Error('Enter a valid date and time.');
+      if (Number.isNaN(startsAt.getTime())) throw new Error('请选择有效的日期和时间。');
       await addItineraryItem({ title, locationLabel: location, kind, startsAt: startsAt.toISOString() });
       setTitle('');
       setLocation('');
     } catch (caught) {
-      setFormError(caught instanceof Error ? caught.message : 'Could not add the itinerary item.');
+      setFormError(toUserMessage(caught, '无法添加行程安排，请稍后重试。'));
     } finally {
       setBusy(false);
     }
@@ -42,59 +44,59 @@ export default function TodayScreen() {
 
   return (
     <Screen
-      eyebrow={activeTrip ? `${activeTrip.startsOn} – ${activeTrip.endsOn}` : 'Today'}
-      title={activeTrip?.name ?? 'Start your first trip'}
-      subtitle={activeTrip ? `${members.length} traveler${members.length === 1 ? '' : 's'} · ${activeTrip.homeCurrency} home currency` : 'Create or join a trip from the Trips tab.'}>
+      eyebrow={activeTrip ? `${activeTrip.startsOn} 至 ${activeTrip.endsOn}` : '今天'}
+      title={activeTrip?.name ?? '开始你的第一次行程'}
+      subtitle={activeTrip ? `${members.length} 位同行者 · 本位币 ${activeTrip.homeCurrency}` : '请先从“行程”页面创建或加入一个行程。'}>
       {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
-      {loading ? <InlineNotice>Refreshing the shared timeline…</InlineNotice> : null}
+      {loading ? <InlineNotice>正在刷新共享时间线…</InlineNotice> : null}
 
       {!activeTrip ? (
-        <InfoCard label="NO ACTIVE TRIP" title="Create or join a shared trip">
+        <InfoCard label="暂无行程" title="创建或加入共享行程">
           <ThemedText themeColor="textSecondary">
-            Once you join, the next confirmed itinerary item will appear here for the whole group.
+            加入后，所有成员都可以在这里查看下一项已确认的安排。
           </ThemedText>
         </InfoCard>
       ) : upcomingItems.length > 0 ? (
         upcomingItems.map((item, index) => (
           <InfoCard
             key={item.id}
-            label={index === 0 ? 'NEXT STEP' : item.kind.toUpperCase()}
+            label={index === 0 ? '下一步' : itineraryKindLabels[item.kind]}
             title={item.title}
             accent={index === 0 ? '#0F9D7A' : '#4B67D1'}>
             <ThemedText themeColor="textSecondary">
-              {new Date(item.startsAt).toLocaleString()}
+              {new Date(item.startsAt).toLocaleString('zh-CN')}
               {item.locationLabel ? ` · ${item.locationLabel}` : ''}
             </ThemedText>
           </InfoCard>
         ))
       ) : (
-        <InfoCard label="TIMELINE READY" title="Nothing scheduled yet">
-          <ThemedText themeColor="textSecondary">Add the first shared item below.</ThemedText>
+        <InfoCard label="时间线已就绪" title="还没有安排">
+          <ThemedText themeColor="textSecondary">在下方添加第一项共享安排。</ThemedText>
         </InfoCard>
       )}
 
       {activeTrip && canEdit ? (
-        <InfoCard label="QUICK ADD" title="Add to the shared timeline" accent="#E7863C">
+        <InfoCard label="快速添加" title="添加到共享时间线" accent="#E7863C">
           <View style={styles.form}>
-            <FormField label="Title" value={title} onChangeText={setTitle} placeholder="Airport Express to Central" />
-            <FormField label="Location" value={location} onChangeText={setLocation} placeholder="Hong Kong Station" />
+            <FormField label="安排名称" value={title} onChangeText={setTitle} placeholder="例如：乘机场快线前往中环" />
+            <FormField label="地点" value={location} onChangeText={setLocation} placeholder="例如：香港站" />
             <View style={styles.row}>
-              <View style={styles.grow}><FormField label="Date" value={date} onChangeText={setDate} placeholder="2026-12-01" /></View>
-              <View style={styles.grow}><FormField label="Time" value={time} onChangeText={setTime} placeholder="09:00" /></View>
+              <View style={styles.grow}><DateTimeField label="日期" value={date} mode="date" onChange={setDate} /></View>
+              <View style={styles.grow}><DateTimeField label="时间" value={time} mode="time" onChange={setTime} /></View>
             </View>
             <View style={styles.chips}>
-              {itemKinds.map((itemKind) => (
+              {itineraryKinds.map((itemKind) => (
                 <ChoiceChip key={itemKind} selected={kind === itemKind} onPress={() => setKind(itemKind)}>
-                  {itemKind}
+                  {itineraryKindLabels[itemKind]}
                 </ChoiceChip>
               ))}
             </View>
-            <ActionButton busy={busy} disabled={!title.trim()} onPress={submitItem}>Add itinerary item</ActionButton>
+            <ActionButton busy={busy} disabled={!title.trim()} onPress={submitItem}>添加行程安排</ActionButton>
             {formError ? <InlineNotice tone="error">{formError}</InlineNotice> : null}
           </View>
         </InfoCard>
       ) : activeTrip ? (
-        <InlineNotice>Viewer access: you can follow the shared timeline but cannot edit it.</InlineNotice>
+        <InlineNotice>你当前是仅查看成员，可以查看共享时间线，但不能编辑。</InlineNotice>
       ) : null}
     </Screen>
   );

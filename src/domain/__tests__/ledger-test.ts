@@ -5,7 +5,7 @@ describe('ledger helpers', () => {
   it('parses two-decimal and zero-decimal currencies without floating-point math', () => {
     expect(parseAmountToMinor('860.25', 'HKD')).toBe(86025);
     expect(parseAmountToMinor('1200', 'JPY')).toBe(1200);
-    expect(() => parseAmountToMinor('12.50', 'JPY')).toThrow('whole-number');
+    expect(() => parseAmountToMinor('12.50', 'JPY')).toThrow('整数金额');
   });
 
   it('calculates payer-minus-share balances per original currency', () => {

@@ -1,0 +1,8 @@
+{
+  "ios": {
+    "CFBundleDisplayName": "TripFlow 旅途流"
+  },
+  "android": {
+    "app_name": "TripFlow 旅途流"
+  }
+}

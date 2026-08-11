@@ -6,6 +6,7 @@ import { InfoCard } from '@/components/info-card';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { sendEmailOtp, verifyEmailOtp } from '@/features/auth/auth-service';
+import { toUserMessage } from '@/lib/user-error';
 
 export function AuthScreen() {
   const [email, setEmail] = useState('');
@@ -22,7 +23,7 @@ export function AuthScreen() {
       setEmail(normalized);
       setStep('verify');
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Could not send the login email.');
+      setError(toUserMessage(caught, '登录邮件发送失败，请稍后重试。'));
     } finally {
       setBusy(false);
     }
@@ -34,7 +35,7 @@ export function AuthScreen() {
     try {
       await verifyEmailOtp(email, token);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Could not verify the code.');
+      setError(toUserMessage(caught, '验证码校验失败，请重新获取验证码。'));
     } finally {
       setBusy(false);
     }
@@ -42,15 +43,15 @@ export function AuthScreen() {
 
   return (
     <Screen
-      eyebrow="TripFlow private beta"
-      title="Your group trip, in one place"
-      subtitle="Sign in without a password. New travelers can join from an invite code.">
-      <InfoCard label={step === 'email' ? 'SIGN IN' : 'CHECK YOUR EMAIL'} title={step === 'email' ? 'Continue with email' : email}>
+      eyebrow="TripFlow 内测版"
+      title="把大家的旅程放在一起"
+      subtitle="无需密码，通过邮箱安全登录；同行者可使用邀请码加入。">
+      <InfoCard label={step === 'email' ? '登录' : '查看邮箱'} title={step === 'email' ? '使用邮箱继续' : email}>
         <View style={styles.form}>
           {step === 'email' ? (
             <>
               <FormField
-                label="Email"
+                label="邮箱"
                 value={email}
                 onChangeText={setEmail}
                 autoCapitalize="none"
@@ -58,23 +59,23 @@ export function AuthScreen() {
                 keyboardType="email-address"
                 placeholder="you@example.com"
               />
-              <ActionButton busy={busy} onPress={sendCode}>Send login email</ActionButton>
+              <ActionButton busy={busy} onPress={sendCode}>发送登录邮件</ActionButton>
             </>
           ) : (
             <>
               <ThemedText themeColor="textSecondary">
-                Enter the six-digit code if the email contains one. If it contains a secure sign-in link, open that link on this device.
+                如果邮件中有六位验证码，请在下方输入；如果收到的是安全登录链接，请在当前设备上打开。
               </ThemedText>
               <FormField
-                label="Six-digit code"
+                label="六位验证码"
                 value={token}
                 onChangeText={setToken}
                 keyboardType="number-pad"
                 maxLength={6}
                 placeholder="123456"
               />
-              <ActionButton busy={busy} onPress={verifyCode}>Verify code</ActionButton>
-              <ActionButton tone="secondary" disabled={busy} onPress={() => setStep('email')}>Use another email</ActionButton>
+              <ActionButton busy={busy} onPress={verifyCode}>验证并登录</ActionButton>
+              <ActionButton tone="secondary" disabled={busy} onPress={() => setStep('email')}>更换邮箱</ActionButton>
             </>
           )}
           {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
@@ -88,11 +89,11 @@ export function AuthLoadingScreen({ configured }: { configured: boolean }) {
   return (
     <Screen
       eyebrow="TripFlow"
-      title={configured ? 'Restoring your trip' : 'Configuration required'}
-      subtitle={configured ? 'Checking your secure session…' : 'Add the Supabase public URL and publishable key to start the app.'}>
+      title={configured ? '正在恢复你的旅程' : '需要完成配置'}
+      subtitle={configured ? '正在检查安全登录状态…' : '请添加 Supabase 公共地址与发布密钥后再启动应用。'}>
       {!configured ? (
         <InlineNotice tone="error">
-          Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY.
+          请设置 EXPO_PUBLIC_SUPABASE_URL 和 EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY。
         </InlineNotice>
       ) : null}
     </Screen>

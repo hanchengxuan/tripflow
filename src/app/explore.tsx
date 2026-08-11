@@ -1,12 +1,15 @@
 import { useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { DateTimeField } from '@/components/date-time-field';
 import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/form-controls';
 import { InfoCard } from '@/components/info-card';
 import { Screen } from '@/components/screen';
+import { SelectionField } from '@/components/selection-field';
 import { ThemedText } from '@/components/themed-text';
-import { signOut } from '@/features/auth/auth-service';
+import { currencyOptions, timeZoneOptions, tripRoleLabels } from '@/constants/options';
 import { useMvp } from '@/features/mvp/mvp-provider';
+import { toUserMessage } from '@/lib/user-error';
 
 function dateOffset(days: number) {
   const date = new Date();
@@ -26,7 +29,6 @@ export default function TripsScreen() {
     createTrip,
     joinTrip,
     createInvite,
-    saveProfile,
   } = useMvp();
   const currentMember = members.find(({ userId }) => userId === currentUserId);
   const isOwner = currentMember?.role === 'owner';
@@ -38,13 +40,14 @@ export default function TripsScreen() {
   const [inviteCode, setInviteCode] = useState('');
   const [generatedInvite, setGeneratedInvite] = useState<{ token: string; expiresAt: string }>();
   const [inviteRole, setInviteRole] = useState<'editor' | 'viewer'>('editor');
-  const [displayName, setDisplayName] = useState('');
   const [busyAction, setBusyAction] = useState<string>();
   const [actionError, setActionError] = useState<string>();
   const [success, setSuccess] = useState<string>();
 
   const tripSummary = useMemo(
-    () => activeTrip ? `${activeTrip.startsOn} – ${activeTrip.endsOn} · ${activeTrip.homeCurrency}` : 'Create a new trip or enter an invite code.',
+    () => activeTrip
+      ? `${activeTrip.startsOn} 至 ${activeTrip.endsOn} · 记账本位币 ${activeTrip.homeCurrency}`
+      : '创建新行程，或输入邀请码加入同行者的行程。',
     [activeTrip],
   );
 
@@ -56,7 +59,7 @@ export default function TripsScreen() {
       await work();
       if (successMessage) setSuccess(successMessage);
     } catch (caught) {
-      setActionError(caught instanceof Error ? caught.message : 'The action could not be completed.');
+      setActionError(toUserMessage(caught));
     } finally {
       setBusyAction(undefined);
     }
@@ -66,14 +69,14 @@ export default function TripsScreen() {
     await run('create', async () => {
       await createTrip({ name, startsOn, endsOn, homeCurrency: currency, defaultTimeZone: timeZone });
       setName('');
-    }, 'Trip created. You are the owner.');
+    }, '行程创建成功，你是该行程的创建者。');
   }
 
   async function submitInvite() {
     await run('join', async () => {
       await joinTrip(inviteCode);
       setInviteCode('');
-    }, 'Invite accepted. Welcome to the trip.');
+    }, '已接受邀请，欢迎加入行程。');
   }
 
   async function generateInvite() {
@@ -83,14 +86,14 @@ export default function TripsScreen() {
   }
 
   return (
-    <Screen eyebrow="Trips & people" title={activeTrip?.name ?? 'Your trips'} subtitle={tripSummary}>
+    <Screen eyebrow="行程与成员" title={activeTrip?.name ?? '我的行程'} subtitle={tripSummary}>
       {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
       {actionError ? <InlineNotice tone="error">{actionError}</InlineNotice> : null}
       {success ? <InlineNotice>{success}</InlineNotice> : null}
-      {loading ? <InlineNotice>Synchronizing trip membership…</InlineNotice> : null}
+      {loading ? <InlineNotice>正在同步行程与成员…</InlineNotice> : null}
 
       {trips.length > 0 ? (
-        <InfoCard label="ACTIVE TRIP" title="Switch trip">
+        <InfoCard label="当前行程" title="切换行程">
           <View style={styles.chips}>
             {trips.map((trip) => (
               <ChoiceChip key={trip.id} selected={trip.id === activeTrip?.id} onPress={() => void selectTrip(trip.id)}>
@@ -102,76 +105,77 @@ export default function TripsScreen() {
       ) : null}
 
       {activeTrip ? (
-        <InfoCard label="TRAVELERS" title={`${members.length} member${members.length === 1 ? '' : 's'}`}>
+        <InfoCard label="同行成员" title={`共 ${members.length} 人`}>
           <View style={styles.memberList}>
             {members.map((member) => (
               <View key={member.userId} style={styles.memberRow}>
                 <ThemedText>{member.displayName}</ThemedText>
-                <ThemedText type="smallBold" themeColor="textSecondary">{member.role}</ThemedText>
+                <ThemedText type="smallBold" themeColor="textSecondary">{tripRoleLabels[member.role]}</ThemedText>
               </View>
             ))}
           </View>
-          <View style={styles.form}>
-            <FormField label="Your display name" value={displayName} onChangeText={setDisplayName} placeholder={currentMember?.displayName ?? 'Liam'} />
-            <ActionButton
-              tone="secondary"
-              busy={busyAction === 'profile'}
-              disabled={!displayName.trim()}
-              onPress={() => void run('profile', () => saveProfile(displayName), 'Profile updated.')}>
-              Save profile
-            </ActionButton>
-          </View>
+          <ThemedText type="small" themeColor="textSecondary">个人名称与账号信息可在“我的”页面编辑。</ThemedText>
         </InfoCard>
       ) : null}
 
       {activeTrip && isOwner ? (
-        <InfoCard label="INVITE" title="Bring your group in under a minute" accent="#4B67D1">
+        <InfoCard label="邀请成员" title="一分钟内加入同行者" accent="#4B67D1">
           <View style={styles.form}>
             <View style={styles.chips}>
-              <ChoiceChip selected={inviteRole === 'editor'} onPress={() => setInviteRole('editor')}>Editor</ChoiceChip>
-              <ChoiceChip selected={inviteRole === 'viewer'} onPress={() => setInviteRole('viewer')}>Viewer</ChoiceChip>
+              <ChoiceChip selected={inviteRole === 'editor'} onPress={() => setInviteRole('editor')}>可编辑</ChoiceChip>
+              <ChoiceChip selected={inviteRole === 'viewer'} onPress={() => setInviteRole('viewer')}>仅查看</ChoiceChip>
             </View>
-            <ActionButton busy={busyAction === 'invite'} onPress={() => void generateInvite()}>Generate invite code</ActionButton>
+            <ActionButton busy={busyAction === 'invite'} onPress={() => void generateInvite()}>生成邀请码</ActionButton>
             {generatedInvite ? (
               <InlineNotice>
-                Code: {generatedInvite.token}{'\n'}Expires: {new Date(generatedInvite.expiresAt).toLocaleString()}
+                邀请码：{generatedInvite.token}{'\n'}有效期至：{new Date(generatedInvite.expiresAt).toLocaleString('zh-CN')}
               </InlineNotice>
             ) : null}
           </View>
         </InfoCard>
       ) : null}
 
-      <InfoCard label="JOIN" title="Enter a TripFlow invite code" accent="#E7863C">
+      <InfoCard label="加入行程" title="输入 TripFlow 邀请码" accent="#E7863C">
         <View style={styles.form}>
           <FormField
-            label="Invite code"
+            label="邀请码"
             value={inviteCode}
             onChangeText={setInviteCode}
             autoCapitalize="none"
-            placeholder="48-character code"
+            placeholder="48 位邀请码"
           />
           <ActionButton busy={busyAction === 'join'} disabled={inviteCode.trim().length !== 48} onPress={() => void submitInvite()}>
-            Join trip
+            加入行程
           </ActionButton>
         </View>
       </InfoCard>
 
-      <InfoCard label="NEW TRIP" title="Create the shared workspace">
+      <InfoCard label="新行程" title="创建共享旅行空间">
         <View style={styles.form}>
-          <FormField label="Trip name" value={name} onChangeText={setName} placeholder="Year-end Asia 2026" />
+          <FormField label="行程名称" value={name} onChangeText={setName} placeholder="例如：2026 年末亚洲之旅" />
           <View style={styles.row}>
-            <View style={styles.grow}><FormField label="Start date" value={startsOn} onChangeText={setStartsOn} /></View>
-            <View style={styles.grow}><FormField label="End date" value={endsOn} onChangeText={setEndsOn} /></View>
+            <View style={styles.grow}><DateTimeField label="开始日期" value={startsOn} mode="date" onChange={setStartsOn} /></View>
+            <View style={styles.grow}>
+              <DateTimeField
+                label="结束日期"
+                value={endsOn}
+                mode="date"
+                minimumDate={new Date(`${startsOn}T12:00:00`)}
+                onChange={setEndsOn}
+              />
+            </View>
           </View>
           <View style={styles.row}>
-            <View style={styles.grow}><FormField label="Home currency" value={currency} onChangeText={setCurrency} autoCapitalize="characters" maxLength={3} /></View>
-            <View style={styles.grow}><FormField label="Time zone" value={timeZone} onChangeText={setTimeZone} /></View>
+            <View style={styles.grow}>
+              <SelectionField label="记账本位币" value={currency} options={currencyOptions} onChange={setCurrency} />
+            </View>
+            <View style={styles.grow}>
+              <SelectionField label="行程时区" value={timeZone} options={timeZoneOptions} onChange={setTimeZone} />
+            </View>
           </View>
-          <ActionButton busy={busyAction === 'create'} disabled={!name.trim()} onPress={() => void submitTrip()}>Create trip</ActionButton>
+          <ActionButton busy={busyAction === 'create'} disabled={!name.trim()} onPress={() => void submitTrip()}>创建行程</ActionButton>
         </View>
       </InfoCard>
-
-      <ActionButton tone="danger" busy={busyAction === 'signout'} onPress={() => void run('signout', signOut)}>Sign out</ActionButton>
     </Screen>
   );
 }

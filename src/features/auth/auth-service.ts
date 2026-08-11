@@ -5,7 +5,7 @@ export function normalizeEmail(email: string): string {
   const normalized = email.trim().toLowerCase();
 
   if (!normalized || !normalized.includes('@')) {
-    throw new Error('Enter a valid email address.');
+    throw new Error('请输入有效的邮箱地址。');
   }
 
   return normalized;
@@ -30,7 +30,7 @@ export async function verifyEmailOtp(email: string, token: string) {
   const normalizedToken = token.trim();
 
   if (!/^\d{6}$/.test(normalizedToken)) {
-    throw new Error('Enter the six-digit code from your email.');
+    throw new Error('请输入邮件中的六位验证码。');
   }
 
   const { data, error } = await getSupabaseClient().auth.verifyOtp({
