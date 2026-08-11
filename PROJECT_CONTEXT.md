@@ -85,6 +85,7 @@ See `planning.md` for the complete P0/P1 scope, non-goals, architecture, milesto
 - Trip owners can progressively manage another traveller's owner/editor/viewer role or remove them after their balance is fully settled, while preserving historical ledger evidence; direct membership mutation is revoked in favor of validated RPCs
 - Transactional three-account acceptance verifies editor trip editing, owner role management/removal, and self-membership protection without leaving fixture data
 - Removed travellers retain a read-only trip-scoped name/avatar snapshot for historical ledger auditability, and expense creation shares a membership lock with removal to prevent concurrent stranded balances
+- Lodging is modeled as one multi-day check-in/check-out interval in the trip timezone rather than repeated daily itinerary rows; Today surfaces a compact Stays rail and can atomically add one transfer from the latest valid prior placed item to the saved hotel
 
 ## Applied Supabase migrations
 
@@ -101,6 +102,8 @@ See `planning.md` for the complete P0/P1 scope, non-goals, architecture, milesto
 - `trip_details_and_member_management`
 - `guard_member_removal_with_balances`
 - `archive_removed_member_identity`
+- `lodging_intervals_and_atomic_transfers`
+- `harden_stay_transfer_rpc`
 
 Temporary acceptance fixtures are removed after each test; production may contain real user-created rows.
 
@@ -114,6 +117,7 @@ Temporary acceptance fixtures are removed after each test; production may contai
 6. Address performance-advisor warnings before the dataset grows. The current security advisor has one password-protection warning that is not exercised by the passwordless-only login flow; revisit it before enabling passwords.
 7. Resolve the Google Places HTTP 403 by confirming Places API (New) is enabled in the key's project, Billing is active, and the key's API restriction allows Places API (New); then rerun authenticated autocomplete acceptance and set a conservative quota alert.
 8. Continue the itinerary experience milestone with saved Google Place IDs/details, participant/status controls, booking essentials, and richer branch interactions.
+9. Extend lodging anchors with booking confirmation, room notes, check-in instructions, and checkout-to-next-stop shortcuts after the Places 403 is resolved.
 
 ## Standing decisions and safety boundaries
 

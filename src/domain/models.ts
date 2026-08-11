@@ -61,6 +61,7 @@ export interface ItineraryItem {
   locationLabel?: string;
   localScriptAddress?: string;
   responsibleUserId?: UserId;
+  linkedStayId?: string;
 }
 
 export interface ExpensePayer {

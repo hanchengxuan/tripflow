@@ -395,6 +395,7 @@ export type Database = {
           id: string
           is_material_change: boolean
           kind: Database["public"]["Enums"]["itinerary_kind"]
+          linked_stay_id: string | null
           local_script_address: string | null
           location_label: string | null
           notes: string | null
@@ -414,6 +415,7 @@ export type Database = {
           id?: string
           is_material_change?: boolean
           kind: Database["public"]["Enums"]["itinerary_kind"]
+          linked_stay_id?: string | null
           local_script_address?: string | null
           location_label?: string | null
           notes?: string | null
@@ -433,6 +435,7 @@ export type Database = {
           id?: string
           is_material_change?: boolean
           kind?: Database["public"]["Enums"]["itinerary_kind"]
+          linked_stay_id?: string | null
           local_script_address?: string | null
           location_label?: string | null
           notes?: string | null
@@ -445,6 +448,13 @@ export type Database = {
           version?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "itinerary_items_linked_stay_id_fkey"
+            columns: ["linked_stay_id"]
+            isOneToOne: false
+            referencedRelation: "itinerary_items"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "itinerary_items_created_by_fkey"
             columns: ["created_by"]
@@ -882,6 +892,14 @@ export type Database = {
           payer_user_id: string
           requested_segment_id?: string
           requested_trip_id: string
+        }
+        Returns: string
+      }
+      create_stay_transfer: {
+        Args: {
+          requested_stay_id: string
+          route_title: string
+          source_item_id: string
         }
         Returns: string
       }

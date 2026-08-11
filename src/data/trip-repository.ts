@@ -28,6 +28,7 @@ function mapItineraryItem(row: ItineraryRow): ItineraryItem {
     locationLabel: row.location_label ?? undefined,
     localScriptAddress: row.local_script_address ?? undefined,
     responsibleUserId: row.responsible_user_id ?? undefined,
+    linkedStayId: row.linked_stay_id ?? undefined,
   };
 }
 
@@ -274,6 +275,15 @@ export async function createItineraryItem(
     starts_at: input.startsAt,
     ends_at: input.endsAt ?? null,
     location_label: input.locationLabel?.trim() || null,
+  });
+  if (error) throw error;
+}
+
+export async function createStayTransfer(input: { stayId: string; sourceItemId: string; title: string }) {
+  const { error } = await getSupabaseClient().rpc('create_stay_transfer', {
+    requested_stay_id: input.stayId,
+    source_item_id: input.sourceItemId,
+    route_title: input.title.trim(),
   });
   if (error) throw error;
 }

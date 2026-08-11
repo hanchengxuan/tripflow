@@ -42,12 +42,14 @@ export function DateTimeField({
   mode,
   onChange,
   minimumDate,
+  maximumDate,
 }: {
   label: string;
   value: string;
   mode: PickerMode;
   onChange: (value: string) => void;
   minimumDate?: Date;
+  maximumDate?: Date;
 }) {
   const theme = useTheme();
   const { locale, tx } = useI18n();
@@ -60,6 +62,7 @@ export function DateTimeField({
       locale={locale === 'zh-CN' ? 'zh_CN' : 'en_US'}
       is24Hour
       minimumDate={minimumDate}
+      maximumDate={maximumDate}
       display={Platform.OS === 'ios' ? 'spinner' : 'default'}
       positiveButton={{ label: tx('确定', 'Done') }}
       negativeButton={{ label: tx('取消', 'Cancel') }}

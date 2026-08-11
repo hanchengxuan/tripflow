@@ -331,6 +331,10 @@ Current implementation and acceptance requirements:
 - A user cannot change or remove their own membership; historical expenses and settlements remain intact when a traveller is removed, while future itinerary/segment participation is revoked.
 - A removed traveller's name and avatar are retained as a trip-scoped read-only audit snapshot so historical payer, split, and settlement evidence never degrades to an anonymous label.
 - Member removal and expense creation share a transaction lock so an expense cannot add a new balance while that member is being removed.
+- Lodging is a date range with separate check-in and check-out date/time, not one repeated item per day; a stay remains visible as shared context across every covered day.
+- Saved lodging acts as a route anchor. From the stays overview, editors can atomically add one transfer from the latest valid prior itinerary place to the hotel; the database prevents duplicate transfers across simultaneous editors.
+- Hotel entry defaults to familiar 15:00 check-in / 11:00 check-out values but keeps both times editable and bilingual.
+- Lodging input and display use the trip timezone, stay within the trip date range, and require a navigable hotel/location before saving.
 - Create trip, join by invite, edit trip, invite traveller, and manage existing traveller remain separate progressive tasks rather than simultaneous stacked forms.
 
 Exit: four test users can join and collaboratively edit one shared itinerary.

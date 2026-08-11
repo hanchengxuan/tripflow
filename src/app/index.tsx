@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Linking, Pressable, StyleSheet, View } from 'react-native';
 
 import { DateTimeField } from '@/components/date-time-field';
@@ -12,16 +12,8 @@ import type { ItineraryKind } from '@/domain/models';
 import { useI18n } from '@/features/i18n/i18n-provider';
 import { useMvp } from '@/features/mvp/mvp-provider';
 import { toUserMessage } from '@/lib/user-error';
+import { formatZonedDateTimeRange, stayNightsInZone, zonedDateTimeToIso } from '@/lib/trip-time';
 import { useTheme } from '@/hooks/use-theme';
-
-function formatDateTimeRange(startsAt: string, endsAt: string | undefined, locale: string) {
-  const start = new Date(startsAt);
-  const date = start.toLocaleDateString(locale, { month: 'short', day: 'numeric', weekday: 'short' });
-  const startTime = start.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', hour12: false });
-  if (!endsAt) return `${date} · ${startTime}`;
-  const endTime = new Date(endsAt).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', hour12: false });
-  return `${date} · ${startTime}–${endTime}`;
-}
 
 function formatTripDates(startsOn: string, endsOn: string, locale: string) {
   const start = new Date(`${startsOn}T12:00:00`);
@@ -63,36 +55,97 @@ const quickTemplates: { kind: ItineraryKind; zh: string; en: string }[] = [
 export default function TodayScreen() {
   const { locale, languageTag, tx } = useI18n();
   const theme = useTheme();
-  const { activeTrip, members, itineraryItems, loading, error, currentUserId, addItineraryItem } = useMvp();
+  const { activeTrip, members, itineraryItems, loading, error, currentUserId, addItineraryItem, addStayTransfer } = useMvp();
   const [title, setTitle] = useState('');
   const [location, setLocation] = useState('');
   const [date, setDate] = useState(activeTrip?.startsOn ?? new Date().toISOString().slice(0, 10));
+  const [endDate, setEndDate] = useState(activeTrip?.startsOn ?? new Date().toISOString().slice(0, 10));
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('10:30');
   const [kind, setKind] = useState<ItineraryKind>('activity');
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState<string>();
+  const [success, setSuccess] = useState<string>();
+  const [busyRouteId, setBusyRouteId] = useState<string>();
+  const [currentTimestamp, setCurrentTimestamp] = useState(0);
 
   const currentMember = members.find(({ userId }) => userId === currentUserId);
   const canEdit = currentMember?.role === 'owner' || currentMember?.role === 'editor';
-  const upcomingItems = useMemo(() => itineraryItems, [itineraryItems]);
+  const upcomingItems = useMemo(() => itineraryItems.filter((item) => !currentTimestamp || new Date(item.endsAt ?? item.startsAt).getTime() >= currentTimestamp), [currentTimestamp, itineraryItems]);
+  const stays = useMemo(() => itineraryItems.filter(({ kind }) => kind === 'lodging'), [itineraryItems]);
+  const upcomingStays = useMemo(() => stays.filter((stay) => !currentTimestamp || new Date(stay.endsAt ?? stay.startsAt).getTime() >= currentTimestamp), [currentTimestamp, stays]);
+  const visibleStays = useMemo(() => upcomingStays.slice(0, 3), [upcomingStays]);
   const tripRange = activeTrip ? formatTripDates(activeTrip.startsOn, activeTrip.endsOn, languageTag) : undefined;
+  const tripTimeZone = activeTrip?.defaultTimeZone ?? 'UTC';
+
+  useEffect(() => {
+    if (!activeTrip) return;
+    const timeout = setTimeout(() => {
+      setDate(activeTrip.startsOn);
+      setEndDate(activeTrip.startsOn);
+      setCurrentTimestamp(Date.now());
+    }, 0);
+    return () => clearTimeout(timeout);
+  }, [activeTrip]);
 
   async function submitItem() {
     setBusy(true);
     setFormError(undefined);
+    setSuccess(undefined);
     try {
-      const startsAt = new Date(`${date}T${startTime}:00`);
-      const endsAt = new Date(`${date}T${endTime}:00`);
-      if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime())) throw new Error(tx('请选择有效的日期和时间。', 'Choose a valid date and time.'));
-      if (endsAt <= startsAt) throw new Error(tx('结束时间需要晚于开始时间。', 'End time must be later than start time.'));
-      await addItineraryItem({ title, locationLabel: location, kind, startsAt: startsAt.toISOString(), endsAt: endsAt.toISOString() });
+      if (kind === 'lodging' && !location.trim()) throw new Error(tx('请先选择酒店或住宿地点。', 'Choose the hotel or stay location first.'));
+      const startsAt = zonedDateTimeToIso(date, startTime, tripTimeZone);
+      const endsAt = zonedDateTimeToIso(kind === 'lodging' ? endDate : date, endTime, tripTimeZone);
+      if (new Date(endsAt) <= new Date(startsAt)) throw new Error(tx('结束时间需要晚于开始时间。', 'End time must be later than start time.'));
+      await addItineraryItem({ title, locationLabel: location, kind, startsAt, endsAt });
       setTitle('');
       setLocation('');
+      setSuccess(kind === 'lodging'
+        ? tx('住宿已按入住区间加入，不需要每天重复添加。', 'Stay added for the full date range. No daily duplicates needed.')
+        : tx('安排已加入共享时间线。', 'Plan added to the shared timeline.'));
     } catch (caught) {
       setFormError(toUserMessage(caught, tx('无法添加行程安排，请稍后重试。', 'Could not add this plan. Please try again.')));
     } finally {
       setBusy(false);
+    }
+  }
+
+  function chooseKind(nextKind: ItineraryKind) {
+    setKind(nextKind);
+    if (nextKind !== 'lodging') return;
+    setStartTime('15:00');
+    setEndTime('11:00');
+    const nextDay = new Date(`${date}T12:00:00`);
+    nextDay.setDate(nextDay.getDate() + 1);
+    setEndDate(nextDay.toISOString().slice(0, 10));
+  }
+
+  function previousPlaceFor(stay: (typeof itineraryItems)[number]) {
+    return itineraryItems
+      .filter((item) => item.id !== stay.id
+        && item.linkedStayId !== stay.id
+        && item.locationLabel
+        && new Date(item.endsAt ?? item.startsAt) <= new Date(stay.startsAt))
+      .sort((a, b) => new Date(b.endsAt ?? b.startsAt).getTime() - new Date(a.endsAt ?? a.startsAt).getTime())[0];
+  }
+
+  async function addRouteToStay(stay: (typeof itineraryItems)[number]) {
+    const previous = previousPlaceFor(stay);
+    if (!previous?.locationLabel || !stay.locationLabel) return;
+    setBusyRouteId(stay.id);
+    setFormError(undefined);
+    setSuccess(undefined);
+    try {
+      await addStayTransfer({
+        stayId: stay.id,
+        sourceItemId: previous.id,
+        title: tx(`从 ${previous.locationLabel} 前往 ${stay.locationLabel}`, `${previous.locationLabel} to ${stay.locationLabel}`),
+      });
+      setSuccess(tx('前往酒店的交通已加入时间线，可继续补充车次或集合信息。', 'Transfer to the hotel added. You can add train, pickup, or meeting details next.'));
+    } catch (caught) {
+      setFormError(toUserMessage(caught, tx('无法添加前往酒店的交通，请稍后重试。', 'Could not add the hotel transfer. Please try again.')));
+    } finally {
+      setBusyRouteId(undefined);
     }
   }
 
@@ -105,6 +158,7 @@ export default function TodayScreen() {
       subtitle={activeTrip ? tx('先看下一步，再决定集合、出发和分工。', 'See the next move first, then align on when, where, and who is involved.') : tx('请先从“行程”页面创建或加入一个行程。', 'Create or join a trip from the Trips tab.')}>
       {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
       {loading ? <InlineNotice>{tx('正在刷新共享时间线…', 'Refreshing the shared timeline…')}</InlineNotice> : null}
+      {success ? <InlineNotice>{success}</InlineNotice> : null}
 
       {activeTrip ? (
         <View style={[styles.heroPanel, { backgroundColor: theme.backgroundElement }]}>
@@ -146,6 +200,51 @@ export default function TodayScreen() {
         </InfoCard>
       ) : upcomingItems.length > 0 ? (
         <>
+          {visibleStays.length > 0 ? (
+            <View style={styles.staySection}>
+              <View style={styles.stayHeading}>
+                <View><ThemedText type="smallBold" style={styles.sectionTitle}>{tx('住宿安排', 'Stays')}</ThemedText><ThemedText type="small" themeColor="textSecondary">{tx('一次记录完整入住区间，每天自动沿用。', 'One stay covers the full date range.')}</ThemedText></View>
+                <ThemedText type="small" themeColor="textSecondary">{tx(`${visibleStays.length} 段近期住宿`, `${visibleStays.length} upcoming stay${visibleStays.length === 1 ? '' : 's'}`)}</ThemedText>
+              </View>
+              {visibleStays.map((stay, index) => {
+                const previous = previousPlaceFor(stay);
+                const transferExists = itineraryItems.some((item) => item.linkedStayId === stay.id);
+                return (
+                  <View key={stay.id}>
+                    {index > 0 ? <View style={[styles.stayDivider, { backgroundColor: theme.backgroundSelected }]} /> : null}
+                    <View style={styles.stayRow}>
+                      <View style={styles.stayCopy}>
+                        <ThemedText type="smallBold">{stay.title}</ThemedText>
+                        <ThemedText type="small" themeColor="textSecondary">
+                          {formatZonedDateTimeRange(stay.startsAt, stay.endsAt, languageTag, tripTimeZone)} · {tx(`${stayNightsInZone(stay.startsAt, stay.endsAt, tripTimeZone)} 晚`, `${stayNightsInZone(stay.startsAt, stay.endsAt, tripTimeZone)} nights`)}
+                        </ThemedText>
+                        {stay.locationLabel ? <ThemedText type="small" themeColor="textSecondary">{stay.locationLabel}</ThemedText> : null}
+                      </View>
+                      <View style={styles.stayActions}>
+                        {stay.locationLabel ? (
+                          <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(stay.locationLabel ?? '')}`)} style={({ pressed }) => [styles.stayTextAction, pressed && styles.pressed]}>
+                            <ThemedText type="smallBold" style={styles.linkText}>{tx('查看地图', 'Map')}</ThemedText>
+                          </Pressable>
+                        ) : null}
+                        {canEdit && previous?.locationLabel && stay.locationLabel ? (
+                          <Pressable
+                            disabled={Boolean(busyRouteId) || transferExists}
+                            accessibilityRole="button"
+                            accessibilityState={{ disabled: Boolean(busyRouteId) || transferExists }}
+                            onPress={() => void addRouteToStay(stay)}
+                            style={({ pressed }) => [styles.routeAction, { backgroundColor: theme.backgroundSelected }, pressed && styles.pressed, (Boolean(busyRouteId) || transferExists) && styles.disabled]}>
+                            <ThemedText type="smallBold">{transferExists ? tx('已添加交通', 'Transfer added') : busyRouteId === stay.id ? tx('添加中…', 'Adding…') : tx('添加前往酒店', 'Add transfer')}</ThemedText>
+                            <ThemedText type="small" themeColor="textSecondary">{tx(`从 ${previous.locationLabel}`, `From ${previous.locationLabel}`)}</ThemedText>
+                          </Pressable>
+                        ) : null}
+                      </View>
+                    </View>
+                  </View>
+                );
+              })}
+              {upcomingStays.length > visibleStays.length ? <ThemedText type="small" themeColor="textSecondary">{tx(`另有 ${upcomingStays.length - visibleStays.length} 段住宿显示在后续时间线中`, `${upcomingStays.length - visibleStays.length} more stays appear later in the timeline`)}</ThemedText> : null}
+            </View>
+          ) : null}
           <View style={[styles.nextRail, { backgroundColor: theme.backgroundElement }]}>
             <View style={styles.nextHeading}>
               <View style={[styles.kindPill, { backgroundColor: getKindAccent(upcomingItems[0].kind) }]}>
@@ -157,7 +256,7 @@ export default function TodayScreen() {
             <View style={styles.nextMetaGrid}>
               <View style={styles.metaChip}>
                 <ThemedText type="smallBold">{tx('时间', 'When')}</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">{formatDateTimeRange(upcomingItems[0].startsAt, upcomingItems[0].endsAt, languageTag)}</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">{formatZonedDateTimeRange(upcomingItems[0].startsAt, upcomingItems[0].endsAt, languageTag, tripTimeZone)}</ThemedText>
               </View>
               <View style={styles.metaChip}>
                 <ThemedText type="smallBold">{tx('同行者', 'Who')}</ThemedText>
@@ -187,13 +286,13 @@ export default function TodayScreen() {
           {upcomingItems.length > 1 ? (
             <View style={styles.timelineSection}>
               <ThemedText type="smallBold">{tx('后续安排', 'Later in the flow')}</ThemedText>
-              {upcomingItems.slice(1).map((item) => (
+              {upcomingItems.slice(1).filter((item) => item.kind !== 'lodging' || !visibleStays.some((stay) => stay.id === item.id)).map((item) => (
                 <View key={item.id} style={styles.timelineRow}>
                   <View style={[styles.timelineRail, { borderRightColor: theme.backgroundSelected }]}>
                     <View style={styles.timelineDot} />
                   </View>
                   <View style={styles.timelineContent}>
-                    <ThemedText type="small" themeColor="textSecondary">{formatDateTimeRange(item.startsAt, item.endsAt, languageTag)}</ThemedText>
+                    <ThemedText type="small" themeColor="textSecondary">{formatZonedDateTimeRange(item.startsAt, item.endsAt, languageTag, tripTimeZone)}</ThemedText>
                     <ThemedText type="smallBold">{item.title}</ThemedText>
                     {item.locationLabel ? <ThemedText type="small" themeColor="textSecondary">{item.locationLabel}</ThemedText> : null}
                   </View>
@@ -224,7 +323,7 @@ export default function TodayScreen() {
                   selected={title === (locale === 'zh-CN' ? template.zh : template.en)}
                   onPress={() => {
                     setTitle(locale === 'zh-CN' ? template.zh : template.en);
-                    setKind(template.kind);
+                    chooseKind(template.kind);
                   }}>
                   {locale === 'zh-CN' ? template.zh : template.en}
                 </ChoiceChip>
@@ -232,25 +331,21 @@ export default function TodayScreen() {
             </View>
             <FormField label={tx('要做什么？', 'What are you doing?')} value={title} onChangeText={setTitle} placeholder={tx('例如：乘机场快线前往中环', 'For example: Airport Express to Central')} />
             <LocationField value={location} onChange={setLocation} />
-            <View style={styles.row}>
-              <View style={styles.dateField}><DateTimeField label={tx('日期', 'Date')} value={date} mode="date" onChange={setDate} /></View>
-              <View style={styles.grow}><DateTimeField label={tx('开始', 'Starts')} value={startTime} mode="time" onChange={setStartTime} /></View>
-              <View style={styles.grow}><DateTimeField label={tx('结束', 'Ends')} value={endTime} mode="time" onChange={setEndTime} /></View>
-            </View>
-            <View style={styles.durationRow}>
+            {kind === 'lodging' ? <><View style={styles.stayFormGroup}><ThemedText type="smallBold">{tx('入住', 'Check-in')}</ThemedText><View style={styles.row}><View style={styles.dateField}><DateTimeField label={tx('入住日期', 'Check-in date')} value={date} mode="date" minimumDate={new Date(`${activeTrip.startsOn}T12:00:00`)} maximumDate={new Date(`${activeTrip.endsOn}T12:00:00`)} onChange={(value) => { setDate(value); if (endDate < value) setEndDate(value); }} /></View><View style={styles.grow}><DateTimeField label={tx('入住时间', 'Check-in time')} value={startTime} mode="time" onChange={setStartTime} /></View></View></View><View style={styles.stayFormGroup}><ThemedText type="smallBold">{tx('退房', 'Check-out')}</ThemedText><View style={styles.row}><View style={styles.dateField}><DateTimeField label={tx('退房日期', 'Check-out date')} value={endDate} mode="date" minimumDate={new Date(`${date}T12:00:00`)} maximumDate={new Date(`${activeTrip.endsOn}T12:00:00`)} onChange={setEndDate} /></View><View style={styles.grow}><DateTimeField label={tx('退房时间', 'Check-out time')} value={endTime} mode="time" onChange={setEndTime} /></View></View></View><ThemedText type="small" themeColor="textSecondary">{tx(`这段住宿会覆盖 ${stayNightsInZone(zonedDateTimeToIso(date, startTime, tripTimeZone), zonedDateTimeToIso(endDate, endTime, tripTimeZone), tripTimeZone)} 晚，不会生成重复的每日项目。`, `This stay covers ${stayNightsInZone(zonedDateTimeToIso(date, startTime, tripTimeZone), zonedDateTimeToIso(endDate, endTime, tripTimeZone), tripTimeZone)} nights without duplicate daily items.`)}</ThemedText></> : <View style={styles.row}><View style={styles.dateField}><DateTimeField label={tx('日期', 'Date')} value={date} mode="date" minimumDate={new Date(`${activeTrip.startsOn}T12:00:00`)} maximumDate={new Date(`${activeTrip.endsOn}T12:00:00`)} onChange={setDate} /></View><View style={styles.grow}><DateTimeField label={tx('开始', 'Starts')} value={startTime} mode="time" onChange={setStartTime} /></View><View style={styles.grow}><DateTimeField label={tx('结束', 'Ends')} value={endTime} mode="time" onChange={setEndTime} /></View></View>}
+            {kind !== 'lodging' ? <View style={styles.durationRow}>
               <ThemedText type="small" themeColor="textSecondary">{tx('快速设置时长', 'Quick duration')}</ThemedText>
               {[30, 60, 120, 180].map((minutes) => (
                 <ChoiceChip key={minutes} selected={endTime === addMinutes(startTime, minutes)} onPress={() => setEndTime(addMinutes(startTime, minutes))}>
                   {minutes < 60 ? `${minutes}m` : `${minutes / 60}h`}
                 </ChoiceChip>
               ))}
-            </View>
+            </View> : null}
             <View style={styles.chips}>
               {itineraryKinds.map((itemKind) => (
-                <ChoiceChip key={itemKind} selected={kind === itemKind} onPress={() => setKind(itemKind)}>{kindLabel(itemKind)}</ChoiceChip>
+                <ChoiceChip key={itemKind} selected={kind === itemKind} onPress={() => chooseKind(itemKind)}>{kindLabel(itemKind)}</ChoiceChip>
               ))}
             </View>
-            <ActionButton busy={busy} disabled={!title.trim()} onPress={submitItem}>{tx('加入时间线', 'Add to timeline')}</ActionButton>
+            <ActionButton busy={busy} disabled={!title.trim() || (kind === 'lodging' && !location.trim())} onPress={submitItem}>{tx('加入时间线', 'Add to timeline')}</ActionButton>
             {formError ? <InlineNotice tone="error">{formError}</InlineNotice> : null}
           </View>
         </InfoCard>
@@ -291,4 +386,17 @@ const styles = StyleSheet.create({
   timelineDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: '#1B70A6', marginRight: -1, marginTop: 7 },
   timelineContent: { flex: 1, gap: 2, paddingBottom: 16 },
   durationRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
+  staySection: { gap: 10, paddingVertical: 8 },
+  stayHeading: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 },
+  sectionTitle: { fontSize: 20, lineHeight: 26 },
+  stayRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 14, paddingVertical: 10 },
+  stayCopy: { flex: 1, minWidth: 210, gap: 2 },
+  stayActions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 },
+  stayTextAction: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 },
+  routeAction: { minHeight: 48, maxWidth: 240, minWidth: 150, justifyContent: 'center', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6 },
+  stayDivider: { height: StyleSheet.hairlineWidth },
+  stayFormGroup: { gap: 8 },
+  linkText: { color: '#1B70A6' },
+  pressed: { opacity: 0.68 },
+  disabled: { opacity: 0.5 },
 });
