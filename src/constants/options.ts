@@ -45,6 +45,15 @@ export const itineraryKindLabels: Record<ItineraryKind, string> = {
   task: '任务',
 };
 
+export const itineraryKindIcons: Record<ItineraryKind, string> = {
+  transport: '🚆',
+  lodging: '🏨',
+  food: '🍜',
+  activity: '✨',
+  note: '📝',
+  task: '✅',
+};
+
 export const tripRoleLabels: Record<TripRole, string> = {
   owner: '创建者',
   editor: '可编辑',

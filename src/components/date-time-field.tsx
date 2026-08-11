@@ -33,44 +33,36 @@ export function DateTimeField({
 }) {
   const theme = useTheme();
   const [open, setOpen] = useState(false);
-  const picker = (
+  const picker = open ? (
     <ExpoDateTimePicker
       value={parseValue(value, mode)}
       mode={mode}
       locale="zh_CN"
       is24Hour
       minimumDate={minimumDate}
-      display={Platform.OS === 'ios' ? 'compact' : 'default'}
+      display={Platform.OS === 'ios' ? 'spinner' : 'default'}
       positiveButton={{ label: '确定' }}
       negativeButton={{ label: '取消' }}
       onDismiss={() => setOpen(false)}
       onValueChange={(_event, date) => {
         onChange(formatValue(date, mode));
-        if (Platform.OS === 'android') setOpen(false);
+        setOpen(false);
       }}
     />
-  );
+  ) : null;
 
   return (
     <View style={styles.field}>
       <ThemedText type="smallBold">{label}</ThemedText>
-      {Platform.OS === 'ios' ? (
-        <View style={[styles.iosControl, { backgroundColor: theme.background, borderColor: theme.backgroundSelected }]}>
-          {picker}
-        </View>
-      ) : (
-        <>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`${label}：${value}`}
-            onPress={() => setOpen(true)}
-            style={[styles.control, { backgroundColor: theme.background, borderColor: theme.backgroundSelected }]}>
-            <ThemedText>{value}</ThemedText>
-            <ThemedText themeColor="textSecondary">选择 ›</ThemedText>
-          </Pressable>
-          {open ? picker : null}
-        </>
-      )}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${label}：${value}`}
+        onPress={() => setOpen(true)}
+        style={[styles.control, { backgroundColor: theme.background, borderColor: theme.backgroundSelected }]}>
+        <ThemedText>{value}</ThemedText>
+        <ThemedText themeColor="textSecondary">点此选择 ›</ThemedText>
+      </Pressable>
+      {picker}
     </View>
   );
 }
@@ -87,5 +79,4 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  iosControl: { minHeight: 48, borderWidth: 1, borderRadius: 12, paddingHorizontal: 8, justifyContent: 'center' },
 });

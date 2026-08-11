@@ -60,11 +60,14 @@ See `planning.md` for the complete P0/P1 scope, non-goals, architecture, milesto
 - Trip dates, itinerary date/time, home currency, expense currency, timezone, and invite role use controlled selectors instead of free-form entry
 - An independent Profile tab lets each signed-in user edit their display name and review account/trip information
 - App Store identity is prepared with bundle ID `com.hanchengxuan.tripflow`, an original 1024px RGB icon, and EAS build/submit profiles
-- Web and iOS exports, Expo Doctor, lint, TypeScript, and 14 automated tests pass for the current mobile-readiness milestone; web document language/title are Chinese-aware
+- Web and iOS exports, Expo Doctor, lint, TypeScript, and 16 automated tests pass for the current mobile-readiness milestone; web document language/title are Chinese-aware
 - In-app account deletion is deployed end to end: auth credentials are removed, the profile is anonymized, memberships are revoked, sole-owned trips are deleted, and shared trips transfer to another member
 - Public Chinese privacy and support pages are live at `/privacy` and `/support`, and the login/Profile screens link to them
 - A Simplified Chinese App Store metadata and review-notes draft is maintained in `docs/app-store-metadata-zh-CN.md`
 - Account-deletion backend behavior passed transactional shared-trip, sole-trip, ownership-transfer, and stale-JWT tests with all fixture data rolled back
+- A protected Supabase Edge Function and editable confirmation flow implement Gemini 2.5 Flash natural-language expense parsing; the key stays server-side and parsed drafts never auto-save
+- Itinerary items now support explicit start/end times, whole-field date/time controls, richer travel cards, trip/member summaries, and one-tap Google Maps search links
+- The visual foundation now uses a brighter coastal travel palette, softer cards, and clearer information hierarchy
 
 ## Applied Supabase migrations
 
@@ -84,6 +87,8 @@ The database currently contains no application rows.
 4. Add segment/branch creation and segment-scoped itinerary membership.
 5. Add deferred financial aggregate validation before expanding beyond equal-split expenses.
 6. Address performance-advisor warnings before the dataset grows. The current security advisor has one password-protection warning that is not exercised by the passwordless-only login flow; revisit it before enabling passwords.
+7. Replace the currently invalid `GEMINI_API_KEY` in Supabase Secrets and rerun the authenticated production parser smoke test.
+8. Continue the itinerary experience milestone: full Chinese/English switching, Places autocomplete (requires a separately restricted Google Maps Platform key and billing), and richer next-step/branch interactions.
 
 ## Standing decisions and safety boundaries
 

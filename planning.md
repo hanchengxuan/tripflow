@@ -162,6 +162,14 @@ The MVP deliberately does not include group chat, in-app booking, proprietary tu
 - Calendar import/export.
 - Better attachment organization and booking-email parsing.
 
+### Current itinerary experience upgrade
+
+- Replace isolated timestamp entry with a clear start/end range and make the complete date/time control tappable.
+- Present the day as travel cards with category, duration, place, and a navigation action rather than a notebook-like list.
+- Add Chinese/English switching across navigation, forms, validation, and public pages.
+- Add Google Places autocomplete only through a server-restricted integration; do not reuse or expose the Gemini server key in the client.
+- Continue simplifying the visual system around an airy coastal palette, strong spacing, and clear next-step hierarchy.
+
 ### Explicitly out of MVP
 
 - A general-purpose group chat; TripFlow links back to existing chat apps instead.

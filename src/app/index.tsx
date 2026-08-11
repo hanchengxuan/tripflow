@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Linking, StyleSheet, View } from 'react-native';
 
 import { DateTimeField } from '@/components/date-time-field';
 import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/form-controls';
@@ -9,7 +9,16 @@ import { ThemedText } from '@/components/themed-text';
 import { useMvp } from '@/features/mvp/mvp-provider';
 import { toUserMessage } from '@/lib/user-error';
 import type { ItineraryKind } from '@/domain/models';
-import { itineraryKindLabels, itineraryKinds } from '@/constants/options';
+import { itineraryKindIcons, itineraryKindLabels, itineraryKinds } from '@/constants/options';
+
+function formatDateTimeRange(startsAt: string, endsAt?: string) {
+  const start = new Date(startsAt);
+  const date = start.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'short' });
+  const startTime = start.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });
+  if (!endsAt) return `${date} · ${startTime}`;
+  const endTime = new Date(endsAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });
+  return `${date} · ${startTime}–${endTime}`;
+}
 
 
 export default function TodayScreen() {
@@ -17,7 +26,8 @@ export default function TodayScreen() {
   const [title, setTitle] = useState('');
   const [location, setLocation] = useState('');
   const [date, setDate] = useState(activeTrip?.startsOn ?? new Date().toISOString().slice(0, 10));
-  const [time, setTime] = useState('09:00');
+  const [startTime, setStartTime] = useState('09:00');
+  const [endTime, setEndTime] = useState('10:30');
   const [kind, setKind] = useState<ItineraryKind>('activity');
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState<string>();
@@ -30,9 +40,11 @@ export default function TodayScreen() {
     setBusy(true);
     setFormError(undefined);
     try {
-      const startsAt = new Date(`${date}T${time}:00`);
-      if (Number.isNaN(startsAt.getTime())) throw new Error('请选择有效的日期和时间。');
-      await addItineraryItem({ title, locationLabel: location, kind, startsAt: startsAt.toISOString() });
+      const startsAt = new Date(`${date}T${startTime}:00`);
+      const endsAt = new Date(`${date}T${endTime}:00`);
+      if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime())) throw new Error('请选择有效的日期和时间。');
+      if (endsAt <= startsAt) throw new Error('结束时间需要晚于开始时间。');
+      await addItineraryItem({ title, locationLabel: location, kind, startsAt: startsAt.toISOString(), endsAt: endsAt.toISOString() });
       setTitle('');
       setLocation('');
     } catch (caught) {
@@ -50,6 +62,14 @@ export default function TodayScreen() {
       {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
       {loading ? <InlineNotice>正在刷新共享时间线…</InlineNotice> : null}
 
+      {activeTrip ? (
+        <View style={styles.summaryStrip}>
+          <View><ThemedText type="smallBold">{upcomingItems.length}</ThemedText><ThemedText type="small" themeColor="textSecondary">项安排</ThemedText></View>
+          <View><ThemedText type="smallBold">{members.length}</ThemedText><ThemedText type="small" themeColor="textSecondary">位同行者</ThemedText></View>
+          <View><ThemedText type="smallBold">{activeTrip.homeCurrency}</ThemedText><ThemedText type="small" themeColor="textSecondary">旅行币种</ThemedText></View>
+        </View>
+      ) : null}
+
       {!activeTrip ? (
         <InfoCard label="暂无行程" title="创建或加入共享行程">
           <ThemedText themeColor="textSecondary">
@@ -60,13 +80,18 @@ export default function TodayScreen() {
         upcomingItems.map((item, index) => (
           <InfoCard
             key={item.id}
-            label={index === 0 ? '下一步' : itineraryKindLabels[item.kind]}
+            label={`${index === 0 ? '下一步' : itineraryKindLabels[item.kind]} · ${itineraryKindIcons[item.kind]}`}
             title={item.title}
             accent={index === 0 ? '#0F9D7A' : '#4B67D1'}>
-            <ThemedText themeColor="textSecondary">
-              {new Date(item.startsAt).toLocaleString('zh-CN')}
-              {item.locationLabel ? ` · ${item.locationLabel}` : ''}
-            </ThemedText>
+            <ThemedText type="smallBold">{formatDateTimeRange(item.startsAt, item.endsAt)}</ThemedText>
+            {item.locationLabel ? (
+              <View style={styles.locationRow}>
+                <ThemedText themeColor="textSecondary">📍 {item.locationLabel}</ThemedText>
+                <ActionButton tone="secondary" onPress={() => void Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.locationLabel ?? '')}`)}>
+                  地图查看
+                </ActionButton>
+              </View>
+            ) : null}
           </InfoCard>
         ))
       ) : (
@@ -82,7 +107,8 @@ export default function TodayScreen() {
             <FormField label="地点" value={location} onChangeText={setLocation} placeholder="例如：香港站" />
             <View style={styles.row}>
               <View style={styles.grow}><DateTimeField label="日期" value={date} mode="date" onChange={setDate} /></View>
-              <View style={styles.grow}><DateTimeField label="时间" value={time} mode="time" onChange={setTime} /></View>
+              <View style={styles.grow}><DateTimeField label="开始时间" value={startTime} mode="time" onChange={setStartTime} /></View>
+              <View style={styles.grow}><DateTimeField label="结束时间" value={endTime} mode="time" onChange={setEndTime} /></View>
             </View>
             <View style={styles.chips}>
               {itineraryKinds.map((itemKind) => (
@@ -107,4 +133,6 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   grow: { flexGrow: 1, flexBasis: 180 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  summaryStrip: { flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 16, paddingHorizontal: 10, borderRadius: 20, backgroundColor: '#E6F7F4' },
+  locationRow: { gap: 10, alignItems: 'flex-start' },
 });

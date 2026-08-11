@@ -9,6 +9,7 @@ import { ThemedText } from '@/components/themed-text';
 import { currencyOptions } from '@/constants/options';
 import { calculateBalancesByCurrency, formatMinorAmount, parseAmountToMinor } from '@/domain/ledger';
 import { minimizeSettlementTransfers } from '@/domain/money';
+import { parseExpenseText } from '@/features/ai/expense-parser';
 import { useMvp } from '@/features/mvp/mvp-provider';
 import { toUserMessage } from '@/lib/user-error';
 
@@ -19,9 +20,11 @@ export default function LedgerScreen() {
   const [currencyOverride, setCurrencyOverride] = useState('');
   const [payerOverride, setPayerOverride] = useState('');
   const [participantsByTrip, setParticipantsByTrip] = useState<Record<string, string[]>>({});
-  const [busy, setBusy] = useState(false);
+  const [aiText, setAiText] = useState('');
+  const [busyAction, setBusyAction] = useState<'parse' | 'save'>();
   const [formError, setFormError] = useState<string>();
   const [success, setSuccess] = useState<string>();
+  const [aiNotice, setAiNotice] = useState<string>();
 
   const currency = currencyOverride || activeTrip?.homeCurrency || 'HKD';
   const payerUserId = members.some(({ userId }) => userId === payerOverride) ? payerOverride : currentUserId;
@@ -45,8 +48,37 @@ export default function LedgerScreen() {
     }));
   }
 
+  async function parseWithAi() {
+    if (!activeTrip) return;
+    setBusyAction('parse');
+    setFormError(undefined);
+    setSuccess(undefined);
+    setAiNotice(undefined);
+    try {
+      const draft = await parseExpenseText({
+        tripId: activeTrip.id,
+        text: aiText,
+        memberIds: members.map(({ userId }) => userId),
+      });
+      setTitle(draft.title);
+      setAmount(draft.amount);
+      setCurrencyOverride(draft.currency);
+      setPayerOverride(draft.payerUserId);
+      setParticipantsByTrip((current) => ({ ...current, [activeTrip.id]: draft.participantUserIds }));
+      const confidence = Math.round(draft.confidence * 100);
+      setAiNotice([
+        `AI 已生成草稿（置信度 ${confidence}%），请核对后再保存。`,
+        ...draft.warnings,
+      ].join(' '));
+    } catch (caught) {
+      setFormError(toUserMessage(caught, 'AI 解析失败，请换一种说法或手动填写。'));
+    } finally {
+      setBusyAction(undefined);
+    }
+  }
+
   async function submitExpense() {
-    setBusy(true);
+    setBusyAction('save');
     setFormError(undefined);
     setSuccess(undefined);
     try {
@@ -60,11 +92,13 @@ export default function LedgerScreen() {
       });
       setTitle('');
       setAmount('');
+      setAiText('');
+      setAiNotice(undefined);
       setSuccess('支出已保存，并完成精确均分。');
     } catch (caught) {
       setFormError(toUserMessage(caught, '无法保存支出，请稍后重试。'));
     } finally {
-      setBusy(false);
+      setBusyAction(undefined);
     }
   }
 
@@ -79,7 +113,34 @@ export default function LedgerScreen() {
       {loading ? <InlineNotice>正在刷新账本…</InlineNotice> : null}
 
       {activeTrip ? (
-        <InfoCard label="快速记账" title="记录并均分支出" accent="#0F9D7A">
+        <InfoCard label="AI 快速录入" title="用一句话生成记账草稿" accent="#4B67D1">
+          <View style={styles.form}>
+            <FormField
+              label="描述这笔支出"
+              value={aiText}
+              onChangeText={setAiText}
+              placeholder="例如：晚餐 860 港币，小王付的，我、小王和小李均分"
+              multiline
+              numberOfLines={3}
+              maxLength={500}
+              style={styles.multiline}
+            />
+            <ThemedText type="small" themeColor="textSecondary">
+              AI 只会填入下方草稿，不会自动保存或修改账本。请务必核对金额、付款人和分摊成员。
+            </ThemedText>
+            <ActionButton
+              busy={busyAction === 'parse'}
+              disabled={!aiText.trim() || Boolean(busyAction)}
+              onPress={() => void parseWithAi()}>
+              AI 解析并填入
+            </ActionButton>
+            {aiNotice ? <InlineNotice>{aiNotice}</InlineNotice> : null}
+          </View>
+        </InfoCard>
+      ) : null}
+
+      {activeTrip ? (
+        <InfoCard label="确认草稿" title="核对并保存均分支出" accent="#0F9D7A">
           <View style={styles.form}>
             <FormField label="支出内容" value={title} onChangeText={setTitle} placeholder="例如：晚餐" />
             <View style={styles.row}>
@@ -107,8 +168,8 @@ export default function LedgerScreen() {
               ))}
             </View>
             <ActionButton
-              busy={busy}
-              disabled={!title.trim() || !amount.trim() || participantIds.length === 0 || !payerUserId}
+              busy={busyAction === 'save'}
+              disabled={Boolean(busyAction) || !title.trim() || !amount.trim() || participantIds.length === 0 || !payerUserId}
               onPress={submitExpense}>
               保存均分支出
             </ActionButton>
@@ -164,6 +225,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: 12 },
   grow: { flex: 1 },
   currency: { width: 110 },
+  multiline: { minHeight: 88, textAlignVertical: 'top' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   balanceRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
   transferList: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#A8BAB3', paddingTop: 10, gap: 4 },

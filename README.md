@@ -11,7 +11,7 @@ Public pages: [Privacy](https://tripflow-liart.vercel.app/privacy) · [Support](
 1. Sign in from an emailed secure link or six-digit OTP.
 2. Create a trip, or join one with a 48-character invite code.
 3. Add itinerary items to the shared Today timeline.
-4. Record an expense, choose the payer and participants, and save an exact equal split.
+4. Record an expense manually or describe it in natural language, review the AI-filled draft, then save an exact equal split.
 5. Review per-currency balances and suggested settlement transfers.
 
 ## Get started
@@ -54,6 +54,8 @@ You can start developing by editing the files inside the **app** directory. This
 - `PROJECT_CONTEXT.md`: verified current state, decisions, next work, and continuity protocol.
 
 The MVP screens read and write live Supabase data. Never commit Supabase secrets; local environment files are ignored.
+
+The natural-language expense parser runs only in a Supabase Edge Function. Configure `GEMINI_API_KEY` in Supabase Edge Function Secrets; never expose it through an `EXPO_PUBLIC_*` variable or commit it to Git.
 
 ## Deploy the web MVP
 

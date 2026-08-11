@@ -137,6 +137,7 @@ export async function createItineraryItem(
     title: string;
     kind: Database['public']['Enums']['itinerary_kind'];
     startsAt: string;
+    endsAt?: string;
     locationLabel?: string;
   },
 ) {
@@ -146,6 +147,7 @@ export async function createItineraryItem(
     title: input.title.trim(),
     kind: input.kind,
     starts_at: input.startsAt,
+    ends_at: input.endsAt ?? null,
     location_label: input.locationLabel?.trim() || null,
   });
   if (error) throw error;

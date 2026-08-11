@@ -1,0 +1,2 @@
+[functions.parse-expense]
+verify_jwt = false

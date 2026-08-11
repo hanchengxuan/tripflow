@@ -34,7 +34,7 @@ interface MvpContextValue {
   joinTrip: (token: string) => Promise<void>;
   createInvite: (role: 'editor' | 'viewer') => Promise<{ token: string; expiresAt: string }>;
   saveProfile: (displayName: string) => Promise<void>;
-  addItineraryItem: (input: { title: string; kind: Database['public']['Enums']['itinerary_kind']; startsAt: string; locationLabel?: string }) => Promise<void>;
+  addItineraryItem: (input: { title: string; kind: Database['public']['Enums']['itinerary_kind']; startsAt: string; endsAt?: string; locationLabel?: string }) => Promise<void>;
   addEqualExpense: (input: { title: string; currency: string; totalMinor: number; payerUserId: string; participantUserIds: string[] }) => Promise<void>;
 }
 
@@ -131,7 +131,7 @@ export function MvpProvider({ children }: PropsWithChildren) {
     if (activeTrip) setMembers(await listTripMembers(activeTrip.id));
   }, [activeTrip, currentUserId]);
 
-  const addItineraryItem = useCallback(async (input: { title: string; kind: Database['public']['Enums']['itinerary_kind']; startsAt: string; locationLabel?: string }) => {
+  const addItineraryItem = useCallback(async (input: { title: string; kind: Database['public']['Enums']['itinerary_kind']; startsAt: string; endsAt?: string; locationLabel?: string }) => {
     if (!activeTrip) throw new Error('请先创建或加入一个行程。');
     await createItineraryItem(currentUserId, { ...input, tripId: activeTrip.id });
     setItineraryItems(await listItineraryItems(activeTrip.id));
