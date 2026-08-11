@@ -79,6 +79,7 @@ export default function LedgerScreen() {
   const darkMode = theme.background === '#0C1924';
   const positiveColor = darkMode ? '#69D4BC' : '#087F6A';
   const dangerColor = darkMode ? '#FF9B96' : '#B4413E';
+  const linkColor = darkMode ? '#8DD8FF' : '#1B70A6';
 
   const balanceSnapshots = useMemo<BalanceSnapshot[]>(() => {
     const gross = calculateBalancesByCurrency(expenses, memberIds);
@@ -337,6 +338,7 @@ export default function LedgerScreen() {
           themeSelected={theme.backgroundSelected}
           positiveColor={positiveColor}
           dangerColor={dangerColor}
+          linkColor={linkColor}
           completeTransfer={completeTransfer}
           undoTransfer={undoTransfer}
         />
@@ -364,7 +366,7 @@ function ViewSwitchButton({ selected, onPress, children }: { selected: boolean; 
       accessibilityRole="tab"
       accessibilityState={{ selected }}
       onPress={onPress}
-      style={[styles.viewSwitchButton, selected && styles.viewSwitchButtonActive]}>
+      style={({ pressed }) => [styles.viewSwitchButton, selected && styles.viewSwitchButtonActive, pressed && styles.pressed]}>
       <ThemedText type="smallBold" style={selected ? styles.viewSwitchTextActive : undefined}>{children}</ThemedText>
     </Pressable>
   );
@@ -467,7 +469,7 @@ function ExpenseComposer(props: {
             {props.receipt ? (
               <View style={styles.receiptPreviewRow}>
                 <Image accessible accessibilityLabel={tx('待上传的小票预览', 'Receipt preview awaiting upload')} source={props.receipt.uri} style={styles.receiptPreview} contentFit="contain" />
-                <Pressable accessibilityRole="button" onPress={() => props.setReceipt(undefined)} style={styles.textButton}>
+                <Pressable accessibilityRole="button" onPress={() => props.setReceipt(undefined)} style={({ pressed }) => [styles.textButton, pressed && styles.pressed]}>
                   <ThemedText type="smallBold" style={{ color: props.dangerColor }}>{tx('移除', 'Remove')}</ThemedText>
                 </Pressable>
               </View>
@@ -516,6 +518,7 @@ function SettlementWorkspace(props: {
   themeSelected: string;
   positiveColor: string;
   dangerColor: string;
+  linkColor: string;
   completeTransfer: (transfer: SettlementTransfer & { currency: string }) => Promise<void>;
   undoTransfer: (settlement: Settlement) => Promise<void>;
 }) {
@@ -544,7 +547,7 @@ function SettlementWorkspace(props: {
           const received = sumSettlements(props.settlements, snapshot.currency, 'to', props.currentUserId);
           return (
             <View key={snapshot.currency} style={styles.personalCurrencyRow}>
-              <ThemedText type="smallBold" style={styles.currencyCode}>{snapshot.currency}</ThemedText>
+              <ThemedText type="smallBold" style={[styles.currencyCode, { color: props.positiveColor }]}>{snapshot.currency}</ThemedText>
               <Metric label={tx('待转出', 'To send')} value={formatMinorAmount(pendingOut, snapshot.currency)} color={props.dangerColor} />
               <Metric label={tx('已转出', 'Sent')} value={formatMinorAmount(sent, snapshot.currency)} />
               <Metric label={tx('待收款', 'To receive')} value={formatMinorAmount(pendingIn, snapshot.currency)} />
@@ -610,8 +613,8 @@ function SettlementWorkspace(props: {
                     accessibilityRole="button"
                     disabled={Boolean(props.busySettlementId)}
                     onPress={() => void props.undoTransfer(settlement)}
-                    style={styles.textButton}>
-                  <ThemedText type="smallBold" style={styles.linkText}>{tx('恢复未转账', 'Mark unsent')}</ThemedText>
+                    style={({ pressed }) => [styles.textButton, pressed && styles.pressed, Boolean(props.busySettlementId) && styles.disabled]}>
+                  <ThemedText type="smallBold" style={{ color: props.linkColor }}>{tx('恢复未转账', 'Mark unsent')}</ThemedText>
                   </Pressable>
                 ) : (
                   <ThemedText type="smallBold" style={{ color: props.positiveColor }}>{tx('已收入', 'Received')}</ThemedText>
@@ -629,7 +632,7 @@ function SettlementWorkspace(props: {
         </View>
         {props.balanceSnapshots.map((snapshot) => (
           <View key={snapshot.currency} style={styles.groupCurrency}>
-            <ThemedText type="smallBold" style={styles.currencyDivider}>{snapshot.currency}</ThemedText>
+            <ThemedText type="smallBold" style={[styles.currencyDivider, { color: props.positiveColor }]}>{snapshot.currency}</ThemedText>
             {[...props.names.entries()].map(([userId, displayName]) => {
               const pendingOut = sumTransfers(snapshot.outstandingTransfers, 'from', userId);
               const pendingIn = sumTransfers(snapshot.outstandingTransfers, 'to', userId);
@@ -709,7 +712,7 @@ function ExpenseActivity(props: {
               accessibilityRole="button"
               accessibilityState={{ expanded }}
               onPress={() => props.setExpandedExpenseId(expanded ? undefined : expense.id)}
-              style={styles.expenseSummary}>
+              style={({ pressed }) => [styles.expenseSummary, pressed && styles.pressed]}>
               <View style={styles.grow}>
                 <ThemedText type="smallBold">{expense.title}</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
@@ -824,7 +827,7 @@ const styles = StyleSheet.create({
   summaryHeading: { gap: 4 },
   sectionTitle: { fontSize: 22, lineHeight: 28, fontWeight: '700' },
   personalCurrencyRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', gap: 14, paddingVertical: 14, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#AFCACA' },
-  currencyCode: { minWidth: 42, paddingBottom: 2, color: '#087F6A' },
+  currencyCode: { minWidth: 42, paddingBottom: 2 },
   metric: { minWidth: 94, flexGrow: 1, gap: 2 },
   sectionBlock: { gap: 0 },
   sectionHeading: { gap: 4, paddingBottom: 10 },
@@ -834,10 +837,9 @@ const styles = StyleSheet.create({
   markPaidButton: { minHeight: 44, minWidth: 112, alignItems: 'center', justifyContent: 'center', borderRadius: 12, paddingHorizontal: 14, backgroundColor: '#087F6A' },
   completedRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#AFCACA' },
   textButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 4 },
-  linkText: { color: '#1B70A6' },
   quietEmpty: { gap: 4, paddingVertical: 22, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#AFCACA' },
   groupCurrency: { gap: 0, paddingBottom: 18 },
-  currencyDivider: { paddingVertical: 10, color: '#087F6A' },
+  currencyDivider: { paddingVertical: 10 },
   memberSettlementRow: { gap: 8, paddingVertical: 13, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#AFCACA' },
   memberName: { width: '100%' },
   memberMetrics: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
