@@ -70,6 +70,16 @@ export interface ExpenseShare {
   amountMinor: number;
 }
 
+export interface ExpenseReceipt {
+  id: string;
+  expenseId: ExpenseId;
+  storagePath: string;
+  mimeType: 'image/jpeg' | 'image/png' | 'image/webp';
+  sizeBytes: number;
+  createdAt: string;
+  signedUrl?: string;
+}
+
 export interface Expense {
   id: ExpenseId;
   tripId: TripId;
@@ -81,4 +91,17 @@ export interface Expense {
   shares: ExpenseShare[];
   occurredAt: string;
   source: 'manual' | 'text' | 'voice' | 'receipt';
+  receipts?: ExpenseReceipt[];
+}
+
+export interface Settlement {
+  id: string;
+  tripId: TripId;
+  segmentId?: SegmentId;
+  fromUserId: UserId;
+  toUserId: UserId;
+  currency: string;
+  amountMinor: number;
+  settledAt: string;
+  recordedBy: UserId;
 }

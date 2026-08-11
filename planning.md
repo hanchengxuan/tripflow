@@ -340,6 +340,8 @@ Exit: the 30-day reference scenario works without duplicated trips or leaked pri
 - Balances, minimized settlement suggestions, and partial settlement records.
 - Property-based tests for calculation invariants.
 
+Current implementation: equal-split expenses now produce settlement-adjusted transfer tasks with explicit sender/recipient amounts, personal and group payment status, sender-owned sent/undo actions, and private camera/gallery receipt evidence. The next expansion is multiple payers, exclusions, unequal shares, partial amounts, and property-based reconciliation coverage.
+
 Exit: a realistic multi-currency fixture reconciles exactly to zero across all participants.
 
 ### Milestone 4 — voice and offline capture (Weeks 8-9)

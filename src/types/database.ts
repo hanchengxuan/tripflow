@@ -189,6 +189,51 @@ export type Database = {
           },
         ]
       }
+      expense_receipts: {
+        Row: {
+          created_at: string
+          expense_id: string
+          id: string
+          mime_type: string
+          size_bytes: number
+          storage_path: string
+          uploaded_by: string
+        }
+        Insert: {
+          created_at?: string
+          expense_id: string
+          id?: string
+          mime_type: string
+          size_bytes: number
+          storage_path: string
+          uploaded_by: string
+        }
+        Update: {
+          created_at?: string
+          expense_id?: string
+          id?: string
+          mime_type?: string
+          size_bytes?: number
+          storage_path?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expense_receipts_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expense_receipts_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       expense_shares: {
         Row: {
           allocation_group_id: string
@@ -854,6 +899,19 @@ export type Database = {
       is_user_trip_member: {
         Args: { requested_trip_id: string; requested_user_id: string }
         Returns: boolean
+      }
+      record_settlement: {
+        Args: {
+          recipient_user_id: string
+          requested_trip_id: string
+          settlement_amount_minor: number
+          settlement_currency: string
+        }
+        Returns: string
+      }
+      unrecord_settlement: {
+        Args: { requested_settlement_id: string }
+        Returns: undefined
       }
     }
     Enums: {

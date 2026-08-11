@@ -1,4 +1,4 @@
-import type { Expense, ItineraryItem, Profile, Trip, TripMember } from '@/domain/models';
+import type { Expense, ItineraryItem, Profile, Settlement, Trip, TripMember } from '@/domain/models';
 import { getSupabaseClient } from '@/lib/supabase';
 import type { Database, Tables } from '@/types/database';
 
@@ -202,12 +202,20 @@ export async function createItineraryItem(
 }
 
 export async function listExpenses(tripId: string): Promise<Expense[]> {
-  const { data, error } = await getSupabaseClient()
+  const client = getSupabaseClient();
+  const { data, error } = await client
     .from('expenses')
-    .select('*,expense_payers(*),expense_allocation_groups(*,expense_shares(*))')
+    .select('*,expense_payers(*),expense_allocation_groups(*,expense_shares(*)),expense_receipts(*)')
     .eq('trip_id', tripId)
     .order('occurred_at', { ascending: false });
   if (error) throw error;
+
+  const receiptPaths = data.flatMap((expense) => expense.expense_receipts.map((receipt) => receipt.storage_path));
+  const signedUrls = new Map<string, string>();
+  await Promise.all(receiptPaths.map(async (path) => {
+    const { data: signed } = await client.storage.from('expense-receipts').createSignedUrl(path, 60 * 60);
+    if (signed?.signedUrl) signedUrls.set(path, signed.signedUrl);
+  }));
 
   return data.map((expense) => ({
     id: expense.id,
@@ -218,6 +226,15 @@ export async function listExpenses(tripId: string): Promise<Expense[]> {
     totalMinor: expense.total_minor,
     occurredAt: expense.occurred_at,
     source: expense.source,
+    receipts: expense.expense_receipts.map((receipt) => ({
+      id: receipt.id,
+      expenseId: receipt.expense_id,
+      storagePath: receipt.storage_path,
+      mimeType: receipt.mime_type as 'image/jpeg' | 'image/png' | 'image/webp',
+      sizeBytes: receipt.size_bytes,
+      createdAt: receipt.created_at,
+      signedUrl: signedUrls.get(receipt.storage_path),
+    })),
     payers: expense.expense_payers.map((payer) => ({
       userId: payer.user_id,
       amountMinor: payer.amount_minor,
@@ -232,14 +249,17 @@ export async function listExpenses(tripId: string): Promise<Expense[]> {
 }
 
 export async function createEqualExpense(input: {
+  userId: string;
   tripId: string;
   title: string;
   currency: string;
   totalMinor: number;
   payerUserId: string;
   participantUserIds: string[];
+  receipt?: { uri: string; base64?: string | null; mimeType?: string | null; fileSize?: number };
 }) {
-  const { error } = await getSupabaseClient().rpc('create_equal_expense', {
+  const client = getSupabaseClient();
+  const { data: expenseId, error } = await client.rpc('create_equal_expense', {
     requested_trip_id: input.tripId,
     expense_title: input.title,
     expense_currency: input.currency,
@@ -247,6 +267,92 @@ export async function createEqualExpense(input: {
     payer_user_id: input.payerUserId,
     participant_user_ids: input.participantUserIds,
     expense_occurred_at: new Date().toISOString(),
+  });
+  if (error) throw error;
+
+  if (!input.receipt) return { expenseId, receiptUploaded: false };
+
+  try {
+    await addExpenseReceipt(input.userId, expenseId, input.receipt);
+    return { expenseId, receiptUploaded: true };
+  } catch (receiptError) {
+    return { expenseId, receiptUploaded: false, receiptError };
+  }
+}
+
+export async function addExpenseReceipt(
+  userId: string,
+  expenseId: string,
+  receipt: { uri: string; base64?: string | null; mimeType?: string | null; fileSize?: number },
+) {
+  const client = getSupabaseClient();
+  const mimeType = receipt.mimeType === 'image/png' || receipt.mimeType === 'image/webp'
+    ? receipt.mimeType
+    : 'image/jpeg';
+  const extension = mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg';
+  const storagePath = `${userId}/${expenseId}/receipt-${Date.now()}.${extension}`;
+  const body = receipt.base64
+    ? Uint8Array.from(atob(receipt.base64), (character) => character.charCodeAt(0)).buffer
+    : await (await fetch(receipt.uri)).arrayBuffer();
+  if (body.byteLength > 10 * 1024 * 1024) throw new Error('Receipt image must be 10 MB or smaller');
+
+  const { error: uploadError } = await client.storage.from('expense-receipts').upload(storagePath, body, {
+    contentType: mimeType,
+    upsert: false,
+  });
+  if (uploadError) throw uploadError;
+
+  const { error: receiptError } = await client.from('expense_receipts').insert({
+    expense_id: expenseId,
+    uploaded_by: userId,
+    storage_path: storagePath,
+    mime_type: mimeType,
+    size_bytes: body.byteLength,
+  });
+  if (receiptError) {
+    await client.storage.from('expense-receipts').remove([storagePath]);
+    throw receiptError;
+  }
+}
+
+export async function listSettlements(tripId: string): Promise<Settlement[]> {
+  const { data, error } = await getSupabaseClient()
+    .from('settlements')
+    .select('*')
+    .eq('trip_id', tripId)
+    .order('settled_at', { ascending: false });
+  if (error) throw error;
+  return data.map((settlement) => ({
+    id: settlement.id,
+    tripId: settlement.trip_id,
+    segmentId: settlement.segment_id ?? undefined,
+    fromUserId: settlement.from_user_id,
+    toUserId: settlement.to_user_id,
+    currency: settlement.currency,
+    amountMinor: settlement.amount_minor,
+    settledAt: settlement.settled_at,
+    recordedBy: settlement.recorded_by,
+  }));
+}
+
+export async function recordSettlement(input: {
+  tripId: string;
+  toUserId: string;
+  currency: string;
+  amountMinor: number;
+}) {
+  const { error } = await getSupabaseClient().rpc('record_settlement', {
+    requested_trip_id: input.tripId,
+    recipient_user_id: input.toUserId,
+    settlement_currency: input.currency,
+    settlement_amount_minor: input.amountMinor,
+  });
+  if (error) throw error;
+}
+
+export async function unrecordSettlement(settlementId: string) {
+  const { error } = await getSupabaseClient().rpc('unrecord_settlement', {
+    requested_settlement_id: settlementId,
   });
   if (error) throw error;
 }

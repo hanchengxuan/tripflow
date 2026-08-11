@@ -76,6 +76,9 @@ See `planning.md` for the complete P0/P1 scope, non-goals, architecture, milesto
 - Profile now uses an explicit edit state for display name and avatar, with language, trip context, account actions, and destructive actions separated by frequency and risk
 - Profile avatars are stored in a dedicated 5 MB image-only Supabase bucket with per-user write policies; account deletion removes the object and clears its database reference
 - Ledger now presents one focused expense-entry surface at a time and flat balance/history rows instead of a stack of equal-weight cards
+- Ledger settlement is now task-first: each traveler sees explicit “pay whom how much” actions, four personal pending/completed incoming/outgoing totals, per-member group status, and sender-owned sent/undo controls
+- Expense receipts can be captured with the camera or selected from the photo library during entry or attached later; files are normalized client-side and stored privately with expense-scoped access policies
+- Settlement status is stored independently from immutable expense evidence, recalculates remaining transfer routes after every payment, and is serialized by trip/currency to prevent concurrent overpayment
 - The shared web shell reserves space for its fixed navigation, removing the previous title overlap at desktop and mobile widths
 
 ## Applied Supabase migrations
@@ -87,6 +90,9 @@ See `planning.md` for the complete P0/P1 scope, non-goals, architecture, milesto
 - `account_deletion`
 - `profile_avatars`
 - `clear_avatar_on_account_deletion`
+- `ledger_receipts_and_settlement_tracking`
+- `harden_settlement_rpcs`
+- `serialize_settlements_and_bind_receipt_uploads`
 
 Temporary acceptance fixtures are removed after each test; production may contain real user-created rows.
 
@@ -96,7 +102,7 @@ Temporary acceptance fixtures are removed after each test; production may contai
 2. Choose and configure the long-term public support email through `EXPO_PUBLIC_SUPPORT_EMAIL`, then finalize App Privacy disclosures, age rating, and Chinese screenshots.
 3. Run TestFlight acceptance on a current iPhone and human acceptance with real owner/editor/viewer accounts.
 4. Add segment/branch creation and segment-scoped itinerary membership.
-5. Add deferred financial aggregate validation before expanding beyond equal-split expenses.
+5. Expand the validated ledger beyond equal splits to multiple payers, exclusions, unequal shares, partial transfers, and exchange-rate snapshots.
 6. Address performance-advisor warnings before the dataset grows. The current security advisor has one password-protection warning that is not exercised by the passwordless-only login flow; revisit it before enabling passwords.
 7. Configure a separately restricted Google Maps Platform key as the Supabase Edge Function secret `GOOGLE_MAPS_API_KEY`, then run authenticated Places autocomplete acceptance and set a conservative quota alert.
 8. Continue the itinerary experience milestone with saved Google Place IDs/details, participant/status controls, booking essentials, and richer branch interactions.

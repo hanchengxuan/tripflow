@@ -1,4 +1,4 @@
-import type { Expense } from '@/domain/models';
+import type { Expense, Settlement } from '@/domain/models';
 import type { Balance } from '@/domain/money';
 
 const zeroDecimalCurrencies = new Set(['JPY', 'KRW']);
@@ -44,6 +44,34 @@ export function calculateBalancesByCurrency(expenses: Expense[], participantIds:
       balances.set(share.userId, (balances.get(share.userId) ?? 0) - share.amountMinor);
     }
     currencies.set(expense.currency, balances);
+  }
+
+  return [...currencies.entries()].map(([currency, participantBalances]) => ({
+    currency,
+    balances: [...participantBalances.entries()].map<Balance>(([participantId, netMinor]) => ({
+      participantId,
+      netMinor,
+    })),
+  }));
+}
+
+export function calculateOutstandingBalancesByCurrency(
+  expenses: Expense[],
+  settlements: Settlement[],
+  participantIds: string[],
+) {
+  const currencies = new Map(
+    calculateBalancesByCurrency(expenses, participantIds).map(({ currency, balances }) => [
+      currency,
+      new Map(balances.map(({ participantId, netMinor }) => [participantId, netMinor])),
+    ]),
+  );
+
+  for (const settlement of settlements) {
+    const balances = currencies.get(settlement.currency) ?? new Map(participantIds.map((id) => [id, 0]));
+    balances.set(settlement.fromUserId, (balances.get(settlement.fromUserId) ?? 0) + settlement.amountMinor);
+    balances.set(settlement.toUserId, (balances.get(settlement.toUserId) ?? 0) - settlement.amountMinor);
+    currencies.set(settlement.currency, balances);
   }
 
   return [...currencies.entries()].map(([currency, participantBalances]) => ({

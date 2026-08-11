@@ -46,6 +46,14 @@
         }
       ],
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "允许 TripFlow 从相册选择消费小票。",
+          "cameraPermission": "允许 TripFlow 拍摄消费小票。",
+          "microphonePermission": false
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#208AEF",
