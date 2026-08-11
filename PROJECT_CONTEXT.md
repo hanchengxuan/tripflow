@@ -60,7 +60,7 @@ See `planning.md` for the complete P0/P1 scope, non-goals, architecture, milesto
 - Trip dates, itinerary date/time, home currency, expense currency, timezone, and invite role use controlled selectors instead of free-form entry
 - An independent Profile tab lets each signed-in user edit their display name and review account/trip information
 - App Store identity is prepared with bundle ID `com.hanchengxuan.tripflow`, an original 1024px RGB icon, and EAS build/submit profiles
-- Web and iOS exports, Expo Doctor, lint, TypeScript, and 13 automated tests pass for the mobile-readiness milestone
+- Web and iOS exports, Expo Doctor, lint, TypeScript, and 13 automated tests pass for the mobile-readiness milestone; web document language/title are Chinese-aware
 
 ## Applied Supabase migrations
 

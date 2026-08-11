@@ -1,4 +1,5 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
+import Head from 'expo-router/head';
 import * as SplashScreen from 'expo-splash-screen';
 import { useColorScheme } from 'react-native';
 
@@ -27,6 +28,11 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      <Head>
+        <title>TripFlow 旅途流</title>
+        <meta content="TripFlow 让同行者共享行程、协作安排并清晰分摊旅行支出。" name="description" />
+        <meta content="#0879c9" name="theme-color" />
+      </Head>
       <AnimatedSplashOverlay />
       <AuthProvider>
         <SessionRouter />
