@@ -10,13 +10,15 @@ TripFlow is a collaborative travel operating system for groups that travel toget
    npm install
    ```
 
-2. Validate the project
+2. Copy `.env.example` to `.env.local` and set the Supabase project URL and publishable key. Never use a service-role key in the app.
+
+3. Validate the project
 
    ```bash
    npm run validate
    ```
 
-3. Start the app
+4. Start the app
 
    ```bash
    npx expo start
@@ -37,6 +39,7 @@ You can start developing by editing the files inside the **app** directory. This
 - `src/domain`: framework-independent trip and ledger rules.
 - `supabase/migrations`: database schema and Row Level Security policies.
 - `planning.md`: consolidated product scope and delivery plan.
+- `PROJECT_CONTEXT.md`: verified current state, decisions, next work, and continuity protocol.
 
 The current UI uses static fixture data while the domain and backend contracts are established. Never commit Supabase secrets; local environment files are ignored.
 

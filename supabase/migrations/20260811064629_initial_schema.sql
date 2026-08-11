@@ -1,3 +1,4 @@
+-- Remote migration version: 20260811064629
 create extension if not exists pgcrypto;
 
 create type public.trip_role as enum ('owner', 'editor', 'viewer');
@@ -162,7 +163,26 @@ create table public.activity_events (
   created_at timestamptz not null default now()
 );
 
+alter table public.segments
+  add constraint segments_id_trip_unique unique (id, trip_id),
+  add constraint segments_parent_same_trip_fk
+    foreign key (parent_segment_id, trip_id) references public.segments (id, trip_id);
+alter table public.itinerary_items
+  add constraint itinerary_segment_same_trip_fk
+    foreign key (segment_id, trip_id) references public.segments (id, trip_id);
+alter table public.expenses
+  add constraint expenses_segment_same_trip_fk
+    foreign key (segment_id, trip_id) references public.segments (id, trip_id);
+alter table public.settlements
+  add constraint settlements_segment_same_trip_fk
+    foreign key (segment_id, trip_id) references public.segments (id, trip_id);
+alter table public.activity_events
+  add constraint activity_segment_same_trip_fk
+    foreign key (segment_id, trip_id) references public.segments (id, trip_id);
+
 create index segments_trip_dates_idx on public.segments (trip_id, starts_at, ends_at);
+create index trip_members_user_trip_idx on public.trip_members (user_id, trip_id);
+create index segment_members_user_segment_idx on public.segment_members (user_id, segment_id);
 create index itinerary_trip_start_idx on public.itinerary_items (trip_id, starts_at);
 create index itinerary_segment_start_idx on public.itinerary_items (segment_id, starts_at);
 create index expenses_trip_occurred_idx on public.expenses (trip_id, occurred_at desc);
@@ -173,7 +193,7 @@ returns boolean
 language sql
 stable
 security definer
-set search_path = public
+set search_path = ''
 as $$
   select exists (
     select 1 from public.trip_members
@@ -186,7 +206,7 @@ returns boolean
 language sql
 stable
 security definer
-set search_path = public
+set search_path = ''
 as $$
   select exists (
     select 1 from public.trip_members
@@ -196,12 +216,54 @@ as $$
   );
 $$;
 
+create or replace function public.is_trip_owner(requested_trip_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1 from public.trip_members
+    where trip_id = requested_trip_id
+      and user_id = (select auth.uid())
+      and role = 'owner'
+  );
+$$;
+
+create or replace function public.is_trip_creator(requested_trip_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1 from public.trips
+    where id = requested_trip_id and created_by = (select auth.uid())
+  );
+$$;
+
+create or replace function public.is_user_trip_member(requested_trip_id uuid, requested_user_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select public.is_trip_member(requested_trip_id)
+    and exists (
+      select 1 from public.trip_members
+      where trip_id = requested_trip_id and user_id = requested_user_id
+    );
+$$;
+
 create or replace function public.can_read_segment(requested_segment_id uuid)
 returns boolean
 language sql
 stable
 security definer
-set search_path = public
+set search_path = ''
 as $$
   select exists (
     select 1
@@ -219,9 +281,15 @@ $$;
 
 revoke all on function public.is_trip_member(uuid) from public;
 revoke all on function public.can_edit_trip(uuid) from public;
+revoke all on function public.is_trip_owner(uuid) from public;
+revoke all on function public.is_trip_creator(uuid) from public;
+revoke all on function public.is_user_trip_member(uuid, uuid) from public;
 revoke all on function public.can_read_segment(uuid) from public;
 grant execute on function public.is_trip_member(uuid) to authenticated;
 grant execute on function public.can_edit_trip(uuid) to authenticated;
+grant execute on function public.is_trip_owner(uuid) to authenticated;
+grant execute on function public.is_trip_creator(uuid) to authenticated;
+grant execute on function public.is_user_trip_member(uuid, uuid) to authenticated;
 grant execute on function public.can_read_segment(uuid) to authenticated;
 
 alter table public.profiles enable row level security;
@@ -238,6 +306,25 @@ alter table public.expense_shares enable row level security;
 alter table public.exchange_rate_snapshots enable row level security;
 alter table public.settlements enable row level security;
 alter table public.activity_events enable row level security;
+
+revoke all privileges on all tables in schema public from anon;
+revoke all privileges on all sequences in schema public from anon;
+
+grant select, insert, update on public.profiles to authenticated;
+grant select, insert, update, delete on public.trips to authenticated;
+grant select, insert, update, delete on public.trip_members to authenticated;
+grant select, insert, update, delete on public.segments to authenticated;
+grant select, insert, delete on public.segment_members to authenticated;
+grant select, insert, update, delete on public.itinerary_items to authenticated;
+grant select, insert, update on public.item_participants to authenticated;
+grant select, insert, update on public.expenses to authenticated;
+grant select, insert, update, delete on public.expense_payers to authenticated;
+grant select, insert, update, delete on public.expense_allocation_groups to authenticated;
+grant select, insert, update, delete on public.expense_shares to authenticated;
+grant select, insert, update, delete on public.exchange_rate_snapshots to authenticated;
+grant select, insert on public.settlements to authenticated;
+grant select, insert on public.activity_events to authenticated;
+grant usage, select on sequence public.activity_events_id_seq to authenticated;
 
 create policy profiles_read_self_or_trip_peers on public.profiles for select to authenticated
 using (
@@ -260,25 +347,22 @@ with check (created_by = auth.uid());
 create policy trips_update_editors on public.trips for update to authenticated
 using (public.can_edit_trip(id)) with check (public.can_edit_trip(id));
 create policy trips_delete_owner on public.trips for delete to authenticated
-using (exists (
-  select 1 from public.trip_members
-  where trip_id = trips.id and user_id = auth.uid() and role = 'owner'
-));
+using (public.is_trip_owner(id));
 
 create policy trip_members_read_members on public.trip_members for select to authenticated
 using (public.is_trip_member(trip_id));
 create policy trip_members_add_by_editors_or_creator on public.trip_members for insert to authenticated
 with check (
-  public.can_edit_trip(trip_id)
+  public.is_trip_owner(trip_id)
   or (
     user_id = auth.uid() and role = 'owner'
-    and exists (select 1 from public.trips where id = trip_id and created_by = auth.uid())
+    and public.is_trip_creator(trip_id)
   )
 );
-create policy trip_members_update_editors on public.trip_members for update to authenticated
-using (public.can_edit_trip(trip_id)) with check (public.can_edit_trip(trip_id));
-create policy trip_members_delete_editors on public.trip_members for delete to authenticated
-using (public.can_edit_trip(trip_id));
+create policy trip_members_update_owners on public.trip_members for update to authenticated
+using (public.is_trip_owner(trip_id)) with check (public.is_trip_owner(trip_id));
+create policy trip_members_delete_owners on public.trip_members for delete to authenticated
+using (public.is_trip_owner(trip_id));
 
 create policy segments_read_authorized on public.segments for select to authenticated
 using (public.can_read_segment(id));
@@ -293,7 +377,10 @@ create policy segment_members_read_authorized on public.segment_members for sele
 using (public.can_read_segment(segment_id));
 create policy segment_members_write_editors on public.segment_members for insert to authenticated
 with check (exists (
-  select 1 from public.segments s where s.id = segment_id and public.can_edit_trip(s.trip_id)
+  select 1 from public.segments s
+  where s.id = segment_id
+    and public.can_edit_trip(s.trip_id)
+    and public.is_user_trip_member(s.trip_id, user_id)
 ));
 create policy segment_members_delete_editors on public.segment_members for delete to authenticated
 using (exists (
@@ -334,7 +421,10 @@ using (
 );
 create policy item_participants_insert_editors on public.item_participants for insert to authenticated
 with check (exists (
-  select 1 from public.itinerary_items i where i.id = item_id and public.can_edit_trip(i.trip_id)
+  select 1 from public.itinerary_items i
+  where i.id = item_id
+    and public.can_edit_trip(i.trip_id)
+    and public.is_user_trip_member(i.trip_id, user_id)
 ));
 
 create policy expenses_read_authorized on public.expenses for select to authenticated
@@ -359,7 +449,12 @@ using (exists (select 1 from public.expenses e where e.id = expense_id and (
 )));
 create policy expense_payers_write_authorized on public.expense_payers for all to authenticated
 using (exists (select 1 from public.expenses e where e.id = expense_id and (e.created_by = auth.uid() or public.can_edit_trip(e.trip_id))))
-with check (exists (select 1 from public.expenses e where e.id = expense_id and (e.created_by = auth.uid() or public.can_edit_trip(e.trip_id))));
+with check (exists (
+  select 1 from public.expenses e
+  where e.id = expense_id
+    and (e.created_by = auth.uid() or public.can_edit_trip(e.trip_id))
+    and public.is_user_trip_member(e.trip_id, user_id)
+));
 
 create policy allocation_groups_read_authorized on public.expense_allocation_groups for select to authenticated
 using (exists (select 1 from public.expenses e where e.id = expense_id and (
@@ -387,7 +482,9 @@ using (exists (
 )) with check (exists (
   select 1 from public.expense_allocation_groups g
   join public.expenses e on e.id = g.expense_id
-  where g.id = allocation_group_id and (e.created_by = auth.uid() or public.can_edit_trip(e.trip_id))
+  where g.id = allocation_group_id
+    and (e.created_by = auth.uid() or public.can_edit_trip(e.trip_id))
+    and public.is_user_trip_member(e.trip_id, user_id)
 ));
 
 create policy exchange_rates_read_members on public.exchange_rate_snapshots for select to authenticated
@@ -402,6 +499,8 @@ with check (
   public.is_trip_member(trip_id)
   and recorded_by = auth.uid()
   and auth.uid() in (from_user_id, to_user_id)
+  and public.is_user_trip_member(trip_id, from_user_id)
+  and public.is_user_trip_member(trip_id, to_user_id)
 );
 
 create policy activity_read_authorized on public.activity_events for select to authenticated
