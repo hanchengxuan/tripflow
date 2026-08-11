@@ -169,7 +169,6 @@ export default function LedgerScreen() {
               onPress={() => void parseWithAi()}>
               {tx('AI 解析并填入', 'Create AI draft')}
             </ActionButton>
-            {aiNotice ? <InlineNotice>{aiNotice}</InlineNotice> : null}
           </View>
         </View>
       ) : null}
@@ -177,6 +176,7 @@ export default function LedgerScreen() {
       {activeTrip && entryMode === 'manual' ? (
         <View style={styles.focusSurface}>
           <ThemedText type="subtitle">{tx('核对并保存均分支出', 'Review and save the split')}</ThemedText>
+          {aiNotice ? <InlineNotice>{aiNotice}</InlineNotice> : null}
           <View style={styles.form}>
             <FormField label={tx('支出内容', 'Expense')} value={title} onChangeText={setTitle} placeholder={tx('例如：晚餐', 'For example: Dinner')} />
             <View style={styles.row}>
