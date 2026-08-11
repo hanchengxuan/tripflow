@@ -20,7 +20,9 @@ Deno.serve(async (request) => {
   if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
   if (!request.headers.get('Authorization')?.startsWith('Bearer ')) return json({ error: 'Sign in required' }, 401);
 
-  const apiKey = Deno.env.get('GOOGLE_MAPS_API_KEY');
+  // GOOGLE_PLACE_API_KEY is the canonical TripFlow secret. Keep the previous
+  // name as a compatibility fallback for existing environments.
+  const apiKey = Deno.env.get('GOOGLE_PLACE_API_KEY') ?? Deno.env.get('GOOGLE_MAPS_API_KEY');
   if (!apiKey) return json({ error: 'Places autocomplete is not configured' }, 503);
 
   try {
@@ -44,7 +46,7 @@ Deno.serve(async (request) => {
     });
     if (!response.ok) {
       console.error('Places request failed', response.status, (await response.text()).slice(0, 500));
-      return json({ error: 'Place search is temporarily unavailable' }, 502);
+      return json({ error: 'Place search is temporarily unavailable', providerStatus: response.status }, 502);
     }
 
     const data = await response.json() as {

@@ -70,7 +70,7 @@ See `planning.md` for the complete P0/P1 scope, non-goals, architecture, milesto
 - The visual foundation now uses a brighter coastal travel palette, softer cards, and clearer information hierarchy
 - Simplified Chinese and English can be switched from login or Profile, persist on device, and cover navigation, core forms, validation fallbacks, privacy, and support pages
 - Today now prioritizes one “Up next” destination followed by a flat shared timeline, start/end ranges, and quick duration controls
-- An authenticated `places-autocomplete` Edge Function is deployed as a server-side Google Places proxy; manual place entry remains available until `GOOGLE_MAPS_API_KEY` is configured
+- An authenticated `places-autocomplete` Edge Function is deployed as a server-side Google Places proxy. The Places API secret is configured in Supabase as `GOOGLE_PLACE_API_KEY`; the key remains server-side and manual place entry stays available as fallback. Authenticated acceptance confirms the secret is detected, but Google currently returns HTTP 403, so Google Cloud API enablement, billing, and key restrictions still need correction
 - `PRODUCT.md`, `DESIGN.md`, and `.impeccable/design.json` record the product and current visual system for future design continuity
 - Trips now uses a task-based information architecture: the active trip is the workspace anchor, create/join are always-visible top actions, trip switching is a flat list, and invite management lives inside Travellers
 - Profile now uses an explicit edit state for display name and avatar, with language, trip context, account actions, and destructive actions separated by frequency and risk
@@ -104,7 +104,7 @@ Temporary acceptance fixtures are removed after each test; production may contai
 4. Add segment/branch creation and segment-scoped itinerary membership.
 5. Expand the validated ledger beyond equal splits to multiple payers, exclusions, unequal shares, partial transfers, and exchange-rate snapshots.
 6. Address performance-advisor warnings before the dataset grows. The current security advisor has one password-protection warning that is not exercised by the passwordless-only login flow; revisit it before enabling passwords.
-7. Configure a separately restricted Google Maps Platform key as the Supabase Edge Function secret `GOOGLE_MAPS_API_KEY`, then run authenticated Places autocomplete acceptance and set a conservative quota alert.
+7. Resolve the Google Places HTTP 403 by confirming Places API (New) is enabled in the key's project, Billing is active, and the key's API restriction allows Places API (New); then rerun authenticated autocomplete acceptance and set a conservative quota alert.
 8. Continue the itinerary experience milestone with saved Google Place IDs/details, participant/status controls, booking essentials, and richer branch interactions.
 
 ## Standing decisions and safety boundaries

@@ -273,6 +273,8 @@ Expected result:
 - Realtime subscriptions for itinerary and ledger updates.
 - Row Level Security policies based on trip membership, segment membership, and role.
 - Server/edge functions for invite handling, speech/LLM orchestration, exchange-rate snapshots, and notifications.
+- Google Places autocomplete runs only through an authenticated Supabase Edge Function. Its separately restricted API key is stored server-side as `GOOGLE_PLACE_API_KEY`, never in Expo public variables or the client bundle; manual location entry remains available when the provider is unavailable.
+- Current Places integration status (2026-08-11): Supabase detects the configured secret, but Google returns HTTP 403. Before marking autocomplete complete, enable Places API (New) in the same Google Cloud project, activate Billing, restrict the key to Places API (New), and pass an authenticated production lookup.
 
 ### AI and speech boundary
 
