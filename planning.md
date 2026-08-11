@@ -340,7 +340,17 @@ Exit: the 30-day reference scenario works without duplicated trips or leaked pri
 - Balances, minimized settlement suggestions, and partial settlement records.
 - Property-based tests for calculation invariants.
 
-Current implementation: equal-split expenses now produce settlement-adjusted transfer tasks with explicit sender/recipient amounts, personal and group payment status, sender-owned sent/undo actions, and private camera/gallery receipt evidence. The next expansion is multiple payers, exclusions, unequal shares, partial amounts, and property-based reconciliation coverage.
+Current implementation and acceptance requirements:
+
+- Show every outstanding route as an explicit instruction: who must transfer to whom, in which currency, and how much.
+- Show each traveler’s pending outgoing, completed outgoing, pending incoming, and received totals, plus a compact group-wide status view.
+- Let only the sender mark their own suggested transfer as sent or restore it to unsent; update both parties’ status immediately without changing the source expenses.
+- Recalculate pending totals and minimized routes from settlement-adjusted balances after every new expense, payment, or undo.
+- Allow an expense receipt to be captured with the device camera or selected from the photo library during entry, and attached later from expense details.
+- Keep receipt files private, bind each upload to an authorized expense, provide full receipt viewing, and preserve payer/split evidence alongside it.
+- Present the journey as “My settlements → Group settlement → Expense activity,” prioritizing personal actions and progressively disclosing financial evidence instead of stacking equal-weight blocks.
+
+The next expansion is multiple payers, exclusions, unequal shares, partial amounts, exchange-rate snapshots, and property-based reconciliation coverage.
 
 Exit: a realistic multi-currency fixture reconciles exactly to zero across all participants.
 
