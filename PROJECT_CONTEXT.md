@@ -50,7 +50,7 @@ See `planning.md` for the complete P0/P1 scope, non-goals, architecture, milesto
 - First deployable MVP UI connected end to end to live Supabase data
 - Passwordless session gate with secure-link and six-digit OTP handling
 - Automatic profile provisioning on Auth user creation
-- Atomic trip creation with owner membership, hashed expiring invite codes, and invite acceptance
+- Atomic trip creation with owner membership, hashed expiring invite codes, and confirmation-gated invite acceptance from QR, HTTPS link, app deep link, or pasted code
 - Live trip switching, member list, profile editing, and shared itinerary creation
 - Atomic equal-split expense creation, per-currency balances, and settlement suggestions
 - Vercel-ready Expo static web configuration
@@ -73,6 +73,7 @@ See `planning.md` for the complete P0/P1 scope, non-goals, architecture, milesto
 - Authenticated `places-autocomplete` and `route-estimate` Edge Functions keep the Google keys server-side. Selected Google Place IDs persist on itinerary items, consecutive placed stops show traffic-unaware driving distance/duration, manual place entry remains available, and route calls require trip membership. Production acceptance passed Places, persistence, Routes, and authorization on 2026-08-12
 - `PRODUCT.md`, `DESIGN.md`, and `.impeccable/design.json` record the product and current visual system for future design continuity
 - Trips now uses a task-based information architecture: the active trip is the workspace anchor, create/join are always-visible top actions, trip switching is a flat list, and invite management lives inside Travellers
+- Trip owners can render and share an HTTPS invite QR code; travellers can scan it in-app with on-device QR recognition or open it from a system camera. Only trusted TripFlow links are accepted, and joining still requires explicit confirmation
 - Profile now uses an explicit edit state for display name and avatar, with language, trip context, account actions, and destructive actions separated by frequency and risk
 - Profile avatars are stored in a dedicated 5 MB image-only Supabase bucket with per-user write policies; account deletion removes the object and clears its database reference
 - Ledger now presents one focused expense-entry surface at a time and flat balance/history rows instead of a stack of equal-weight cards
@@ -115,7 +116,7 @@ Temporary acceptance fixtures are removed after each test; production may contai
 
 1. Resolve the Apple Developer Program enrollment hold; then sign into Expo/EAS, connect the EAS project, add the public Supabase variables, and produce the first iOS TestFlight build.
 2. Choose and configure the long-term public support email through `EXPO_PUBLIC_SUPPORT_EMAIL`, then finalize App Privacy disclosures, age rating, and Chinese screenshots.
-3. Run TestFlight acceptance on a current iPhone and human acceptance with real owner/editor/viewer accounts, including avatar propagation and trip/member management.
+3. Run TestFlight acceptance on a current iPhone and human acceptance with real owner/editor/viewer accounts, including QR camera scanning, avatar propagation, and trip/member management.
 4. Add segment/branch creation and segment-scoped itinerary membership.
 5. Expand the validated ledger beyond equal splits to multiple payers, exclusions, unequal shares, partial transfers, and exchange-rate snapshots.
 6. Address performance-advisor warnings before the dataset grows. The current security advisor has one password-protection warning that is not exercised by the passwordless-only login flow; revisit it before enabling passwords.

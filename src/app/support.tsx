@@ -38,7 +38,7 @@ export default function SupportScreen() {
               {tx('检查垃圾邮件，确认邮箱拼写正确，并等待一分钟后重试。只使用最新一封邮件中的验证码或安全链接。', 'Check spam, confirm the address, wait one minute, and retry. Only use the newest code or secure link.')}
             </HelpItem>
             <HelpItem title={tx('无法加入行程', 'Cannot join a trip')}>
-              {tx('邀请码可能已过期、被撤销或达到使用上限。请让行程所有者重新生成邀请。', 'The invite may be expired, revoked, or used up. Ask the trip owner for a new code.')}
+              {tx('二维码和邀请码可能已过期、被撤销或达到使用上限。请让行程所有者重新生成邀请；相机权限被拒绝时仍可粘贴邀请码。', 'The QR code or invite may be expired, revoked, or used up. Ask the trip owner for a new invite. If camera access is denied, you can still paste the code.')}
             </HelpItem>
             <HelpItem title={tx('账目或余额不正确', 'An expense or balance looks wrong')}>
               {tx('核对币种、付款人和参与成员。TripFlow 以最小货币单位保存金额，均分产生的余数会按固定顺序分配。', 'Check the currency, payer, and participants. TripFlow stores exact minor units and allocates split remainders deterministically.')}

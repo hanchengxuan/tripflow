@@ -71,6 +71,14 @@
           "microphonePermission": "允许 TripFlow 录制语音并生成可编辑的记账草稿。"
         }
       ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "允许 TripFlow 扫描同行者分享的行程邀请二维码。",
+          "recordAudioAndroid": false,
+          "barcodeScannerEnabled": true
+        }
+      ],
       "expo-asset"
     ],
     "experiments": {

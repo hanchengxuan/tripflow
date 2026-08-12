@@ -1,8 +1,10 @@
-import { useMemo, useState } from 'react';
-import { LayoutAnimation, Pressable, StyleSheet, View } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { LayoutAnimation, Pressable, Share, StyleSheet, View } from 'react-native';
 
 import { DateTimeField } from '@/components/date-time-field';
 import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/form-controls';
+import { InviteQrCode, InviteQrScanner } from '@/components/invite-qr';
 import { MemberAvatar } from '@/components/member-avatar';
 import { Screen } from '@/components/screen';
 import { SelectionField } from '@/components/selection-field';
@@ -10,6 +12,7 @@ import { ThemedText } from '@/components/themed-text';
 import { getCurrencyOptions, getTimeZoneOptions, tripRoleLabels, tripRoleLabelsEn } from '@/constants/options';
 import type { Trip, TripRole } from '@/domain/models';
 import { useI18n } from '@/features/i18n/i18n-provider';
+import { buildInviteUrl, parseInviteToken } from '@/features/invites/invite-link';
 import { useMvp } from '@/features/mvp/mvp-provider';
 import { useTheme } from '@/hooks/use-theme';
 import { toUserMessage } from '@/lib/user-error';
@@ -23,6 +26,7 @@ function dateOffset(days: number) {
 }
 
 export default function TripsScreen() {
+  const params = useLocalSearchParams<{ invite?: string | string[] }>();
   const theme = useTheme();
   const { locale, formatDateTime, tx } = useI18n();
   const {
@@ -50,15 +54,32 @@ export default function TripsScreen() {
   const [inviteCode, setInviteCode] = useState('');
   const [generatedInvite, setGeneratedInvite] = useState<{ token: string; expiresAt: string }>();
   const [inviteRole, setInviteRole] = useState<'editor' | 'viewer'>('editor');
+  const [scanningInvite, setScanningInvite] = useState(false);
   const [busyAction, setBusyAction] = useState<string>();
   const [actionError, setActionError] = useState<string>();
   const [success, setSuccess] = useState<string>();
+  const handledInviteParam = useRef<string | undefined>(undefined);
+  const inviteParam = Array.isArray(params.invite) ? params.invite[0] : params.invite;
 
   const tripSummary = useMemo(() => activeTrip
     ? tx(`${activeTrip.startsOn} 至 ${activeTrip.endsOn} · ${activeTrip.homeCurrency}`, `${activeTrip.startsOn} to ${activeTrip.endsOn} · ${activeTrip.homeCurrency}`)
     : tx('先创建一个旅行空间，之后随时邀请同行者。', 'Create your first trip, then invite travellers anytime.'), [activeTrip, tx]);
   const currencyOptions = getCurrencyOptions(locale === 'en');
   const timeZoneOptions = getTimeZoneOptions(locale === 'en');
+
+  useEffect(() => {
+    if (!inviteParam || handledInviteParam.current === inviteParam) return;
+    handledInviteParam.current = inviteParam;
+    const token = parseInviteToken(inviteParam);
+    if (!token) return;
+    const timeout = setTimeout(() => {
+      setInviteCode(token);
+      setOpenPanel('join');
+      setScanningInvite(false);
+      setSuccess(tx('已读取邀请，请确认后加入行程。', 'Invite loaded. Confirm to join the trip.'));
+    }, 0);
+    return () => clearTimeout(timeout);
+  }, [inviteParam, tx]);
 
   function prepareEdit(trip: Trip) {
     setEditName(trip.name);
@@ -76,6 +97,7 @@ export default function TripsScreen() {
     setEditingMemberId(undefined);
     setConfirmRemoveId(undefined);
     setGeneratedInvite(undefined);
+    setScanningInvite(false);
     setActionError(undefined);
     setSuccess(undefined);
   }
@@ -142,6 +164,22 @@ export default function TripsScreen() {
     await run('invite', async () => setGeneratedInvite(await createInvite(inviteRole)));
   }
 
+  function acceptScannedInvite(token: string) {
+    setInviteCode(token);
+    setScanningInvite(false);
+    setActionError(undefined);
+    setSuccess(tx('二维码已识别，请确认后加入行程。', 'QR code recognized. Confirm to join the trip.'));
+  }
+
+  async function shareInvite() {
+    if (!generatedInvite || !activeTrip) return;
+    const link = buildInviteUrl(generatedInvite.token);
+    await Share.share({
+      message: tx(`加入我的 TripFlow 行程“${activeTrip.name}”：${link}`, `Join my TripFlow trip “${activeTrip.name}”: ${link}`),
+      url: link,
+    });
+  }
+
   async function changeRole(userId: string, role: TripRole) {
     await run(`role-${userId}`, async () => {
       await setMemberRole(userId, role);
@@ -176,7 +214,7 @@ export default function TripsScreen() {
         <View style={styles.quickActions}>
           {activeTrip ? <View style={styles.actionGrow}><ActionButton onPress={() => void openTrip(activeTrip)}>{tx('打开当前行程', 'Open current trip')}</ActionButton></View> : null}
           <View style={styles.actionGrow}><ActionButton tone={activeTrip ? 'secondary' : 'primary'} onPress={() => showPanel('create')}>{openPanel === 'create' ? tx('收起', 'Close') : tx('新建行程', 'New trip')}</ActionButton></View>
-          <View style={styles.actionGrow}><ActionButton tone="secondary" onPress={() => showPanel('join')}>{openPanel === 'join' ? tx('收起', 'Close') : tx('使用邀请码', 'Use invite')}</ActionButton></View>
+          <View style={styles.actionGrow}><ActionButton tone="secondary" onPress={() => showPanel('join')}>{openPanel === 'join' ? tx('收起', 'Close') : tx('邀请码 / 扫码', 'Invite / scan')}</ActionButton></View>
         </View>
       </View>
 
@@ -190,7 +228,9 @@ export default function TripsScreen() {
 
       {openPanel === 'join' ? (
         <View style={[styles.focusPanel, { backgroundColor: theme.backgroundElement }]}>
-          <PanelHeading title={tx('加入同行者的行程', 'Join a shared trip')} caption={tx('粘贴同行者发给你的 48 位邀请码。', 'Paste the 48-character code a traveller shared with you.')} />
+          <PanelHeading title={tx('加入同行者的行程', 'Join a shared trip')} caption={tx('扫描邀请二维码，或粘贴 48 位邀请码。', 'Scan an invite QR code or paste the 48-character code.')} />
+          <ActionButton tone="secondary" onPress={() => setScanningInvite((current) => !current)}>{scanningInvite ? tx('关闭扫码', 'Close scanner') : tx('扫描二维码', 'Scan QR code')}</ActionButton>
+          {scanningInvite ? <InviteQrScanner tx={tx} onToken={acceptScannedInvite} /> : null}
           <FormField label={tx('邀请码', 'Invite code')} value={inviteCode} onChangeText={setInviteCode} autoCapitalize="none" autoCorrect={false} placeholder={tx('粘贴邀请码', 'Paste invite code')} />
           <ActionButton busy={busyAction === 'join'} disabled={inviteCode.trim().length !== 48} onPress={() => void submitInvite()}>{tx('确认加入', 'Join trip')}</ActionButton>
         </View>
@@ -269,7 +309,14 @@ export default function TripsScreen() {
                 <PanelHeading title={tx('邀请新同行者', 'Invite a traveller')} caption={tx('选择初始权限，生成一枚可分享的邀请码。', 'Choose initial access and create a shareable code.')} />
                 <View style={styles.roleRow}><ChoiceChip selected={inviteRole === 'editor'} onPress={() => setInviteRole('editor')}>{tx('可编辑', 'Can edit')}</ChoiceChip><ChoiceChip selected={inviteRole === 'viewer'} onPress={() => setInviteRole('viewer')}>{tx('仅查看', 'View only')}</ChoiceChip></View>
                 <ActionButton tone="secondary" busy={busyAction === 'invite'} onPress={() => void generateInvite()}>{tx('生成邀请码', 'Create invite code')}</ActionButton>
-                {generatedInvite ? <InlineNotice>{tx('邀请码', 'Invite code')}：{generatedInvite.token}{'\n'}{tx('有效期至', 'Expires')}：{formatDateTime(generatedInvite.expiresAt)}</InlineNotice> : null}
+                {generatedInvite ? (
+                  <View style={styles.generatedInvite}>
+                    <InviteQrCode value={buildInviteUrl(generatedInvite.token)} />
+                    <ThemedText type="small" themeColor="textSecondary" style={styles.qrCaption}>{tx('同行者可用 TripFlow 扫码，或用系统相机打开邀请链接。', 'Travellers can scan in TripFlow or open the invite link with their camera.')}</ThemedText>
+                    <InlineNotice>{tx('邀请码', 'Invite code')}：{generatedInvite.token}{'\n'}{tx('有效期至', 'Expires')}：{formatDateTime(generatedInvite.expiresAt)}</InlineNotice>
+                    <ActionButton tone="secondary" onPress={() => void shareInvite()}>{tx('分享邀请链接', 'Share invite link')}</ActionButton>
+                  </View>
+                ) : null}
               </View>
             ) : null}
           </View>
@@ -314,4 +361,5 @@ const styles = StyleSheet.create({
   memberEditor: { borderRadius: 12, marginBottom: 10, padding: 14, gap: 12 }, roleRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   removeConfirm: { gap: 10 }, textButton: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' },
   inviteArea: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 18, marginTop: 6, gap: 12 }, pressed: { opacity: 0.65 }, disabled: { opacity: 0.5 },
+  generatedInvite: { gap: 12 }, qrCaption: { textAlign: 'center' },
 });

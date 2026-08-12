@@ -48,7 +48,7 @@ export function AuthScreen() {
     <Screen
       meta={tx('TripFlow 内测版', 'TripFlow beta')}
       title={tx('把大家的旅程放在一起', 'One trip, shared by everyone')}
-      subtitle={tx('无需密码，通过邮箱安全登录；同行者可使用邀请码加入。', 'Sign in securely by email. Travellers can join with an invite code.') }>
+      subtitle={tx('无需密码，通过邮箱安全登录；同行者可扫码或使用邀请码加入。', 'Sign in securely by email. Travellers can join by QR code or invite code.') }>
       <InfoCard label={step === 'email' ? tx('登录', 'Sign in') : tx('查看邮箱', 'Check your inbox')} title={step === 'email' ? tx('使用邮箱继续', 'Continue with email') : email}>
         <View style={styles.form}>
           {step === 'email' ? (
