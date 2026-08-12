@@ -68,14 +68,16 @@ export function ActionButton({
 export function ChoiceChip({
   children,
   selected,
+  disabled = false,
   onPress,
-}: PropsWithChildren<{ selected: boolean; onPress: () => void }>) {
+}: PropsWithChildren<{ selected: boolean; disabled?: boolean; onPress: () => void }>) {
   return (
     <Pressable
       accessibilityRole="checkbox"
-      accessibilityState={{ checked: selected }}
+      accessibilityState={{ checked: selected, disabled }}
+      disabled={disabled}
       onPress={onPress}
-      style={[styles.chip, selected ? styles.chipSelected : styles.secondary]}>
+      style={[styles.chip, selected ? styles.chipSelected : styles.secondary, disabled && styles.dimmed]}>
       <ThemedText type="smallBold" style={selected ? styles.lightText : styles.darkText}>
         {children}
       </ThemedText>

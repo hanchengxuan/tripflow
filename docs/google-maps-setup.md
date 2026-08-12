@@ -30,8 +30,9 @@ TripFlow uses Google Places Autocomplete and Routes through authenticated Supaba
 2. Open **Today** and start adding an itinerary item.
 3. Type at least three characters in **Where? / 在哪里？**.
 4. Confirm that up to five canonical Google place suggestions appear and selecting one fills the field.
-5. Save two consecutive suggestions as itinerary items and confirm the second row shows a driving distance and approximate duration.
-6. Use **Open in Google Maps / 在 Google 地图中打开** to confirm the displayed destination.
+5. Save two consecutive suggestions as itinerary items and confirm the second row shows a distance and approximate duration.
+6. Switch that leg between **Drive / Transit / Walk / Cycle** and confirm each available mode recalculates. Drive is traffic-unaware; transit defaults to conditions at request time, so all values are estimates.
+7. Use **Open in Google Maps / 在 Google 地图中打开** to confirm the displayed destination.
 
 Official references:
 

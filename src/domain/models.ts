@@ -6,6 +6,7 @@ export type ExpenseId = string;
 export type TripRole = 'owner' | 'editor' | 'viewer';
 export type SegmentVisibility = 'members_only' | 'trip_read_only';
 export type ItineraryKind = 'transport' | 'lodging' | 'food' | 'activity' | 'note' | 'task';
+export type RouteTravelMode = 'DRIVE' | 'TRANSIT' | 'WALK' | 'BICYCLE';
 export type ParticipantStatus = 'going' | 'arrived' | 'delayed' | 'not_participating';
 
 export interface Profile {
@@ -61,6 +62,7 @@ export interface ItineraryItem {
   endsAt?: string;
   locationLabel?: string;
   googlePlaceId?: string;
+  routeTravelMode: RouteTravelMode;
   localScriptAddress?: string;
   responsibleUserId?: UserId;
   linkedStayId?: string;

@@ -8,7 +8,7 @@ import { LocationField } from '@/components/location-field';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { itineraryKindLabels, itineraryKindLabelsEn, itineraryKinds } from '@/constants/options';
-import type { ItineraryItem, ItineraryKind } from '@/domain/models';
+import type { ItineraryItem, ItineraryKind, RouteTravelMode } from '@/domain/models';
 import { useI18n } from '@/features/i18n/i18n-provider';
 import { useMvp } from '@/features/mvp/mvp-provider';
 import { getRouteEstimate, type RouteEstimate } from '@/features/routes/route-estimate';
@@ -53,10 +53,12 @@ const quickTemplates: { kind: ItineraryKind; zh: string; en: string }[] = [
   { kind: 'activity', zh: '景点 / 演出', en: 'Activity / tickets' },
 ];
 
+const routeTravelModes: RouteTravelMode[] = ['DRIVE', 'TRANSIT', 'WALK', 'BICYCLE'];
+
 export default function TodayScreen() {
   const { locale, languageTag, tx } = useI18n();
   const theme = useTheme();
-  const { activeTrip, members, itineraryItems, loading, error, currentUserId, addItineraryItem, addStayTransfer, saveItineraryItem, removeItineraryItem } = useMvp();
+  const { activeTrip, members, itineraryItems, loading, error, currentUserId, addItineraryItem, addStayTransfer, saveItineraryItem, setItineraryRouteMode, removeItineraryItem } = useMvp();
   const [title, setTitle] = useState('');
   const [location, setLocation] = useState('');
   const [googlePlaceId, setGooglePlaceId] = useState('');
@@ -69,6 +71,7 @@ export default function TodayScreen() {
   const [formError, setFormError] = useState<string>();
   const [success, setSuccess] = useState<string>();
   const [busyRouteId, setBusyRouteId] = useState<string>();
+  const [busyTravelModeId, setBusyTravelModeId] = useState<string>();
   const [currentTimestamp, setCurrentTimestamp] = useState(0);
   const [editingItemId, setEditingItemId] = useState<string>();
   const [confirmDeleteItem, setConfirmDeleteItem] = useState(false);
@@ -101,7 +104,7 @@ export default function TodayScreen() {
     const pairs = itineraryItems.slice(1).flatMap((item, index) => {
       const previous = itineraryItems[index];
       return previous.googlePlaceId && item.googlePlaceId
-        ? [{ key: item.id, origin: previous.googlePlaceId, destination: item.googlePlaceId }]
+        ? [{ key: item.id, origin: previous.googlePlaceId, destination: item.googlePlaceId, travelMode: item.routeTravelMode }]
         : [];
     });
     if (pairs.length === 0) {
@@ -109,7 +112,10 @@ export default function TodayScreen() {
       return () => clearTimeout(timeout);
     }
     let cancelled = false;
-    void Promise.all(pairs.map(async (pair) => ({ ...pair, estimate: await getRouteEstimate(activeTrip.id, pair.origin, pair.destination) })))
+    void Promise.all(pairs.map(async (pair) => ({
+      ...pair,
+      estimate: await getRouteEstimate(activeTrip.id, pair.origin, pair.destination, pair.travelMode).catch(() => null),
+    })))
       .then((results) => {
         if (!cancelled) setRouteEstimates(Object.fromEntries(results.flatMap(({ key, estimate }) => estimate ? [[key, estimate]] : [])));
       })
@@ -232,11 +238,59 @@ export default function TodayScreen() {
 
   const kindLabel = (itemKind: ItineraryKind) => locale === 'zh-CN' ? itineraryKindLabels[itemKind] : itineraryKindLabelsEn[itemKind];
 
+  function routeModeLabel(mode: RouteTravelMode) {
+    const labels = {
+      DRIVE: tx('驾车', 'Drive'),
+      TRANSIT: tx('公共交通', 'Transit'),
+      WALK: tx('步行', 'Walk'),
+      BICYCLE: tx('骑行', 'Cycle'),
+    };
+    return labels[mode];
+  }
+
   function formatRouteEstimate(estimate?: RouteEstimate) {
     if (!estimate) return undefined;
     const distance = estimate.distanceMeters >= 1000 ? `${(estimate.distanceMeters / 1000).toFixed(1)} km` : `${estimate.distanceMeters} m`;
     const minutes = Math.max(1, Math.round(estimate.durationSeconds / 60));
-    return tx(`${distance} · 驾车约 ${minutes} 分钟`, `${distance} · about ${minutes} min by car`);
+    return tx(`${distance} · 约 ${minutes} 分钟`, `${distance} · about ${minutes} min`);
+  }
+
+  async function changeRouteMode(item: ItineraryItem, travelMode: RouteTravelMode) {
+    if (item.routeTravelMode === travelMode) return;
+    setBusyTravelModeId(item.id);
+    setFormError(undefined);
+    try {
+      await setItineraryRouteMode(item.id, travelMode);
+    } catch (caught) {
+      setFormError(toUserMessage(caught, tx('无法更新出行方式，请稍后重试。', 'Could not update the travel mode. Please try again.')));
+    } finally {
+      setBusyTravelModeId(undefined);
+    }
+  }
+
+  function routeDetails(item: ItineraryItem) {
+    const itemIndex = itineraryItems.findIndex(({ id }) => id === item.id);
+    const previous = itemIndex > 0 ? itineraryItems[itemIndex - 1] : undefined;
+    if (!previous?.googlePlaceId || !item.googlePlaceId) return null;
+    const estimate = formatRouteEstimate(routeEstimates[item.id]);
+    return (
+      <View style={styles.routeDetails}>
+        <View style={styles.routeModeRow}>
+          {canEdit ? routeTravelModes.map((mode) => (
+            <ChoiceChip
+              key={mode}
+              selected={item.routeTravelMode === mode}
+              disabled={Boolean(busyTravelModeId)}
+              onPress={() => void changeRouteMode(item, mode)}>
+              {routeModeLabel(mode)}
+            </ChoiceChip>
+          )) : <ThemedText type="smallBold">{routeModeLabel(item.routeTravelMode)}</ThemedText>}
+        </View>
+        <ThemedText type="smallBold" style={styles.routeEstimate}>
+          {busyTravelModeId === item.id ? tx('正在重新计算…', 'Recalculating…') : estimate ?? tx('此方式暂无可用路线', 'No route available for this mode')}
+        </ThemedText>
+      </View>
+    );
   }
 
   function itemActions(item: ItineraryItem) {
@@ -363,6 +417,7 @@ export default function TodayScreen() {
                 <ThemedText type="small" themeColor="textSecondary">{tx(`${members.length} 人可见`, `${members.length} travellers can see this`)}</ThemedText>
               </View>
             </View>
+            {routeDetails(upcomingItems[0])}
             {upcomingItems[0].locationLabel ? (
               <Pressable
                 accessibilityRole="link"
@@ -393,7 +448,7 @@ export default function TodayScreen() {
                     <View style={styles.timelineDot} />
                   </View>
                   <View style={styles.timelineContent}>
-                    {formatRouteEstimate(routeEstimates[item.id]) ? <ThemedText type="smallBold" style={styles.routeEstimate}>{formatRouteEstimate(routeEstimates[item.id])}</ThemedText> : null}
+                    {routeDetails(item)}
                     <ThemedText type="small" themeColor="textSecondary">{formatZonedDateTimeRange(item.startsAt, item.endsAt, languageTag, tripTimeZone)}</ThemedText>
                     <ThemedText type="smallBold">{item.title}</ThemedText>
                     {item.locationLabel ? <ThemedText type="small" themeColor="textSecondary">{item.locationLabel}</ThemedText> : null}
@@ -495,6 +550,8 @@ const styles = StyleSheet.create({
   timelineDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: '#1B70A6', marginRight: -1, marginTop: 7 },
   timelineContent: { flex: 1, gap: 2, paddingBottom: 16 },
   routeEstimate: { color: '#087F6A' },
+  routeDetails: { gap: 7, paddingVertical: 4 },
+  routeModeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
   durationRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
   staySection: { gap: 10, paddingVertical: 8 },
   stayHeading: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 },

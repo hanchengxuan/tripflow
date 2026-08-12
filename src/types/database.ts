@@ -401,6 +401,7 @@ export type Database = {
           location_label: string | null
           notes: string | null
           responsible_user_id: string | null
+          route_travel_mode: string
           segment_id: string | null
           starts_at: string
           title: string
@@ -422,6 +423,7 @@ export type Database = {
           location_label?: string | null
           notes?: string | null
           responsible_user_id?: string | null
+          route_travel_mode?: string
           segment_id?: string | null
           starts_at: string
           title: string
@@ -443,6 +445,7 @@ export type Database = {
           location_label?: string | null
           notes?: string | null
           responsible_user_id?: string | null
+          route_travel_mode?: string
           segment_id?: string | null
           starts_at?: string
           title?: string
@@ -1016,6 +1019,10 @@ export type Database = {
           item_title: string
           requested_item_id: string
         }
+        Returns: Database["public"]["Tables"]["itinerary_items"]["Row"]
+      }
+      update_itinerary_route_mode: {
+        Args: { requested_item_id: string; requested_travel_mode: string }
         Returns: Database["public"]["Tables"]["itinerary_items"]["Row"]
       }
     }

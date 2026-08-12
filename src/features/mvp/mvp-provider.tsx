@@ -22,10 +22,11 @@ import {
   unrecordSettlement,
   updateProfile,
   updateItineraryItem,
+  updateItineraryRouteMode,
   updateTrip,
   updateTripMember,
 } from '@/data/trip-repository';
-import type { Expense, ItineraryItem, Profile, Settlement, Trip, TripMember } from '@/domain/models';
+import type { Expense, ItineraryItem, Profile, RouteTravelMode, Settlement, Trip, TripMember } from '@/domain/models';
 import { useAuth } from '@/features/auth/auth-provider';
 import { toUserMessage } from '@/lib/user-error';
 import type { Database } from '@/types/database';
@@ -55,6 +56,7 @@ interface MvpContextValue {
   addItineraryItem: (input: { title: string; kind: Database['public']['Enums']['itinerary_kind']; startsAt: string; endsAt?: string; locationLabel?: string; googlePlaceId?: string }) => Promise<void>;
   addStayTransfer: (input: { stayId: string; sourceItemId: string; title: string }) => Promise<void>;
   saveItineraryItem: (input: { itemId: string; title: string; startsAt: string; endsAt: string; locationLabel?: string; googlePlaceId?: string }) => Promise<void>;
+  setItineraryRouteMode: (itemId: string, travelMode: RouteTravelMode) => Promise<void>;
   removeItineraryItem: (itemId: string) => Promise<void>;
   addEqualExpense: (input: { title: string; currency: string; totalMinor: number; payerUserId: string; participantUserIds: string[]; receipt?: { uri: string; base64?: string | null; mimeType?: string | null; fileSize?: number } }) => Promise<{ receiptUploaded: boolean; receiptError?: unknown }>;
   attachExpenseReceipt: (expenseId: string, receipt: { uri: string; base64?: string | null; mimeType?: string | null; fileSize?: number }) => Promise<void>;
@@ -214,9 +216,15 @@ export function MvpProvider({ children }: PropsWithChildren) {
     setItineraryItems(await listItineraryItems(activeTrip.id));
   }, [activeTrip]);
 
-  const saveItineraryItem = useCallback(async (input: { itemId: string; title: string; startsAt: string; endsAt: string; locationLabel?: string }) => {
+  const saveItineraryItem = useCallback(async (input: { itemId: string; title: string; startsAt: string; endsAt: string; locationLabel?: string; googlePlaceId?: string }) => {
     if (!activeTrip) throw new Error('请先创建或加入一个行程。');
     await updateItineraryItem(input);
+    setItineraryItems(await listItineraryItems(activeTrip.id));
+  }, [activeTrip]);
+
+  const setItineraryRouteMode = useCallback(async (itemId: string, travelMode: RouteTravelMode) => {
+    if (!activeTrip) throw new Error('请先创建或加入一个行程。');
+    await updateItineraryRouteMode(itemId, travelMode);
     setItineraryItems(await listItineraryItems(activeTrip.id));
   }, [activeTrip]);
 
@@ -279,12 +287,13 @@ export function MvpProvider({ children }: PropsWithChildren) {
     addItineraryItem,
     addStayTransfer,
     saveItineraryItem,
+    setItineraryRouteMode,
     removeItineraryItem,
     addEqualExpense,
     attachExpenseReceipt,
     markSettlement,
     unmarkSettlement,
-  }), [loading, error, trips, activeTrip, members, ledgerMembers, itineraryItems, expenses, settlements, profile, currentUserId, selectTrip, refresh, createTripAction, joinTrip, createInvite, saveTrip, deleteTripAction, setMemberRole, removeMember, saveProfile, addItineraryItem, addStayTransfer, saveItineraryItem, removeItineraryItem, addEqualExpense, attachExpenseReceipt, markSettlement, unmarkSettlement]);
+  }), [loading, error, trips, activeTrip, members, ledgerMembers, itineraryItems, expenses, settlements, profile, currentUserId, selectTrip, refresh, createTripAction, joinTrip, createInvite, saveTrip, deleteTripAction, setMemberRole, removeMember, saveProfile, addItineraryItem, addStayTransfer, saveItineraryItem, setItineraryRouteMode, removeItineraryItem, addEqualExpense, attachExpenseReceipt, markSettlement, unmarkSettlement]);
 
   return <MvpContext.Provider value={value}>{children}</MvpContext.Provider>;
 }

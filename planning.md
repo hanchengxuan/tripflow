@@ -274,8 +274,8 @@ Expected result:
 - Row Level Security policies based on trip membership, segment membership, and role.
 - Server/edge functions for invite handling, speech/LLM orchestration, exchange-rate snapshots, and notifications.
 - Google Places autocomplete runs only through an authenticated Supabase Edge Function. Its separately restricted API key is stored server-side as `GOOGLE_PLACE_API_KEY`, never in Expo public variables or the client bundle; manual location entry remains available when the provider is unavailable.
-- Google Routes requests run through an authenticated, trip-membership-checked Edge Function using the server-side `GOOGLE_ROUTES_API_KEY`. The first beta uses traffic-unaware driving estimates and keeps a session cache to reduce duplicate billable requests.
-- Production acceptance on 2026-08-12 verified Places suggestions, persisted Place IDs, Routes distance/duration, membership rejection, Gemini text expense parsing, and Gemini Mandarin voice expense parsing.
+- Google Routes requests run through an authenticated, trip-membership-checked Edge Function using the server-side `GOOGLE_ROUTES_API_KEY`. Each leg persists Drive, Transit, Walk, or Cycle; only Drive sends the traffic-unaware routing preference. A mode-aware session cache reduces duplicate billable requests.
+- Production acceptance on 2026-08-12 verified Places suggestions, persisted Place IDs and route modes, all four Routes distance/duration modes, authorization and invalid-mode rejection, Gemini text expense parsing, and Gemini Mandarin voice expense parsing.
 - Trip invites retain the same hashed, expiring token and explicit acceptance RPC when represented as a QR code. In-app scanning accepts only a raw token or a trusted TripFlow HTTPS/app link; scanning never auto-joins a trip.
 
 ### AI and speech boundary

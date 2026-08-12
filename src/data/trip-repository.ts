@@ -1,4 +1,4 @@
-import type { Expense, ItineraryItem, Profile, Settlement, Trip, TripMember } from '@/domain/models';
+import type { Expense, ItineraryItem, Profile, RouteTravelMode, Settlement, Trip, TripMember } from '@/domain/models';
 import { getSupabaseClient } from '@/lib/supabase';
 import type { Database, Tables } from '@/types/database';
 
@@ -28,6 +28,7 @@ function mapItineraryItem(row: ItineraryRow): ItineraryItem {
     endsAt: row.ends_at ?? undefined,
     locationLabel: row.location_label ?? undefined,
     googlePlaceId: row.google_place_id ?? undefined,
+    routeTravelMode: row.route_travel_mode as RouteTravelMode,
     localScriptAddress: row.local_script_address ?? undefined,
     responsibleUserId: row.responsible_user_id ?? undefined,
     linkedStayId: row.linked_stay_id ?? undefined,
@@ -312,6 +313,14 @@ export async function updateItineraryItem(input: {
     item_ends_at: input.endsAt,
     item_location_label: input.locationLabel?.trim() ?? '',
     item_google_place_id: input.googlePlaceId?.trim() ?? '',
+  });
+  if (error) throw error;
+}
+
+export async function updateItineraryRouteMode(itemId: string, travelMode: RouteTravelMode) {
+  const { error } = await getSupabaseClient().rpc('update_itinerary_route_mode', {
+    requested_item_id: itemId,
+    requested_travel_mode: travelMode,
   });
   if (error) throw error;
 }

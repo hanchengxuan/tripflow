@@ -42,13 +42,15 @@ Deno.serve(async (request: Request) => {
   if (!apiKey) return json({ error: 'Route estimates are not configured' }, 503);
 
   try {
-    const body = await request.json() as { tripId?: string; originPlaceId?: string; destinationPlaceId?: string };
+    const body = await request.json() as { tripId?: string; originPlaceId?: string; destinationPlaceId?: string; travelMode?: string };
     const tripId = body.tripId?.trim() ?? '';
     const originPlaceId = body.originPlaceId?.trim() ?? '';
     const destinationPlaceId = body.destinationPlaceId?.trim() ?? '';
+    const travelMode = body.travelMode?.trim().toUpperCase() ?? 'DRIVE';
     if (!/^[0-9a-f-]{36}$/i.test(tripId) || !originPlaceId || !destinationPlaceId || originPlaceId.length > 300 || destinationPlaceId.length > 300) {
       return json({ error: 'Two valid places are required' }, 400);
     }
+    if (!['DRIVE', 'TRANSIT', 'WALK', 'BICYCLE'].includes(travelMode)) return json({ error: 'Travel mode is invalid' }, 400);
 
     const membershipResponse = await fetch(
       `${supabaseUrl}/rest/v1/trip_members?select=trip_id&trip_id=eq.${encodeURIComponent(tripId)}&limit=1`,
@@ -68,8 +70,8 @@ Deno.serve(async (request: Request) => {
       body: JSON.stringify({
         origin: { placeId: originPlaceId },
         destination: { placeId: destinationPlaceId },
-        travelMode: 'DRIVE',
-        routingPreference: 'TRAFFIC_UNAWARE',
+        travelMode,
+        ...(travelMode === 'DRIVE' ? { routingPreference: 'TRAFFIC_UNAWARE' } : {}),
         computeAlternativeRoutes: false,
       }),
     });
