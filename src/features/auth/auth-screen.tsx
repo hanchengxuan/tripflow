@@ -107,9 +107,9 @@ export function AuthScreen() {
             </>
           ) : (
             <>
-              <ThemedText themeColor="textSecondary">{tx('请输入邮件中的六位数字验证码。', 'Enter the six-digit code from the email.')}</ThemedText>
-              <FormField label={tx('六位验证码', 'Six-digit code')} value={token} onChangeText={setToken} keyboardType="number-pad" maxLength={6} placeholder="123456" />
-              <ActionButton busy={busy} disabled={!/^\d{6}$/.test(token)} onPress={() => void verifyCode()}>{flow === 'register' ? tx('验证并继续注册', 'Verify and continue') : tx('验证并登录', 'Verify and sign in')}</ActionButton>
+              <ThemedText themeColor="textSecondary">{tx('请输入邮件中的数字验证码（6 到 10 位）。', 'Enter the numeric code from the email (6–10 digits).')}</ThemedText>
+              <FormField label={tx('邮件验证码', 'Email verification code')} value={token} onChangeText={setToken} keyboardType="number-pad" maxLength={10} placeholder="123456" />
+              <ActionButton busy={busy} disabled={!/^\d{6,10}$/.test(token.replace(/\s/g, ''))} onPress={() => void verifyCode()}>{flow === 'register' ? tx('验证并继续注册', 'Verify and continue') : tx('验证并登录', 'Verify and sign in')}</ActionButton>
               <ActionButton tone="secondary" disabled={busy} onPress={() => setVerifying(false)}>{tx('更换邮箱', 'Use another email')}</ActionButton>
             </>
           )}

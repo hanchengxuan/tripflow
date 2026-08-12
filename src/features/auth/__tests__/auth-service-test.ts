@@ -1,4 +1,4 @@
-import { completeRegistration, deleteAccount, normalizeEmail, sendEmailOtp, validatePassword } from '@/features/auth/auth-service';
+import { completeRegistration, deleteAccount, normalizeEmail, normalizeEmailOtp, sendEmailOtp, validatePassword } from '@/features/auth/auth-service';
 import { updateProfile } from '@/data/trip-repository';
 
 const mockRpc = jest.fn();
@@ -36,6 +36,15 @@ describe('normalizeEmail', () => {
     expect(() => validatePassword('short1')).toThrow('密码至少 8 位');
     expect(() => validatePassword('onlyletters')).toThrow('密码至少 8 位');
     expect(() => validatePassword('12345678')).toThrow('密码至少 8 位');
+  });
+
+  it('accepts the configurable Supabase email OTP length', () => {
+    expect(normalizeEmailOtp('123456')).toBe('123456');
+    expect(normalizeEmailOtp('87306620')).toBe('87306620');
+    expect(normalizeEmailOtp('123 456 7890')).toBe('1234567890');
+    expect(() => normalizeEmailOtp('12345')).toThrow('6 到 10 位');
+    expect(() => normalizeEmailOtp('12345678901')).toThrow('6 到 10 位');
+    expect(() => normalizeEmailOtp('1234ABCD')).toThrow('6 到 10 位');
   });
 
   it('creates users only in the registration OTP flow', async () => {

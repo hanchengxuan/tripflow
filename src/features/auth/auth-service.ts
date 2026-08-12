@@ -19,6 +19,17 @@ export function validatePassword(password: string) {
   return password;
 }
 
+export function normalizeEmailOtp(token: string): string {
+  const normalized = token.replace(/\s/g, '');
+
+  // Hosted Supabase projects can be configured to issue 6–10 digit email OTPs.
+  if (!/^\d{6,10}$/.test(normalized)) {
+    throw new Error('请输入邮件中的 6 到 10 位数字验证码。');
+  }
+
+  return normalized;
+}
+
 export async function signInWithPassword(email: string, password: string) {
   const normalizedEmail = normalizeEmail(email);
   const { data, error } = await getSupabaseClient().auth.signInWithPassword({ email: normalizedEmail, password });
@@ -62,11 +73,7 @@ export async function completeRegistration(input: {
 
 export async function verifyEmailOtp(email: string, token: string) {
   const normalizedEmail = normalizeEmail(email);
-  const normalizedToken = token.trim();
-
-  if (!/^\d{6}$/.test(normalizedToken)) {
-    throw new Error('请输入邮件中的六位验证码。');
-  }
+  const normalizedToken = normalizeEmailOtp(token);
 
   const { data, error } = await getSupabaseClient().auth.verifyOtp({
     email: normalizedEmail,
