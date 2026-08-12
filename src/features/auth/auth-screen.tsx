@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { Link, type Href, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/form-controls';
@@ -18,6 +18,15 @@ import { toUserMessage } from '@/lib/user-error';
 type AuthFlow = 'login' | 'register' | 'otp-login';
 type AvatarDraft = { uri: string; mimeType?: string | null };
 
+const OTP_EXPIRY_SECONDS = 10 * 60;
+const OTP_RESEND_COOLDOWN_SECONDS = 30;
+
+function formatCountdown(totalSeconds: number) {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, '0')}`;
+}
+
 function useInviteToken() {
   const params = useLocalSearchParams<{ invite?: string | string[] }>();
   const value = Array.isArray(params.invite) ? params.invite[0] : params.invite;
@@ -32,12 +41,26 @@ export function AuthScreen() {
   const [token, setToken] = useState('');
   const [flow, setFlow] = useState<AuthFlow>('login');
   const [verifying, setVerifying] = useState(false);
+  const [codeSentAt, setCodeSentAt] = useState<number>();
+  const [clock, setClock] = useState(() => Date.now());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
+
+  const elapsedSeconds = codeSentAt ? Math.floor((clock - codeSentAt) / 1000) : 0;
+  const resendSeconds = Math.max(0, OTP_RESEND_COOLDOWN_SECONDS - elapsedSeconds);
+  const expirySeconds = Math.max(0, OTP_EXPIRY_SECONDS - elapsedSeconds);
+  const codeExpired = Boolean(codeSentAt && expirySeconds === 0);
+
+  useEffect(() => {
+    if (!verifying || !codeSentAt || (resendSeconds === 0 && expirySeconds === 0)) return;
+    const timer = setInterval(() => setClock(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [codeSentAt, expirySeconds, resendSeconds, verifying]);
 
   function chooseFlow(nextFlow: AuthFlow) {
     setFlow(nextFlow);
     setVerifying(false);
+    setCodeSentAt(undefined);
     setToken('');
     setError(undefined);
   }
@@ -61,6 +84,10 @@ export function AuthScreen() {
       const normalized = await sendEmailOtp(email, flow === 'register');
       setEmail(normalized);
       setVerifying(true);
+      setToken('');
+      const sentAt = Date.now();
+      setCodeSentAt(sentAt);
+      setClock(sentAt);
     } catch (caught) {
       setError(toUserMessage(caught, flow === 'register'
         ? tx('注册验证码发送失败，请稍后重试。', 'Could not send the registration code. Please try again.')
@@ -109,8 +136,14 @@ export function AuthScreen() {
             <>
               <ThemedText themeColor="textSecondary">{tx('请输入邮件中的数字验证码（6 到 10 位）。', 'Enter the numeric code from the email (6–10 digits).')}</ThemedText>
               <FormField label={tx('邮件验证码', 'Email verification code')} value={token} onChangeText={setToken} keyboardType="number-pad" maxLength={10} placeholder="123456" />
-              <ActionButton busy={busy} disabled={!/^\d{6,10}$/.test(token.replace(/\s/g, ''))} onPress={() => void verifyCode()}>{flow === 'register' ? tx('验证并继续注册', 'Verify and continue') : tx('验证并登录', 'Verify and sign in')}</ActionButton>
-              <ActionButton tone="secondary" disabled={busy} onPress={() => setVerifying(false)}>{tx('更换邮箱', 'Use another email')}</ActionButton>
+              {codeExpired
+                ? <InlineNotice tone="error">{tx('验证码已过期，请重新获取。', 'This code has expired. Request a new one.')}</InlineNotice>
+                : <ThemedText type="small" themeColor="textSecondary">{tx(`验证码 ${formatCountdown(expirySeconds)} 后过期。仅最新一封邮件中的验证码有效。`, `Code expires in ${formatCountdown(expirySeconds)}. Only the newest email code is valid.`)}</ThemedText>}
+              <ActionButton busy={busy} disabled={codeExpired || !/^\d{6,10}$/.test(token.replace(/\s/g, ''))} onPress={() => void verifyCode()}>{flow === 'register' ? tx('验证并继续注册', 'Verify and continue') : tx('验证并登录', 'Verify and sign in')}</ActionButton>
+              <ActionButton tone="secondary" busy={busy} disabled={busy || resendSeconds > 0} onPress={() => void sendCode()}>
+                {resendSeconds > 0 ? tx(`${resendSeconds} 秒后可重发`, `Resend in ${resendSeconds}s`) : tx('重新发送验证码', 'Resend code')}
+              </ActionButton>
+              <ActionButton tone="secondary" disabled={busy} onPress={() => { setVerifying(false); setCodeSentAt(undefined); }}>{tx('更换邮箱', 'Use another email')}</ActionButton>
             </>
           )}
           {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
