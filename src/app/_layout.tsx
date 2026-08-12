@@ -6,20 +6,21 @@ import { useColorScheme } from 'react-native';
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import AppTabs from '@/components/app-tabs';
 import { AuthProvider, useAuth } from '@/features/auth/auth-provider';
-import { AuthLoadingScreen, AuthScreen } from '@/features/auth/auth-screen';
+import { AuthLoadingScreen, AuthScreen, OnboardingScreen } from '@/features/auth/auth-screen';
 import { LanguageProvider, useI18n } from '@/features/i18n/i18n-provider';
 import { MvpProvider } from '@/features/mvp/mvp-provider';
 
 SplashScreen.preventAutoHideAsync();
 
 function SessionRouter() {
-  const { configured, loading, session } = useAuth();
+  const { configured, loading, onboardingComplete, session } = useAuth();
   const pathname = usePathname();
 
   if (pathname === '/privacy' || pathname === '/support') return <Slot />;
 
   if (!configured || loading) return <AuthLoadingScreen configured={configured} />;
   if (!session) return <AuthScreen />;
+  if (!onboardingComplete) return <OnboardingScreen />;
 
   return (
     <MvpProvider>

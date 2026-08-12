@@ -34,8 +34,8 @@ Submission uploads the binary to App Store Connect/TestFlight. It does not compl
 - Privacy and support pages are published by the app at `/privacy` and `/support`; configure `EXPO_PUBLIC_SUPPORT_EMAIL` before public review.
 - Complete App Privacy disclosures for Supabase/Vercel and any later analytics, crash, speech, or AI providers.
 - Simplified Chinese name, subtitle, description, keywords, URLs, and review-note draft live in `docs/app-store-metadata-zh-CN.md`; add the final support contact, age rating, and screenshots.
-- Run TestFlight acceptance on at least one current iPhone for login links, date/time controls, invitations, profile editing, itinerary creation, and expense splitting.
-- Provide App Review with a usable review account or clear passwordless-login instructions.
+- Run TestFlight acceptance on at least one current iPhone for registration OTP, password login, QR invitations, date/time controls, profile editing, itinerary creation, and expense splitting.
+- Provide App Review with a usable review account and password, plus clear OTP registration instructions if registration must also be reviewed.
 
 ## Current Apple toolchain requirement
 

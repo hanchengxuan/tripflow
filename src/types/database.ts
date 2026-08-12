@@ -505,6 +505,7 @@ export type Database = {
           deleted_at: string | null
           display_name: string
           id: string
+          onboarding_completed: boolean
           updated_at: string
         }
         Insert: {
@@ -513,6 +514,7 @@ export type Database = {
           deleted_at?: string | null
           display_name: string
           id: string
+          onboarding_completed?: boolean
           updated_at?: string
         }
         Update: {
@@ -521,6 +523,7 @@ export type Database = {
           deleted_at?: string | null
           display_name?: string
           id?: string
+          onboarding_completed?: boolean
           updated_at?: string
         }
         Relationships: []
@@ -947,6 +950,7 @@ export type Database = {
           invite_token: string
         }[]
       }
+      complete_profile_onboarding: { Args: never; Returns: undefined }
       delete_current_account: { Args: never; Returns: undefined }
       delete_itinerary_item: {
         Args: { requested_item_id: string }

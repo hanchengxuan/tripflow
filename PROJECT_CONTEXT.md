@@ -43,12 +43,12 @@ See `planning.md` for the complete P0/P1 scope, non-goals, architecture, milesto
 - Initial Supabase schema deployed with 14 public tables, all with RLS enabled
 - RLS bootstrap and privilege escalation issues fixed before production data
 - Security-definer authorization implementations moved behind the unexposed `private` schema
-- Supabase security advisor reports zero findings after deployment
+- Supabase database security advisor reports no RLS/RPC findings; Auth still warns that leaked-password protection must be enabled now that password login is supported
 - Supabase JavaScript client installed with AsyncStorage session persistence and lazy environment validation
 - Generated TypeScript database types match the deployed schema
-- Email OTP send/verify service implemented with normalized input and six-digit token validation
+- Open registration, password login, and email OTP login use normalized input, six-digit token validation, and a required profile onboarding gate
 - First deployable MVP UI connected end to end to live Supabase data
-- Passwordless session gate with secure-link and six-digit OTP handling
+- Session routing separates unauthenticated login/registration, incomplete onboarding, and the authenticated product
 - Automatic profile provisioning on Auth user creation
 - Atomic trip creation with owner membership, hashed expiring invite codes, and confirmation-gated invite acceptance from QR, HTTPS link, app deep link, or pasted code
 - Live trip switching, member list, profile editing, and shared itinerary creation
@@ -60,7 +60,7 @@ See `planning.md` for the complete P0/P1 scope, non-goals, architecture, milesto
 - Trip dates, itinerary date/time, home currency, expense currency, timezone, and invite role use controlled selectors instead of free-form entry
 - An independent Profile tab lets each signed-in user edit their display name and review account/trip information
 - App Store identity is prepared with bundle ID `com.hanchengxuan.tripflow`, an original 1024px RGB icon, and EAS build/submit profiles
-- Web and iOS exports, Expo Doctor, lint, TypeScript, and 20 automated tests pass for the current mobile-readiness milestone; web document language/title are Chinese-aware
+- Web and iOS exports, Expo Doctor, lint, TypeScript, and 26 automated tests pass for the current mobile-readiness milestone; web document language/title are Chinese-aware
 - In-app account deletion is deployed end to end: auth credentials are removed, the profile is anonymized, memberships are revoked, sole-owned trips are deleted, and shared trips transfer to another member
 - Public Chinese privacy and support pages are live at `/privacy` and `/support`, and the login/Profile screens link to them
 - A Simplified Chinese App Store metadata and review-notes draft is maintained in `docs/app-store-metadata-zh-CN.md`
@@ -110,6 +110,8 @@ See `planning.md` for the complete P0/P1 scope, non-goals, architecture, milesto
 - `itinerary_place_ids`
 - `remove_legacy_itinerary_update`
 - `itinerary_route_modes`
+- `profile_onboarding`
+- `harden_profile_onboarding`
 
 Temporary acceptance fixtures are removed after each test; production may contain real user-created rows.
 
@@ -120,7 +122,7 @@ Temporary acceptance fixtures are removed after each test; production may contai
 3. Run TestFlight acceptance on a current iPhone and human acceptance with real owner/editor/viewer accounts, including QR camera scanning, avatar propagation, and trip/member management.
 4. Add segment/branch creation and segment-scoped itinerary membership.
 5. Expand the validated ledger beyond equal splits to multiple payers, exclusions, unequal shares, partial transfers, and exchange-rate snapshots.
-6. Address performance-advisor warnings before the dataset grows. The current security advisor has one password-protection warning that is not exercised by the passwordless-only login flow; revisit it before enabling passwords.
+6. Address performance-advisor warnings before the dataset grows, and enable Supabase leaked-password protection before broader password-login beta distribution.
 7. Configure conservative Google Places and Routes quotas/budget alerts, then monitor production usage before increasing limits.
 8. Continue the itinerary experience milestone with Place details, participant/status controls, booking essentials, and richer branch interactions.
 9. Add reviewable Gemini itinerary import from photos, files, and shared links; imported content must remain a draft until the traveler confirms it.
@@ -129,7 +131,7 @@ Temporary acceptance fixtures are removed after each test; production may contai
 ## Standing decisions and safety boundaries
 
 - First beta targets iOS and Android via Expo development builds.
-- Development login starts with email OTP; Apple and Google follow later.
+- Authentication supports registration without an invite, password login, and email-code login. New users verify an email OTP and must set a password and basic profile before entering the product; scanned invite context survives this flow and still requires explicit acceptance. Apple and Google follow later.
 - Cross-branch information is private by default with optional trip-level read-only visibility.
 - Each trip selects a home currency while preserving original transaction currencies.
 - Never place a service-role key, database password, or signing secret in the Expo client or Git.

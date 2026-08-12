@@ -277,6 +277,7 @@ Expected result:
 - Google Routes requests run through an authenticated, trip-membership-checked Edge Function using the server-side `GOOGLE_ROUTES_API_KEY`. Each leg persists Drive, Transit, Walk, or Cycle; only Drive sends the traffic-unaware routing preference. A mode-aware session cache reduces duplicate billable requests.
 - Production acceptance on 2026-08-12 verified Places suggestions, persisted Place IDs and route modes, all four Routes distance/duration modes, authorization and invalid-mode rejection, Gemini text expense parsing, and Gemini Mandarin voice expense parsing.
 - Trip invites retain the same hashed, expiring token and explicit acceptance RPC when represented as a QR code. In-app scanning accepts only a raw token or a trusted TripFlow HTTPS/app link; scanning never auto-joins a trip.
+- Registration is open without an invite. New users verify a six-digit email OTP, set a password and basic profile behind an onboarding gate, then create a trip or explicitly accept their preserved invite. Existing users can sign in by password or email OTP.
 
 ### AI and speech boundary
 
@@ -424,7 +425,7 @@ Exit: the group can rely on the app for a multi-day pilot before the year-end tr
 ## 10. Decisions still to make
 
 - App Store subtitle, screenshots, support contact, and final privacy-policy wording.
-- Whether the first beta uses passwordless email, Apple/Google sign-in, or both.
+- When Apple and Google sign-in should be added after the email OTP registration and password-login beta is stable.
 - Default cross-branch visibility: private or read-only to all trip members.
 - Home currency and exchange-rate source/override policy.
 - Rounding remainder policy for equal splits.

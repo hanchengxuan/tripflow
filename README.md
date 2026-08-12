@@ -1,6 +1,6 @@
 # TripFlow
 
-TripFlow is a collaborative travel workspace for groups that travel together, split into parallel branches, and reunite later. The first deployable MVP covers passwordless sign-in, shared trips and invitations, a live itinerary, and equal-split multi-currency expenses backed by Supabase Row Level Security.
+TripFlow is a collaborative travel workspace for groups that travel together, split into parallel branches, and reunite later. The first deployable MVP covers open email registration with profile onboarding, password or email-code sign-in, shared trips and invitations, a live itinerary, and equal-split multi-currency expenses backed by Supabase Row Level Security.
 
 Production MVP: <https://tripflow-liart.vercel.app>
 

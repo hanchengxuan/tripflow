@@ -1,7 +1,6 @@
 import { getSupabaseClient } from '@/lib/supabase';
-import * as Linking from 'expo-linking';
 
-import { parseInviteToken } from '@/features/invites/invite-link';
+import { updateProfile } from '@/data/trip-repository';
 
 export function normalizeEmail(email: string): string {
   const normalized = email.trim().toLowerCase();
@@ -13,21 +12,53 @@ export function normalizeEmail(email: string): string {
   return normalized;
 }
 
-export async function sendEmailOtp(email: string): Promise<string> {
+export function validatePassword(password: string) {
+  if (password.length < 8 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+    throw new Error('密码至少 8 位，并同时包含字母和数字。');
+  }
+  return password;
+}
+
+export async function signInWithPassword(email: string, password: string) {
   const normalizedEmail = normalizeEmail(email);
-  const initialUrl = await Linking.getInitialURL();
-  const emailRedirectTo = initialUrl && parseInviteToken(initialUrl) ? initialUrl : Linking.createURL('/');
+  const { data, error } = await getSupabaseClient().auth.signInWithPassword({ email: normalizedEmail, password });
+  if (error) throw error;
+  return data.session;
+}
+
+export async function sendEmailOtp(email: string, shouldCreateUser: boolean): Promise<string> {
+  const normalizedEmail = normalizeEmail(email);
   const { error } = await getSupabaseClient().auth.signInWithOtp({
     email: normalizedEmail,
     options: {
-      shouldCreateUser: true,
-      emailRedirectTo,
+      shouldCreateUser,
     },
   });
 
   if (error) throw error;
   return normalizedEmail;
 }
+
+export async function completeRegistration(input: {
+  userId: string;
+  displayName: string;
+  password: string;
+  avatar?: { uri: string; mimeType?: string | null };
+}) {
+  const displayName = input.displayName.trim();
+  if (!displayName || displayName.length > 80) throw new Error('请输入 1 到 80 个字符的显示名称。');
+  const password = validatePassword(input.password);
+  const client = getSupabaseClient();
+  const { error } = await client.auth.updateUser({ password, data: { display_name: displayName } });
+  if (error) throw error;
+  await updateProfile(input.userId, {
+    displayName,
+    avatar: input.avatar,
+  });
+  const { error: onboardingError } = await client.rpc('complete_profile_onboarding');
+  if (onboardingError) throw onboardingError;
+}
+
 
 export async function verifyEmailOtp(email: string, token: string) {
   const normalizedEmail = normalizeEmail(email);

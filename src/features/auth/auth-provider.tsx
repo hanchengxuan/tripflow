@@ -7,6 +7,8 @@ interface AuthContextValue {
   session: Session | null;
   loading: boolean;
   configured: boolean;
+  onboardingComplete: boolean;
+  finishOnboarding: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -14,6 +16,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: PropsWithChildren) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(isSupabaseConfigured);
+  const [onboardingComplete, setOnboardingComplete] = useState<boolean | undefined>(undefined);
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
@@ -26,8 +29,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
         setLoading(false);
       }
     });
-    const { data } = client.auth.onAuthStateChange((_event, nextSession) => {
+    const { data } = client.auth.onAuthStateChange((event, nextSession) => {
       setSession(nextSession);
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') setOnboardingComplete(undefined);
       setLoading(false);
     });
 
@@ -37,9 +41,26 @@ export function AuthProvider({ children }: PropsWithChildren) {
     };
   }, []);
 
+  useEffect(() => {
+    const userId = session?.user.id;
+    if (!userId) return;
+    let mounted = true;
+    getSupabaseClient().from('profiles').select('onboarding_completed').eq('id', userId).single()
+      .then(({ data, error }) => {
+        if (mounted) setOnboardingComplete(!error && data.onboarding_completed);
+      });
+    return () => { mounted = false; };
+  }, [session?.user.id]);
+
   const value = useMemo(
-    () => ({ session, loading, configured: isSupabaseConfigured }),
-    [session, loading],
+    () => ({
+      session,
+      loading: loading || Boolean(session && onboardingComplete === undefined),
+      configured: isSupabaseConfigured,
+      onboardingComplete: onboardingComplete ?? false,
+      finishOnboarding: () => setOnboardingComplete(true),
+    }),
+    [session, loading, onboardingComplete],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
