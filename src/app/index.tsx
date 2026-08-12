@@ -104,7 +104,7 @@ export default function TodayScreen() {
     const pairs = itineraryItems.slice(1).flatMap((item, index) => {
       const previous = itineraryItems[index];
       return previous.googlePlaceId && item.googlePlaceId
-        ? [{ key: item.id, origin: previous.googlePlaceId, destination: item.googlePlaceId, travelMode: item.routeTravelMode }]
+        ? [{ key: item.id, origin: previous.googlePlaceId, destination: item.googlePlaceId, travelMode: item.routeTravelMode, departureTime: previous.endsAt ?? previous.startsAt }]
         : [];
     });
     if (pairs.length === 0) {
@@ -114,7 +114,7 @@ export default function TodayScreen() {
     let cancelled = false;
     void Promise.all(pairs.map(async (pair) => ({
       ...pair,
-      estimate: await getRouteEstimate(activeTrip.id, pair.origin, pair.destination, pair.travelMode).catch(() => null),
+      estimate: await getRouteEstimate(activeTrip.id, pair.origin, pair.destination, pair.travelMode, pair.departureTime).catch(() => null),
     })))
       .then((results) => {
         if (!cancelled) setRouteEstimates(Object.fromEntries(results.flatMap(({ key, estimate }) => estimate ? [[key, estimate]] : [])));
@@ -255,6 +255,63 @@ export default function TodayScreen() {
     return tx(`${distance} · 约 ${minutes} 分钟`, `${distance} · about ${minutes} min`);
   }
 
+  function formatTransitTime(isoTime?: string, localizedTime?: string) {
+    if (!isoTime) return localizedTime;
+    const value = new Date(isoTime);
+    if (Number.isNaN(value.getTime())) return localizedTime;
+    return new Intl.DateTimeFormat(languageTag, {
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: tripTimeZone,
+    }).format(value);
+  }
+
+  function transitRouteDetails(estimate?: RouteEstimate) {
+    if (!estimate?.transit) return null;
+    const { steps, walking } = estimate.transit;
+    const walkingMinutes = Math.round(walking.durationSeconds / 60);
+    return (
+      <View style={[styles.transitPlan, { backgroundColor: theme.backgroundSelected }]}>
+        <View style={styles.transitPlanHeading}>
+          <ThemedText type="smallBold">{tx('公交路线', 'Transit route')}</ThemedText>
+          {walkingMinutes > 0 ? (
+            <ThemedText type="small" themeColor="textSecondary">
+              {tx(`含步行约 ${walkingMinutes} 分钟`, `Includes about ${walkingMinutes} min walking`)}
+            </ThemedText>
+          ) : null}
+        </View>
+        {steps.length > 0 ? steps.map((step, index) => {
+          const departureTime = formatTransitTime(step.departureTime, step.departureTimeText);
+          const arrivalTime = formatTransitTime(step.arrivalTime, step.arrivalTimeText);
+          const rideMinutes = Math.max(1, Math.round(step.durationSeconds / 60));
+          const line = step.lineName || step.vehicleName || tx('公共交通', 'Transit');
+          return (
+            <View key={`${step.departureStop}-${step.arrivalStop}-${index}`} style={styles.transitStep}>
+              <View style={styles.transitStepMarker}>
+                <ThemedText type="smallBold" style={styles.transitStepNumber}>{index + 1}</ThemedText>
+              </View>
+              <View style={styles.transitStepCopy}>
+                <ThemedText type="smallBold">
+                  {[departureTime, line].filter(Boolean).join(' · ')}
+                </ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  {step.departureStop || tx('上车站', 'Boarding stop')} → {step.arrivalStop || tx('下车站', 'Arrival stop')}
+                </ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  {tx(`${step.stopCount} 站 · 约 ${rideMinutes} 分钟`, `${step.stopCount} stops · about ${rideMinutes} min`)}
+                  {arrivalTime ? tx(` · ${arrivalTime} 到达`, ` · arrives ${arrivalTime}`) : ''}
+                </ThemedText>
+                {step.headsign ? <ThemedText type="small" themeColor="textSecondary">{tx(`开往 ${step.headsign}`, `Towards ${step.headsign}`)}</ThemedText> : null}
+              </View>
+            </View>
+          );
+        }) : (
+          <ThemedText type="small" themeColor="textSecondary">{tx('当前路线暂无具体班次信息。', 'Detailed service information is not available for this route.')}</ThemedText>
+        )}
+      </View>
+    );
+  }
+
   async function changeRouteMode(item: ItineraryItem, travelMode: RouteTravelMode) {
     if (item.routeTravelMode === travelMode) return;
     setBusyTravelModeId(item.id);
@@ -289,6 +346,7 @@ export default function TodayScreen() {
         <ThemedText type="smallBold" style={styles.routeEstimate}>
           {busyTravelModeId === item.id ? tx('正在重新计算…', 'Recalculating…') : estimate ?? tx('此方式暂无可用路线', 'No route available for this mode')}
         </ThemedText>
+        {item.routeTravelMode === 'TRANSIT' && busyTravelModeId !== item.id ? transitRouteDetails(routeEstimates[item.id]) : null}
       </View>
     );
   }
@@ -552,6 +610,12 @@ const styles = StyleSheet.create({
   routeEstimate: { color: '#087F6A' },
   routeDetails: { gap: 7, paddingVertical: 4 },
   routeModeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
+  transitPlan: { borderRadius: 14, padding: 12, gap: 10 },
+  transitPlanHeading: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 8 },
+  transitStep: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  transitStepMarker: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1B70A6' },
+  transitStepNumber: { color: '#FFFFFF' },
+  transitStepCopy: { flex: 1, gap: 2 },
   durationRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
   staySection: { gap: 10, paddingVertical: 8 },
   stayHeading: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 },

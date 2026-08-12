@@ -21,6 +21,8 @@ TripFlow uses Google Places Autocomplete and Routes through authenticated Supaba
 1. Open Supabase Dashboard → **TripFlow**.
 2. Open **Edge Functions → Secrets**.
 3. Add `GOOGLE_PLACE_API_KEY` with the Places key and `GOOGLE_ROUTES_API_KEY` with the Routes key.
+
+For transit acceptance, choose two itinerary places with public transport coverage and set the preceding item to a future end time within 100 days. The Transit mode should show an ordered route with boarding and arrival times, line or vehicle, boarding and arrival stops, stop count, ride duration, destination headsign when available, and aggregate walking time. Trips outside the supported planning window still receive a current route estimate without forcing an invalid scheduled departure.
 4. Save. Supabase makes the secrets available to deployed Edge Functions immediately; no Vercel variable and no app rebuild is required.
 5. Never paste either key into Discord or commit it to Git.
 
