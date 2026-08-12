@@ -71,11 +71,13 @@ export interface ItineraryItem {
 export interface ExpensePayer {
   userId: UserId;
   amountMinor: number;
+  baseAmountMinor?: number;
 }
 
 export interface ExpenseShare {
   userId: UserId;
   amountMinor: number;
+  baseAmountMinor?: number;
 }
 
 export interface ExpenseReceipt {
@@ -95,6 +97,10 @@ export interface Expense {
   title: string;
   currency: string;
   totalMinor: number;
+  baseCurrency?: string;
+  baseAmountMinor?: number;
+  exchangeRate?: number;
+  exchangeRateSource?: string;
   payers: ExpensePayer[];
   shares: ExpenseShare[];
   occurredAt: string;
@@ -110,6 +116,10 @@ export interface Settlement {
   toUserId: UserId;
   currency: string;
   amountMinor: number;
+  baseCurrency?: string;
+  baseAmountMinor?: number;
+  exchangeRate?: number;
+  exchangeRateSource?: string;
   settledAt: string;
   recordedBy: UserId;
 }

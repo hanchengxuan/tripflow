@@ -353,6 +353,10 @@ export async function listExpenses(tripId: string): Promise<Expense[]> {
     title: expense.title,
     currency: expense.currency,
     totalMinor: expense.total_minor,
+    baseCurrency: expense.base_currency ?? undefined,
+    baseAmountMinor: expense.base_amount_minor ?? undefined,
+    exchangeRate: expense.exchange_rate ?? undefined,
+    exchangeRateSource: expense.exchange_rate_source ?? undefined,
     occurredAt: expense.occurred_at,
     source: expense.source,
     receipts: expense.expense_receipts.map((receipt) => ({
@@ -367,11 +371,13 @@ export async function listExpenses(tripId: string): Promise<Expense[]> {
     payers: expense.expense_payers.map((payer) => ({
       userId: payer.user_id,
       amountMinor: payer.amount_minor,
+      baseAmountMinor: payer.base_amount_minor ?? undefined,
     })),
     shares: expense.expense_allocation_groups.flatMap((group) =>
       group.expense_shares.map((share) => ({
         userId: share.user_id,
         amountMinor: share.amount_minor,
+        baseAmountMinor: share.base_amount_minor ?? undefined,
       })),
     ),
   }));
@@ -383,6 +389,10 @@ export async function createEqualExpense(input: {
   title: string;
   currency: string;
   totalMinor: number;
+  baseCurrency?: string;
+  baseAmountMinor?: number;
+  exchangeRate?: number;
+  exchangeRateSource?: string;
   payerUserId: string;
   participantUserIds: string[];
   receipt?: { uri: string; base64?: string | null; mimeType?: string | null; fileSize?: number };
@@ -393,6 +403,10 @@ export async function createEqualExpense(input: {
     expense_title: input.title,
     expense_currency: input.currency,
     expense_total_minor: input.totalMinor,
+    expense_base_currency: input.baseCurrency,
+    expense_base_amount_minor: input.baseAmountMinor,
+    expense_exchange_rate: input.exchangeRate,
+    expense_exchange_rate_source: input.exchangeRateSource,
     payer_user_id: input.payerUserId,
     participant_user_ids: input.participantUserIds,
     expense_occurred_at: new Date().toISOString(),
@@ -459,6 +473,10 @@ export async function listSettlements(tripId: string): Promise<Settlement[]> {
     toUserId: settlement.to_user_id,
     currency: settlement.currency,
     amountMinor: settlement.amount_minor,
+    baseCurrency: settlement.base_currency ?? undefined,
+    baseAmountMinor: settlement.base_amount_minor ?? undefined,
+    exchangeRate: settlement.exchange_rate ?? undefined,
+    exchangeRateSource: settlement.exchange_rate_source ?? undefined,
     settledAt: settlement.settled_at,
     recordedBy: settlement.recorded_by,
   }));
@@ -469,12 +487,20 @@ export async function recordSettlement(input: {
   toUserId: string;
   currency: string;
   amountMinor: number;
+  baseCurrency?: string;
+  baseAmountMinor?: number;
+  exchangeRate?: number;
+  exchangeRateSource?: string;
 }) {
   const { error } = await getSupabaseClient().rpc('record_settlement', {
     requested_trip_id: input.tripId,
     recipient_user_id: input.toUserId,
     settlement_currency: input.currency,
     settlement_amount_minor: input.amountMinor,
+    settlement_base_currency: input.baseCurrency,
+    settlement_base_amount_minor: input.baseAmountMinor,
+    settlement_exchange_rate: input.exchangeRate,
+    settlement_exchange_rate_source: input.exchangeRateSource,
   });
   if (error) throw error;
 }

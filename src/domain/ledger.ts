@@ -22,6 +22,23 @@ export function parseAmountToMinor(value: string, currency: string): number {
   return amount;
 }
 
+/** Parse a positive source-to-base exchange rate (base units per source unit). */
+export function parseExchangeRate(value: string): number {
+  const normalized = value.trim();
+  if (!/^\d+(?:\.\d{1,12})?$/.test(normalized)) throw new Error('请输入有效的汇率。');
+  const rate = Number(normalized);
+  if (!Number.isFinite(rate) || rate <= 0) throw new Error('请输入大于 0 的汇率。');
+  return rate;
+}
+
+/** Convert a minor-unit amount using an explicit, auditable exchange rate. */
+export function convertMinorAmount(amountMinor: number, sourceCurrency: string, baseCurrency: string, rate: number): number {
+  if (sourceCurrency.toUpperCase() === baseCurrency.toUpperCase()) return amountMinor;
+  if (!Number.isFinite(rate) || rate <= 0) throw new Error('Exchange rate must be greater than zero');
+  const sourceMajor = amountMinor / 10 ** currencyMinorDigits(sourceCurrency);
+  return Math.round(sourceMajor * rate * 10 ** currencyMinorDigits(baseCurrency));
+}
+
 export function formatMinorAmount(amountMinor: number, currency: string): string {
   const normalizedCurrency = currency.toUpperCase();
   const digits = currencyMinorDigits(normalizedCurrency);
@@ -81,4 +98,62 @@ export function calculateOutstandingBalancesByCurrency(
       netMinor,
     })),
   }));
+}
+
+/**
+ * Calculate one normalized balance ledger in the trip's base currency.
+ * Cross-currency rows without a confirmed conversion are intentionally omitted;
+ * callers can surface those rows as needing a rate instead of guessing.
+ */
+export function calculateBalancesInCurrency(
+  expenses: Expense[],
+  participantIds: string[],
+  settlements: Settlement[],
+  baseCurrency: string,
+) {
+  const normalizedCurrency = baseCurrency.toUpperCase();
+  const balances = new Map(participantIds.map((id) => [id, 0]));
+  const unconvertedExpenseIds: string[] = [];
+  const unconvertedSettlementIds: string[] = [];
+
+  for (const expense of expenses) {
+    const totalBaseMinor = expense.baseCurrency?.toUpperCase() === normalizedCurrency
+      ? expense.baseAmountMinor
+      : expense.currency.toUpperCase() === normalizedCurrency
+        ? expense.totalMinor
+        : undefined;
+    if (totalBaseMinor === undefined) {
+      unconvertedExpenseIds.push(expense.id);
+      continue;
+    }
+    for (const payer of expense.payers) {
+      const amount = payer.baseAmountMinor ?? Math.round(totalBaseMinor * payer.amountMinor / expense.totalMinor);
+      balances.set(payer.userId, (balances.get(payer.userId) ?? 0) + amount);
+    }
+    for (const share of expense.shares) {
+      const amount = share.baseAmountMinor ?? Math.round(totalBaseMinor * share.amountMinor / expense.totalMinor);
+      balances.set(share.userId, (balances.get(share.userId) ?? 0) - amount);
+    }
+  }
+
+  for (const settlement of settlements) {
+    const amount = settlement.baseCurrency?.toUpperCase() === normalizedCurrency
+      ? settlement.baseAmountMinor
+      : settlement.currency.toUpperCase() === normalizedCurrency
+        ? settlement.amountMinor
+        : undefined;
+    if (amount === undefined) {
+      unconvertedSettlementIds.push(settlement.id);
+      continue;
+    }
+    balances.set(settlement.fromUserId, (balances.get(settlement.fromUserId) ?? 0) + amount);
+    balances.set(settlement.toUserId, (balances.get(settlement.toUserId) ?? 0) - amount);
+  }
+
+  return {
+    currency: normalizedCurrency,
+    balances: [...balances.entries()].map<Balance>(([participantId, netMinor]) => ({ participantId, netMinor })),
+    unconvertedExpenseIds,
+    unconvertedSettlementIds,
+  };
 }

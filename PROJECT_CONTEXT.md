@@ -1,6 +1,6 @@
 # TripFlow project context
 
-Last verified: 2026-08-11 UTC
+Last verified: 2026-08-12 UTC
 
 This file is the durable, version-controlled source of truth for engineering continuity. It contains only project-safe context. Product detail belongs in `planning.md`; implementation history belongs in Git.
 
@@ -80,6 +80,8 @@ See `planning.md` for the complete P0/P1 scope, non-goals, architecture, milesto
 - Ledger settlement is now task-first: each traveler sees explicit “pay whom how much” actions, four personal pending/completed incoming/outgoing totals, per-member group status, and sender-owned sent/undo controls
 - Expense receipts can be captured with the camera or selected from the photo library during entry or attached later; files are normalized client-side and stored privately with expense-scoped access policies
 - Settlement status is stored independently from immutable expense evidence, recalculates remaining transfer routes after every payment, and is serialized by trip/currency to prevent concurrent overpayment
+- The ledger UI now asks for a source currency and explicit source-to-home-currency rate when they differ; settlement tasks can record the actual payment currency and amount while showing the converted bookkeeping amount. Unconverted legacy cross-currency rows remain flagged in the normalized calculation instead of receiving a guessed rate.
+- Today, Trips, and Ledger use a shared compact section-heading pattern, flatter overview surfaces, shorter utility copy, and progressive payment-currency controls so the next action is visually primary.
 - The shared web shell reserves space for its fixed navigation, removing the previous title overlap at desktop and mobile widths
 - Profile avatars now propagate through the shared trip roster and ledger settlement identities, with an initials fallback and dark-mode-aware presentation
 - Every trip in My Trips opens a focused management workspace instead of only switching context; owners and editors can edit name, dates, home currency, and timezone
@@ -113,6 +115,8 @@ See `planning.md` for the complete P0/P1 scope, non-goals, architecture, milesto
 - `profile_onboarding`
 - `harden_profile_onboarding`
 
+Pending on this branch (not yet verified against the live project): `multicurrency_base_amounts`, which adds auditable base amounts/rates to expenses, payer/share rows, and settlements and adds normalized settlement RPC overloads.
+
 Temporary acceptance fixtures are removed after each test; production may contain real user-created rows.
 
 ## Active next milestone
@@ -121,7 +125,7 @@ Temporary acceptance fixtures are removed after each test; production may contai
 2. Choose and configure the long-term public support email through `EXPO_PUBLIC_SUPPORT_EMAIL`, then finalize App Privacy disclosures, age rating, and Chinese screenshots.
 3. Run TestFlight acceptance on a current iPhone and human acceptance with real owner/editor/viewer accounts, including QR camera scanning, avatar propagation, and trip/member management.
 4. Add segment/branch creation and segment-scoped itinerary membership.
-5. Expand the validated ledger beyond equal splits to multiple payers, exclusions, unequal shares, partial transfers, and exchange-rate snapshots.
+5. Expand the validated ledger beyond equal splits to multiple payers, exclusions, unequal shares, partial transfers, and exchange-rate snapshots; first deploy and verify the pending base-currency migration.
 6. Address performance-advisor warnings before the dataset grows, and enable Supabase leaked-password protection before broader password-login beta distribution.
 7. Configure conservative Google Places and Routes quotas/budget alerts, then monitor production usage before increasing limits.
 8. Continue the itinerary experience milestone with Place details, participant/status controls, booking essentials, and richer branch interactions.

@@ -6,6 +6,7 @@ import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/
 import { InfoCard } from '@/components/info-card';
 import { LocationField } from '@/components/location-field';
 import { Screen } from '@/components/screen';
+import { SectionHeading } from '@/components/section-heading';
 import { ThemedText } from '@/components/themed-text';
 import { itineraryKindLabels, itineraryKindLabelsEn, itineraryKinds } from '@/constants/options';
 import type { ItineraryItem, ItineraryKind, RouteTravelMode } from '@/domain/models';
@@ -366,19 +367,20 @@ export default function TodayScreen() {
       scrollToEndKey={editingItemId}
       meta={activeTrip ? tripRange : tx('今天', 'Today')}
       title={activeTrip?.name ?? tx('把旅程安排成一条可执行的流', 'Turn the trip into one shared flow')}
-      subtitle={activeTrip ? tx('先看下一步，再决定集合、出发和分工。', 'See the next move first, then align on when, where, and who is involved.') : tx('请先从“行程”页面创建或加入一个行程。', 'Create or join a trip from the Trips tab.')}>
+      subtitle={activeTrip ? tx('下一步、同行者和本位币。', 'Next move, people, and base currency.') : tx('从“行程”创建或加入一个行程。', 'Create or join a trip from Trips.')}>
       {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
       {loading ? <InlineNotice>{tx('正在刷新共享时间线…', 'Refreshing the shared timeline…')}</InlineNotice> : null}
       {success ? <InlineNotice>{success}</InlineNotice> : null}
 
       {activeTrip ? (
-        <View style={[styles.heroPanel, { backgroundColor: theme.backgroundElement }]}>
+        <View style={styles.heroPanel}>
           <View style={styles.heroTop}>
             <View style={styles.heroCopy}>
-              <ThemedText type="smallBold" style={{ color: '#087F6A' }}>{tx('行程驾驶舱', 'Trip cockpit')}</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                {tx('别再把安排散在聊天和备忘录里。这里应该回答大家现在最关心的下一步。', 'Stop scattering plans across chat and notes. This page should answer what everyone needs next.')}
-              </ThemedText>
+              <SectionHeading
+                eyebrow={tx('当前行程', 'Current trip')}
+                title={tx('行程总览', 'Trip overview')}
+                detail={tx('下一项安排、同行者和本位币。', 'Next move, people, and base currency.')}
+              />
             </View>
             <View style={[styles.heroBadge, { backgroundColor: theme.backgroundSelected }]}>
               <ThemedText type="smallBold">{activeTrip.homeCurrency}</ThemedText>
@@ -413,10 +415,11 @@ export default function TodayScreen() {
         <>
           {visibleStays.length > 0 ? (
             <View style={styles.staySection}>
-              <View style={styles.stayHeading}>
-                <View><ThemedText type="smallBold" style={styles.sectionTitle}>{tx('住宿安排', 'Stays')}</ThemedText><ThemedText type="small" themeColor="textSecondary">{tx('一次记录完整入住区间，每天自动沿用。', 'One stay covers the full date range.')}</ThemedText></View>
-                <ThemedText type="small" themeColor="textSecondary">{tx(`${visibleStays.length} 段近期住宿`, `${visibleStays.length} upcoming stay${visibleStays.length === 1 ? '' : 's'}`)}</ThemedText>
-              </View>
+              <SectionHeading
+                title={tx('住宿安排', 'Stays')}
+                detail={tx('入住区间会自动沿用。', 'Stay dates carry through automatically.')}
+                trailing={<ThemedText type="small" themeColor="textSecondary">{tx(`${visibleStays.length} 段`, `${visibleStays.length}`)}</ThemedText>}
+              />
               {visibleStays.map((stay, index) => {
                 const previous = previousPlaceFor(stay);
                 const transferExists = itineraryItems.some((item) => item.linkedStayId === stay.id);
@@ -499,7 +502,7 @@ export default function TodayScreen() {
 
           {upcomingItems.length > 1 ? (
             <View style={styles.timelineSection}>
-              <ThemedText type="smallBold">{tx('后续安排', 'Later in the flow')}</ThemedText>
+              <SectionHeading title={tx('后续安排', 'Later')} />
               {upcomingItems.slice(1).filter((item) => item.kind !== 'lodging' || !visibleStays.some((stay) => stay.id === item.id)).map((item) => (
                 <View key={item.id} style={styles.timelineRow}>
                   <View style={[styles.timelineRail, { borderRightColor: theme.backgroundSelected }]}>
@@ -585,7 +588,7 @@ const styles = StyleSheet.create({
   deleteConfirm: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 14, gap: 10 },
   dangerConfirm: { minHeight: 48, borderRadius: 12, paddingHorizontal: 14, justifyContent: 'center', alignItems: 'center', backgroundColor: '#B4413E' },
   dangerConfirmText: { color: '#FFFFFF' },
-  heroPanel: { borderRadius: 24, padding: 20, gap: 18, shadowColor: '#17324D', shadowOpacity: 0.07, shadowRadius: 24, shadowOffset: { width: 0, height: 8 } },
+  heroPanel: { gap: 18, paddingVertical: 2 },
   heroTop: { flexDirection: 'row', gap: 16, alignItems: 'flex-start' },
   heroCopy: { flex: 1, gap: 6 },
   heroBadge: { minWidth: 74, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 12, alignItems: 'center', gap: 2 },

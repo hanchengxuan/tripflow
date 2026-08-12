@@ -9,12 +9,17 @@ import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/
 import { MemberAvatar } from '@/components/member-avatar';
 import { Screen } from '@/components/screen';
 import { SelectionField } from '@/components/selection-field';
+import { SectionHeading } from '@/components/section-heading';
 import { ThemedText } from '@/components/themed-text';
 import { getCurrencyOptions } from '@/constants/options';
 import {
   calculateBalancesByCurrency,
   calculateOutstandingBalancesByCurrency,
+  calculateBalancesInCurrency,
+  convertMinorAmount,
+  currencyMinorDigits,
   formatMinorAmount,
+  parseExchangeRate,
   parseAmountToMinor,
 } from '@/domain/ledger';
 import { minimizeSettlementTransfers, type SettlementTransfer } from '@/domain/money';
@@ -36,6 +41,8 @@ type BalanceSnapshot = {
   currency: string;
   outstandingTransfers: SettlementTransfer[];
 };
+
+type SettlementDraft = { currency: string; amount: string; rate: string };
 
 export default function LedgerScreen() {
   const theme = useTheme();
@@ -60,6 +67,7 @@ export default function LedgerScreen() {
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
   const [currencyOverride, setCurrencyOverride] = useState('');
+  const [exchangeRate, setExchangeRate] = useState('1');
   const [payerOverride, setPayerOverride] = useState('');
   const [participantsByTrip, setParticipantsByTrip] = useState<Record<string, string[]>>({});
   const [aiText, setAiText] = useState('');
@@ -67,11 +75,14 @@ export default function LedgerScreen() {
   const [expandedExpenseId, setExpandedExpenseId] = useState<string>();
   const [busyAction, setBusyAction] = useState<'parse' | 'save' | 'receipt'>();
   const [busySettlementId, setBusySettlementId] = useState<string>();
+  const [settlementDrafts, setSettlementDrafts] = useState<Record<string, SettlementDraft>>({});
+  const [expandedSettlementKey, setExpandedSettlementKey] = useState<string>();
   const [formError, setFormError] = useState<string>();
   const [success, setSuccess] = useState<string>();
   const [aiNotice, setAiNotice] = useState<string>();
 
   const currency = currencyOverride || activeTrip?.homeCurrency || 'HKD';
+  const baseCurrency = activeTrip?.homeCurrency || 'HKD';
   const payerUserId = members.some(({ userId }) => userId === payerOverride) ? payerOverride : currentUserId;
   const participantIds = activeTrip
     ? participantsByTrip[activeTrip.id] ?? members.map(({ userId }) => userId)
@@ -85,6 +96,11 @@ export default function LedgerScreen() {
   const dangerColor = darkMode ? '#FF9B96' : '#B4413E';
   const linkColor = darkMode ? '#8DD8FF' : '#1B70A6';
 
+  function chooseCurrency(nextCurrency: string) {
+    setCurrencyOverride(nextCurrency);
+    setExchangeRate(nextCurrency.toUpperCase() === baseCurrency.toUpperCase() ? '1' : '');
+  }
+
   const balanceSnapshots = useMemo<BalanceSnapshot[]>(() => {
     const gross = calculateBalancesByCurrency(expenses, memberIds);
     const outstanding = calculateOutstandingBalancesByCurrency(expenses, settlements, memberIds);
@@ -95,9 +111,22 @@ export default function LedgerScreen() {
     }));
   }, [expenses, settlements, memberIds]);
 
-  const pendingTransfers = balanceSnapshots.flatMap(({ currency: itemCurrency, outstandingTransfers }) =>
+  const sourcePendingTransfers = balanceSnapshots.flatMap(({ currency: itemCurrency, outstandingTransfers }) =>
     outstandingTransfers.map((transfer) => ({ ...transfer, currency: itemCurrency })),
   );
+  const normalizedBalance = useMemo(
+    () => activeTrip ? calculateBalancesInCurrency(expenses, memberIds, settlements, baseCurrency) : undefined,
+    [activeTrip, baseCurrency, expenses, memberIds, settlements],
+  );
+  const normalizedPendingTransfers = useMemo(
+    () => normalizedBalance && normalizedBalance.unconvertedExpenseIds.length === 0 && normalizedBalance.unconvertedSettlementIds.length === 0
+      ? minimizeSettlementTransfers(normalizedBalance.balances).map((transfer) => ({ ...transfer, currency: baseCurrency }))
+      : [],
+    [baseCurrency, normalizedBalance],
+  );
+  const hasCompleteConversions = normalizedBalance?.unconvertedExpenseIds.length === 0
+    && normalizedBalance?.unconvertedSettlementIds.length === 0;
+  const pendingTransfers = hasCompleteConversions ? normalizedPendingTransfers : sourcePendingTransfers;
   const myPendingTransfers = pendingTransfers.filter(({ fromParticipantId }) => fromParticipantId === currentUserId);
   const myIncomingTransfers = pendingTransfers.filter(({ toParticipantId }) => toParticipantId === currentUserId);
 
@@ -227,16 +256,23 @@ export default function LedgerScreen() {
     setSuccess(undefined);
     try {
       const totalMinor = parseAmountToMinor(amount, currency);
+      const rate = currency.toUpperCase() === baseCurrency.toUpperCase() ? 1 : parseExchangeRate(exchangeRate);
+      const baseAmountMinor = convertMinorAmount(totalMinor, currency, baseCurrency, rate);
       const result = await addEqualExpense({
         title,
         currency: currency.toUpperCase(),
         totalMinor,
+        baseCurrency: baseCurrency.toUpperCase(),
+        baseAmountMinor,
+        exchangeRate: rate,
+        exchangeRateSource: 'manual',
         payerUserId,
         participantUserIds: participantIds,
         receipt,
       });
       setTitle('');
       setAmount('');
+      setExchangeRate('1');
       setAiText('');
       setReceipt(undefined);
       setAiNotice(undefined);
@@ -254,16 +290,31 @@ export default function LedgerScreen() {
 
   async function completeTransfer(transfer: SettlementTransfer & { currency: string }) {
     const transferKey = `${transfer.currency}-${transfer.fromParticipantId}-${transfer.toParticipantId}`;
+    const draft = settlementDrafts[transferKey] ?? { currency: baseCurrency, amount: amountInputFromMinor(transfer.amountMinor, baseCurrency), rate: '1' };
     setBusySettlementId(transferKey);
     setFormError(undefined);
     setSuccess(undefined);
     try {
+      const amountMinor = parseAmountToMinor(draft.amount, draft.currency);
+      const exchangeRate = draft.currency.toUpperCase() === baseCurrency.toUpperCase() ? 1 : parseExchangeRate(draft.rate);
+      const baseAmountMinor = convertMinorAmount(amountMinor, draft.currency, baseCurrency, exchangeRate);
+      if (baseAmountMinor > transfer.amountMinor) throw new Error(tx('折算金额不能超过待转余额。', 'The converted amount cannot exceed the amount due.'));
       await markSettlement({
         toUserId: transfer.toParticipantId,
-        currency: transfer.currency,
-        amountMinor: transfer.amountMinor,
+        currency: draft.currency,
+        amountMinor,
+        baseCurrency,
+        baseAmountMinor,
+        exchangeRate,
+        exchangeRateSource: 'manual',
       });
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setSettlementDrafts((current) => {
+        const next = { ...current };
+        delete next[transferKey];
+        return next;
+      });
+      setExpandedSettlementKey(undefined);
       setSuccess(tx('已标记为已转账，收款方的“已收入”会同步更新。', 'Marked as sent. The recipient’s received total is updated automatically.'));
     } catch (caught) {
       setFormError(toUserMessage(caught, tx('无法更新转账状态，请刷新后重试。', 'Could not update the transfer. Refresh and try again.')));
@@ -290,7 +341,7 @@ export default function LedgerScreen() {
   return (
     <Screen
       title={activeTrip ? tx(`${activeTrip.name} · 账本`, `${activeTrip.name} · ledger`) : tx('共享账本', 'Shared ledger')}
-      subtitle={tx('先处理自己的结算，再查看消费凭证和全员进度。', 'Handle your own settlements first, then review receipts and group progress.')}>
+      subtitle={tx('先处理待转，再查看明细。', 'Handle payments first, then review activity.')}>
       {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
       {formError ? <InlineNotice tone="error">{formError}</InlineNotice> : null}
       {success ? <InlineNotice>{success}</InlineNotice> : null}
@@ -333,8 +384,11 @@ export default function LedgerScreen() {
           amount={amount}
           setAmount={setAmount}
           currency={currency}
+          baseCurrency={baseCurrency}
+          exchangeRate={exchangeRate}
           currencyOptions={currencyOptions}
-          setCurrencyOverride={setCurrencyOverride}
+          setCurrencyOverride={chooseCurrency}
+          setExchangeRate={setExchangeRate}
           members={members}
           payerUserId={payerUserId}
           setPayerOverride={setPayerOverride}
@@ -360,6 +414,12 @@ export default function LedgerScreen() {
           myPendingTransfers={myPendingTransfers}
           myIncomingTransfers={myIncomingTransfers}
           pendingTransfers={pendingTransfers}
+          baseCurrency={baseCurrency}
+          currencyOptions={currencyOptions}
+          settlementDrafts={settlementDrafts}
+          expandedSettlementKey={expandedSettlementKey}
+          setSettlementDrafts={setSettlementDrafts}
+          setExpandedSettlementKey={setExpandedSettlementKey}
           busySettlementId={busySettlementId}
           themeSelected={theme.backgroundSelected}
           positiveColor={positiveColor}
@@ -417,8 +477,11 @@ function ExpenseComposer(props: {
   amount: string;
   setAmount: (value: string) => void;
   currency: string;
+  baseCurrency: string;
+  exchangeRate: string;
   currencyOptions: { label: string; value: string }[];
   setCurrencyOverride: (value: string) => void;
+  setExchangeRate: (value: string) => void;
   members: TripMember[];
   payerUserId: string;
   setPayerOverride: (value: string) => void;
@@ -433,7 +496,7 @@ function ExpenseComposer(props: {
   return (
     <View style={[styles.composer, { backgroundColor: props.themeSurface }]}>
       <View style={styles.composerHeading}>
-        <ThemedText style={styles.sectionTitle}>{tx('新增支出', 'New expense')}</ThemedText>
+        <SectionHeading title={tx('记一笔', 'Add expense')} detail={tx('付款人、分摊和小票都可在这里确认。', 'Confirm the payer, split, and receipt here.')} />
         <View style={styles.modeRow}>
           <ChoiceChip selected={props.entryMode === 'manual'} onPress={() => props.chooseEntryMode('manual')}>
             {tx('手动', 'Manual')}
@@ -476,6 +539,32 @@ function ExpenseComposer(props: {
               <SelectionField label={tx('币种', 'Currency')} value={props.currency} options={props.currencyOptions} onChange={props.setCurrencyOverride} />
             </View>
           </View>
+          {props.currency.toUpperCase() !== props.baseCurrency.toUpperCase() ? (
+            <View style={[styles.conversionRow, { backgroundColor: props.themeSelected }]}>
+              <View style={styles.grow}>
+                <FormField
+                  label={tx(`汇率：1 ${props.currency} = ? ${props.baseCurrency}`, `Rate: 1 ${props.currency} = ? ${props.baseCurrency}`)}
+                  value={props.exchangeRate}
+                  onChangeText={props.setExchangeRate}
+                  keyboardType="decimal-pad"
+                  placeholder="0.92"
+                />
+              </View>
+              <View style={styles.conversionPreview}>
+                <ThemedText type="smallBold">{tx('记入本位币', 'Bookkeeping amount')}</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  {(() => {
+                    try {
+                      if (!props.amount.trim() || !props.exchangeRate.trim()) return '—';
+                      return formatMinorAmount(convertMinorAmount(parseAmountToMinor(props.amount, props.currency), props.currency, props.baseCurrency, parseExchangeRate(props.exchangeRate)), props.baseCurrency);
+                    } catch {
+                      return '—';
+                    }
+                  })()}
+                </ThemedText>
+              </View>
+            </View>
+          ) : null}
           <FieldGroup label={tx('谁付款？', 'Who paid?')}>
             {props.members.map((member) => (
               <MemberChoice key={member.userId} member={member} selected={props.payerUserId === member.userId} role="radio" onPress={() => props.setPayerOverride(member.userId)} />
@@ -511,7 +600,7 @@ function ExpenseComposer(props: {
           </View>
           <ActionButton
             busy={props.busyAction === 'save'}
-            disabled={Boolean(props.busyAction) || !props.title.trim() || !props.amount.trim() || props.participantIds.length === 0 || !props.payerUserId}
+            disabled={Boolean(props.busyAction) || !props.title.trim() || !props.amount.trim() || props.participantIds.length === 0 || !props.payerUserId || (props.currency.toUpperCase() !== props.baseCurrency.toUpperCase() && !props.exchangeRate.trim())}
             onPress={() => void props.submitExpense()}>
             {tx('保存并更新结算', 'Save and update settlements')}
           </ActionButton>
@@ -617,6 +706,62 @@ function MemberChoice({ member, selected, role = 'checkbox', onPress }: { member
   );
 }
 
+function SettlementPaymentEditor(props: {
+  tx: (zh: string, en: string) => string;
+  baseCurrency: string;
+  currencyOptions: { label: string; value: string }[];
+  transfer: SettlementTransfer & { currency: string };
+  draft: SettlementDraft;
+  setDraft: (draft: SettlementDraft) => void;
+}) {
+  const { tx } = props;
+  const sameCurrency = props.draft.currency.toUpperCase() === props.baseCurrency.toUpperCase();
+  return (
+    <View style={styles.paymentEditor}>
+      <View style={styles.paymentEditorFields}>
+        <View style={styles.paymentCurrencyField}>
+          <SelectionField
+            label={tx('付款币种', 'Payment currency')}
+            value={props.draft.currency}
+            options={props.currencyOptions}
+            onChange={(currency) => props.setDraft({ ...props.draft, currency, amount: '', rate: currency === props.baseCurrency ? '1' : props.draft.rate })}
+          />
+        </View>
+        <View style={styles.grow}>
+          <FormField
+            label={tx('实际转账金额', 'Amount sent')}
+            value={props.draft.amount}
+            onChangeText={(amount) => props.setDraft({ ...props.draft, amount })}
+            keyboardType="decimal-pad"
+            placeholder="0.00"
+          />
+        </View>
+      </View>
+      {!sameCurrency ? (
+        <FormField
+          label={tx(`汇率：1 ${props.draft.currency} = ? ${props.baseCurrency}`, `Rate: 1 ${props.draft.currency} = ? ${props.baseCurrency}`)}
+          value={props.draft.rate}
+          onChangeText={(rate) => props.setDraft({ ...props.draft, rate })}
+          keyboardType="decimal-pad"
+          placeholder="0.92"
+        />
+      ) : null}
+      <ThemedText type="small" themeColor="textSecondary">
+        {(() => {
+          try {
+            if (!props.draft.amount.trim()) return tx('会从待转余额中扣除实际折算金额。', 'The converted amount will be deducted from the balance due.');
+            const rate = sameCurrency ? 1 : parseExchangeRate(props.draft.rate);
+            const converted = convertMinorAmount(parseAmountToMinor(props.draft.amount, props.draft.currency), props.draft.currency, props.baseCurrency, rate);
+            return tx(`记入 ${props.baseCurrency}：${formatMinorAmount(converted, props.baseCurrency)} · 待转 ${formatMinorAmount(props.transfer.amountMinor, props.baseCurrency)}`, `Books ${formatMinorAmount(converted, props.baseCurrency)} in ${props.baseCurrency} · due ${formatMinorAmount(props.transfer.amountMinor, props.baseCurrency)}`);
+          } catch {
+            return tx('请输入金额和有效汇率。', 'Enter an amount and a valid rate.');
+          }
+        })()}
+      </ThemedText>
+    </View>
+  );
+}
+
 function SettlementWorkspace(props: {
   tx: (zh: string, en: string) => string;
   names: Map<string, string>;
@@ -627,6 +772,12 @@ function SettlementWorkspace(props: {
   myPendingTransfers: (SettlementTransfer & { currency: string })[];
   myIncomingTransfers: (SettlementTransfer & { currency: string })[];
   pendingTransfers: (SettlementTransfer & { currency: string })[];
+  baseCurrency: string;
+  currencyOptions: { label: string; value: string }[];
+  settlementDrafts: Record<string, SettlementDraft>;
+  expandedSettlementKey?: string;
+  setSettlementDrafts: React.Dispatch<React.SetStateAction<Record<string, SettlementDraft>>>;
+  setExpandedSettlementKey: (key?: string) => void;
   busySettlementId?: string;
   themeSelected: string;
   positiveColor: string;
@@ -643,14 +794,12 @@ function SettlementWorkspace(props: {
   return (
     <View style={styles.workspace}>
       <View style={styles.personalSummary}>
-        <View style={styles.summaryHeading}>
-          <ThemedText style={styles.sectionTitle}>{tx('我的结算', 'My settlements')}</ThemedText>
-          <ThemedText themeColor="textSecondary">
-            {props.myPendingTransfers.length > 0
-              ? tx(`还有 ${props.myPendingTransfers.length} 笔需要转出`, `${props.myPendingTransfers.length} payment${props.myPendingTransfers.length === 1 ? '' : 's'} to send`)
-              : tx('你没有待转出的款项', 'You have nothing left to send')}
-          </ThemedText>
-        </View>
+        <SectionHeading
+          title={tx('我的结算', 'My settlements')}
+          detail={props.myPendingTransfers.length > 0
+            ? tx(`还有 ${props.myPendingTransfers.length} 笔待转`, `${props.myPendingTransfers.length} payment${props.myPendingTransfers.length === 1 ? '' : 's'} to send`)
+            : tx('没有待转款项', 'Nothing left to send')}
+        />
         {props.balanceSnapshots.length === 0 ? (
           <ThemedText themeColor="textSecondary">{tx('记录第一笔共同支出后，这里会生成结算待办。', 'Add the first shared expense to create settlement tasks.')}</ThemedText>
         ) : props.balanceSnapshots.map((snapshot) => {
@@ -671,10 +820,7 @@ function SettlementWorkspace(props: {
       </View>
 
       <View style={styles.sectionBlock}>
-        <View style={styles.sectionHeading}>
-          <ThemedText style={styles.sectionTitle}>{tx('我的待办', 'My tasks')}</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">{tx('只有付款人本人可以标记自己的转账。', 'Only the sender can mark their own payment as sent.')}</ThemedText>
-        </View>
+        <SectionHeading title={tx('我的待办', 'My tasks')} detail={tx('标记自己已完成的转账。', 'Mark your own payments as sent.')} />
         {props.myPendingTransfers.length === 0 ? (
           <View style={styles.quietEmpty}>
             <ThemedText type="smallBold">{tx('待转出已清空', 'Nothing to send')}</ThemedText>
@@ -685,12 +831,17 @@ function SettlementWorkspace(props: {
         ) : props.myPendingTransfers.map((transfer) => {
           const key = `${transfer.currency}-${transfer.fromParticipantId}-${transfer.toParticipantId}`;
           const recipient = props.memberById.get(transfer.toParticipantId);
+          const draft = props.settlementDrafts[key] ?? { currency: props.baseCurrency, amount: amountInputFromMinor(transfer.amountMinor, props.baseCurrency), rate: '1' };
+          const expanded = props.expandedSettlementKey === key;
           return (
             <View key={key} style={styles.transferRow}>
               <MemberAvatar avatarUrl={recipient?.avatarUrl} displayName={recipient?.displayName ?? tx('同行者', 'Traveller')} size={42} />
               <View style={styles.transferCopy}>
                 <ThemedText type="smallBold">{tx(`转给 ${props.names.get(transfer.toParticipantId) ?? '同行者'}`, `Pay ${props.names.get(transfer.toParticipantId) ?? 'Traveller'}`)}</ThemedText>
-                <ThemedText style={styles.transferAmount}>{formatMinorAmount(transfer.amountMinor, transfer.currency)}</ThemedText>
+                <ThemedText style={styles.transferAmount}>{formatMinorAmount(transfer.amountMinor, props.baseCurrency)}</ThemedText>
+                <Pressable accessibilityRole="button" onPress={() => props.setExpandedSettlementKey(expanded ? undefined : key)} style={({ pressed }) => [styles.textButton, pressed && styles.pressed]}>
+                  <ThemedText type="small" style={{ color: props.linkColor }}>{expanded ? tx('收起付款设置', 'Hide payment settings') : tx('用其他币种付款', 'Pay in another currency')}</ThemedText>
+                </Pressable>
               </View>
               <Pressable
                 accessibilityRole="checkbox"
@@ -700,6 +851,16 @@ function SettlementWorkspace(props: {
                 style={({ pressed }) => [styles.markPaidButton, pressed && styles.pressed, Boolean(props.busySettlementId) && styles.disabled]}>
                 <ThemedText type="smallBold" style={styles.quickAddText}>{tx('标记已转账', 'Mark sent')}</ThemedText>
               </Pressable>
+              {expanded ? (
+                <SettlementPaymentEditor
+                  tx={tx}
+                  baseCurrency={props.baseCurrency}
+                  currencyOptions={props.currencyOptions}
+                  transfer={transfer}
+                  draft={draft}
+                  setDraft={(next) => props.setSettlementDrafts((current) => ({ ...current, [key]: next }))}
+                />
+              ) : null}
             </View>
           );
         })}
@@ -707,10 +868,7 @@ function SettlementWorkspace(props: {
 
       {mySettlements.length > 0 ? (
         <View style={styles.sectionBlock}>
-          <View style={styles.sectionHeading}>
-            <ThemedText style={styles.sectionTitle}>{tx('已完成', 'Completed')}</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">{tx('如果误标，付款人可以恢复为未转账。', 'The sender can undo an accidental status change.')}</ThemedText>
-          </View>
+          <SectionHeading title={tx('已完成', 'Completed')} detail={tx('可撤销误标的转账。', 'Undo an accidental status change.')} />
           {mySettlements.map((settlement) => {
             const sentByMe = settlement.fromUserId === props.currentUserId;
             const otherMember = props.memberById.get(sentByMe ? settlement.toUserId : settlement.fromUserId);
@@ -743,10 +901,7 @@ function SettlementWorkspace(props: {
       ) : null}
 
       <View style={styles.sectionBlock}>
-        <View style={styles.sectionHeading}>
-          <ThemedText style={styles.sectionTitle}>{tx('全员结算', 'Group settlement')}</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">{tx('清楚显示每个人待转出、已转出、待收款和已收款。', 'See what every traveller needs to send, has sent, expects, and has received.')}</ThemedText>
-        </View>
+        <SectionHeading title={tx('全员结算', 'Group settlement')} detail={tx('按币种查看每人的余额。', 'Balances by currency.')} />
         {props.balanceSnapshots.map((snapshot) => (
           <View key={snapshot.currency} style={styles.groupCurrency}>
             <ThemedText type="smallBold" style={[styles.currencyDivider, { color: props.positiveColor }]}>{snapshot.currency}</ThemedText>
@@ -815,10 +970,7 @@ function ExpenseActivity(props: {
 
   return (
     <View style={styles.sectionBlock}>
-      <View style={styles.sectionHeading}>
-        <ThemedText style={styles.sectionTitle}>{tx('消费明细', 'Expense activity')}</ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">{tx('每笔支出保留付款人、分摊和小票凭证。', 'Every expense keeps its payer, split, and receipt evidence.')}</ThemedText>
-      </View>
+      <SectionHeading title={tx('消费明细', 'Expense activity')} detail={tx('展开查看付款人、分摊和小票。', 'Expand to see the payer, split, and receipt.')} />
       {props.expenses.map((expense) => {
         const expanded = props.expandedExpenseId === expense.id;
         const primaryPayer = props.memberById.get(expense.payers[0]?.userId);
@@ -918,6 +1070,11 @@ function sumSettlements(settlements: Settlement[], currency: string, direction: 
   }, 0);
 }
 
+function amountInputFromMinor(amountMinor: number, currency: string) {
+  const digits = currencyMinorDigits(currency);
+  return (amountMinor / 10 ** digits).toFixed(digits);
+}
+
 const styles = StyleSheet.create({
   workspace: { gap: 30 },
   toolbar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
@@ -933,6 +1090,8 @@ const styles = StyleSheet.create({
   formGroup: { gap: 16 },
   amountRow: { flexDirection: 'row', gap: 12, alignItems: 'flex-end' },
   currencyField: { width: 116 },
+  conversionRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', gap: 12, borderRadius: 12, padding: 12 },
+  conversionPreview: { flexGrow: 1, flexBasis: 150, gap: 2, paddingBottom: 10 },
   multiline: { minHeight: 96, textAlignVertical: 'top' },
   voiceGroup: { gap: 8 },
   voiceButton: { minHeight: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14, backgroundColor: '#1B70A6' },
@@ -960,6 +1119,9 @@ const styles = StyleSheet.create({
   transferCopy: { gap: 2, flex: 1 },
   transferAmount: { fontSize: 22, lineHeight: 28, fontWeight: '700' },
   markPaidButton: { minHeight: 44, minWidth: 112, alignItems: 'center', justifyContent: 'center', borderRadius: 12, paddingHorizontal: 14, backgroundColor: '#087F6A' },
+  paymentEditor: { flexBasis: '100%', gap: 10, paddingTop: 8, paddingLeft: 54 },
+  paymentEditorFields: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', gap: 12 },
+  paymentCurrencyField: { width: 150 },
   completedRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#AFCACA' },
   textButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 4 },
   quietEmpty: { gap: 4, paddingVertical: 22, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#AFCACA' },
