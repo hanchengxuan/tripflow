@@ -60,17 +60,17 @@ See `planning.md` for the complete P0/P1 scope, non-goals, architecture, milesto
 - Trip dates, itinerary date/time, home currency, expense currency, timezone, and invite role use controlled selectors instead of free-form entry
 - An independent Profile tab lets each signed-in user edit their display name and review account/trip information
 - App Store identity is prepared with bundle ID `com.hanchengxuan.tripflow`, an original 1024px RGB icon, and EAS build/submit profiles
-- Web and iOS exports, Expo Doctor, lint, TypeScript, and 16 automated tests pass for the current mobile-readiness milestone; web document language/title are Chinese-aware
+- Web and iOS exports, Expo Doctor, lint, TypeScript, and 20 automated tests pass for the current mobile-readiness milestone; web document language/title are Chinese-aware
 - In-app account deletion is deployed end to end: auth credentials are removed, the profile is anonymized, memberships are revoked, sole-owned trips are deleted, and shared trips transfer to another member
 - Public Chinese privacy and support pages are live at `/privacy` and `/support`, and the login/Profile screens link to them
 - A Simplified Chinese App Store metadata and review-notes draft is maintained in `docs/app-store-metadata-zh-CN.md`
 - Account-deletion backend behavior passed transactional shared-trip, sole-trip, ownership-transfer, and stale-JWT tests with all fixture data rolled back
-- A protected Supabase Edge Function and editable confirmation flow implement Gemini natural-language expense parsing; production currently resolves to `gemini-3.1-flash-lite`, the key stays server-side, and parsed drafts never auto-save
+- A protected Supabase Edge Function and editable confirmation flow implement Gemini text and voice expense parsing; production currently resolves to `gemini-3.1-flash-lite`, the key stays server-side, recordings are not persisted, and parsed drafts never auto-save
 - Itinerary items now support explicit start/end times, whole-field date/time controls, richer travel cards, trip/member summaries, and one-tap Google Maps search links
 - The visual foundation now uses a brighter coastal travel palette, softer cards, and clearer information hierarchy
 - Simplified Chinese and English can be switched from login or Profile, persist on device, and cover navigation, core forms, validation fallbacks, privacy, and support pages
 - Today now prioritizes one “Up next” destination followed by a flat shared timeline, start/end ranges, and quick duration controls
-- An authenticated `places-autocomplete` Edge Function is deployed as a server-side Google Places proxy. The Places API secret is configured in Supabase as `GOOGLE_PLACE_API_KEY`; the key remains server-side and manual place entry stays available as fallback. Authenticated acceptance confirms the secret is detected, but Google currently returns HTTP 403, so Google Cloud API enablement, billing, and key restrictions still need correction
+- Authenticated `places-autocomplete` and `route-estimate` Edge Functions keep the Google keys server-side. Selected Google Place IDs persist on itinerary items, consecutive placed stops show traffic-unaware driving distance/duration, manual place entry remains available, and route calls require trip membership. Production acceptance passed Places, persistence, Routes, and authorization on 2026-08-12
 - `PRODUCT.md`, `DESIGN.md`, and `.impeccable/design.json` record the product and current visual system for future design continuity
 - Trips now uses a task-based information architecture: the active trip is the workspace anchor, create/join are always-visible top actions, trip switching is a flat list, and invite management lives inside Travellers
 - Profile now uses an explicit edit state for display name and avatar, with language, trip context, account actions, and destructive actions separated by frequency and risk
@@ -106,6 +106,8 @@ See `planning.md` for the complete P0/P1 scope, non-goals, architecture, milesto
 - `lodging_intervals_and_atomic_transfers`
 - `harden_stay_transfer_rpc`
 - `itinerary_crud_and_trip_deletion`
+- `itinerary_place_ids`
+- `remove_legacy_itinerary_update`
 
 Temporary acceptance fixtures are removed after each test; production may contain real user-created rows.
 
@@ -117,9 +119,10 @@ Temporary acceptance fixtures are removed after each test; production may contai
 4. Add segment/branch creation and segment-scoped itinerary membership.
 5. Expand the validated ledger beyond equal splits to multiple payers, exclusions, unequal shares, partial transfers, and exchange-rate snapshots.
 6. Address performance-advisor warnings before the dataset grows. The current security advisor has one password-protection warning that is not exercised by the passwordless-only login flow; revisit it before enabling passwords.
-7. Resolve the Google Places HTTP 403 by confirming Places API (New) is enabled in the key's project, Billing is active, and the key's API restriction allows Places API (New); then rerun authenticated autocomplete acceptance and set a conservative quota alert.
-8. Continue the itinerary experience milestone with saved Google Place IDs/details, participant/status controls, booking essentials, and richer branch interactions.
-9. Extend lodging anchors with booking confirmation, room notes, check-in instructions, and checkout-to-next-stop shortcuts after the Places 403 is resolved.
+7. Configure conservative Google Places and Routes quotas/budget alerts, then monitor production usage before increasing limits.
+8. Continue the itinerary experience milestone with Place details, participant/status controls, booking essentials, and richer branch interactions.
+9. Add reviewable Gemini itinerary import from photos, files, and shared links; imported content must remain a draft until the traveler confirms it.
+10. Extend lodging anchors with booking confirmation, room notes, check-in instructions, and checkout-to-next-stop shortcuts.
 
 ## Standing decisions and safety boundaries
 

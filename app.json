@@ -40,8 +40,12 @@
         "expo-localization",
         {
           "supportedLocales": {
-            "ios": ["zh-Hans"],
-            "android": ["zh-Hans"]
+            "ios": [
+              "zh-Hans"
+            ],
+            "android": [
+              "zh-Hans"
+            ]
           }
         }
       ],
@@ -60,7 +64,14 @@
           "image": "./assets/images/tripflow-icon.png",
           "imageWidth": 96
         }
-      ]
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "允许 TripFlow 录制语音并生成可编辑的记账草稿。"
+        }
+      ],
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true,

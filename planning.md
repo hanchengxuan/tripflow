@@ -167,9 +167,9 @@ The MVP deliberately does not include group chat, in-app booking, proprietary tu
 - Completed: replace isolated timestamp entry with a clear start/end range, whole-field picker controls, and quick duration choices.
 - Completed: prioritize an actionable “Up next” destination and show later plans as a continuous timeline instead of a notebook-like card stack.
 - Completed: add persistent Chinese/English switching across navigation, forms, validation fallbacks, privacy, and support pages.
-- Ready for secret configuration: Google Places autocomplete routes through an authenticated Supabase Edge proxy and never reuses or exposes the Gemini key.
+- Completed: Google Places autocomplete routes through an authenticated Supabase Edge proxy, selected Place IDs persist, and consecutive placed stops show a protected Routes API driving estimate.
 - Completed foundation: an airy coastal palette, stronger spacing, fewer elevated surfaces, and a durable product/design contract.
-- Next: persist canonical Google Place IDs/details, then add participant status, booking/document essentials, and travel-time context to make each itinerary item executable.
+- Next: add Place details, participant status, booking/document essentials, and reviewable photo/file/link itinerary import.
 
 ### Explicitly out of MVP
 
@@ -274,7 +274,8 @@ Expected result:
 - Row Level Security policies based on trip membership, segment membership, and role.
 - Server/edge functions for invite handling, speech/LLM orchestration, exchange-rate snapshots, and notifications.
 - Google Places autocomplete runs only through an authenticated Supabase Edge Function. Its separately restricted API key is stored server-side as `GOOGLE_PLACE_API_KEY`, never in Expo public variables or the client bundle; manual location entry remains available when the provider is unavailable.
-- Current Places integration status (2026-08-11): Supabase detects the configured secret, but Google returns HTTP 403. Before marking autocomplete complete, enable Places API (New) in the same Google Cloud project, activate Billing, restrict the key to Places API (New), and pass an authenticated production lookup.
+- Google Routes requests run through an authenticated, trip-membership-checked Edge Function using the server-side `GOOGLE_ROUTES_API_KEY`. The first beta uses traffic-unaware driving estimates and keeps a session cache to reduce duplicate billable requests.
+- Production acceptance on 2026-08-12 verified Places suggestions, persisted Place IDs, Routes distance/duration, membership rejection, Gemini text expense parsing, and Gemini Mandarin voice expense parsing.
 
 ### AI and speech boundary
 
@@ -283,6 +284,7 @@ Expected result:
 - A deterministic validator resolves totals, minor units, split constraints, and rounding.
 - Store parser confidence and field-level uncertainties so the UI can require confirmation.
 - Initial languages: Mandarin Chinese and English. Cantonese and Japanese recognition should be tested during beta and can be enabled when quality is acceptable.
+- Expense recordings are processed only to create an editable draft and are not persisted by TripFlow.
 
 ### Core data entities
 

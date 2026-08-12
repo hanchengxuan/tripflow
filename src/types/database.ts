@@ -392,6 +392,7 @@ export type Database = {
           created_at: string
           created_by: string
           ends_at: string | null
+          google_place_id: string | null
           id: string
           is_material_change: boolean
           kind: Database["public"]["Enums"]["itinerary_kind"]
@@ -412,6 +413,7 @@ export type Database = {
           created_at?: string
           created_by: string
           ends_at?: string | null
+          google_place_id?: string | null
           id?: string
           is_material_change?: boolean
           kind: Database["public"]["Enums"]["itinerary_kind"]
@@ -432,6 +434,7 @@ export type Database = {
           created_at?: string
           created_by?: string
           ends_at?: string | null
+          google_place_id?: string | null
           id?: string
           is_material_change?: boolean
           kind?: Database["public"]["Enums"]["itinerary_kind"]
@@ -1007,6 +1010,7 @@ export type Database = {
       update_itinerary_item: {
         Args: {
           item_ends_at: string
+          item_google_place_id: string
           item_location_label: string
           item_starts_at: string
           item_title: string

@@ -11,6 +11,7 @@ import { itineraryKindLabels, itineraryKindLabelsEn, itineraryKinds } from '@/co
 import type { ItineraryItem, ItineraryKind } from '@/domain/models';
 import { useI18n } from '@/features/i18n/i18n-provider';
 import { useMvp } from '@/features/mvp/mvp-provider';
+import { getRouteEstimate, type RouteEstimate } from '@/features/routes/route-estimate';
 import { toUserMessage } from '@/lib/user-error';
 import { formatZonedDateTimeRange, isoToZonedDateTime, stayNightsInZone, zonedDateTimeToIso } from '@/lib/trip-time';
 import { useTheme } from '@/hooks/use-theme';
@@ -58,6 +59,7 @@ export default function TodayScreen() {
   const { activeTrip, members, itineraryItems, loading, error, currentUserId, addItineraryItem, addStayTransfer, saveItineraryItem, removeItineraryItem } = useMvp();
   const [title, setTitle] = useState('');
   const [location, setLocation] = useState('');
+  const [googlePlaceId, setGooglePlaceId] = useState('');
   const [date, setDate] = useState(activeTrip?.startsOn ?? new Date().toISOString().slice(0, 10));
   const [endDate, setEndDate] = useState(activeTrip?.startsOn ?? new Date().toISOString().slice(0, 10));
   const [startTime, setStartTime] = useState('09:00');
@@ -70,6 +72,7 @@ export default function TodayScreen() {
   const [currentTimestamp, setCurrentTimestamp] = useState(0);
   const [editingItemId, setEditingItemId] = useState<string>();
   const [confirmDeleteItem, setConfirmDeleteItem] = useState(false);
+  const [routeEstimates, setRouteEstimates] = useState<Record<string, RouteEstimate>>({});
 
   const currentMember = members.find(({ userId }) => userId === currentUserId);
   const canEdit = currentMember?.role === 'owner' || currentMember?.role === 'editor';
@@ -93,6 +96,27 @@ export default function TodayScreen() {
     return () => clearTimeout(timeout);
   }, [activeTrip]);
 
+  useEffect(() => {
+    if (!activeTrip) return;
+    const pairs = itineraryItems.slice(1).flatMap((item, index) => {
+      const previous = itineraryItems[index];
+      return previous.googlePlaceId && item.googlePlaceId
+        ? [{ key: item.id, origin: previous.googlePlaceId, destination: item.googlePlaceId }]
+        : [];
+    });
+    if (pairs.length === 0) {
+      const timeout = setTimeout(() => setRouteEstimates({}), 0);
+      return () => clearTimeout(timeout);
+    }
+    let cancelled = false;
+    void Promise.all(pairs.map(async (pair) => ({ ...pair, estimate: await getRouteEstimate(activeTrip.id, pair.origin, pair.destination) })))
+      .then((results) => {
+        if (!cancelled) setRouteEstimates(Object.fromEntries(results.flatMap(({ key, estimate }) => estimate ? [[key, estimate]] : [])));
+      })
+      .catch(() => { if (!cancelled) setRouteEstimates({}); });
+    return () => { cancelled = true; };
+  }, [activeTrip, itineraryItems]);
+
   async function submitItem() {
     setBusy(true);
     setFormError(undefined);
@@ -105,12 +129,13 @@ export default function TodayScreen() {
         : zonedDateTimeToIso(kind === 'lodging' ? endDate : date, endTime, tripTimeZone);
       if (new Date(endsAt) <= new Date(startsAt)) throw new Error(tx('结束时间需要晚于开始时间。', 'End time must be later than start time.'));
       if (editingItem) {
-        await saveItineraryItem({ itemId: editingItem.id, title, locationLabel: editingItem.linkedStayId ? editingItem.locationLabel : location, startsAt, endsAt });
+        await saveItineraryItem({ itemId: editingItem.id, title, locationLabel: editingItem.linkedStayId ? editingItem.locationLabel : location, googlePlaceId: editingItem.linkedStayId ? editingItem.googlePlaceId : googlePlaceId, startsAt, endsAt });
       } else {
-        await addItineraryItem({ title, locationLabel: location, kind, startsAt, endsAt });
+        await addItineraryItem({ title, locationLabel: location, googlePlaceId, kind, startsAt, endsAt });
       }
       setTitle('');
       setLocation('');
+      setGooglePlaceId('');
       setEditingItemId(undefined);
       setConfirmDeleteItem(false);
       setSuccess(editingItem
@@ -130,6 +155,7 @@ export default function TodayScreen() {
     setConfirmDeleteItem(deleteFirst);
     setTitle(item.title);
     setLocation(item.locationLabel ?? '');
+    setGooglePlaceId(item.googlePlaceId ?? '');
     setKind(item.kind);
     setDate(start.date);
     setStartTime(start.time);
@@ -144,6 +170,7 @@ export default function TodayScreen() {
     setConfirmDeleteItem(false);
     setTitle('');
     setLocation('');
+    setGooglePlaceId('');
     setKind('activity');
   }
 
@@ -204,6 +231,13 @@ export default function TodayScreen() {
   }
 
   const kindLabel = (itemKind: ItineraryKind) => locale === 'zh-CN' ? itineraryKindLabels[itemKind] : itineraryKindLabelsEn[itemKind];
+
+  function formatRouteEstimate(estimate?: RouteEstimate) {
+    if (!estimate) return undefined;
+    const distance = estimate.distanceMeters >= 1000 ? `${(estimate.distanceMeters / 1000).toFixed(1)} km` : `${estimate.distanceMeters} m`;
+    const minutes = Math.max(1, Math.round(estimate.durationSeconds / 60));
+    return tx(`${distance} · 驾车约 ${minutes} 分钟`, `${distance} · about ${minutes} min by car`);
+  }
 
   function itemActions(item: ItineraryItem) {
     if (!canEdit) return null;
@@ -359,6 +393,7 @@ export default function TodayScreen() {
                     <View style={styles.timelineDot} />
                   </View>
                   <View style={styles.timelineContent}>
+                    {formatRouteEstimate(routeEstimates[item.id]) ? <ThemedText type="smallBold" style={styles.routeEstimate}>{formatRouteEstimate(routeEstimates[item.id])}</ThemedText> : null}
                     <ThemedText type="small" themeColor="textSecondary">{formatZonedDateTimeRange(item.startsAt, item.endsAt, languageTag, tripTimeZone)}</ThemedText>
                     <ThemedText type="smallBold">{item.title}</ThemedText>
                     {item.locationLabel ? <ThemedText type="small" themeColor="textSecondary">{item.locationLabel}</ThemedText> : null}
@@ -398,7 +433,7 @@ export default function TodayScreen() {
               ))}
             </View> : null}
             <FormField label={tx('要做什么？', 'What are you doing?')} value={title} onChangeText={setTitle} placeholder={tx('例如：乘机场快线前往中环', 'For example: Airport Express to Central')} />
-            {editingItem?.linkedStayId ? <View style={[styles.lockedDestination, { backgroundColor: theme.backgroundSelected }]}><ThemedText type="smallBold">{tx('酒店交通', 'Hotel transfer')}</ThemedText><ThemedText type="small" themeColor="textSecondary">{tx(`终点和到达时间跟随酒店：${editingItem.locationLabel ?? '—'} · ${formatZonedDateTimeRange(editingItem.endsAt ?? editingItem.startsAt, undefined, languageTag, tripTimeZone)}`, `Destination and arrival follow the stay: ${editingItem.locationLabel ?? '—'} · ${formatZonedDateTimeRange(editingItem.endsAt ?? editingItem.startsAt, undefined, languageTag, tripTimeZone)}`)}</ThemedText></View> : <LocationField value={location} onChange={setLocation} />}
+            {editingItem?.linkedStayId ? <View style={[styles.lockedDestination, { backgroundColor: theme.backgroundSelected }]}><ThemedText type="smallBold">{tx('酒店交通', 'Hotel transfer')}</ThemedText><ThemedText type="small" themeColor="textSecondary">{tx(`终点和到达时间跟随酒店：${editingItem.locationLabel ?? '—'} · ${formatZonedDateTimeRange(editingItem.endsAt ?? editingItem.startsAt, undefined, languageTag, tripTimeZone)}`, `Destination and arrival follow the stay: ${editingItem.locationLabel ?? '—'} · ${formatZonedDateTimeRange(editingItem.endsAt ?? editingItem.startsAt, undefined, languageTag, tripTimeZone)}`)}</ThemedText></View> : <LocationField value={location} onChange={(value) => { setLocation(value); setGooglePlaceId(''); }} onSelect={(suggestion) => { setLocation(suggestion.text); setGooglePlaceId(suggestion.placeId); }} />}
             {editingItem?.linkedStayId ? <View style={styles.row}><View style={styles.dateField}><DateTimeField label={tx('出发日期', 'Departure date')} value={date} mode="date" minimumDate={new Date(`${activeTrip.startsOn}T12:00:00`)} maximumDate={new Date(`${activeTrip.endsOn}T12:00:00`)} onChange={setDate} /></View><View style={styles.grow}><DateTimeField label={tx('出发时间', 'Departure time')} value={startTime} mode="time" onChange={setStartTime} /></View></View> : kind === 'lodging' ? <><View style={styles.stayFormGroup}><ThemedText type="smallBold">{tx('入住', 'Check-in')}</ThemedText><View style={styles.row}><View style={styles.dateField}><DateTimeField label={tx('入住日期', 'Check-in date')} value={date} mode="date" minimumDate={new Date(`${activeTrip.startsOn}T12:00:00`)} maximumDate={new Date(`${activeTrip.endsOn}T12:00:00`)} onChange={(value) => { setDate(value); if (endDate < value) setEndDate(value); }} /></View><View style={styles.grow}><DateTimeField label={tx('入住时间', 'Check-in time')} value={startTime} mode="time" onChange={setStartTime} /></View></View></View><View style={styles.stayFormGroup}><ThemedText type="smallBold">{tx('退房', 'Check-out')}</ThemedText><View style={styles.row}><View style={styles.dateField}><DateTimeField label={tx('退房日期', 'Check-out date')} value={endDate} mode="date" minimumDate={new Date(`${date}T12:00:00`)} maximumDate={new Date(`${activeTrip.endsOn}T12:00:00`)} onChange={setEndDate} /></View><View style={styles.grow}><DateTimeField label={tx('退房时间', 'Check-out time')} value={endTime} mode="time" onChange={setEndTime} /></View></View></View><ThemedText type="small" themeColor="textSecondary">{tx(`这段住宿会覆盖 ${stayNightsInZone(zonedDateTimeToIso(date, startTime, tripTimeZone), zonedDateTimeToIso(endDate, endTime, tripTimeZone), tripTimeZone)} 晚，不会生成重复的每日项目。`, `This stay covers ${stayNightsInZone(zonedDateTimeToIso(date, startTime, tripTimeZone), zonedDateTimeToIso(endDate, endTime, tripTimeZone), tripTimeZone)} nights without duplicate daily items.`)}</ThemedText></> : <View style={styles.row}><View style={styles.dateField}><DateTimeField label={tx('日期', 'Date')} value={date} mode="date" minimumDate={new Date(`${activeTrip.startsOn}T12:00:00`)} maximumDate={new Date(`${activeTrip.endsOn}T12:00:00`)} onChange={setDate} /></View><View style={styles.grow}><DateTimeField label={tx('开始', 'Starts')} value={startTime} mode="time" onChange={setStartTime} /></View><View style={styles.grow}><DateTimeField label={tx('结束', 'Ends')} value={endTime} mode="time" onChange={setEndTime} /></View></View>}
             {kind !== 'lodging' ? <View style={styles.durationRow}>
               <ThemedText type="small" themeColor="textSecondary">{tx('快速设置时长', 'Quick duration')}</ThemedText>
@@ -459,6 +494,7 @@ const styles = StyleSheet.create({
   timelineRail: { width: 16, alignItems: 'center', height: '100%', borderRightWidth: 1 },
   timelineDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: '#1B70A6', marginRight: -1, marginTop: 7 },
   timelineContent: { flex: 1, gap: 2, paddingBottom: 16 },
+  routeEstimate: { color: '#087F6A' },
   durationRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
   staySection: { gap: 10, paddingVertical: 8 },
   stayHeading: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 },

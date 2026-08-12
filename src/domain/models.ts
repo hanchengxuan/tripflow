@@ -60,6 +60,7 @@ export interface ItineraryItem {
   startsAt: string;
   endsAt?: string;
   locationLabel?: string;
+  googlePlaceId?: string;
   localScriptAddress?: string;
   responsibleUserId?: UserId;
   linkedStayId?: string;

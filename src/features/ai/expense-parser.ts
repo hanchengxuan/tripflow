@@ -64,3 +64,23 @@ export async function parseExpenseText(input: { tripId: string; text: string; me
   }
   return validateAiExpenseDraft(data?.draft, input.memberIds);
 }
+
+export async function parseExpenseAudio(input: { tripId: string; audioBase64: string; audioMimeType: string; memberIds: string[] }) {
+  if (!input.audioBase64 || input.audioBase64.length > 8_000_000) throw new Error('录音过大，请控制在 60 秒内。');
+  const { data, error } = await getSupabaseClient().functions.invoke('parse-expense', {
+    body: { tripId: input.tripId, audioBase64: input.audioBase64, audioMimeType: input.audioMimeType },
+  });
+  if (error) {
+    const response = (error as { context?: Response }).context;
+    if (response) {
+      try {
+        const body = await response.clone().json() as { error?: unknown };
+        if (typeof body.error === 'string') throw new Error(body.error);
+      } catch (caught) {
+        if (caught instanceof Error && /[㐀-鿿]/u.test(caught.message)) throw caught;
+      }
+    }
+    throw error;
+  }
+  return validateAiExpenseDraft(data?.draft, input.memberIds);
+}

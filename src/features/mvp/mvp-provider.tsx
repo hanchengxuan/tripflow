@@ -52,9 +52,9 @@ interface MvpContextValue {
   setMemberRole: (userId: string, role: 'owner' | 'editor' | 'viewer') => Promise<void>;
   removeMember: (userId: string) => Promise<void>;
   saveProfile: (input: { displayName: string; avatar?: { uri: string; mimeType?: string | null } }) => Promise<void>;
-  addItineraryItem: (input: { title: string; kind: Database['public']['Enums']['itinerary_kind']; startsAt: string; endsAt?: string; locationLabel?: string }) => Promise<void>;
+  addItineraryItem: (input: { title: string; kind: Database['public']['Enums']['itinerary_kind']; startsAt: string; endsAt?: string; locationLabel?: string; googlePlaceId?: string }) => Promise<void>;
   addStayTransfer: (input: { stayId: string; sourceItemId: string; title: string }) => Promise<void>;
-  saveItineraryItem: (input: { itemId: string; title: string; startsAt: string; endsAt: string; locationLabel?: string }) => Promise<void>;
+  saveItineraryItem: (input: { itemId: string; title: string; startsAt: string; endsAt: string; locationLabel?: string; googlePlaceId?: string }) => Promise<void>;
   removeItineraryItem: (itemId: string) => Promise<void>;
   addEqualExpense: (input: { title: string; currency: string; totalMinor: number; payerUserId: string; participantUserIds: string[]; receipt?: { uri: string; base64?: string | null; mimeType?: string | null; fileSize?: number } }) => Promise<{ receiptUploaded: boolean; receiptError?: unknown }>;
   attachExpenseReceipt: (expenseId: string, receipt: { uri: string; base64?: string | null; mimeType?: string | null; fileSize?: number }) => Promise<void>;
@@ -202,7 +202,7 @@ export function MvpProvider({ children }: PropsWithChildren) {
     }
   }, [activeTrip, currentUserId, profile?.avatarPath]);
 
-  const addItineraryItem = useCallback(async (input: { title: string; kind: Database['public']['Enums']['itinerary_kind']; startsAt: string; endsAt?: string; locationLabel?: string }) => {
+  const addItineraryItem = useCallback(async (input: { title: string; kind: Database['public']['Enums']['itinerary_kind']; startsAt: string; endsAt?: string; locationLabel?: string; googlePlaceId?: string }) => {
     if (!activeTrip) throw new Error('请先创建或加入一个行程。');
     await createItineraryItem(currentUserId, { ...input, tripId: activeTrip.id });
     setItineraryItems(await listItineraryItems(activeTrip.id));

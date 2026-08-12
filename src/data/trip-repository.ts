@@ -27,6 +27,7 @@ function mapItineraryItem(row: ItineraryRow): ItineraryItem {
     startsAt: row.starts_at,
     endsAt: row.ends_at ?? undefined,
     locationLabel: row.location_label ?? undefined,
+    googlePlaceId: row.google_place_id ?? undefined,
     localScriptAddress: row.local_script_address ?? undefined,
     responsibleUserId: row.responsible_user_id ?? undefined,
     linkedStayId: row.linked_stay_id ?? undefined,
@@ -271,6 +272,7 @@ export async function createItineraryItem(
     startsAt: string;
     endsAt?: string;
     locationLabel?: string;
+    googlePlaceId?: string;
   },
 ) {
   const { error } = await getSupabaseClient().from('itinerary_items').insert({
@@ -281,6 +283,7 @@ export async function createItineraryItem(
     starts_at: input.startsAt,
     ends_at: input.endsAt ?? null,
     location_label: input.locationLabel?.trim() || null,
+    google_place_id: input.googlePlaceId?.trim() || null,
   });
   if (error) throw error;
 }
@@ -300,6 +303,7 @@ export async function updateItineraryItem(input: {
   startsAt: string;
   endsAt: string;
   locationLabel?: string;
+  googlePlaceId?: string;
 }) {
   const { error } = await getSupabaseClient().rpc('update_itinerary_item', {
     requested_item_id: input.itemId,
@@ -307,6 +311,7 @@ export async function updateItineraryItem(input: {
     item_starts_at: input.startsAt,
     item_ends_at: input.endsAt,
     item_location_label: input.locationLabel?.trim() ?? '',
+    item_google_place_id: input.googlePlaceId?.trim() ?? '',
   });
   if (error) throw error;
 }

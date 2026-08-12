@@ -1,8 +1,9 @@
 import { Image } from 'expo-image';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
+import { RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync, useAudioRecorder, useAudioRecorderState } from 'expo-audio';
 import { useMemo, useState } from 'react';
-import { LayoutAnimation, Linking, Pressable, StyleSheet, View } from 'react-native';
+import { LayoutAnimation, Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/form-controls';
 import { MemberAvatar } from '@/components/member-avatar';
@@ -18,7 +19,7 @@ import {
 } from '@/domain/ledger';
 import { minimizeSettlementTransfers, type SettlementTransfer } from '@/domain/money';
 import type { Expense, Settlement, TripMember } from '@/domain/models';
-import { parseExpenseText } from '@/features/ai/expense-parser';
+import { type AiExpenseDraft, parseExpenseAudio, parseExpenseText } from '@/features/ai/expense-parser';
 import { useI18n } from '@/features/i18n/i18n-provider';
 import { useMvp } from '@/features/mvp/mvp-provider';
 import { useTheme } from '@/hooks/use-theme';
@@ -182,19 +183,39 @@ export default function LedgerScreen() {
         text: aiText,
         memberIds,
       });
-      setTitle(draft.title);
-      setAmount(draft.amount);
-      setCurrencyOverride(draft.currency);
-      setPayerOverride(draft.payerUserId);
-      setParticipantsByTrip((current) => ({ ...current, [activeTrip.id]: draft.participantUserIds }));
-      setEntryMode('manual');
-      const confidence = Math.round(draft.confidence * 100);
-      setAiNotice([
-        tx(`AI 已生成草稿（置信度 ${confidence}%），请核对后再保存。`, `AI created a draft (${confidence}% confidence). Review it before saving.`),
-        ...draft.warnings,
-      ].join(' '));
+      applyAiDraft(draft);
     } catch (caught) {
       setFormError(toUserMessage(caught, tx('AI 解析失败，请换一种说法或手动填写。', 'AI could not parse that. Rephrase it or enter the details manually.')));
+    } finally {
+      setBusyAction(undefined);
+    }
+  }
+
+  function applyAiDraft(draft: AiExpenseDraft) {
+    if (!activeTrip) return;
+    setTitle(draft.title);
+    setAmount(draft.amount);
+    setCurrencyOverride(draft.currency);
+    setPayerOverride(draft.payerUserId);
+    setParticipantsByTrip((current) => ({ ...current, [activeTrip.id]: draft.participantUserIds }));
+    setEntryMode('manual');
+    const confidence = Math.round(draft.confidence * 100);
+    setAiNotice([
+      tx(`AI 已生成草稿（置信度 ${confidence}%），请核对后再保存。`, `AI created a draft (${confidence}% confidence). Review it before saving.`),
+      ...draft.warnings,
+    ].join(' '));
+  }
+
+  async function parseVoiceExpense(audioBase64: string, audioMimeType: string) {
+    if (!activeTrip) return;
+    setBusyAction('parse');
+    setFormError(undefined);
+    setSuccess(undefined);
+    setAiNotice(undefined);
+    try {
+      applyAiDraft(await parseExpenseAudio({ tripId: activeTrip.id, audioBase64, audioMimeType, memberIds }));
+    } catch (caught) {
+      setFormError(toUserMessage(caught, tx('AI 无法识别这段语音，请重试或手动填写。', 'AI could not understand the recording. Try again or enter it manually.')));
     } finally {
       setBusyAction(undefined);
     }
@@ -304,6 +325,7 @@ export default function LedgerScreen() {
           aiText={aiText}
           setAiText={setAiText}
           parseWithAi={parseWithAi}
+          parseVoiceExpense={parseVoiceExpense}
           busyAction={busyAction}
           aiNotice={aiNotice}
           title={title}
@@ -387,6 +409,7 @@ function ExpenseComposer(props: {
   aiText: string;
   setAiText: (value: string) => void;
   parseWithAi: () => Promise<void>;
+  parseVoiceExpense: (audioBase64: string, audioMimeType: string) => Promise<void>;
   busyAction?: 'parse' | 'save' | 'receipt';
   aiNotice?: string;
   title: string;
@@ -439,6 +462,7 @@ function ExpenseComposer(props: {
           <ActionButton busy={props.busyAction === 'parse'} disabled={!props.aiText.trim() || Boolean(props.busyAction)} onPress={() => void props.parseWithAi()}>
             {tx('生成草稿', 'Create draft')}
           </ActionButton>
+          <VoiceExpenseInput disabled={Boolean(props.busyAction)} tx={tx} onAudioReady={props.parseVoiceExpense} />
         </View>
       ) : (
         <View style={styles.formGroup}>
@@ -493,6 +517,78 @@ function ExpenseComposer(props: {
           </ActionButton>
         </View>
       )}
+    </View>
+  );
+}
+
+async function uriToBase64(uri: string) {
+  const response = await fetch(uri);
+  const blob = await response.blob();
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error ?? new Error('Could not read recording'));
+    reader.onload = () => resolve(String(reader.result).split(',')[1] ?? '');
+    reader.readAsDataURL(blob);
+  });
+}
+
+function VoiceExpenseInput(props: {
+  disabled: boolean;
+  tx: (zh: string, en: string) => string;
+  onAudioReady: (audioBase64: string, audioMimeType: string) => Promise<void>;
+}) {
+  const recorder = useAudioRecorder(RecordingPresets.LOW_QUALITY);
+  const state = useAudioRecorderState(recorder);
+  const [voiceError, setVoiceError] = useState<string>();
+  const [processing, setProcessing] = useState(false);
+
+  async function startRecording() {
+    setVoiceError(undefined);
+    const permission = await requestRecordingPermissionsAsync();
+    if (!permission.granted) {
+      setVoiceError(props.tx('需要麦克风权限才能语音记账。', 'Microphone permission is required for voice expenses.'));
+      return;
+    }
+    await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+    await recorder.prepareToRecordAsync();
+    recorder.record();
+  }
+
+  async function stopAndParse() {
+    setProcessing(true);
+    setVoiceError(undefined);
+    try {
+      await recorder.stop();
+      await setAudioModeAsync({ allowsRecording: false });
+      if (!recorder.uri) throw new Error('Recording is unavailable');
+      const audioBase64 = await uriToBase64(recorder.uri);
+      const audioMimeType = Platform.OS === 'web' ? 'audio/webm' : 'audio/mp4';
+      await props.onAudioReady(audioBase64, audioMimeType);
+    } catch {
+      setVoiceError(props.tx('无法处理录音，请重试或改用文字。', 'Could not process the recording. Try again or use text.'));
+    } finally {
+      setProcessing(false);
+    }
+  }
+
+  return (
+    <View style={styles.voiceGroup}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ disabled: props.disabled || processing, busy: processing }}
+        disabled={props.disabled || processing}
+        onPress={() => void (state.isRecording ? stopAndParse() : startRecording())}
+        style={({ pressed }) => [styles.voiceButton, state.isRecording && styles.voiceButtonRecording, pressed && styles.pressed, (props.disabled || processing) && styles.disabled]}>
+        <ThemedText type="smallBold" style={styles.voiceButtonText}>
+          {processing
+            ? props.tx('正在理解语音…', 'Understanding audio…')
+            : state.isRecording
+              ? props.tx(`结束并生成草稿 · ${Math.round(state.durationMillis / 1000)}s`, `Stop and create draft · ${Math.round(state.durationMillis / 1000)}s`)
+              : props.tx('语音记账', 'Record expense')}
+        </ThemedText>
+      </Pressable>
+      <ThemedText type="small" themeColor="textSecondary">{props.tx('建议控制在 60 秒内；录音仅用于本次解析，不会保存。', 'Keep it under 60 seconds. The recording is processed once and not stored.')}</ThemedText>
+      {voiceError ? <InlineNotice tone="error">{voiceError}</InlineNotice> : null}
     </View>
   );
 }
@@ -838,6 +934,10 @@ const styles = StyleSheet.create({
   amountRow: { flexDirection: 'row', gap: 12, alignItems: 'flex-end' },
   currencyField: { width: 116 },
   multiline: { minHeight: 96, textAlignVertical: 'top' },
+  voiceGroup: { gap: 8 },
+  voiceButton: { minHeight: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14, backgroundColor: '#1B70A6' },
+  voiceButtonRecording: { backgroundColor: '#B4413E' },
+  voiceButtonText: { color: '#FFFFFF' },
   fieldGroup: { gap: 8 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   memberChoice: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 9, paddingVertical: 6, borderRadius: 999 },

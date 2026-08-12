@@ -10,7 +10,7 @@ function newSessionToken() {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-export function LocationField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+export function LocationField({ value, onChange, onSelect }: { value: string; onChange: (value: string) => void; onSelect: (suggestion: PlaceSuggestion) => void }) {
   const theme = useTheme();
   const { locale, tx } = useI18n();
   const sessionToken = useRef(newSessionToken());
@@ -60,7 +60,7 @@ export function LocationField({ value, onChange }: { value: string; onChange: (v
               key={suggestion.placeId}
               accessibilityRole="button"
               onPress={() => {
-                onChange(suggestion.text);
+                onSelect(suggestion);
                 setSuggestions([]);
                 sessionToken.current = newSessionToken();
               }}
