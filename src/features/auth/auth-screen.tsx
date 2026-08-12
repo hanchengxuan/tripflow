@@ -6,9 +6,10 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/form-controls';
 import { InfoCard } from '@/components/info-card';
+import { OtpCodeInput } from '@/components/otp-code-input';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
-import { completeRegistration, sendEmailOtp, signInWithPassword, signOut, verifyEmailOtp } from '@/features/auth/auth-service';
+import { completeRegistration, sendEmailOtp, sendPhoneOtp, signInWithGoogle, signInWithPassword, signOut, verifyEmailOtp, verifyPhoneOtp } from '@/features/auth/auth-service';
 import { useAuth } from '@/features/auth/auth-provider';
 import { useI18n } from '@/features/i18n/i18n-provider';
 import { parseInviteToken } from '@/features/invites/invite-link';
@@ -16,6 +17,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { toUserMessage } from '@/lib/user-error';
 
 type AuthFlow = 'login' | 'register' | 'otp-login';
+type AuthMethod = 'email' | 'phone';
 type AvatarDraft = { uri: string; mimeType?: string | null };
 
 const OTP_EXPIRY_SECONDS = 10 * 60;
@@ -36,10 +38,13 @@ function useInviteToken() {
 export function AuthScreen() {
   const { locale, setLocale, tx } = useI18n();
   const inviteToken = useInviteToken();
+  const { capabilities } = useAuth();
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [token, setToken] = useState('');
   const [flow, setFlow] = useState<AuthFlow>('login');
+  const [method, setMethod] = useState<AuthMethod>('email');
   const [verifying, setVerifying] = useState(false);
   const [codeSentAt, setCodeSentAt] = useState<number>();
   const [clock, setClock] = useState(() => Date.now());
@@ -77,12 +82,28 @@ export function AuthScreen() {
     }
   }
 
+  async function googleLogin() {
+    setBusy(true);
+    setError(undefined);
+    try {
+      await signInWithGoogle(inviteToken);
+    } catch (caught) {
+      setError(toUserMessage(caught, tx('Google 登录尚未配置或暂时不可用。', 'Google sign-in is not configured or temporarily unavailable.')));
+      setBusy(false);
+    }
+  }
+
   async function sendCode() {
     setBusy(true);
     setError(undefined);
     try {
-      const normalized = await sendEmailOtp(email, flow === 'register');
-      setEmail(normalized);
+      if (method === 'email') {
+        const normalized = await sendEmailOtp(email, flow === 'register');
+        setEmail(normalized);
+      } else {
+        const normalized = await sendPhoneOtp(phone, true);
+        setPhone(normalized);
+      }
       setVerifying(true);
       setToken('');
       const sentAt = Date.now();
@@ -101,7 +122,8 @@ export function AuthScreen() {
     setBusy(true);
     setError(undefined);
     try {
-      await verifyEmailOtp(email, token);
+      if (method === 'email') await verifyEmailOtp(email, token);
+      else await verifyPhoneOtp(phone, token);
     } catch (caught) {
       setError(toUserMessage(caught, tx('验证码无效或已过期，请重新获取。', 'The code is invalid or expired. Request a new one.')));
     } finally {
@@ -109,41 +131,48 @@ export function AuthScreen() {
     }
   }
 
-  const cardLabel = flow === 'login' ? tx('登录', 'Sign in') : flow === 'register' ? tx('注册', 'Register') : tx('验证码登录', 'Code sign-in');
+  const cardLabel = method === 'phone' ? tx('手机号登录或注册', 'Phone sign-in or registration') : flow === 'login' ? tx('登录', 'Sign in') : flow === 'register' ? tx('注册', 'Register') : tx('验证码登录', 'Code sign-in');
   return (
     <Screen
       meta={tx('TripFlow', 'TripFlow')}
       title={inviteToken ? tx('先登录或注册，再加入行程', 'Sign in or register to join') : tx('把大家的旅程放在一起', 'One trip, shared by everyone')}
       subtitle={tx('任何人都可以注册创建自己的行程；邀请只用于加入同行者的行程。', 'Anyone can register and create a trip. Invites are only needed to join someone else’s trip.')}>
       {inviteToken ? <InlineNotice>{tx('邀请已保留。完成登录或注册后，你仍需确认加入行程。', 'Your invite is saved. After signing in or registering, you will still confirm before joining.')}</InlineNotice> : null}
+      {capabilities.google ? <ActionButton tone="secondary" busy={busy} onPress={() => void googleLogin()}>{tx('使用 Google 继续', 'Continue with Google')}</ActionButton> : null}
+      <View style={styles.methodChoices}>
+        <ChoiceChip selected={method === 'email'} onPress={() => { setMethod('email'); setVerifying(false); setToken(''); }}>{tx('邮箱', 'Email')}</ChoiceChip>
+        {capabilities.phone ? <ChoiceChip selected={method === 'phone'} onPress={() => { setMethod('phone'); setVerifying(false); setToken(''); }}>{tx('手机号', 'Phone')}</ChoiceChip> : null}
+      </View>
+      {method === 'email' ? (
       <View style={styles.flowChoices}>
         <ChoiceChip selected={flow === 'login'} onPress={() => chooseFlow('login')}>{tx('密码登录', 'Sign in')}</ChoiceChip>
         <ChoiceChip selected={flow === 'register'} onPress={() => chooseFlow('register')}>{tx('免费注册', 'Register')}</ChoiceChip>
         <ChoiceChip selected={flow === 'otp-login'} onPress={() => chooseFlow('otp-login')}>{tx('验证码登录', 'Email code')}</ChoiceChip>
       </View>
-      <InfoCard label={cardLabel} title={verifying ? email : flow === 'register' ? tx('创建你的 TripFlow 账号', 'Create your TripFlow account') : tx('欢迎回来', 'Welcome back')}>
+      ) : null}
+      <InfoCard label={cardLabel} title={verifying ? (method === 'email' ? email : phone) : method === 'phone' ? tx('用短信验证码继续', 'Continue with an SMS code') : flow === 'register' ? tx('创建你的 TripFlow 账号', 'Create your TripFlow account') : tx('欢迎回来', 'Welcome back')}>
         <View style={styles.form}>
           {!verifying ? (
             <>
-              <FormField label={tx('邮箱', 'Email')} value={email} onChangeText={setEmail} autoCapitalize="none" autoComplete="email" keyboardType="email-address" placeholder="you@example.com" />
-              {flow === 'login' ? <FormField label={tx('密码', 'Password')} value={password} onChangeText={setPassword} autoCapitalize="none" autoComplete="current-password" secureTextEntry placeholder={tx('输入密码', 'Enter password')} /> : null}
-              {flow === 'login'
+              {method === 'email' ? <FormField label={tx('邮箱', 'Email')} value={email} onChangeText={setEmail} autoCapitalize="none" autoComplete="email" keyboardType="email-address" placeholder="you@example.com" /> : <FormField label={tx('手机号（含国家区号）', 'Phone with country code')} value={phone} onChangeText={setPhone} autoComplete="tel" keyboardType="phone-pad" placeholder="+61412345678" />}
+              {method === 'email' && flow === 'login' ? <FormField label={tx('密码', 'Password')} value={password} onChangeText={setPassword} autoCapitalize="none" autoComplete="current-password" secureTextEntry placeholder={tx('输入密码', 'Enter password')} /> : null}
+              {method === 'email' && flow === 'login'
                 ? <ActionButton busy={busy} disabled={!email.trim() || !password} onPress={() => void login()}>{tx('登录', 'Sign in')}</ActionButton>
-                : <ActionButton busy={busy} disabled={!email.trim()} onPress={() => void sendCode()}>{flow === 'register' ? tx('发送注册验证码', 'Send registration code') : tx('发送登录验证码', 'Send login code')}</ActionButton>}
-              {flow === 'register' ? <ThemedText type="small" themeColor="textSecondary">{tx('验证邮箱后，你将设置密码、显示名称和可选头像。', 'After verifying your email, you will set a password, display name, and optional avatar.')}</ThemedText> : null}
+                : <ActionButton busy={busy} disabled={method === 'email' ? !email.trim() : !phone.trim()} onPress={() => void sendCode()}>{method === 'phone' ? tx('发送短信验证码', 'Send SMS code') : flow === 'register' ? tx('发送注册验证码', 'Send registration code') : tx('发送登录验证码', 'Send login code')}</ActionButton>}
+              {method === 'email' && flow === 'register' ? <ThemedText type="small" themeColor="textSecondary">{tx('验证邮箱后，你将设置密码、显示名称和可选头像。', 'After verifying your email, you will set a password, display name, and optional avatar.')}</ThemedText> : null}
             </>
           ) : (
             <>
-              <ThemedText themeColor="textSecondary">{tx('请输入邮件中的数字验证码（6 到 10 位）。', 'Enter the numeric code from the email (6–10 digits).')}</ThemedText>
-              <FormField label={tx('邮件验证码', 'Email verification code')} value={token} onChangeText={setToken} keyboardType="number-pad" maxLength={10} placeholder="123456" />
+              <ThemedText themeColor="textSecondary">{tx(`请输入${method === 'email' ? '邮件' : '短信'}中的 8 位验证码。`, `Enter the 8-digit code from your ${method === 'email' ? 'email' : 'text message'}.`)}</ThemedText>
+              <OtpCodeInput disabled={busy} value={token} onChangeText={setToken} />
               {codeExpired
                 ? <InlineNotice tone="error">{tx('验证码已过期，请重新获取。', 'This code has expired. Request a new one.')}</InlineNotice>
                 : <ThemedText type="small" themeColor="textSecondary">{tx(`验证码 ${formatCountdown(expirySeconds)} 后过期。仅最新一封邮件中的验证码有效。`, `Code expires in ${formatCountdown(expirySeconds)}. Only the newest email code is valid.`)}</ThemedText>}
-              <ActionButton busy={busy} disabled={codeExpired || !/^\d{6,10}$/.test(token.replace(/\s/g, ''))} onPress={() => void verifyCode()}>{flow === 'register' ? tx('验证并继续注册', 'Verify and continue') : tx('验证并登录', 'Verify and sign in')}</ActionButton>
+              <ActionButton busy={busy} disabled={codeExpired || !/^\d{8}$/.test(token)} onPress={() => void verifyCode()}>{method === 'phone' || flow === 'register' ? tx('验证并继续', 'Verify and continue') : tx('验证并登录', 'Verify and sign in')}</ActionButton>
               <ActionButton tone="secondary" busy={busy} disabled={busy || resendSeconds > 0} onPress={() => void sendCode()}>
                 {resendSeconds > 0 ? tx(`${resendSeconds} 秒后可重发`, `Resend in ${resendSeconds}s`) : tx('重新发送验证码', 'Resend code')}
               </ActionButton>
-              <ActionButton tone="secondary" disabled={busy} onPress={() => { setVerifying(false); setCodeSentAt(undefined); }}>{tx('更换邮箱', 'Use another email')}</ActionButton>
+              <ActionButton tone="secondary" disabled={busy} onPress={() => { setVerifying(false); setCodeSentAt(undefined); }}>{method === 'email' ? tx('更换邮箱', 'Use another email') : tx('更换手机号', 'Use another phone')}</ActionButton>
             </>
           )}
           {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
@@ -165,6 +194,8 @@ export function OnboardingScreen() {
   const [avatar, setAvatar] = useState<AvatarDraft>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
+  const provider = session?.user.app_metadata.provider;
+  const requiresPassword = provider === 'email';
 
   async function chooseAvatar() {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -181,8 +212,8 @@ export function OnboardingScreen() {
     setBusy(true);
     setError(undefined);
     try {
-      if (password !== confirmPassword) throw new Error(tx('两次输入的密码不一致。', 'Passwords do not match.'));
-      await completeRegistration({ userId: session.user.id, displayName, password, avatar });
+      if (requiresPassword && password !== confirmPassword) throw new Error(tx('两次输入的密码不一致。', 'Passwords do not match.'));
+      await completeRegistration({ userId: session.user.id, displayName, password: requiresPassword ? password : undefined, avatar });
       finishOnboarding();
     } catch (caught) {
       setError(toUserMessage(caught, tx('无法完成注册，请检查资料后重试。', 'Could not complete registration. Check your details and try again.')));
@@ -199,9 +230,8 @@ export function OnboardingScreen() {
           {avatar ? <Image source={{ uri: avatar.uri }} style={styles.avatarImage} contentFit="cover" /> : <ThemedText type="smallBold">{tx('添加头像（可选）', 'Add avatar (optional)')}</ThemedText>}
         </Pressable>
         <FormField label={tx('显示名称', 'Display name')} value={displayName} onChangeText={setDisplayName} maxLength={80} placeholder={tx('同行者会看到这个名称', 'This is shown to travellers')} />
-        <FormField label={tx('设置密码', 'Create password')} value={password} onChangeText={setPassword} autoCapitalize="none" autoComplete="new-password" secureTextEntry placeholder={tx('至少 8 位，包含字母和数字', '8+ characters with letters and numbers')} />
-        <FormField label={tx('确认密码', 'Confirm password')} value={confirmPassword} onChangeText={setConfirmPassword} autoCapitalize="none" autoComplete="new-password" secureTextEntry placeholder={tx('再次输入密码', 'Enter password again')} />
-        <ActionButton busy={busy} disabled={!displayName.trim() || !password || !confirmPassword} onPress={() => void finish()}>{inviteToken ? tx('完成注册并继续加入', 'Finish and continue to invite') : tx('完成注册', 'Finish registration')}</ActionButton>
+        {requiresPassword ? <><FormField label={tx('设置密码', 'Create password')} value={password} onChangeText={setPassword} autoCapitalize="none" autoComplete="new-password" secureTextEntry placeholder={tx('至少 8 位，包含字母和数字', '8+ characters with letters and numbers')} /><FormField label={tx('确认密码', 'Confirm password')} value={confirmPassword} onChangeText={setConfirmPassword} autoCapitalize="none" autoComplete="new-password" secureTextEntry placeholder={tx('再次输入密码', 'Enter password again')} /></> : null}
+        <ActionButton busy={busy} disabled={!displayName.trim() || (requiresPassword && (!password || !confirmPassword))} onPress={() => void finish()}>{inviteToken ? tx('完成注册并继续加入', 'Finish and continue to invite') : tx('完成注册', 'Finish registration')}</ActionButton>
         <ActionButton tone="secondary" disabled={busy} onPress={() => void signOut()}>{tx('退出并更换邮箱', 'Sign out and use another email')}</ActionButton>
         {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
       </View>
@@ -221,6 +251,7 @@ export function AuthLoadingScreen({ configured }: { configured: boolean }) {
 
 const styles = StyleSheet.create({
   form: { gap: 12 },
+  methodChoices: { flexDirection: 'row', gap: 8 },
   flowChoices: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   onboardingCard: { borderRadius: 16, padding: 18, gap: 14 },
   avatar: { alignSelf: 'center', width: 116, height: 116, borderRadius: 58, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: 12 },

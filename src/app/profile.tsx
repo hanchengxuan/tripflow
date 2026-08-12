@@ -5,10 +5,11 @@ import { Link, type Href } from 'expo-router';
 import { LayoutAnimation, Pressable, StyleSheet, View } from 'react-native';
 
 import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/form-controls';
+import { OtpCodeInput } from '@/components/otp-code-input';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { tripRoleLabels, tripRoleLabelsEn } from '@/constants/options';
-import { deleteAccount, signOut } from '@/features/auth/auth-service';
+import { beginEmailLink, beginPhoneLink, deleteAccount, linkGoogleIdentity, signOut, verifyEmailLink, verifyPhoneLink } from '@/features/auth/auth-service';
 import { useAuth } from '@/features/auth/auth-provider';
 import { useI18n } from '@/features/i18n/i18n-provider';
 import { useMvp } from '@/features/mvp/mvp-provider';
@@ -20,7 +21,7 @@ type AvatarDraft = { uri: string; mimeType?: string | null };
 export default function ProfileScreen() {
   const theme = useTheme();
   const { locale, setLocale, tx } = useI18n();
-  const { session } = useAuth();
+  const { capabilities, session } = useAuth();
   const { profile, activeTrip, members, currentUserId, saveProfile } = useMvp();
   const [editing, setEditing] = useState(false);
   const [draftName, setDraftName] = useState('');
@@ -28,6 +29,10 @@ export default function ProfileScreen() {
   const [busyAction, setBusyAction] = useState<'save' | 'signout' | 'delete'>();
   const [confirmingDeletion, setConfirmingDeletion] = useState(false);
   const [notice, setNotice] = useState<{ tone: 'info' | 'error'; text: string }>();
+  const [linkMode, setLinkMode] = useState<'email' | 'phone'>();
+  const [linkValue, setLinkValue] = useState('');
+  const [linkToken, setLinkToken] = useState('');
+  const [linkCodeSent, setLinkCodeSent] = useState(false);
   const membership = members.find(({ userId }) => userId === currentUserId);
   const shownName = profile?.displayName || tx('旅行者', 'Traveller');
   const avatarSource = avatarDraft?.uri ?? profile?.avatarUrl;
@@ -35,6 +40,53 @@ export default function ProfileScreen() {
   const hasChanges = Boolean(
     avatarDraft || (draftName.trim() && draftName.trim() !== profile?.displayName),
   );
+  const googleLinked = session?.user.identities?.some(({ provider }) => provider === 'google');
+
+  async function startLink() {
+    if (!linkMode) return;
+    setBusyAction('save');
+    setNotice(undefined);
+    try {
+      const normalized = linkMode === 'email' ? await beginEmailLink(linkValue) : await beginPhoneLink(linkValue);
+      setLinkValue(normalized);
+      setLinkToken('');
+      setLinkCodeSent(true);
+    } catch (caught) {
+      setNotice({ tone: 'error', text: toUserMessage(caught, tx('无法发送验证码，请检查后重试。', 'Could not send a code. Check the value and try again.')) });
+    } finally {
+      setBusyAction(undefined);
+    }
+  }
+
+  async function confirmLink() {
+    if (!linkMode) return;
+    setBusyAction('save');
+    setNotice(undefined);
+    try {
+      if (linkMode === 'email') await verifyEmailLink(linkValue, linkToken);
+      else await verifyPhoneLink(linkValue, linkToken);
+      setNotice({ tone: 'info', text: tx('新的登录方式已绑定到当前账号。', 'The new sign-in method is linked to this account.') });
+      setLinkMode(undefined);
+      setLinkCodeSent(false);
+      setLinkValue('');
+      setLinkToken('');
+    } catch (caught) {
+      setNotice({ tone: 'error', text: toUserMessage(caught, tx('验证码无效或已过期。', 'The code is invalid or expired.')) });
+    } finally {
+      setBusyAction(undefined);
+    }
+  }
+
+  async function linkGoogle() {
+    setBusyAction('save');
+    setNotice(undefined);
+    try {
+      await linkGoogleIdentity();
+    } catch (caught) {
+      setNotice({ tone: 'error', text: toUserMessage(caught, tx('Google 绑定尚未配置或暂时不可用。', 'Google linking is not configured or temporarily unavailable.')) });
+      setBusyAction(undefined);
+    }
+  }
 
   function beginEditing() {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -192,6 +244,27 @@ export default function ProfileScreen() {
       </View>
 
       <View style={styles.section}>
+        <ThemedText type="smallBold" themeColor="textSecondary">{tx('登录方式', 'Sign-in methods')}</ThemedText>
+        <SettingValue label={tx('邮箱', 'Email')} value={session?.user.email ?? tx('未绑定', 'Not linked')} />
+        <View style={[styles.divider, { backgroundColor: theme.backgroundSelected }]} />
+        <SettingValue label={tx('手机号', 'Phone')} value={session?.user.phone ?? tx('未绑定', 'Not linked')} />
+        <View style={[styles.divider, { backgroundColor: theme.backgroundSelected }]} />
+        <SettingValue label="Google" value={googleLinked ? tx('已绑定', 'Linked') : tx('未绑定', 'Not linked')} />
+        <View style={styles.loginActions}>
+          {!session?.user.email ? <ActionButton tone="secondary" onPress={() => { setLinkMode('email'); setLinkCodeSent(false); setLinkValue(''); }}>{tx('添加邮箱', 'Add email')}</ActionButton> : null}
+          {capabilities.phone && !session?.user.phone ? <ActionButton tone="secondary" onPress={() => { setLinkMode('phone'); setLinkCodeSent(false); setLinkValue(''); }}>{tx('添加手机号', 'Add phone')}</ActionButton> : null}
+          {capabilities.google && !googleLinked ? <ActionButton tone="secondary" busy={busyAction === 'save'} onPress={() => void linkGoogle()}>{tx('绑定 Google', 'Link Google')}</ActionButton> : null}
+        </View>
+        {linkMode ? (
+          <View style={[styles.linkEditor, { backgroundColor: theme.backgroundElement }]}>
+            {!linkCodeSent ? <FormField label={linkMode === 'email' ? tx('邮箱', 'Email') : tx('手机号（含国家区号）', 'Phone with country code')} value={linkValue} onChangeText={setLinkValue} autoCapitalize="none" keyboardType={linkMode === 'email' ? 'email-address' : 'phone-pad'} placeholder={linkMode === 'email' ? 'you@example.com' : '+61412345678'} /> : <><ThemedText type="small" themeColor="textSecondary">{tx(`验证码已发送至 ${linkValue}`, `Code sent to ${linkValue}`)}</ThemedText><OtpCodeInput value={linkToken} onChangeText={setLinkToken} /></>}
+            {linkCodeSent ? <ActionButton busy={busyAction === 'save'} disabled={!/^\d{8}$/.test(linkToken)} onPress={() => void confirmLink()}>{tx('验证并绑定', 'Verify and link')}</ActionButton> : <ActionButton busy={busyAction === 'save'} disabled={!linkValue.trim()} onPress={() => void startLink()}>{tx('发送验证码', 'Send code')}</ActionButton>}
+            <ActionButton tone="secondary" disabled={busyAction === 'save'} onPress={() => { setLinkMode(undefined); setLinkCodeSent(false); }}>{tx('取消', 'Cancel')}</ActionButton>
+          </View>
+        ) : null}
+      </View>
+
+      <View style={styles.section}>
         <ThemedText type="smallBold" themeColor="textSecondary">{tx('账号与安全', 'Account and security')}</ThemedText>
         <View style={styles.linkList}>
           <Link href={'/privacy' as Href} asChild><Pressable style={styles.linkRow}><ThemedText>{tx('隐私政策', 'Privacy policy')}</ThemedText><ThemedText type="smallBold" themeColor="textSecondary">{tx('查看', 'Open')}</ThemedText></Pressable></Link>
@@ -254,6 +327,8 @@ const styles = StyleSheet.create({
   valueRow: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 20 },
   valueText: { flexShrink: 1, textAlign: 'right' },
   linkList: { gap: 0 },
+  loginActions: { gap: 8 },
+  linkEditor: { borderRadius: 16, padding: 16, gap: 12 },
   linkRow: { minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 16 },
   dangerSection: { paddingTop: 10, paddingBottom: 16 },
   deleteConfirmation: { borderRadius: 16, padding: 18, gap: 12 },

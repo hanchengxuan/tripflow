@@ -11,6 +11,16 @@ let client: SupabaseClient<Database> | undefined;
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabasePublishableKey);
 
+export interface AuthCapabilities { google: boolean; phone: boolean }
+
+export async function getAuthCapabilities(): Promise<AuthCapabilities> {
+  if (!supabaseUrl || !supabasePublishableKey) return { google: false, phone: false };
+  const response = await fetch(`${supabaseUrl}/auth/v1/settings`, { headers: { apikey: supabasePublishableKey } });
+  if (!response.ok) return { google: false, phone: false };
+  const settings = await response.json() as { external?: Record<string, boolean> };
+  return { google: Boolean(settings.external?.google), phone: Boolean(settings.external?.phone) };
+}
+
 export function getSupabaseClient(): SupabaseClient<Database> {
   if (!supabaseUrl || !supabasePublishableKey) {
     throw new Error(

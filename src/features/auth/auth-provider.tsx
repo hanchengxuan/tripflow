@@ -1,13 +1,14 @@
 import type { Session } from '@supabase/supabase-js';
 import { createContext, type PropsWithChildren, useContext, useEffect, useMemo, useState } from 'react';
 
-import { getSupabaseClient, isSupabaseConfigured } from '@/lib/supabase';
+import { getAuthCapabilities, getSupabaseClient, isSupabaseConfigured, type AuthCapabilities } from '@/lib/supabase';
 
 interface AuthContextValue {
   session: Session | null;
   loading: boolean;
   configured: boolean;
   onboardingComplete: boolean;
+  capabilities: AuthCapabilities;
   finishOnboarding: () => void;
 }
 
@@ -17,12 +18,14 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(isSupabaseConfigured);
   const [onboardingComplete, setOnboardingComplete] = useState<boolean | undefined>(undefined);
+  const [capabilities, setCapabilities] = useState<AuthCapabilities>({ google: false, phone: false });
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
 
-    const client = getSupabaseClient();
     let mounted = true;
+    const client = getSupabaseClient();
+    void getAuthCapabilities().then((next) => { if (mounted) setCapabilities(next); });
     client.auth.getSession().then(({ data }) => {
       if (mounted) {
         setSession(data.session);
@@ -58,9 +61,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
       loading: loading || Boolean(session && onboardingComplete === undefined),
       configured: isSupabaseConfigured,
       onboardingComplete: onboardingComplete ?? false,
+      capabilities,
       finishOnboarding: () => setOnboardingComplete(true),
     }),
-    [session, loading, onboardingComplete],
+    [session, loading, onboardingComplete, capabilities],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
