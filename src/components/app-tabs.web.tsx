@@ -91,6 +91,11 @@ export function CustomTabList(props: TabListProps) {
   );
 }
 
+const glassEffectStyle = {
+  // React Native Web prefixes backdropFilter for browsers that need it.
+  backdropFilter: 'blur(18px) saturate(145%)',
+};
+
 const styles = StyleSheet.create({
   tabListContainer: {
     width: '100%',
@@ -116,10 +121,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   innerContainerCompact: { paddingHorizontal: 6, justifyContent: 'space-between', gap: 0 },
-  glassEffect: {
-    // React Native Web prefixes backdropFilter for browsers that need it.
-    backdropFilter: 'blur(18px) saturate(145%)',
-  },
+  glassEffect: glassEffectStyle,
   tabSlot: { flex: 1, minHeight: 0 },
   brandText: {
     marginHorizontal: 8,
