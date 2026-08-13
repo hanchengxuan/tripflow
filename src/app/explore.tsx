@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { LayoutAnimation, Pressable, Share, StyleSheet, View } from 'react-native';
+import { LayoutAnimation, Pressable, Share, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { DateTimeField } from '@/components/date-time-field';
 import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/form-controls';
@@ -29,9 +29,11 @@ function dateOffset(days: number) {
 export default function TripsScreen() {
   const params = useLocalSearchParams<{ invite?: string | string[] }>();
   const theme = useTheme();
+  const { width } = useWindowDimensions();
+  const compact = width < 520;
   const { locale, formatDateTime, tx } = useI18n();
   const {
-    trips, activeTrip, members, currentUserId, loading, error,
+    trips, activeTrip, members, currentUserId, error,
     selectTrip, createTrip, joinTrip, createInvite, saveTrip, deleteTrip, setMemberRole, removeMember,
   } = useMvp();
   const currentMember = members.find(({ userId }) => userId === currentUserId);
@@ -201,7 +203,6 @@ export default function TripsScreen() {
       {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
       {actionError ? <InlineNotice tone="error">{actionError}</InlineNotice> : null}
       {success ? <InlineNotice>{success}</InlineNotice> : null}
-      {loading ? <InlineNotice>{tx('正在同步行程…', 'Syncing trips…')}</InlineNotice> : null}
 
       <View style={styles.tripHero}>
         <View style={styles.heroTop}>
@@ -213,7 +214,7 @@ export default function TripsScreen() {
           </View>
           {activeTrip ? <View style={[styles.memberCount, { backgroundColor: theme.backgroundSelected }]}><ThemedText type="smallBold">{tx(`${members.length} 人`, `${members.length} people`)}</ThemedText></View> : null}
         </View>
-        <View style={styles.quickActions}>
+        <View style={[styles.quickActions, compact && styles.quickActionsCompact]}>
           {activeTrip ? <View style={styles.actionGrow}><ActionButton onPress={() => void openTrip(activeTrip)}>{tx('打开当前行程', 'Open current trip')}</ActionButton></View> : null}
           <View style={styles.actionGrow}><ActionButton tone={activeTrip ? 'secondary' : 'primary'} onPress={() => showPanel('create')}>{openPanel === 'create' ? tx('收起', 'Close') : tx('新建行程', 'New trip')}</ActionButton></View>
           <View style={styles.actionGrow}><ActionButton tone="secondary" onPress={() => showPanel('join')}>{openPanel === 'join' ? tx('收起', 'Close') : tx('邀请码 / 扫码', 'Invite / scan')}</ActionButton></View>
@@ -254,7 +255,7 @@ export default function TripsScreen() {
               </View>
             </View>
           ) : (
-            <View style={styles.detailsBlock}>
+            <View style={[styles.detailsBlock, compact && styles.detailsBlockCompact]}>
               <Detail label={tx('日期', 'Dates')} value={`${activeTrip.startsOn} — ${activeTrip.endsOn}`} />
               <Detail label={tx('记账币种', 'Home currency')} value={activeTrip.homeCurrency} />
               <Detail label={tx('时区', 'Time zone')} value={activeTrip.defaultTimeZone} />
@@ -339,20 +340,22 @@ function PanelHeading({ title, caption }: { title: string; caption?: string }) {
 function Detail({ label, value }: { label: string; value: string }) { return <View style={styles.detail}><ThemedText type="small" themeColor="textSecondary">{label}</ThemedText><ThemedText type="smallBold">{value}</ThemedText></View>; }
 
 function TripForm(props: { name: string; setName: (value: string) => void; startsOn: string; setStartsOn: (value: string) => void; endsOn: string; setEndsOn: (value: string) => void; currency: string; setCurrency: (value: string) => void; timeZone: string; setTimeZone: (value: string) => void; currencyOptions: { label: string; value: string }[]; timeZoneOptions: { label: string; value: string }[]; tx: (zh: string, en: string) => string }) {
-  return <View style={styles.formStack}><FormField label={props.tx('行程名称', 'Trip name')} value={props.name} onChangeText={props.setName} placeholder={props.tx('例如：北海道滑雪之旅', 'For example: Hokkaido ski trip')} /><View style={styles.formRow}><View style={styles.fieldGrow}><DateTimeField label={props.tx('开始日期', 'Start date')} value={props.startsOn} mode="date" onChange={props.setStartsOn} /></View><View style={styles.fieldGrow}><DateTimeField label={props.tx('结束日期', 'End date')} value={props.endsOn} mode="date" minimumDate={new Date(`${props.startsOn}T12:00:00`)} onChange={props.setEndsOn} /></View></View><View style={styles.formRow}><View style={styles.fieldGrow}><SelectionField label={props.tx('记账币种', 'Home currency')} value={props.currency} options={props.currencyOptions} onChange={props.setCurrency} /></View><View style={styles.fieldGrow}><SelectionField label={props.tx('行程时区', 'Time zone')} value={props.timeZone} options={props.timeZoneOptions} onChange={props.setTimeZone} /></View></View></View>;
+  const { width } = useWindowDimensions();
+  const compact = width < 520;
+  return <View style={styles.formStack}><FormField label={props.tx('行程名称', 'Trip name')} value={props.name} onChangeText={props.setName} placeholder={props.tx('例如：北海道滑雪之旅', 'For example: Hokkaido ski trip')} /><View style={[styles.formRow, compact && styles.formRowCompact]}><View style={[styles.fieldGrow, compact && styles.fieldGrowCompact]}><DateTimeField label={props.tx('开始日期', 'Start date')} value={props.startsOn} mode="date" onChange={props.setStartsOn} /></View><View style={[styles.fieldGrow, compact && styles.fieldGrowCompact]}><DateTimeField label={props.tx('结束日期', 'End date')} value={props.endsOn} mode="date" minimumDate={new Date(`${props.startsOn}T12:00:00`)} onChange={props.setEndsOn} /></View></View><View style={[styles.formRow, compact && styles.formRowCompact]}><View style={[styles.fieldGrow, compact && styles.fieldGrowCompact]}><SelectionField label={props.tx('记账币种', 'Home currency')} value={props.currency} options={props.currencyOptions} onChange={props.setCurrency} /></View><View style={[styles.fieldGrow, compact && styles.fieldGrowCompact]}><SelectionField label={props.tx('行程时区', 'Time zone')} value={props.timeZone} options={props.timeZoneOptions} onChange={props.setTimeZone} /></View></View></View>;
 }
 
 const styles = StyleSheet.create({
   tripHero: { gap: 20, paddingVertical: 2 },
   heroTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 16 }, heroCopy: { flex: 1, gap: 4 },
   memberCount: { minHeight: 36, borderRadius: 999, paddingHorizontal: 12, justifyContent: 'center' },
-  quickActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 }, actionGrow: { flexGrow: 1, flexBasis: 150 },
+  quickActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 }, quickActionsCompact: { flexDirection: 'column' }, actionGrow: { flexGrow: 1, flexBasis: 150 },
   focusPanel: { borderRadius: 16, padding: 18, gap: 18, shadowColor: '#17324D', shadowOpacity: 0.07, shadowRadius: 18, shadowOffset: { width: 0, height: 7 } },
   panelHeader: { flex: 1, gap: 3 }, panelTitle: { fontSize: 20, lineHeight: 26 }, manageHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 16 },
-  formStack: { gap: 14 }, formRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 }, fieldGrow: { flexGrow: 1, flexBasis: 220 },
+  formStack: { gap: 14 }, formRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 }, formRowCompact: { flexDirection: 'column' }, fieldGrow: { flexGrow: 1, flexBasis: 220 }, fieldGrowCompact: { flexBasis: 'auto' },
   section: { paddingTop: 20, gap: 12 }, sectionHeading: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 }, sectionHeadingCopy: { flex: 1, gap: 2 }, sectionTitle: { fontSize: 20, lineHeight: 26 },
   tripRow: { minHeight: 68, flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 8 }, tripRowCopy: { flex: 1, gap: 2 }, divider: { height: StyleSheet.hairlineWidth },
-  detailsBlock: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 }, detail: { flexGrow: 1, flexBasis: 150, gap: 2 },
+  detailsBlock: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 }, detailsBlockCompact: { flexDirection: 'column' }, detail: { flexGrow: 1, flexBasis: 150, gap: 2 },
   editorBlock: { gap: 14 }, editorActions: { flexDirection: 'row', gap: 10 },
   dangerAction: { minHeight: 48, borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, justifyContent: 'center', alignItems: 'center' },
   dangerZone: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 18, gap: 14 },
