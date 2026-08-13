@@ -73,6 +73,18 @@ npm run build:web
 npx expo-doctor
 ```
 
+### CI/CD
+
+GitHub Actions runs formatting checks, lint, TypeScript, Jest, a production-dependency audit, and the Expo web export on every pull request and on `main`. A push to `main` starts the production workflow only after that quality gate passes; it pulls the production Vercel environment, builds a prebuilt artifact, deploys it, and smoke-tests both the deployment URL and the public production alias.
+
+Configure these GitHub Actions secrets before enabling automatic deployment:
+
+- `VERCEL_TOKEN`: a Vercel token with access to the project;
+- `VERCEL_ORG_ID`: the Vercel team/user ID;
+- `VERCEL_PROJECT_ID`: the TripFlow Vercel project ID.
+
+The Vercel project must also contain `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and `EXPO_PUBLIC_SUPPORT_EMAIL` in its production environment. The deploy workflow intentionally does not store or expose those values in Git.
+
 For email-link sign-in on the deployed site, add the deployment URL to Supabase Auth's allowed redirect URLs. To show a six-digit code in the email, configure the email template with Supabase's `{{ .Token }}` variable; the default magic link already works on web.
 
 ## Learn more

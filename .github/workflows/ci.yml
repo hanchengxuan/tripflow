@@ -4,9 +4,14 @@ on:
   pull_request:
   push:
     branches: [main]
+  workflow_call:
 
 permissions:
   contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   validate:
@@ -19,4 +24,22 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: npm run validate
+      - name: Check formatting boundaries
+        run: git diff --check
+      - name: Lint
+        run: npm run lint -- --no-cache
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Unit tests
+        run: npm test -- --ci --watchman=false
+      - name: Dependency audit
+        shell: bash
+        run: |
+          audit_file="$(mktemp)"
+          trap 'rm -f "$audit_file"' EXIT
+          npm audit --omit=dev --audit-level=high --json > "$audit_file" || true
+          node scripts/check-npm-audit.mjs "$audit_file"
+      - name: Build web export
+        run: npm run build:web
+      - name: Verify web artifact
+        run: test -s dist/index.html

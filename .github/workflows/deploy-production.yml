@@ -1,0 +1,84 @@
+name: Deploy production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  deployments: write
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: 24
+  VERCEL_CLI_VERSION: 41.6.0
+  PRODUCTION_URL: https://tripflow-liart.vercel.app
+
+jobs:
+  quality:
+    name: Quality gate
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/ci.yml
+
+  deploy:
+    name: Vercel production deploy
+    if: github.ref == 'refs/heads/main'
+    needs: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: Verify Vercel credentials
+        shell: bash
+        run: |
+          test -n "$VERCEL_TOKEN" || { echo "Missing VERCEL_TOKEN" >&2; exit 1; }
+          test -n "$VERCEL_ORG_ID" || { echo "Missing VERCEL_ORG_ID" >&2; exit 1; }
+          test -n "$VERCEL_PROJECT_ID" || { echo "Missing VERCEL_PROJECT_ID" >&2; exit 1; }
+      - name: Link Vercel project
+        run: npx --yes vercel@${{ env.VERCEL_CLI_VERSION }} link --yes --project="$VERCEL_PROJECT_ID" --scope="$VERCEL_ORG_ID"
+      - name: Pull production environment
+        run: npx --yes vercel@${{ env.VERCEL_CLI_VERSION }} pull --yes --environment=production
+      - name: Build production artifact
+        run: npx --yes vercel@${{ env.VERCEL_CLI_VERSION }} build --prod
+      - name: Deploy prebuilt artifact
+        id: deploy
+        run: |
+          url="$(npx --yes vercel@${{ env.VERCEL_CLI_VERSION }} deploy --prebuilt --prod)"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Deployed $url"
+      - name: Smoke test deployment URL
+        run: |
+          for path in / /ledger /explore /privacy /support; do
+            curl --fail --silent --show-error --location --retry 5 --retry-all-errors --max-time 30 "${{ steps.deploy.outputs.url }}$path" > /dev/null
+          done
+      - name: Smoke test production alias
+        run: |
+          for path in / /ledger /privacy /support; do
+            curl --fail --silent --show-error --location --retry 5 --retry-all-errors --max-time 30 "$PRODUCTION_URL$path" > /dev/null
+          done
+      - name: Deployment summary
+        if: success()
+        run: |
+          {
+            echo "### Production deployment"
+            echo "- Preview artifact: ${{ steps.deploy.outputs.url }}"
+            echo "- Production alias: $PRODUCTION_URL"
+            echo "- Commit: $GITHUB_SHA"
+            echo "- Smoke tests: passed (/, /ledger, /explore, /privacy, /support)"
+          } >> "$GITHUB_STEP_SUMMARY"

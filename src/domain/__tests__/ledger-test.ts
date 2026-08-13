@@ -1,4 +1,4 @@
-import { calculateBalancesByCurrency, calculateOutstandingBalancesByCurrency, parseAmountToMinor } from '@/domain/ledger';
+import { calculateBalancesByCurrency, calculateBalancesInCurrency, calculateOutstandingBalancesByCurrency, convertMinorAmount, parseAmountToMinor, parseExchangeRate } from '@/domain/ledger';
 import type { Expense, Settlement } from '@/domain/models';
 
 describe('ledger helpers', () => {
@@ -70,5 +70,50 @@ describe('ledger helpers', () => {
         { participantId: 'c', netMinor: -300 },
       ],
     }]);
+  });
+
+  it('normalizes a source currency into the trip base currency with an explicit rate', () => {
+    const expenses: Expense[] = [{
+      id: 'expense-hkd',
+      tripId: 'trip-1',
+      title: 'Dinner',
+      currency: 'HKD',
+      totalMinor: 10000,
+      baseCurrency: 'CNY',
+      baseAmountMinor: 9200,
+      exchangeRate: parseExchangeRate('0.92'),
+      occurredAt: '2026-12-01T12:00:00Z',
+      source: 'manual',
+      payers: [{ userId: 'a', amountMinor: 10000, baseAmountMinor: 9200 }],
+      shares: [
+        { userId: 'a', amountMinor: 5000, baseAmountMinor: 4600 },
+        { userId: 'b', amountMinor: 5000, baseAmountMinor: 4600 },
+      ],
+    }];
+
+    expect(convertMinorAmount(10000, 'HKD', 'CNY', 0.92)).toBe(9200);
+    expect(calculateBalancesInCurrency(expenses, ['a', 'b'], [], 'CNY')).toMatchObject({
+      currency: 'CNY',
+      unconvertedExpenseIds: [],
+      balances: [
+        { participantId: 'a', netMinor: 4600 },
+        { participantId: 'b', netMinor: -4600 },
+      ],
+    });
+  });
+
+  it('does not guess a rate for an unconverted cross-currency row', () => {
+    const expense: Expense = {
+      id: 'legacy-hkd',
+      tripId: 'trip-1',
+      title: 'Taxi',
+      currency: 'HKD',
+      totalMinor: 1000,
+      occurredAt: '2026-12-01T12:00:00Z',
+      source: 'manual',
+      payers: [{ userId: 'a', amountMinor: 1000 }],
+      shares: [{ userId: 'b', amountMinor: 1000 }],
+    };
+    expect(calculateBalancesInCurrency([expense], ['a', 'b'], [], 'CNY').unconvertedExpenseIds).toEqual(['legacy-hkd']);
   });
 });

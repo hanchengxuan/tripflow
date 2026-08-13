@@ -58,9 +58,9 @@ interface MvpContextValue {
   saveItineraryItem: (input: { itemId: string; title: string; startsAt: string; endsAt: string; locationLabel?: string; googlePlaceId?: string }) => Promise<void>;
   setItineraryRouteMode: (itemId: string, travelMode: RouteTravelMode) => Promise<void>;
   removeItineraryItem: (itemId: string) => Promise<void>;
-  addEqualExpense: (input: { title: string; currency: string; totalMinor: number; payerUserId: string; participantUserIds: string[]; receipt?: { uri: string; base64?: string | null; mimeType?: string | null; fileSize?: number } }) => Promise<{ receiptUploaded: boolean; receiptError?: unknown }>;
+  addEqualExpense: (input: { title: string; currency: string; totalMinor: number; baseCurrency?: string; baseAmountMinor?: number; exchangeRate?: number; exchangeRateSource?: string; payerUserId: string; participantUserIds: string[]; receipt?: { uri: string; base64?: string | null; mimeType?: string | null; fileSize?: number } }) => Promise<{ receiptUploaded: boolean; receiptError?: unknown }>;
   attachExpenseReceipt: (expenseId: string, receipt: { uri: string; base64?: string | null; mimeType?: string | null; fileSize?: number }) => Promise<void>;
-  markSettlement: (input: { toUserId: string; currency: string; amountMinor: number }) => Promise<void>;
+  markSettlement: (input: { toUserId: string; currency: string; amountMinor: number; baseCurrency?: string; baseAmountMinor?: number; exchangeRate?: number; exchangeRateSource?: string }) => Promise<void>;
   unmarkSettlement: (settlementId: string) => Promise<void>;
 }
 
@@ -234,14 +234,14 @@ export function MvpProvider({ children }: PropsWithChildren) {
     setItineraryItems(await listItineraryItems(activeTrip.id));
   }, [activeTrip]);
 
-  const addEqualExpense = useCallback(async (input: { title: string; currency: string; totalMinor: number; payerUserId: string; participantUserIds: string[]; receipt?: { uri: string; base64?: string | null; mimeType?: string | null; fileSize?: number } }) => {
+  const addEqualExpense = useCallback(async (input: { title: string; currency: string; totalMinor: number; baseCurrency?: string; baseAmountMinor?: number; exchangeRate?: number; exchangeRateSource?: string; payerUserId: string; participantUserIds: string[]; receipt?: { uri: string; base64?: string | null; mimeType?: string | null; fileSize?: number } }) => {
     if (!activeTrip) throw new Error('请先创建或加入一个行程。');
     const result = await createEqualExpense({ ...input, tripId: activeTrip.id, userId: currentUserId });
     setExpenses(await listExpenses(activeTrip.id));
     return result;
   }, [activeTrip, currentUserId]);
 
-  const markSettlement = useCallback(async (input: { toUserId: string; currency: string; amountMinor: number }) => {
+  const markSettlement = useCallback(async (input: { toUserId: string; currency: string; amountMinor: number; baseCurrency?: string; baseAmountMinor?: number; exchangeRate?: number; exchangeRateSource?: string }) => {
     if (!activeTrip) throw new Error('请先创建或加入一个行程。');
     await recordSettlement({ ...input, tripId: activeTrip.id });
     setSettlements(await listSettlements(activeTrip.id));

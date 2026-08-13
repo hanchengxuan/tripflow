@@ -8,6 +8,7 @@ import { InviteQrCode, InviteQrScanner } from '@/components/invite-qr';
 import { MemberAvatar } from '@/components/member-avatar';
 import { Screen } from '@/components/screen';
 import { SelectionField } from '@/components/selection-field';
+import { SectionHeading } from '@/components/section-heading';
 import { ThemedText } from '@/components/themed-text';
 import { getCurrencyOptions, getTimeZoneOptions, tripRoleLabels, tripRoleLabelsEn } from '@/constants/options';
 import type { Trip, TripRole } from '@/domain/models';
@@ -196,18 +197,20 @@ export default function TripsScreen() {
   }
 
   return (
-    <Screen title={tx('行程', 'Trips')} subtitle={tx('打开一段旅程，编辑资料并管理同行者。', 'Open a trip to edit its details and manage travellers.')}>
+    <Screen title={tx('行程', 'Trips')} subtitle={tx('选择旅程，管理同行者。', 'Choose a trip and manage the group.')}>
       {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
       {actionError ? <InlineNotice tone="error">{actionError}</InlineNotice> : null}
       {success ? <InlineNotice>{success}</InlineNotice> : null}
       {loading ? <InlineNotice>{tx('正在同步行程…', 'Syncing trips…')}</InlineNotice> : null}
 
-      <View style={[styles.tripHero, { backgroundColor: theme.backgroundElement }]}>
+      <View style={styles.tripHero}>
         <View style={styles.heroTop}>
           <View style={styles.heroCopy}>
-            <ThemedText type="smallBold" themeColor="textSecondary">{tx('当前行程', 'Current trip')}</ThemedText>
-            <ThemedText type="subtitle" style={styles.tripName}>{activeTrip?.name ?? tx('还没有行程', 'No trip yet')}</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">{tripSummary}</ThemedText>
+            <SectionHeading
+              eyebrow={tx('当前行程', 'Current trip')}
+              title={activeTrip?.name ?? tx('还没有行程', 'No trip yet')}
+              detail={tripSummary}
+            />
           </View>
           {activeTrip ? <View style={[styles.memberCount, { backgroundColor: theme.backgroundSelected }]}><ThemedText type="smallBold">{tx(`${members.length} 人`, `${members.length} people`)}</ThemedText></View> : null}
         </View>
@@ -325,7 +328,7 @@ export default function TripsScreen() {
 
       {trips.length > 0 ? (
         <View style={styles.section}>
-          <View style={styles.sectionHeading}><ThemedText type="smallBold" style={styles.sectionTitle}>{tx('我的行程', 'My trips')}</ThemedText><ThemedText type="small" themeColor="textSecondary">{tx(`${trips.length} 个`, `${trips.length} total`)}</ThemedText></View>
+          <SectionHeading title={tx('我的行程', 'My trips')} trailing={<ThemedText type="small" themeColor="textSecondary">{tx(`${trips.length} 个`, `${trips.length}`)}</ThemedText>} />
           <View>{trips.map((trip, index) => { const selected = trip.id === activeTrip?.id; return <View key={trip.id}>{index > 0 ? <View style={[styles.divider, { backgroundColor: theme.backgroundSelected }]} /> : null}<Pressable accessibilityRole="button" onPress={() => void openTrip(trip)} style={({ pressed }) => [styles.tripRow, pressed && styles.pressed]}><View style={styles.tripRowCopy}><ThemedText type="smallBold">{trip.name}</ThemedText><ThemedText type="small" themeColor="textSecondary">{trip.startsOn} — {trip.endsOn} · {trip.homeCurrency}</ThemedText></View>{selected ? <ThemedText type="small" themeColor="textSecondary">{tx('当前 · ', 'Current · ')}</ThemedText> : null}<ThemedText type="smallBold" style={{ color: theme.text }}>{tx('查看', 'View')}</ThemedText></Pressable></View>; })}</View>
         </View>
       ) : null}
@@ -341,8 +344,8 @@ function TripForm(props: { name: string; setName: (value: string) => void; start
 }
 
 const styles = StyleSheet.create({
-  tripHero: { borderRadius: 16, padding: 20, gap: 20, shadowColor: '#17324D', shadowOpacity: 0.08, shadowRadius: 20, shadowOffset: { width: 0, height: 8 } },
-  heroTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 16 }, heroCopy: { flex: 1, gap: 4 }, tripName: { fontSize: 28, lineHeight: 36 },
+  tripHero: { gap: 20, paddingVertical: 2 },
+  heroTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 16 }, heroCopy: { flex: 1, gap: 4 },
   memberCount: { minHeight: 36, borderRadius: 999, paddingHorizontal: 12, justifyContent: 'center' },
   quickActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 }, actionGrow: { flexGrow: 1, flexBasis: 150 },
   focusPanel: { borderRadius: 16, padding: 18, gap: 18, shadowColor: '#17324D', shadowOpacity: 0.07, shadowRadius: 18, shadowOffset: { width: 0, height: 7 } },

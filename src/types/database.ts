@@ -159,16 +159,19 @@ export type Database = {
       expense_payers: {
         Row: {
           amount_minor: number
+          base_amount_minor: number | null
           expense_id: string
           user_id: string
         }
         Insert: {
           amount_minor: number
+          base_amount_minor?: number | null
           expense_id: string
           user_id: string
         }
         Update: {
           amount_minor?: number
+          base_amount_minor?: number | null
           expense_id?: string
           user_id?: string
         }
@@ -238,16 +241,19 @@ export type Database = {
         Row: {
           allocation_group_id: string
           amount_minor: number
+          base_amount_minor: number | null
           user_id: string
         }
         Insert: {
           allocation_group_id: string
           amount_minor: number
+          base_amount_minor?: number | null
           user_id: string
         }
         Update: {
           allocation_group_id?: string
           amount_minor?: number
+          base_amount_minor?: number | null
           user_id?: string
         }
         Relationships: [
@@ -269,9 +275,13 @@ export type Database = {
       }
       expenses: {
         Row: {
+          base_amount_minor: number | null
+          base_currency: string | null
           created_at: string
           created_by: string
           currency: string
+          exchange_rate: number | null
+          exchange_rate_source: string | null
           id: string
           occurred_at: string
           parser_confidence: number | null
@@ -285,9 +295,13 @@ export type Database = {
           version: number
         }
         Insert: {
+          base_amount_minor?: number | null
+          base_currency?: string | null
           created_at?: string
           created_by: string
           currency: string
+          exchange_rate?: number | null
+          exchange_rate_source?: string | null
           id?: string
           occurred_at: string
           parser_confidence?: number | null
@@ -301,9 +315,13 @@ export type Database = {
           version?: number
         }
         Update: {
+          base_amount_minor?: number | null
+          base_currency?: string | null
           created_at?: string
           created_by?: string
           currency?: string
+          exchange_rate?: number | null
+          exchange_rate_source?: string | null
           id?: string
           occurred_at?: string
           parser_confidence?: number | null
@@ -635,8 +653,12 @@ export type Database = {
       settlements: {
         Row: {
           amount_minor: number
+          base_amount_minor: number | null
+          base_currency: string | null
           created_at: string
           currency: string
+          exchange_rate: number | null
+          exchange_rate_source: string | null
           from_user_id: string
           id: string
           recorded_by: string
@@ -647,8 +669,12 @@ export type Database = {
         }
         Insert: {
           amount_minor: number
+          base_amount_minor?: number | null
+          base_currency?: string | null
           created_at?: string
           currency: string
+          exchange_rate?: number | null
+          exchange_rate_source?: string | null
           from_user_id: string
           id?: string
           recorded_by: string
@@ -659,8 +685,12 @@ export type Database = {
         }
         Update: {
           amount_minor?: number
+          base_amount_minor?: number | null
+          base_currency?: string | null
           created_at?: string
           currency?: string
+          exchange_rate?: number | null
+          exchange_rate_source?: string | null
           from_user_id?: string
           id?: string
           recorded_by?: string
@@ -893,7 +923,11 @@ export type Database = {
       }
       create_equal_expense: {
         Args: {
+          expense_base_amount_minor?: number
+          expense_base_currency?: string
           expense_currency: string
+          expense_exchange_rate?: number
+          expense_exchange_rate_source?: string
           expense_occurred_at?: string
           expense_title: string
           expense_total_minor: number
@@ -976,8 +1010,12 @@ export type Database = {
       }
       record_settlement: {
         Args: {
+          settlement_base_amount_minor?: number
+          settlement_base_currency?: string
           recipient_user_id: string
           requested_trip_id: string
+          settlement_exchange_rate?: number
+          settlement_exchange_rate_source?: string
           settlement_amount_minor: number
           settlement_currency: string
         }
