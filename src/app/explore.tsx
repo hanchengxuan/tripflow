@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { LayoutAnimation, Pressable, Share, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { DateTimeField } from '@/components/date-time-field';
+import { Chevron } from '@/components/chevron';
 import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/form-controls';
 import { InviteQrCode, InviteQrScanner } from '@/components/invite-qr';
 import { MemberAvatar } from '@/components/member-avatar';
@@ -57,6 +58,7 @@ export default function TripsScreen() {
   const [inviteCode, setInviteCode] = useState('');
   const [generatedInvite, setGeneratedInvite] = useState<{ token: string; expiresAt: string }>();
   const [inviteRole, setInviteRole] = useState<'editor' | 'viewer'>('editor');
+  const [showInviteTools, setShowInviteTools] = useState(false);
   const [scanningInvite, setScanningInvite] = useState(false);
   const [busyAction, setBusyAction] = useState<string>();
   const [actionError, setActionError] = useState<string>();
@@ -100,6 +102,7 @@ export default function TripsScreen() {
     setEditingMemberId(undefined);
     setConfirmRemoveId(undefined);
     setGeneratedInvite(undefined);
+    setShowInviteTools(false);
     setScanningInvite(false);
     setActionError(undefined);
     setSuccess(undefined);
@@ -112,6 +115,7 @@ export default function TripsScreen() {
     setEditingMemberId(undefined);
     setConfirmRemoveId(undefined);
     setGeneratedInvite(undefined);
+    setShowInviteTools(false);
     setActionError(undefined);
     setSuccess(undefined);
     if (trip.id !== activeTrip?.id) await selectTrip(trip.id);
@@ -164,7 +168,10 @@ export default function TripsScreen() {
   }
 
   async function generateInvite() {
-    await run('invite', async () => setGeneratedInvite(await createInvite(inviteRole)));
+    await run('invite', async () => {
+      setGeneratedInvite(await createInvite(inviteRole));
+      setShowInviteTools(true);
+    });
   }
 
   function acceptScannedInvite(token: string) {
@@ -215,7 +222,7 @@ export default function TripsScreen() {
           {activeTrip ? <View style={[styles.memberCount, { backgroundColor: theme.backgroundSelected }]}><ThemedText type="smallBold">{tx(`${members.length} 人`, `${members.length} people`)}</ThemedText></View> : null}
         </View>
         <View style={[styles.quickActions, compact && styles.quickActionsCompact]}>
-          {activeTrip ? <View style={styles.actionGrow}><ActionButton onPress={() => void openTrip(activeTrip)}>{tx('打开当前行程', 'Open current trip')}</ActionButton></View> : null}
+          {activeTrip ? <View style={styles.actionGrow}><ActionButton onPress={() => void openTrip(activeTrip)}>{tx('管理当前行程', 'Manage current trip')}</ActionButton></View> : null}
           <View style={styles.actionGrow}><ActionButton tone={activeTrip ? 'secondary' : 'primary'} onPress={() => showPanel('create')}>{openPanel === 'create' ? tx('收起', 'Close') : tx('新建行程', 'New trip')}</ActionButton></View>
           <View style={styles.actionGrow}><ActionButton tone="secondary" onPress={() => showPanel('join')}>{openPanel === 'join' ? tx('收起', 'Close') : tx('邀请码 / 扫码', 'Invite / scan')}</ActionButton></View>
         </View>
@@ -309,17 +316,25 @@ export default function TripsScreen() {
 
             {isOwner ? (
               <View style={[styles.inviteArea, { borderTopColor: theme.backgroundSelected }]}>
-                <PanelHeading title={tx('邀请新同行者', 'Invite a traveller')} />
-                <View style={styles.roleRow}><ChoiceChip selected={inviteRole === 'editor'} onPress={() => setInviteRole('editor')}>{tx('可编辑', 'Can edit')}</ChoiceChip><ChoiceChip selected={inviteRole === 'viewer'} onPress={() => setInviteRole('viewer')}>{tx('仅查看', 'View only')}</ChoiceChip></View>
-                <ActionButton tone="secondary" busy={busyAction === 'invite'} onPress={() => void generateInvite()}>{tx('生成邀请码', 'Create invite code')}</ActionButton>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ expanded: showInviteTools }}
+                  onPress={() => setShowInviteTools((current) => !current)}
+                  style={({ pressed }) => [styles.inviteDisclosure, pressed && styles.pressed]}>
+                  <View style={styles.inviteCopy}><ThemedText type="smallBold">{tx('邀请同行者', 'Invite travellers')}</ThemedText><ThemedText type="small" themeColor="textSecondary">{generatedInvite ? tx('邀请已生成', 'Invite ready') : tx('二维码或链接', 'QR or link')}</ThemedText></View>
+                  <Chevron color={theme.textSecondary} direction={showInviteTools ? 'down' : 'right'} />
+                </Pressable>
+                {showInviteTools ? <View style={styles.inviteTools}>
+                <View style={styles.roleRow}><ChoiceChip role="radio" selected={inviteRole === 'editor'} onPress={() => setInviteRole('editor')}>{tx('可编辑', 'Can edit')}</ChoiceChip><ChoiceChip role="radio" selected={inviteRole === 'viewer'} onPress={() => setInviteRole('viewer')}>{tx('仅查看', 'View only')}</ChoiceChip></View>
+                <ActionButton tone="secondary" busy={busyAction === 'invite'} onPress={() => void generateInvite()}>{tx('生成邀请', 'Create invite')}</ActionButton>
                 {generatedInvite ? (
                   <View style={styles.generatedInvite}>
                     <InviteQrCode value={buildInviteUrl(generatedInvite.token)} />
-                    <ThemedText type="small" themeColor="textSecondary" style={styles.qrCaption}>{tx('同行者可用 TripFlow 扫码，或用系统相机打开邀请链接。', 'Travellers can scan in TripFlow or open the invite link with their camera.')}</ThemedText>
                     <InlineNotice>{tx('邀请码', 'Invite code')}：{generatedInvite.token}{'\n'}{tx('有效期至', 'Expires')}：{formatDateTime(generatedInvite.expiresAt)}</InlineNotice>
                     <ActionButton tone="secondary" onPress={() => void shareInvite()}>{tx('分享邀请链接', 'Share invite link')}</ActionButton>
                   </View>
                 ) : null}
+                </View> : null}
               </View>
             ) : null}
           </View>
@@ -365,6 +380,6 @@ const styles = StyleSheet.create({
   memberRow: { minHeight: 62, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 6 }, memberCopy: { flex: 1, gap: 2 },
   memberEditor: { borderRadius: 12, marginBottom: 10, padding: 14, gap: 12 }, roleRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   removeConfirm: { gap: 10 }, textButton: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' },
-  inviteArea: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 18, marginTop: 6, gap: 12 }, pressed: { opacity: 0.65 }, disabled: { opacity: 0.5 },
+  inviteArea: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 18, marginTop: 6, gap: 12 }, inviteDisclosure: { minHeight: 56, flexDirection: 'row', alignItems: 'center', gap: 12 }, inviteCopy: { flex: 1, gap: 2 }, inviteTools: { gap: 12 }, pressed: { opacity: 0.65 }, disabled: { opacity: 0.5 },
   generatedInvite: { gap: 12 }, qrCaption: { textAlign: 'center' },
 });

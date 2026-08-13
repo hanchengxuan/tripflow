@@ -4,6 +4,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Link, type Href } from 'expo-router';
 import { LayoutAnimation, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 
+import { Chevron } from '@/components/chevron';
 import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/form-controls';
 import { OtpCodeInput } from '@/components/otp-code-input';
 import { Screen } from '@/components/screen';
@@ -35,6 +36,7 @@ export default function ProfileScreen() {
   const [linkValue, setLinkValue] = useState('');
   const [linkToken, setLinkToken] = useState('');
   const [linkCodeSent, setLinkCodeSent] = useState(false);
+  const [showSignInMethods, setShowSignInMethods] = useState(false);
   const membership = members.find(({ userId }) => userId === currentUserId);
   const shownName = profile?.displayName || tx('旅行者', 'Traveller');
   const avatarSource = avatarDraft?.uri ?? profile?.avatarUrl;
@@ -229,11 +231,10 @@ export default function ProfileScreen() {
         <View style={[styles.settingRow, compact && styles.settingRowCompact]}>
           <View style={styles.settingCopy}>
             <ThemedText>{tx('界面语言', 'App language')}</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">{tx('语言也会影响日期格式', 'Also changes date format')}</ThemedText>
           </View>
           <View style={styles.languageChoices}>
-            <ChoiceChip selected={locale === 'zh-CN'} onPress={() => setLocale('zh-CN')}>中文</ChoiceChip>
-            <ChoiceChip selected={locale === 'en'} onPress={() => setLocale('en')}>EN</ChoiceChip>
+            <ChoiceChip role="radio" selected={locale === 'zh-CN'} onPress={() => setLocale('zh-CN')}>中文</ChoiceChip>
+            <ChoiceChip role="radio" selected={locale === 'en'} onPress={() => setLocale('en')}>EN</ChoiceChip>
           </View>
         </View>
         <View style={[styles.divider, { backgroundColor: theme.backgroundSelected }]} />
@@ -246,7 +247,15 @@ export default function ProfileScreen() {
       </View>
 
       <View style={styles.section}>
-        <ThemedText type="smallBold" themeColor="textSecondary">{tx('登录方式', 'Sign-in methods')}</ThemedText>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ expanded: showSignInMethods }}
+          onPress={() => setShowSignInMethods((current) => !current)}
+          style={({ pressed }) => [styles.sectionDisclosure, pressed && styles.pressed]}>
+          <View style={styles.settingCopy}><ThemedText type="smallBold" themeColor="textSecondary">{tx('登录方式', 'Sign-in methods')}</ThemedText><ThemedText type="small" themeColor="textSecondary">{session?.user.email ?? tx('查看绑定方式', 'Manage linked accounts')}</ThemedText></View>
+          <Chevron color={theme.textSecondary} direction={showSignInMethods ? 'down' : 'right'} />
+        </Pressable>
+        {showSignInMethods ? <View style={styles.disclosureBody}>
         <SettingValue label={tx('邮箱', 'Email')} value={session?.user.email ?? tx('未绑定', 'Not linked')} />
         <View style={[styles.divider, { backgroundColor: theme.backgroundSelected }]} />
         <SettingValue label={tx('手机号', 'Phone')} value={session?.user.phone ?? tx('未绑定', 'Not linked')} />
@@ -264,6 +273,7 @@ export default function ProfileScreen() {
             <ActionButton tone="secondary" disabled={busyAction === 'save'} onPress={() => { setLinkMode(undefined); setLinkCodeSent(false); }}>{tx('取消', 'Cancel')}</ActionButton>
           </View>
         ) : null}
+        </View> : null}
       </View>
 
       <View style={styles.section}>
@@ -324,6 +334,8 @@ const styles = StyleSheet.create({
   editorActionsCompact: { flexDirection: 'column' },
   actionGrow: { flex: 1 },
   section: { gap: 14, paddingTop: 18 },
+  sectionDisclosure: { minHeight: 56, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  disclosureBody: { gap: 14 },
   settingRow: { flexDirection: 'row', alignItems: 'center', gap: 18 },
   settingRowCompact: { flexDirection: 'column', alignItems: 'stretch', gap: 10 },
   settingCopy: { flex: 1, gap: 2 },
@@ -338,4 +350,5 @@ const styles = StyleSheet.create({
   dangerSection: { paddingTop: 10, paddingBottom: 16 },
   deleteConfirmation: { borderRadius: 16, padding: 18, gap: 12 },
   dangerText: { color: '#B4413E', paddingVertical: 14 },
+  pressed: { opacity: 0.68 },
 });
