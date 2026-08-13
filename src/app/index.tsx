@@ -75,6 +75,7 @@ export default function TodayScreen() {
   const [busyTravelModeId, setBusyTravelModeId] = useState<string>();
   const [currentTimestamp, setCurrentTimestamp] = useState(0);
   const [editingItemId, setEditingItemId] = useState<string>();
+  const [composerOpen, setComposerOpen] = useState(false);
   const [confirmDeleteItem, setConfirmDeleteItem] = useState(false);
   const [routeEstimates, setRouteEstimates] = useState<Record<string, RouteEstimate>>({});
 
@@ -95,6 +96,7 @@ export default function TodayScreen() {
       setEndDate(activeTrip.startsOn);
       setCurrentTimestamp(Date.now());
       setEditingItemId(undefined);
+      setComposerOpen(false);
       setConfirmDeleteItem(false);
     }, 0);
     return () => clearTimeout(timeout);
@@ -144,6 +146,7 @@ export default function TodayScreen() {
       setLocation('');
       setGooglePlaceId('');
       setEditingItemId(undefined);
+      setComposerOpen(false);
       setConfirmDeleteItem(false);
       setSuccess(editingItem
         ? (kind === 'lodging' ? tx('住宿已更新；旧的酒店交通已移除，请按需要重新添加。', 'Stay updated. Its old hotel transfer was removed so you can add a fresh route.') : tx('安排已更新。', 'Plan updated.'))
@@ -159,6 +162,7 @@ export default function TodayScreen() {
     const start = isoToZonedDateTime(item.startsAt, tripTimeZone);
     const end = isoToZonedDateTime(item.endsAt ?? item.startsAt, tripTimeZone);
     setEditingItemId(item.id);
+    setComposerOpen(true);
     setConfirmDeleteItem(deleteFirst);
     setTitle(item.title);
     setLocation(item.locationLabel ?? '');
@@ -174,11 +178,28 @@ export default function TodayScreen() {
 
   function cancelEdit() {
     setEditingItemId(undefined);
+    setComposerOpen(false);
     setConfirmDeleteItem(false);
     setTitle('');
     setLocation('');
     setGooglePlaceId('');
     setKind('activity');
+  }
+
+  function openNewComposer() {
+    setEditingItemId(undefined);
+    setConfirmDeleteItem(false);
+    setTitle('');
+    setLocation('');
+    setGooglePlaceId('');
+    setDate(activeTrip?.startsOn ?? new Date().toISOString().slice(0, 10));
+    setEndDate(activeTrip?.startsOn ?? new Date().toISOString().slice(0, 10));
+    setStartTime('09:00');
+    setEndTime('10:30');
+    setKind('activity');
+    setFormError(undefined);
+    setSuccess(undefined);
+    setComposerOpen(true);
   }
 
   async function deleteSelectedItem() {
@@ -364,10 +385,11 @@ export default function TodayScreen() {
 
   return (
     <Screen
-      scrollToEndKey={editingItemId}
+      scrollToEndKey={composerOpen ? (editingItemId ?? 'new-plan') : undefined}
       meta={activeTrip ? tripRange : tx('今天', 'Today')}
       title={activeTrip?.name ?? tx('把旅程安排成一条可执行的流', 'Turn the trip into one shared flow')}
-      subtitle={activeTrip ? tx('下一步、同行者和本位币。', 'Next move, people, and base currency.') : tx('从“行程”创建或加入一个行程。', 'Create or join a trip from Trips.')}>
+      subtitle={activeTrip ? tx('下一项安排', 'Next up') : tx('从“行程”创建或加入一个行程。', 'Create or join a trip from Trips.')}
+    >
       {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
       {loading ? <InlineNotice>{tx('正在刷新共享时间线…', 'Refreshing the shared timeline…')}</InlineNotice> : null}
       {success ? <InlineNotice>{success}</InlineNotice> : null}
@@ -377,9 +399,7 @@ export default function TodayScreen() {
           <View style={styles.heroTop}>
             <View style={styles.heroCopy}>
               <SectionHeading
-                eyebrow={tx('当前行程', 'Current trip')}
                 title={tx('行程总览', 'Trip overview')}
-                detail={tx('下一项安排、同行者和本位币。', 'Next move, people, and base currency.')}
               />
             </View>
             <View style={[styles.heroBadge, { backgroundColor: theme.backgroundSelected }]}>
@@ -391,20 +411,70 @@ export default function TodayScreen() {
           <View style={styles.summaryStrip}>
             <View style={styles.summaryItem}>
               <ThemedText type="smallBold">{upcomingItems.length}</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">{tx('项已确认安排', 'confirmed plans')}</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">{tx('安排', 'plans')}</ThemedText>
             </View>
             <View style={[styles.summaryDivider, { backgroundColor: theme.backgroundSelected }]} />
             <View style={styles.summaryItem}>
               <ThemedText type="smallBold">{members.length}</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">{tx('位同行者在线协作', 'travellers aligned')}</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">{tx('同行', 'travellers')}</ThemedText>
             </View>
             <View style={[styles.summaryDivider, { backgroundColor: theme.backgroundSelected }]} />
             <View style={styles.summaryItem}>
               <ThemedText type="smallBold">{tripRange}</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">{tx('这趟旅程窗口', 'trip window')}</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">{tx('日期', 'dates')}</ThemedText>
             </View>
           </View>
         </View>
+      ) : null}
+
+      {activeTrip && canEdit ? (
+        <View style={styles.quickAddRow}>
+          <View style={styles.quickAddCopy}>
+            <ThemedText type="smallBold">{tx('行程安排', 'Plans')}</ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">{tx(`${upcomingItems.length} 项`, `${upcomingItems.length} upcoming`)}</ThemedText>
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ expanded: composerOpen }}
+            accessibilityLabel={composerOpen ? tx('收起添加安排', 'Close add plan') : tx('添加安排', 'Add plan')}
+            onPress={() => {
+              if (composerOpen) {
+                cancelEdit();
+                return;
+              }
+              openNewComposer();
+            }}
+            style={({ pressed }) => [styles.quickAddButton, pressed && styles.pressed]}>
+            <ThemedText type="smallBold" style={styles.quickAddButtonText}>{composerOpen ? tx('收起', 'Close') : tx('添加安排', 'Add plan')}</ThemedText>
+          </Pressable>
+        </View>
+      ) : null}
+
+      {activeTrip && canEdit && composerOpen ? (
+        <InfoCard label={editingItem ? tx('编辑', 'Edit') : tx('新安排', 'New plan')} title={editingItem ? editingItem.title : tx('添加安排', 'Add plan')} accent={editingItem ? getKindAccent(editingItem.kind) : '#D86E35'}>
+          <View style={styles.form}>
+            {editingItem ? null : <View style={styles.templateWrap}>
+              {quickTemplates.map((template) => (
+                <ChoiceChip
+                  key={template.zh}
+                  selected={title === (locale === 'zh-CN' ? template.zh : template.en)}
+                  onPress={() => {
+                    setTitle(locale === 'zh-CN' ? template.zh : template.en);
+                    chooseKind(template.kind);
+                  }}>
+                  {locale === 'zh-CN' ? template.zh : template.en}
+                </ChoiceChip>
+              ))}
+            </View>}
+            <FormField label={tx('安排', 'Plan')} value={title} onChangeText={setTitle} placeholder={tx('例如：机场快线 → 中环', 'For example: Airport Express → Central')} />
+            {editingItem?.linkedStayId ? <View style={[styles.lockedDestination, { backgroundColor: theme.backgroundSelected }]}><ThemedText type="smallBold">{tx('酒店交通', 'Hotel transfer')}</ThemedText><ThemedText type="small" themeColor="textSecondary">{tx(`${editingItem.locationLabel ?? '—'} · ${formatZonedDateTimeRange(editingItem.endsAt ?? editingItem.startsAt, undefined, languageTag, tripTimeZone)}`, `${editingItem.locationLabel ?? '—'} · ${formatZonedDateTimeRange(editingItem.endsAt ?? editingItem.startsAt, undefined, languageTag, tripTimeZone)}`)}</ThemedText></View> : <LocationField value={location} onChange={(value) => { setLocation(value); setGooglePlaceId(''); }} onSelect={(suggestion) => { setLocation(suggestion.text); setGooglePlaceId(suggestion.placeId); }} />}
+            {editingItem?.linkedStayId ? <View style={styles.row}><View style={styles.dateField}><DateTimeField label={tx('日期', 'Date')} value={date} mode="date" minimumDate={new Date(`${activeTrip.startsOn}T12:00:00`)} maximumDate={new Date(`${activeTrip.endsOn}T12:00:00`)} onChange={setDate} /></View><View style={styles.grow}><DateTimeField label={tx('时间', 'Time')} value={startTime} mode="time" onChange={setStartTime} /></View></View> : kind === 'lodging' ? <><View style={styles.row}><View style={styles.dateField}><DateTimeField label={tx('入住日期', 'Check-in')} value={date} mode="date" minimumDate={new Date(`${activeTrip.startsOn}T12:00:00`)} maximumDate={new Date(`${activeTrip.endsOn}T12:00:00`)} onChange={(value) => { setDate(value); if (endDate < value) setEndDate(value); }} /></View><View style={styles.grow}><DateTimeField label={tx('入住时间', 'Time')} value={startTime} mode="time" onChange={setStartTime} /></View></View><View style={styles.row}><View style={styles.dateField}><DateTimeField label={tx('退房日期', 'Check-out')} value={endDate} mode="date" minimumDate={new Date(`${date}T12:00:00`)} maximumDate={new Date(`${activeTrip.endsOn}T12:00:00`)} onChange={setEndDate} /></View><View style={styles.grow}><DateTimeField label={tx('退房时间', 'Time')} value={endTime} mode="time" onChange={setEndTime} /></View></View></> : <View style={styles.row}><View style={styles.dateField}><DateTimeField label={tx('日期', 'Date')} value={date} mode="date" minimumDate={new Date(`${activeTrip.startsOn}T12:00:00`)} maximumDate={new Date(`${activeTrip.endsOn}T12:00:00`)} onChange={setDate} /></View><View style={styles.grow}><DateTimeField label={tx('开始', 'Starts')} value={startTime} mode="time" onChange={setStartTime} /></View><View style={styles.grow}><DateTimeField label={tx('结束', 'Ends')} value={endTime} mode="time" onChange={setEndTime} /></View></View>}
+            {kind !== 'lodging' ? <View style={styles.durationRow}>{[30, 60, 120, 180].map((minutes) => <ChoiceChip key={minutes} selected={endTime === addMinutes(startTime, minutes)} onPress={() => setEndTime(addMinutes(startTime, minutes))}>{minutes < 60 ? `${minutes}m` : `${minutes / 60}h`}</ChoiceChip>)}</View> : null}
+            {!editingItem ? <View style={styles.chips}>{itineraryKinds.map((itemKind) => <ChoiceChip key={itemKind} selected={kind === itemKind} onPress={() => chooseKind(itemKind)}>{kindLabel(itemKind)}</ChoiceChip>)}</View> : null}
+            {confirmDeleteItem && editingItem ? <View style={[styles.deleteConfirm, { borderTopColor: theme.backgroundSelected }]}><ThemedText type="smallBold">{tx(`删除“${editingItem.title}”？`, `Delete “${editingItem.title}”?`)}</ThemedText><ThemedText type="small" themeColor="textSecondary">{tx('此操作无法恢复。', 'This cannot be undone.')}</ThemedText><View style={styles.formActions}><View style={styles.actionGrow}><ActionButton tone="secondary" onPress={() => setConfirmDeleteItem(false)}>{tx('保留', 'Keep')}</ActionButton></View><View style={styles.actionGrow}><Pressable accessibilityRole="button" disabled={busy} onPress={() => void deleteSelectedItem()} style={({ pressed }) => [styles.dangerConfirm, pressed && styles.pressed, busy && styles.disabled]}><ThemedText type="smallBold" style={styles.dangerConfirmText}>{busy ? tx('删除中…', 'Deleting…') : tx('删除', 'Delete')}</ThemedText></Pressable></View></View></View> : <View style={styles.formActions}>{editingItem ? <View style={styles.actionGrow}><ActionButton tone="secondary" onPress={cancelEdit}>{tx('取消', 'Cancel')}</ActionButton></View> : null}<View style={styles.actionGrow}><ActionButton busy={busy} disabled={!title.trim() || (kind === 'lodging' && !location.trim())} onPress={submitItem}>{editingItem ? tx('保存', 'Save') : tx('加入行程', 'Add')}</ActionButton></View></View>}
+            {formError ? <InlineNotice tone="error">{formError}</InlineNotice> : null}
+          </View>
+        </InfoCard>
       ) : null}
 
       {!activeTrip ? (
@@ -417,7 +487,6 @@ export default function TodayScreen() {
             <View style={styles.staySection}>
               <SectionHeading
                 title={tx('住宿安排', 'Stays')}
-                detail={tx('入住区间会自动沿用。', 'Stay dates carry through automatically.')}
                 trailing={<ThemedText type="small" themeColor="textSecondary">{tx(`${visibleStays.length} 段`, `${visibleStays.length}`)}</ThemedText>}
               />
               {visibleStays.map((stay, index) => {
@@ -525,50 +594,11 @@ export default function TodayScreen() {
         </>
       ) : (
         <InfoCard label={tx('时间线已就绪', 'Timeline ready')} title={tx('还没有安排', 'Nothing planned yet')}>
-          <ThemedText themeColor="textSecondary">{tx('在下方添加第一项共享安排。', 'Add the first shared plan below.')}</ThemedText>
+          <ThemedText themeColor="textSecondary">{tx('点击“添加安排”开始。', 'Choose Add plan to start.')}</ThemedText>
         </InfoCard>
       )}
 
-      {activeTrip && canEdit ? (
-        <InfoCard label={editingItem ? tx('编辑安排', 'Edit plan') : tx('规划下一站', 'Plan the next stop')} title={editingItem ? editingItem.title : tx('把新安排放进共享时间线', 'Add a useful next move')} accent={editingItem ? getKindAccent(editingItem.kind) : '#D86E35'}>
-          <View style={styles.form}>
-            <ThemedText type="small" themeColor="textSecondary">
-              {editingItem ? tx('修改后所有同行者都会看到最新版本。安排类型保持不变。', 'Everyone will see the latest version after you save. The plan type stays unchanged.') : tx('优先记录真正会影响出发、集合、交通、入住和门票的安排，而不是普通备忘录。', 'Prioritize plans that change departure, meetups, transport, check-ins, or tickets instead of generic notes.')}
-            </ThemedText>
-            {!editingItem ? <View style={styles.templateWrap}>
-              {quickTemplates.map((template) => (
-                <ChoiceChip
-                  key={template.zh}
-                  selected={title === (locale === 'zh-CN' ? template.zh : template.en)}
-                  onPress={() => {
-                    setTitle(locale === 'zh-CN' ? template.zh : template.en);
-                    chooseKind(template.kind);
-                  }}>
-                  {locale === 'zh-CN' ? template.zh : template.en}
-                </ChoiceChip>
-              ))}
-            </View> : null}
-            <FormField label={tx('要做什么？', 'What are you doing?')} value={title} onChangeText={setTitle} placeholder={tx('例如：乘机场快线前往中环', 'For example: Airport Express to Central')} />
-            {editingItem?.linkedStayId ? <View style={[styles.lockedDestination, { backgroundColor: theme.backgroundSelected }]}><ThemedText type="smallBold">{tx('酒店交通', 'Hotel transfer')}</ThemedText><ThemedText type="small" themeColor="textSecondary">{tx(`终点和到达时间跟随酒店：${editingItem.locationLabel ?? '—'} · ${formatZonedDateTimeRange(editingItem.endsAt ?? editingItem.startsAt, undefined, languageTag, tripTimeZone)}`, `Destination and arrival follow the stay: ${editingItem.locationLabel ?? '—'} · ${formatZonedDateTimeRange(editingItem.endsAt ?? editingItem.startsAt, undefined, languageTag, tripTimeZone)}`)}</ThemedText></View> : <LocationField value={location} onChange={(value) => { setLocation(value); setGooglePlaceId(''); }} onSelect={(suggestion) => { setLocation(suggestion.text); setGooglePlaceId(suggestion.placeId); }} />}
-            {editingItem?.linkedStayId ? <View style={styles.row}><View style={styles.dateField}><DateTimeField label={tx('出发日期', 'Departure date')} value={date} mode="date" minimumDate={new Date(`${activeTrip.startsOn}T12:00:00`)} maximumDate={new Date(`${activeTrip.endsOn}T12:00:00`)} onChange={setDate} /></View><View style={styles.grow}><DateTimeField label={tx('出发时间', 'Departure time')} value={startTime} mode="time" onChange={setStartTime} /></View></View> : kind === 'lodging' ? <><View style={styles.stayFormGroup}><ThemedText type="smallBold">{tx('入住', 'Check-in')}</ThemedText><View style={styles.row}><View style={styles.dateField}><DateTimeField label={tx('入住日期', 'Check-in date')} value={date} mode="date" minimumDate={new Date(`${activeTrip.startsOn}T12:00:00`)} maximumDate={new Date(`${activeTrip.endsOn}T12:00:00`)} onChange={(value) => { setDate(value); if (endDate < value) setEndDate(value); }} /></View><View style={styles.grow}><DateTimeField label={tx('入住时间', 'Check-in time')} value={startTime} mode="time" onChange={setStartTime} /></View></View></View><View style={styles.stayFormGroup}><ThemedText type="smallBold">{tx('退房', 'Check-out')}</ThemedText><View style={styles.row}><View style={styles.dateField}><DateTimeField label={tx('退房日期', 'Check-out date')} value={endDate} mode="date" minimumDate={new Date(`${date}T12:00:00`)} maximumDate={new Date(`${activeTrip.endsOn}T12:00:00`)} onChange={setEndDate} /></View><View style={styles.grow}><DateTimeField label={tx('退房时间', 'Check-out time')} value={endTime} mode="time" onChange={setEndTime} /></View></View></View><ThemedText type="small" themeColor="textSecondary">{tx(`这段住宿会覆盖 ${stayNightsInZone(zonedDateTimeToIso(date, startTime, tripTimeZone), zonedDateTimeToIso(endDate, endTime, tripTimeZone), tripTimeZone)} 晚，不会生成重复的每日项目。`, `This stay covers ${stayNightsInZone(zonedDateTimeToIso(date, startTime, tripTimeZone), zonedDateTimeToIso(endDate, endTime, tripTimeZone), tripTimeZone)} nights without duplicate daily items.`)}</ThemedText></> : <View style={styles.row}><View style={styles.dateField}><DateTimeField label={tx('日期', 'Date')} value={date} mode="date" minimumDate={new Date(`${activeTrip.startsOn}T12:00:00`)} maximumDate={new Date(`${activeTrip.endsOn}T12:00:00`)} onChange={setDate} /></View><View style={styles.grow}><DateTimeField label={tx('开始', 'Starts')} value={startTime} mode="time" onChange={setStartTime} /></View><View style={styles.grow}><DateTimeField label={tx('结束', 'Ends')} value={endTime} mode="time" onChange={setEndTime} /></View></View>}
-            {kind !== 'lodging' ? <View style={styles.durationRow}>
-              <ThemedText type="small" themeColor="textSecondary">{tx('快速设置时长', 'Quick duration')}</ThemedText>
-              {[30, 60, 120, 180].map((minutes) => (
-                <ChoiceChip key={minutes} selected={endTime === addMinutes(startTime, minutes)} onPress={() => setEndTime(addMinutes(startTime, minutes))}>
-                  {minutes < 60 ? `${minutes}m` : `${minutes / 60}h`}
-                </ChoiceChip>
-              ))}
-            </View> : null}
-            {!editingItem ? <View style={styles.chips}>
-              {itineraryKinds.map((itemKind) => (
-                <ChoiceChip key={itemKind} selected={kind === itemKind} onPress={() => chooseKind(itemKind)}>{kindLabel(itemKind)}</ChoiceChip>
-              ))}
-            </View> : null}
-            {confirmDeleteItem && editingItem ? <View style={[styles.deleteConfirm, { borderTopColor: theme.backgroundSelected }]}><ThemedText type="smallBold">{tx(`删除“${editingItem.title}”？`, `Delete “${editingItem.title}”?`)}</ThemedText><ThemedText type="small" themeColor="textSecondary">{editingItem.kind === 'lodging' ? tx('关联的前往酒店交通也会一起删除，且无法恢复。', 'Its linked hotel transfer will also be deleted. This cannot be undone.') : tx('这项安排会从所有同行者的时间线中移除，且无法恢复。', 'This plan will be removed from every traveller’s timeline and cannot be undone.')}</ThemedText><View style={styles.formActions}><View style={styles.actionGrow}><ActionButton tone="secondary" onPress={() => setConfirmDeleteItem(false)}>{tx('保留安排', 'Keep plan')}</ActionButton></View><View style={styles.actionGrow}><Pressable accessibilityRole="button" disabled={busy} onPress={() => void deleteSelectedItem()} style={({ pressed }) => [styles.dangerConfirm, pressed && styles.pressed, busy && styles.disabled]}><ThemedText type="smallBold" style={styles.dangerConfirmText}>{busy ? tx('删除中…', 'Deleting…') : tx('确认删除', 'Delete')}</ThemedText></Pressable></View></View></View> : <><View style={styles.formActions}>{editingItem ? <View style={styles.actionGrow}><ActionButton tone="secondary" onPress={cancelEdit}>{tx('取消', 'Cancel')}</ActionButton></View> : null}<View style={styles.actionGrow}><ActionButton busy={busy} disabled={!title.trim() || (kind === 'lodging' && !location.trim())} onPress={submitItem}>{editingItem ? tx('保存修改', 'Save changes') : tx('加入时间线', 'Add to timeline')}</ActionButton></View></View>{editingItem ? <Pressable accessibilityRole="button" onPress={() => setConfirmDeleteItem(true)} style={({ pressed }) => [styles.itemTextAction, pressed && styles.pressed]}><ThemedText type="smallBold" style={{ color: theme.danger }}>{tx('删除这项安排', 'Delete this plan')}</ThemedText></Pressable> : null}</>}
-            {formError ? <InlineNotice tone="error">{formError}</InlineNotice> : null}
-          </View>
-        </InfoCard>
-      ) : activeTrip ? (
+      {activeTrip && !canEdit ? (
         <InlineNotice>{tx('你当前是仅查看成员，可以查看共享时间线，但不能编辑。', 'You can view this shared timeline, but your current role cannot edit it.')}</InlineNotice>
       ) : null}
     </Screen>
@@ -584,6 +614,10 @@ const styles = StyleSheet.create({
   templateWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   formActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   actionGrow: { flexGrow: 1, flexBasis: 150 },
+  quickAddRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 4 },
+  quickAddCopy: { flex: 1, gap: 1 },
+  quickAddButton: { minHeight: 44, borderRadius: 14, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: '#087F6A' },
+  quickAddButtonText: { color: '#FFFFFF' },
   lockedDestination: { borderRadius: 12, padding: 14, gap: 3 },
   deleteConfirm: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 14, gap: 10 },
   dangerConfirm: { minHeight: 48, borderRadius: 12, paddingHorizontal: 14, justifyContent: 'center', alignItems: 'center', backgroundColor: '#B4413E' },
