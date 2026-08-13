@@ -3,7 +3,7 @@ import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync, useAudioRecorder, useAudioRecorderState } from 'expo-audio';
 import { useMemo, useState } from 'react';
-import { LayoutAnimation, Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { LayoutAnimation, Linking, Platform, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/form-controls';
 import { MemberAvatar } from '@/components/member-avatar';
@@ -55,6 +55,8 @@ function defaultAllocationValueFor(mode: 'equal' | 'exact' | 'percentage' | 'sha
 
 export default function LedgerScreen() {
   const theme = useTheme();
+  const { width } = useWindowDimensions();
+  const compact = width < 520;
   const { locale, formatDateTime, tx } = useI18n();
   const {
     activeTrip,
@@ -67,11 +69,11 @@ export default function LedgerScreen() {
     attachExpenseReceipt,
     markSettlement,
     unmarkSettlement,
-    loading,
     error,
   } = useMvp();
   const [activeView, setActiveView] = useState<'settle' | 'activity'>('settle');
   const [composerOpen, setComposerOpen] = useState(false);
+  const [composerOffset, setComposerOffset] = useState<number>();
   const [entryMode, setEntryMode] = useState<'manual' | 'ai'>('manual');
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
@@ -165,6 +167,7 @@ export default function LedgerScreen() {
 
   function toggleComposer() {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setComposerOffset(undefined);
     setComposerOpen((open) => !open);
     setFormError(undefined);
     setSuccess(undefined);
@@ -414,16 +417,30 @@ export default function LedgerScreen() {
 
   return (
     <Screen
+      scrollToKey={composerOpen ? 'expense-composer' : undefined}
+      scrollToOffset={composerOffset}
       title={activeTrip ? tx(`${activeTrip.name} · 账本`, `${activeTrip.name} · ledger`) : tx('共享账本', 'Shared ledger')}
-      subtitle={tx('结算 · 明细', 'Settle · activity')}>
+      subtitle={tx('结算 · 明细', 'Settle · activity')}
+      floatingAction={activeTrip ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={composerOpen ? tx('关闭记账', 'Close expense entry') : tx('记一笔', 'Add expense')}
+          accessibilityState={{ expanded: composerOpen }}
+          onPress={toggleComposer}
+          style={({ pressed }) => [styles.floatingAdd, pressed && styles.pressed]}>
+          <View style={styles.plusIcon}>
+            <View style={styles.plusHorizontal} />
+            <View style={styles.plusVertical} />
+          </View>
+        </Pressable>
+      ) : null}>
       {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
       {formError ? <InlineNotice tone="error">{formError}</InlineNotice> : null}
       {success ? <InlineNotice>{success}</InlineNotice> : null}
-      {loading ? <InlineNotice>{tx('正在刷新账本…', 'Refreshing the ledger…')}</InlineNotice> : null}
 
       {activeTrip ? (
-        <View style={styles.toolbar}>
-          <View style={[styles.viewSwitch, { backgroundColor: theme.backgroundSelected }]}>
+        <View style={[styles.toolbar, compact && styles.toolbarCompact]}>
+          <View style={[styles.viewSwitch, compact && styles.viewSwitchCompact, { backgroundColor: theme.backgroundSelected }]}>
             <ViewSwitchButton selected={activeView === 'settle'} onPress={() => setActiveView('settle')}>
               {tx('结算', 'Settle')}
             </ViewSwitchButton>
@@ -431,16 +448,12 @@ export default function LedgerScreen() {
               {tx('明细', 'Activity')}
             </ViewSwitchButton>
           </View>
-          <Pressable accessibilityRole="button" onPress={toggleComposer} style={({ pressed }) => [styles.quickAddButton, pressed && styles.pressed]}>
-            <ThemedText type="smallBold" style={styles.quickAddText}>
-              {composerOpen ? tx('收起', 'Close') : tx('记一笔', 'Add expense')}
-            </ThemedText>
-          </Pressable>
         </View>
       ) : null}
 
       {activeTrip && composerOpen ? (
-        <ExpenseComposer
+        <View onLayout={({ nativeEvent }) => setComposerOffset(nativeEvent.layout.y)}>
+          <ExpenseComposer
           themeSurface={theme.backgroundElement}
           themeSelected={theme.backgroundSelected}
           dangerColor={dangerColor}
@@ -479,8 +492,9 @@ export default function LedgerScreen() {
           receipt={receipt}
           setReceipt={setReceipt}
           pickReceipt={pickReceipt}
-          submitExpense={submitExpense}
-        />
+            submitExpense={submitExpense}
+          />
+        </View>
       ) : null}
 
       {!activeTrip ? (
@@ -503,6 +517,7 @@ export default function LedgerScreen() {
           setSettlementDrafts={setSettlementDrafts}
           setExpandedSettlementKey={setExpandedSettlementKey}
           busySettlementId={busySettlementId}
+          compact={compact}
           themeSelected={theme.backgroundSelected}
           positiveColor={positiveColor}
           dangerColor={dangerColor}
@@ -583,8 +598,10 @@ function ExpenseComposer(props: {
   submitExpense: () => Promise<void>;
 }) {
   const { tx } = props;
+  const { width } = useWindowDimensions();
+  const compact = width < 520;
   return (
-    <View style={[styles.composer, { backgroundColor: props.themeSurface }]}>
+    <View style={[styles.composer, compact && styles.composerCompact, { backgroundColor: props.themeSurface }]}>
       <View style={styles.composerHeading}>
         <SectionHeading title={tx('记一笔', 'Add expense')} />
         <View style={styles.modeRow}>
@@ -619,11 +636,11 @@ function ExpenseComposer(props: {
         <View style={styles.formGroup}>
           {props.aiNotice ? <InlineNotice>{props.aiNotice}</InlineNotice> : null}
           <FormField label={tx('支出内容', 'Expense')} value={props.title} onChangeText={props.setTitle} placeholder={tx('例如：晚餐', 'For example: Dinner')} />
-          <View style={styles.amountRow}>
+          <View style={[styles.amountRow, compact && styles.amountRowCompact]}>
             <View style={styles.grow}>
               <FormField label={tx('金额', 'Amount')} value={props.amount} onChangeText={props.setAmount} keyboardType="decimal-pad" placeholder="860.00" />
             </View>
-            <View style={styles.currencyField}>
+            <View style={[styles.currencyField, compact && styles.currencyFieldCompact]}>
               <SelectionField label={tx('币种', 'Currency')} value={props.currency} options={props.currencyOptions} onChange={props.setCurrencyOverride} />
             </View>
           </View>
@@ -867,11 +884,13 @@ function SettlementPaymentEditor(props: {
   setDraft: (draft: SettlementDraft) => void;
 }) {
   const { tx } = props;
+  const { width } = useWindowDimensions();
+  const compact = width < 520;
   const sameCurrency = props.draft.currency.toUpperCase() === props.baseCurrency.toUpperCase();
   return (
-    <View style={styles.paymentEditor}>
-      <View style={styles.paymentEditorFields}>
-        <View style={styles.paymentCurrencyField}>
+    <View style={[styles.paymentEditor, compact && styles.paymentEditorCompact]}>
+      <View style={[styles.paymentEditorFields, compact && styles.paymentEditorFieldsCompact]}>
+        <View style={[styles.paymentCurrencyField, compact && styles.paymentCurrencyFieldCompact]}>
           <SelectionField
             label={tx('付款币种', 'Payment currency')}
             value={props.draft.currency}
@@ -931,6 +950,7 @@ function SettlementWorkspace(props: {
   setSettlementDrafts: React.Dispatch<React.SetStateAction<Record<string, SettlementDraft>>>;
   setExpandedSettlementKey: (key?: string) => void;
   busySettlementId?: string;
+  compact: boolean;
   themeSelected: string;
   positiveColor: string;
   dangerColor: string;
@@ -960,7 +980,7 @@ function SettlementWorkspace(props: {
           const sent = sumSettlements(props.settlements, snapshot.currency, 'from', props.currentUserId);
           const received = sumSettlements(props.settlements, snapshot.currency, 'to', props.currentUserId);
           return (
-            <View key={snapshot.currency} style={styles.personalCurrencyRow}>
+            <View key={snapshot.currency} style={[styles.personalCurrencyRow, props.compact && styles.personalCurrencyRowCompact]}>
               <ThemedText type="smallBold" style={[styles.currencyCode, { color: props.positiveColor }]}>{snapshot.currency}</ThemedText>
               <Metric label={tx('待转出', 'To send')} value={formatMinorAmount(pendingOut, snapshot.currency)} color={props.dangerColor} />
               <Metric label={tx('已转出', 'Sent')} value={formatMinorAmount(sent, snapshot.currency)} />
@@ -986,7 +1006,7 @@ function SettlementWorkspace(props: {
           const draft = props.settlementDrafts[key] ?? { currency: props.baseCurrency, amount: amountInputFromMinor(transfer.amountMinor, props.baseCurrency), rate: '1' };
           const expanded = props.expandedSettlementKey === key;
           return (
-            <View key={key} style={styles.transferRow}>
+            <View key={key} style={[styles.transferRow, props.compact && styles.transferRowCompact]}>
               <MemberAvatar avatarUrl={recipient?.avatarUrl} displayName={recipient?.displayName ?? tx('同行者', 'Traveller')} size={42} />
               <View style={styles.transferCopy}>
                 <ThemedText type="smallBold">{tx(`转给 ${props.names.get(transfer.toParticipantId) ?? '同行者'}`, `Pay ${props.names.get(transfer.toParticipantId) ?? 'Traveller'}`)}</ThemedText>
@@ -1000,7 +1020,7 @@ function SettlementWorkspace(props: {
                 accessibilityState={{ checked: false, busy: props.busySettlementId === key }}
                 disabled={Boolean(props.busySettlementId)}
                 onPress={() => void props.completeTransfer(transfer)}
-                style={({ pressed }) => [styles.markPaidButton, pressed && styles.pressed, Boolean(props.busySettlementId) && styles.disabled]}>
+                style={({ pressed }) => [styles.markPaidButton, props.compact && styles.markPaidButtonCompact, pressed && styles.pressed, Boolean(props.busySettlementId) && styles.disabled]}>
                 <ThemedText type="smallBold" style={styles.quickAddText}>{tx('标记已转账', 'Mark sent')}</ThemedText>
               </Pressable>
               {expanded ? (
@@ -1230,18 +1250,26 @@ function amountInputFromMinor(amountMinor: number, currency: string) {
 const styles = StyleSheet.create({
   workspace: { gap: 30 },
   toolbar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  toolbarCompact: { alignItems: 'stretch' },
   viewSwitch: { flexDirection: 'row', padding: 4, borderRadius: 14, flex: 1, maxWidth: 320 },
+  viewSwitchCompact: { maxWidth: '100%' },
   viewSwitchButton: { flex: 1, minHeight: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 10, paddingHorizontal: 14 },
   viewSwitchButtonActive: { backgroundColor: '#087F6A' },
   viewSwitchTextActive: { color: '#FFFFFF' },
-  quickAddButton: { minHeight: 48, minWidth: 104, alignItems: 'center', justifyContent: 'center', borderRadius: 14, paddingHorizontal: 18, backgroundColor: '#087F6A' },
   quickAddText: { color: '#FFFFFF' },
+  floatingAdd: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#087F6A', alignItems: 'center', justifyContent: 'center', shadowColor: '#15344A', shadowOpacity: 0.2, shadowRadius: 14, shadowOffset: { width: 0, height: 6 } },
+  plusIcon: { width: 20, height: 20, alignItems: 'center', justifyContent: 'center' },
+  plusHorizontal: { position: 'absolute', width: 18, height: 2, borderRadius: 1, backgroundColor: '#FFFFFF' },
+  plusVertical: { position: 'absolute', width: 2, height: 18, borderRadius: 1, backgroundColor: '#FFFFFF' },
   composer: { gap: 20, borderRadius: 16, padding: 20, shadowColor: '#15344A', shadowOpacity: 0.1, shadowRadius: 20, shadowOffset: { width: 0, height: 8 }, elevation: 3 },
+  composerCompact: { padding: 16, gap: 16 },
   composerHeading: { gap: 12 },
   modeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   formGroup: { gap: 16 },
   amountRow: { flexDirection: 'row', gap: 12, alignItems: 'flex-end' },
+  amountRowCompact: { flexDirection: 'column', alignItems: 'stretch', gap: 14 },
   currencyField: { width: 116 },
+  currencyFieldCompact: { width: '100%' },
   conversionRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', gap: 12, borderRadius: 12, padding: 12 },
   conversionPreview: { flexGrow: 1, flexBasis: 150, gap: 2, paddingBottom: 10 },
   multiline: { minHeight: 96, textAlignVertical: 'top' },
@@ -1274,17 +1302,23 @@ const styles = StyleSheet.create({
   summaryHeading: { gap: 4 },
   sectionTitle: { fontSize: 22, lineHeight: 28, fontWeight: '700' },
   personalCurrencyRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', gap: 14, paddingVertical: 14, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#AFCACA' },
+  personalCurrencyRowCompact: { gap: 10 },
   currencyCode: { minWidth: 42, paddingBottom: 2 },
   metric: { minWidth: 94, flexGrow: 1, gap: 2 },
   sectionBlock: { gap: 0 },
   sectionHeading: { gap: 4, paddingBottom: 10 },
   transferRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingVertical: 16, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#AFCACA' },
+  transferRowCompact: { flexDirection: 'column', alignItems: 'stretch', gap: 10 },
   transferCopy: { gap: 2, flex: 1 },
   transferAmount: { fontSize: 22, lineHeight: 28, fontWeight: '700' },
   markPaidButton: { minHeight: 44, minWidth: 112, alignItems: 'center', justifyContent: 'center', borderRadius: 12, paddingHorizontal: 14, backgroundColor: '#087F6A' },
+  markPaidButtonCompact: { width: '100%' },
   paymentEditor: { flexBasis: '100%', gap: 10, paddingTop: 8, paddingLeft: 54 },
+  paymentEditorCompact: { paddingLeft: 0 },
   paymentEditorFields: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', gap: 12 },
+  paymentEditorFieldsCompact: { flexDirection: 'column', alignItems: 'stretch' },
   paymentCurrencyField: { width: 150 },
+  paymentCurrencyFieldCompact: { width: '100%' },
   completedRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#AFCACA' },
   textButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 4 },
   quietEmpty: { gap: 4, paddingVertical: 22, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#AFCACA' },
