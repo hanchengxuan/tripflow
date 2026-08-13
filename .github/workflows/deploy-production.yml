@@ -37,6 +37,7 @@ jobs:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_GLOBAL_CONFIG: ${{ runner.temp }}/vercel-global-config
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -50,16 +51,18 @@ jobs:
           test -n "$VERCEL_TOKEN" || { echo "Missing VERCEL_TOKEN" >&2; exit 1; }
           test -n "$VERCEL_ORG_ID" || { echo "Missing VERCEL_ORG_ID" >&2; exit 1; }
           test -n "$VERCEL_PROJECT_ID" || { echo "Missing VERCEL_PROJECT_ID" >&2; exit 1; }
+      - name: Configure Vercel CLI credentials
+        run: node scripts/setup-vercel-auth.mjs
       - name: Link Vercel project
-        run: npx --yes vercel@${{ env.VERCEL_CLI_VERSION }} link --yes --project="$VERCEL_PROJECT_ID" --scope="$VERCEL_ORG_ID"
+        run: npx --yes vercel@${{ env.VERCEL_CLI_VERSION }} --global-config="$VERCEL_GLOBAL_CONFIG" link --yes --project="$VERCEL_PROJECT_ID" --scope="$VERCEL_ORG_ID"
       - name: Pull production environment
-        run: npx --yes vercel@${{ env.VERCEL_CLI_VERSION }} pull --yes --environment=production
+        run: npx --yes vercel@${{ env.VERCEL_CLI_VERSION }} --global-config="$VERCEL_GLOBAL_CONFIG" pull --yes --environment=production
       - name: Build production artifact
-        run: npx --yes vercel@${{ env.VERCEL_CLI_VERSION }} build --prod
+        run: npx --yes vercel@${{ env.VERCEL_CLI_VERSION }} --global-config="$VERCEL_GLOBAL_CONFIG" build --prod
       - name: Deploy prebuilt artifact
         id: deploy
         run: |
-          url="$(npx --yes vercel@${{ env.VERCEL_CLI_VERSION }} deploy --prebuilt --prod)"
+          url="$(npx --yes vercel@${{ env.VERCEL_CLI_VERSION }} --global-config="$VERCEL_GLOBAL_CONFIG" deploy --prebuilt --prod)"
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "Deployed $url"
       - name: Smoke test deployment URL
@@ -82,3 +85,6 @@ jobs:
             echo "- Commit: $GITHUB_SHA"
             echo "- Smoke tests: passed (/, /ledger, /explore, /privacy, /support)"
           } >> "$GITHUB_STEP_SUMMARY"
+      - name: Remove Vercel CLI credentials
+        if: always()
+        run: rm -rf "$VERCEL_GLOBAL_CONFIG"
