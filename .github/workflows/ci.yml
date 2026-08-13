@@ -14,7 +14,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  validate:
+  static:
+    name: Static checks
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -30,8 +31,6 @@ jobs:
         run: npm run lint -- --no-cache
       - name: Typecheck
         run: npm run typecheck
-      - name: Unit tests
-        run: npm test -- --ci --watchman=false
       - name: Dependency audit
         shell: bash
         run: |
@@ -39,7 +38,80 @@ jobs:
           trap 'rm -f "$audit_file"' EXIT
           npm audit --omit=dev --audit-level=high --json > "$audit_file" || true
           node scripts/check-npm-audit.mjs "$audit_file"
+
+  unit:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test -- --ci --watchman=false
+
+  build:
+    name: Expo health and exports
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Expo Doctor
+        run: npm run doctor
       - name: Build web export
         run: npm run build:web
       - name: Verify web artifact
         run: test -s dist/index.html
+      - name: Build iOS export
+        run: npm run build:ios
+      - name: Verify iOS artifact
+        run: test -n "$(find .expo-exports/ios -type f \( -name '*.hbc' -o -name '*.js' \) -print -quit)"
+
+  e2e:
+    name: Browser smoke tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run Playwright tests
+        run: npm run test:e2e
+      - name: Upload Playwright evidence
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v5
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
+
+  validate:
+    name: validate
+    if: always()
+    needs: [static, unit, build, e2e]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every CI gate
+        env:
+          STATIC_RESULT: ${{ needs.static.result }}
+          UNIT_RESULT: ${{ needs.unit.result }}
+          BUILD_RESULT: ${{ needs.build.result }}
+          E2E_RESULT: ${{ needs.e2e.result }}
+        run: |
+          for result in "$STATIC_RESULT" "$UNIT_RESULT" "$BUILD_RESULT" "$E2E_RESULT"; do
+            test "$result" = success
+          done

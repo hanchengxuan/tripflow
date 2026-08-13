@@ -1,0 +1,81 @@
+name: PR size guidance
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  advise:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Comment on oversized changes
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const threshold = 1000;
+            const excluded = new Set([
+              'package-lock.json',
+              'src/types/database.ts',
+            ]);
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+              per_page: 100,
+            });
+            const measured = files.filter((file) => !excluded.has(file.filename));
+            const additions = measured.reduce((sum, file) => sum + file.additions, 0);
+            const deletions = measured.reduce((sum, file) => sum + file.deletions, 0);
+            const total = additions + deletions;
+            const marker = '<!-- tripflow-pr-size -->';
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              per_page: 100,
+            });
+            const existing = comments.find((comment) => comment.body?.includes(marker));
+
+            if (total <= threshold) {
+              if (existing) {
+                await github.rest.issues.deleteComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: existing.id,
+                });
+              }
+              core.info(`PR size ${total} lines is within the ${threshold}-line guideline.`);
+              return;
+            }
+
+            const body = [
+              marker,
+              '## Large PR guidance',
+              '',
+              `This PR changes **${total.toLocaleString()} measured lines** (+${additions.toLocaleString()}/-${deletions.toLocaleString()}), above the ${threshold.toLocaleString()}-line review guideline.`,
+              '',
+              'This is advisory, not a merge blocker. Confirm the PR still has one purpose and consider separating generated output, refactors, or unrelated fixes.',
+              '',
+              '_`package-lock.json` and generated Supabase database types are excluded._',
+            ].join('\n');
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }

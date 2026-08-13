@@ -1,0 +1,4 @@
+interface:
+  display_name: "TripFlow Review"
+  short_description: "Review a TripFlow branch before landing"
+  default_prompt: "Use $tripflow-review to review this TripFlow branch against origin/main."

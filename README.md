@@ -20,6 +20,7 @@ Public pages: [Privacy](https://tripflow-liart.vercel.app/privacy) · [Support](
 
    ```bash
    npm install
+   npx playwright install chromium
    ```
 
 2. Copy `.env.example` to `.env.local` and set the Supabase project URL and publishable key. Set `EXPO_PUBLIC_SUPPORT_EMAIL` before public distribution. Never use a service-role key in the app.
@@ -49,6 +50,8 @@ You can start developing by editing the files inside the **app** directory. This
 
 - `src/app`: Expo Router screens.
 - `src/domain`: framework-independent trip and ledger rules.
+- `e2e`: Playwright browser smoke tests for mobile and desktop web.
+- `.agents/skills`: project-level review, QA, and full shipping workflows for Codex.
 - `supabase/migrations`: database schema and Row Level Security policies.
 - `planning.md`: consolidated product scope and delivery plan.
 - `PROJECT_CONTEXT.md`: verified current state, decisions, next work, and continuity protocol.
@@ -69,13 +72,13 @@ Before a release, run:
 
 ```bash
 npm run validate
-npm run build:web
-npx expo-doctor
 ```
+
+`npm run validate` runs lint, TypeScript, Jest, Expo Doctor, web and iOS exports, and the Playwright browser smoke suite. Use `npm run test:e2e:ui` to debug the browser flows interactively. Set `PLAYWRIGHT_BASE_URL` to test an existing Preview or production deployment instead of starting local Expo Web.
 
 ### CI/CD
 
-GitHub Actions runs formatting checks, lint, TypeScript, Jest, a production-dependency audit, and the Expo web export on every pull request and on `main`. A push to `main` starts the production verification workflow only after that quality gate passes; it waits for the Vercel Git Integration deployment for the exact commit, then smoke-tests the public production alias.
+GitHub Actions runs four parallel gates on every pull request and on `main`: static checks and the reviewed production-dependency audit, Jest, Expo Doctor plus web/iOS exports, and Playwright smoke tests in mobile and desktop Chromium. The stable `validate` job requires all four gates. Failed browser runs upload screenshots, video, traces, and an HTML report. A push to `main` starts production verification only after that quality gate passes; it waits for the Vercel Git Integration deployment for the exact commit, then smoke-tests the public production alias.
 
 Production deployment:
 
