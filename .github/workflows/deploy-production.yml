@@ -37,7 +37,7 @@ jobs:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-      VERCEL_GLOBAL_CONFIG: ${{ runner.temp }}/vercel-global-config
+      VERCEL_GLOBAL_CONFIG: /tmp/tripflow-vercel-global-config
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
