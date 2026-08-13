@@ -1,0 +1,4 @@
+interface:
+  display_name: "TripFlow QA"
+  short_description: "Run diff-aware TripFlow browser QA"
+  default_prompt: "Use $tripflow-qa to test the TripFlow routes affected by this branch."

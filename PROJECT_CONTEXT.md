@@ -110,6 +110,9 @@ See `planning.md` for the complete P0/P1 scope, non-goals, architecture, milesto
 - Owners/editors can edit or delete timeline items through validated RPCs; lodging changes remove stale generated transfers. The trip creator can permanently delete a trip through an explicit confirmation flow, while the protected `delete-trip` Edge Function removes database data before best-effort cleanup of private receipt objects.
 - CI runs formatting boundaries, lint, TypeScript, Jest, the web export, and an exact reviewed npm-audit GHSA allowlist that hard-fails critical or newly unreviewed high advisories.
 - Production CD waits for the exact `main` commit's Vercel Git Integration status, then smoke-tests `/`, `/ledger`, `/explore`, `/privacy`, and `/support` on `https://tripflow-liart.vercel.app`; the 2026-08-13 run passed for deployment `61ZgGMyXP6hzAoJYsmwXWGahZSKp`.
+- Project-local `$tripflow-review`, `$tripflow-qa`, and `$tripflow-ship` skills now encode evidence-based pre-landing review, diff-aware safe browser QA, and the full rebase-to-production delivery workflow. `AGENTS.md` also records focused-diff, component-boundary, type-safety, platform-parity, and verification rules.
+- CI is split into parallel static, Jest, Expo health/export, and Playwright gates behind the existing stable `validate` result name. Expo Doctor, web export, iOS export, and six mobile/desktop Chromium smoke cases are covered; browser failures upload reports and traces. An advisory PR-size workflow excludes lockfile and generated database-type churn.
+- The new browser gate found a real public-route transition failure: returning from Support to the app could render Today outside `MvpProvider`. The Web back link now performs an explicit same-tab document navigation, and the mobile/desktop regression flow passes without runtime console errors.
 
 ## Applied Supabase migrations
 
@@ -153,6 +156,7 @@ Temporary acceptance fixtures are removed after each test; production may contai
 8. Continue the itinerary experience milestone with Place details, participant/status controls, booking essentials, and richer branch interactions.
 9. Add reviewable Gemini itinerary import from photos, files, and shared links; imported content must remain a draft until the traveler confirms it.
 10. Extend lodging anchors with booking confirmation, room notes, check-in instructions, and checkout-to-next-stop shortcuts.
+11. Add commit-bound Vercel Preview browser smoke once CI can resolve a public Preview URL. The current GitHub `Vercel` status exposes only the Vercel dashboard target and the repository has no GitHub deployment record or scoped Vercel API credential to resolve the public alias safely.
 
 ## Standing decisions and safety boundaries
 

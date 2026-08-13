@@ -1,0 +1,4 @@
+interface:
+  display_name: "TripFlow Ship"
+  short_description: "Ship TripFlow through production verification"
+  default_prompt: "Use $tripflow-ship to land this TripFlow branch and verify production."

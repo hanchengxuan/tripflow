@@ -15,6 +15,39 @@ After a meaningful milestone, update `PROJECT_CONTEXT.md` with the verified curr
 
 Never record credentials, access tokens, database passwords, service-role keys, personal data, or private conversation details in project context.
 
+## Development discipline
+
+- Make the smallest change that fully solves the stated problem. Diagnose the existing behavior before replacing its approach, and use `git blame` when a product or compatibility decision is unclear.
+- Respect deliberate user simplifications and removals. Do not reintroduce reverted behavior without new evidence and explicit scope.
+- Keep one PR to one purpose. Separate unrelated fixes, refactors, and feature work; do not bundle “while here” cleanup.
+- Read the full changed file and its callers before editing. Reuse existing components, hooks, domain functions, repository methods, and design tokens before creating new ones.
+- Comments are rare and short. Add one only for a constraint, invariant, external provider quirk, or non-obvious safety boundary that code cannot express.
+- Never silence TypeScript with `as any`, `@ts-ignore`, or `@ts-expect-error`. Use assertions only after runtime validation or a real narrowing boundary.
+- Format and lint only files in scope. Do not run bulk rewrites over untouched files.
+- Documentation for durable product and engineering behavior belongs in the relevant tracked context or `docs/`; onboarding and commands belong in `README.md`.
+
+### Component and state boundaries
+
+- New screen and component files should stay below 500 lines. Existing files above that threshold are legacy boundaries: do not grow them with a new state concern when it can be extracted safely.
+- Before modifying a component over 300 lines, check its line count and existing hooks, read it in full, and identify the narrowest extraction boundary.
+- A new coordinated state concern—multiple hooks for one async workflow, debouncing, optimistic updates, reconciliation, or scrolling—belongs in a focused hook or child component.
+- Prefer one responsive component with shared data and state over separate mobile and desktop implementations that can drift.
+- Preserve web/native parity intentionally. Platform-specific files are appropriate only when the platform behavior genuinely differs.
+
+### Verification boundaries
+
+- A passing generic command is evidence only for behavior it actually covers. Add focused regression tests for deterministic money, time, authorization, and state-transition bugs.
+- User-visible changes require browser verification at mobile and desktop widths, including console/network errors and accessibility state.
+- Expo/native changes require the relevant SDK 57 documentation, Expo Doctor, and platform export or device/build evidence.
+- Database changes require the live migration check, backward-compatible migration review, generated type refresh, transactional acceptance, and post-apply RLS/security verification.
+- Workflow changes require validating permissions, concurrency, exact-commit selection, failure behavior, and the checks that branch protection will actually require.
+
+## Project skills
+
+- Use `$tripflow-review` for pre-landing review or when asked whether a branch is safe to merge.
+- Use `$tripflow-qa` for diff-aware browser QA on local, Preview, or production targets.
+- Use `$tripflow-ship` when asked to publish or finish a change; it continues through PR gates, merge, exact production deployment, and smoke verification.
+
 ## Shared Git workflow
 
 All agents share this checkout, so never develop directly on `main` and never reset or discard another agent's work.

@@ -8,6 +8,7 @@ node_modules/
 dist/
 web-build/
 expo-env.d.ts
+.expo-exports/
 
 # Native
 .kotlin/
@@ -37,6 +38,8 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 coverage/
+playwright-report/
+test-results/
 
 example
 
