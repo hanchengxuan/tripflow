@@ -54,7 +54,7 @@ jobs:
       - name: Configure Vercel CLI credentials
         run: node scripts/setup-vercel-auth.mjs
       - name: Link Vercel project
-        run: npx --yes vercel@${{ env.VERCEL_CLI_VERSION }} --global-config="$VERCEL_GLOBAL_CONFIG" link --yes --project="$VERCEL_PROJECT_ID" --scope="$VERCEL_ORG_ID"
+        run: npx --yes vercel@${{ env.VERCEL_CLI_VERSION }} --global-config="$VERCEL_GLOBAL_CONFIG" link --yes --project="$VERCEL_PROJECT_ID"
       - name: Pull production environment
         run: npx --yes vercel@${{ env.VERCEL_CLI_VERSION }} --global-config="$VERCEL_GLOBAL_CONFIG" pull --yes --environment=production
       - name: Build production artifact
