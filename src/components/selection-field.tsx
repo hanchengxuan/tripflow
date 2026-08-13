@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { Chevron } from '@/components/chevron';
 import { useTheme } from '@/hooks/use-theme';
 import { useI18n } from '@/features/i18n/i18n-provider';
 
@@ -36,9 +37,10 @@ export function SelectionField<T extends string>({
         accessibilityRole="button"
         accessibilityLabel={`${label}：${selectedLabel}`}
         onPress={() => setOpen(true)}
-        style={[styles.control, { backgroundColor: theme.background, borderColor: theme.backgroundSelected }]}>
+        style={[styles.control, { backgroundColor: theme.background, borderColor: theme.backgroundSelected }]}
+      >
         <ThemedText>{selectedLabel}</ThemedText>
-        <ThemedText themeColor="textSecondary">{tx('选择', 'Choose')} ›</ThemedText>
+        <Chevron color={theme.textSecondary} />
       </Pressable>
       <Modal transparent visible={open} animationType="slide" onRequestClose={() => setOpen(false)}>
         <Pressable style={styles.backdrop} onPress={() => setOpen(false)}>

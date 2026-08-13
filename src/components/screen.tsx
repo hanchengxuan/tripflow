@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, type PropsWithChildren, type ReactNode } from 'react';
-import { Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -18,6 +18,8 @@ interface ScreenProps extends PropsWithChildren {
 export function Screen({ floatingAction, meta, scrollToKey, scrollToOffset, scrollToEndKey, title, subtitle, children }: ScreenProps) {
   const insets = useSafeAreaInsets();
   const theme = useTheme();
+  const { width } = useWindowDimensions();
+  const compact = width < 520;
   const scrollRef = useRef<ScrollView>(null);
   const scrollToTarget = useCallback(() => {
     if (!scrollToKey || scrollToOffset === undefined) return;
@@ -54,10 +56,12 @@ export function Screen({ floatingAction, meta, scrollToKey, scrollToOffset, scro
             paddingBottom: insets.bottom + (Platform.OS === 'web' ? 40 : 104),
           },
         ]}>
-        <View style={styles.header}>
-          <ThemedText type="subtitle">{title}</ThemedText>
-          <ThemedText themeColor="textSecondary">{subtitle}</ThemedText>
-          {meta ? <ThemedText type="small" themeColor="textSecondary">{meta}</ThemedText> : null}
+        <View style={[styles.header, compact && styles.headerCompact]}>
+          <ThemedText type="subtitle" style={[styles.screenTitle, compact && styles.screenTitleCompact]}>{title}</ThemedText>
+          <View style={styles.contextRow}>
+            <ThemedText type="small" themeColor="textSecondary">{subtitle}</ThemedText>
+            {meta ? <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>{meta}</ThemedText> : null}
+          </View>
         </View>
         {children}
       </ScrollView>
@@ -69,7 +73,11 @@ export function Screen({ floatingAction, meta, scrollToKey, scrollToOffset, scro
 const styles = StyleSheet.create({
   frame: { flex: 1 },
   scroll: { flex: 1 },
-  content: { width: '100%', maxWidth: 760, alignSelf: 'center', paddingHorizontal: 20, gap: 16 },
-  header: { gap: 6, marginBottom: 8 },
+  content: { width: '100%', maxWidth: 760, alignSelf: 'center', paddingHorizontal: 20, gap: 18 },
+  header: { gap: 4, marginBottom: 4 },
+  headerCompact: { marginBottom: 2 },
+  screenTitle: { fontSize: 30, lineHeight: 38 },
+  screenTitleCompact: { fontSize: 28, lineHeight: 34 },
+  contextRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 10, rowGap: 2 },
   floatingAction: { position: 'absolute', right: 20, zIndex: 10 },
 });

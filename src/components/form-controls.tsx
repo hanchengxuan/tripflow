@@ -46,6 +46,7 @@ export function ActionButton({
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityState={{ disabled: isDisabled, busy }}
       disabled={isDisabled}
       onPress={onPress}
       style={({ pressed }) => [
@@ -70,13 +71,14 @@ export function ChoiceChip({
   children,
   selected,
   disabled = false,
+  role = 'checkbox',
   onPress,
-}: PropsWithChildren<{ selected: boolean; disabled?: boolean; onPress: () => void }>) {
+}: PropsWithChildren<{ selected: boolean; disabled?: boolean; role?: 'checkbox' | 'radio' | 'tab'; onPress: () => void }>) {
   const theme = useTheme();
   return (
     <Pressable
-      accessibilityRole="checkbox"
-      accessibilityState={{ checked: selected, disabled }}
+      accessibilityRole={role}
+      accessibilityState={{ checked: role === 'checkbox' ? selected : undefined, selected: role !== 'checkbox' ? selected : undefined, disabled }}
       disabled={disabled}
       onPress={onPress}
       style={[styles.chip, selected ? styles.chipSelected : { backgroundColor: theme.backgroundSelected }, disabled && styles.dimmed]}>
@@ -90,7 +92,10 @@ export function ChoiceChip({
 export function InlineNotice({ children, tone = 'info' }: PropsWithChildren<{ tone?: 'info' | 'error' }>) {
   const theme = useTheme();
   return (
-    <View style={[styles.notice, { backgroundColor: theme.backgroundSelected }, tone === 'error' && { borderColor: theme.danger, borderWidth: 1 }]}>
+    <View
+      accessibilityRole={tone === 'error' ? 'alert' : 'text'}
+      style={[styles.notice, { backgroundColor: theme.backgroundSelected }, tone === 'error' && { borderColor: theme.danger, borderWidth: 1 }]}
+    >
       <ThemedText type="small" style={tone === 'error' ? { color: theme.danger } : undefined}>{children}</ThemedText>
     </View>
   );

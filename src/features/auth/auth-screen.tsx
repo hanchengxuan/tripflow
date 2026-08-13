@@ -2,10 +2,10 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { Link, type Href, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/form-controls';
-import { InfoCard } from '@/components/info-card';
 import { OtpCodeInput } from '@/components/otp-code-input';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
@@ -36,6 +36,7 @@ function useInviteToken() {
 }
 
 export function AuthScreen() {
+  const theme = useTheme();
   const { locale, setLocale, tx } = useI18n();
   const inviteToken = useInviteToken();
   const { capabilities } = useAuth();
@@ -132,26 +133,40 @@ export function AuthScreen() {
   }
 
   const cardLabel = method === 'phone' ? tx('手机号登录或注册', 'Phone sign-in or registration') : flow === 'login' ? tx('登录', 'Sign in') : flow === 'register' ? tx('注册', 'Register') : tx('验证码登录', 'Code sign-in');
+  const screenTitle = inviteToken ? tx('登录并加入行程', 'Sign in to join') : tx('TripFlow', 'TripFlow');
+  const screenSubtitle = inviteToken ? tx('完成后确认加入。', 'Confirm the invite after signing in.') : tx('共享行程，清楚分账。', 'Shared plans. Clear balances.');
+  const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const compact = width < 720;
   return (
-    <Screen
-      meta={tx('TripFlow', 'TripFlow')}
-      title={inviteToken ? tx('先登录或注册，再加入行程', 'Sign in or register to join') : tx('把大家的旅程放在一起', 'One trip, shared by everyone')}
-      subtitle={tx('任何人都可以注册创建自己的行程；邀请只用于加入同行者的行程。', 'Anyone can register and create a trip. Invites are only needed to join someone else’s trip.')}>
-      {inviteToken ? <InlineNotice>{tx('邀请已保留。完成登录或注册后，你仍需确认加入行程。', 'Your invite is saved. After signing in or registering, you will still confirm before joining.')}</InlineNotice> : null}
-      {capabilities.google ? <ActionButton tone="secondary" busy={busy} onPress={() => void googleLogin()}>{tx('使用 Google 继续', 'Continue with Google')}</ActionButton> : null}
-      <View style={styles.methodChoices}>
-        <ChoiceChip selected={method === 'email'} onPress={() => { setMethod('email'); setVerifying(false); setToken(''); }}>{tx('邮箱', 'Email')}</ChoiceChip>
-        {capabilities.phone ? <ChoiceChip selected={method === 'phone'} onPress={() => { setMethod('phone'); setVerifying(false); setToken(''); }}>{tx('手机号', 'Phone')}</ChoiceChip> : null}
-      </View>
-      {method === 'email' ? (
-      <View style={styles.flowChoices}>
-        <ChoiceChip selected={flow === 'login'} onPress={() => chooseFlow('login')}>{tx('密码登录', 'Sign in')}</ChoiceChip>
-        <ChoiceChip selected={flow === 'register'} onPress={() => chooseFlow('register')}>{tx('免费注册', 'Register')}</ChoiceChip>
-        <ChoiceChip selected={flow === 'otp-login'} onPress={() => chooseFlow('otp-login')}>{tx('验证码登录', 'Email code')}</ChoiceChip>
-      </View>
-      ) : null}
-      <InfoCard label={cardLabel} title={verifying ? (method === 'email' ? email : phone) : method === 'phone' ? tx('用短信验证码继续', 'Continue with an SMS code') : flow === 'register' ? tx('创建你的 TripFlow 账号', 'Create your TripFlow account') : tx('欢迎回来', 'Welcome back')}>
-        <View style={styles.form}>
+    <View style={[styles.authFrame, { backgroundColor: theme.background }] }>
+      <ScrollView contentContainerStyle={[styles.authContent, compact && styles.authContentCompact, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 28 }]} keyboardShouldPersistTaps="handled">
+        <View style={[styles.authLayout, !compact && styles.authLayoutWide]}>
+          <View style={[styles.authIntro, !compact && styles.authIntroWide]}>
+            <ThemedText type="smallBold" style={styles.authBrand}>TripFlow</ThemedText>
+            <ThemedText type="subtitle" style={[styles.authTitle, compact && styles.authTitleCompact]}>{screenTitle}</ThemedText>
+            <ThemedText themeColor="textSecondary" style={styles.authSubtitle}>{screenSubtitle}</ThemedText>
+            <View style={styles.authRule} />
+            <ThemedText type="small" themeColor="textSecondary">{inviteToken ? tx('邀请已保留。登录后仍需确认。', 'Your invite is saved. You will still confirm before joining.') : tx('先进入行程，再决定下一步。', 'Start with the trip, then choose the next step.')}</ThemedText>
+          </View>
+          <View style={[styles.authPanel, { backgroundColor: theme.backgroundElement }]}>
+            <View style={styles.authPanelHeader}>
+              <ThemedText type="smallBold" style={styles.authPanelLabel}>{cardLabel}</ThemedText>
+              <ThemedText type="title">{verifying ? (method === 'email' ? email : phone) : method === 'phone' ? tx('短信验证码', 'SMS code') : flow === 'register' ? tx('创建账号', 'Create account') : tx('欢迎回来', 'Welcome back')}</ThemedText>
+            </View>
+            {capabilities.google ? <ActionButton tone="secondary" busy={busy} onPress={() => void googleLogin()}>{tx('使用 Google 继续', 'Continue with Google')}</ActionButton> : null}
+            <View style={styles.methodChoices}>
+              <ChoiceChip role="radio" selected={method === 'email'} onPress={() => { setMethod('email'); setVerifying(false); setToken(''); }}>{tx('邮箱', 'Email')}</ChoiceChip>
+              {capabilities.phone ? <ChoiceChip role="radio" selected={method === 'phone'} onPress={() => { setMethod('phone'); setVerifying(false); setToken(''); }}>{tx('手机号', 'Phone')}</ChoiceChip> : null}
+            </View>
+            {method === 'email' ? (
+            <View style={styles.flowChoices}>
+              <ChoiceChip role="radio" selected={flow === 'login'} onPress={() => chooseFlow('login')}>{tx('密码登录', 'Sign in')}</ChoiceChip>
+              <ChoiceChip role="radio" selected={flow === 'register'} onPress={() => chooseFlow('register')}>{tx('注册', 'Register')}</ChoiceChip>
+              <ChoiceChip role="radio" selected={flow === 'otp-login'} onPress={() => chooseFlow('otp-login')}>{tx('验证码', 'Email code')}</ChoiceChip>
+            </View>
+            ) : null}
+            <View style={styles.form}>
           {!verifying ? (
             <>
               {method === 'email' ? <FormField label={tx('邮箱', 'Email')} value={email} onChangeText={setEmail} autoCapitalize="none" autoComplete="email" keyboardType="email-address" placeholder="you@example.com" /> : <FormField label={tx('手机号（含国家区号）', 'Phone with country code')} value={phone} onChangeText={setPhone} autoComplete="tel" keyboardType="phone-pad" placeholder="+61412345678" />}
@@ -176,10 +191,12 @@ export function AuthScreen() {
             </>
           )}
           {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
+            </View>
+          </View>
         </View>
-      </InfoCard>
-      <LanguageAndLegal locale={locale} setLocale={setLocale} tx={tx} />
-    </Screen>
+        <LanguageAndLegal locale={locale} setLocale={setLocale} tx={tx} />
+      </ScrollView>
+    </View>
   );
 }
 
@@ -263,6 +280,21 @@ export function AuthLoadingScreen({ configured }: { configured: boolean }) {
 }
 
 const styles = StyleSheet.create({
+  authFrame: { flex: 1 },
+  authContent: { width: '100%', maxWidth: 1040, alignSelf: 'center', paddingHorizontal: 20, gap: 26 },
+  authContentCompact: { maxWidth: 560, gap: 22 },
+  authLayout: { gap: 24 },
+  authLayoutWide: { flexDirection: 'row', alignItems: 'center', gap: 56, minHeight: 520 },
+  authIntro: { gap: 12 },
+  authIntroWide: { flex: 1, paddingRight: 12 },
+  authBrand: { color: '#087F6A', letterSpacing: 0.5 },
+  authTitle: { fontSize: 38, lineHeight: 44, maxWidth: 520 },
+  authTitleCompact: { fontSize: 30, lineHeight: 36 },
+  authSubtitle: { fontSize: 18, lineHeight: 26, maxWidth: 440 },
+  authRule: { width: 56, height: 3, borderRadius: 2, backgroundColor: '#D86E35', marginTop: 8 },
+  authPanel: { flex: 1, maxWidth: 500, borderRadius: 24, padding: 22, gap: 16, shadowColor: '#17324D', shadowOpacity: 0.09, shadowRadius: 28, shadowOffset: { width: 0, height: 12 } },
+  authPanelHeader: { gap: 5 },
+  authPanelLabel: { color: '#087F6A' },
   loadingScreen: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, padding: 24 },
   form: { gap: 12 },
   methodChoices: { flexDirection: 'row', gap: 8 },

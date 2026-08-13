@@ -92,6 +92,7 @@ See `planning.md` for the complete P0/P1 scope, non-goals, architecture, milesto
 - Auth/session recovery uses a single compact status state, while the shared Screen supports fixed contextual actions without covering content
 - The authenticated product now holds the shell on that same compact recovery state until the first trip/profile load completes, preventing a false empty Today/Ledger frame during lock-screen or reload recovery; later background refreshes keep existing content in place
 - Today’s fixed add-plan action clears stale anchor measurements and uses a two-frame target scroll so opening a new or edited plan lands on the composer instead of the document end
+- The overall UI redesign is documented in `.design/tripflow-ui-redesign/`: Open Coast Itinerary remains the visual world, while the shared shell now uses a compact title/context row, InfoCard titles no longer repeat eyebrow copy, and the login entry is a focused mobile-first form with a desktop split layout
 - Ledger now keeps “Add expense” available as a persistent compact action; mobile expense and settlement controls stack at narrow widths, and refresh state no longer inserts redundant inline copy
 - Trips and Profile now use shorter operational labels, remove redundant sync notices, and switch forms/settings to vertical mobile layouts before controls can collide
 - Profile avatars now propagate through the shared trip roster and ledger settlement identities, with an initials fallback and dark-mode-aware presentation
