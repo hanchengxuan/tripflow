@@ -16,6 +16,7 @@
 - [x] Reduce route/location helper copy and make the next-step action hierarchy clearer.
 - [x] Replace space-heavy duration/template chips with compact type selection and explicit start/end date-time fields.
 - [x] Show route mode controls for any consecutive located items and provide a Google Maps directions hand-off.
+- [x] Keep the add-plan composer explicitly cancellable in new, editing, and trip-range confirmation states.
 - [ ] Verify timeline, stays, and transport at 375px/768px/1280px in light and dark themes.
 
 ## Ledger
