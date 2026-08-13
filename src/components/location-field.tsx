@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { Chevron } from '@/components/chevron';
 import { useI18n } from '@/features/i18n/i18n-provider';
 import { type PlaceSuggestion, searchPlaces } from '@/features/places/place-search';
 import { useTheme } from '@/hooks/use-theme';
@@ -50,9 +51,6 @@ export function LocationField({ value, onChange, onSelect }: { value: string; on
         />
         {loading ? <ActivityIndicator color="#087F6A" /> : null}
       </View>
-      <ThemedText type="small" themeColor="textSecondary">
-        {tx('输入酒店、景点、车站或地址。已接入 Google Places 后会自动给出建议。', 'Type a hotel, attraction, station, or address. Suggestions appear automatically once Google Places is configured.')}
-      </ThemedText>
       {value.trim().length >= 3 && suggestions.length > 0 ? (
         <View style={[styles.suggestions, { backgroundColor: theme.backgroundElement, borderColor: theme.backgroundSelected }]}>
           {suggestions.map((suggestion) => (
@@ -70,12 +68,11 @@ export function LocationField({ value, onChange, onSelect }: { value: string; on
                 <ThemedText type="smallBold">{suggestion.mainText}</ThemedText>
                 {suggestion.secondaryText ? <ThemedText type="small" themeColor="textSecondary">{suggestion.secondaryText}</ThemedText> : null}
               </View>
-              <ThemedText type="small" themeColor="textSecondary">{tx('使用', 'Use')}</ThemedText>
+              <Chevron color={theme.textSecondary} />
             </Pressable>
           ))}
         </View>
       ) : null}
-      {!available ? <ThemedText type="small" themeColor="textSecondary">{tx('地点自动补全尚未配置，你仍可手动输入。', 'Place autocomplete is not configured yet; manual entry still works.')}</ThemedText> : null}
     </View>
   );
 }

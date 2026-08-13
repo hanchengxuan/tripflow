@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { Chevron } from '@/components/chevron';
 import { useTheme } from '@/hooks/use-theme';
 import { useI18n } from '@/features/i18n/i18n-provider';
 
@@ -81,14 +82,12 @@ export function DateTimeField({
         accessibilityRole="button"
         accessibilityLabel={`${label}：${displayValue}`}
         onPress={() => setOpen(true)}
-        style={[styles.control, { backgroundColor: theme.background, borderColor: theme.backgroundSelected }]}>
+        style={[styles.control, { backgroundColor: theme.background, borderColor: theme.backgroundSelected }]}
+      >
         <View style={styles.copy}>
           <ThemedText type="smallBold">{displayValue}</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            {mode === 'date' ? tx('点按选择日期', 'Tap to choose a date') : tx('点按选择时间', 'Tap to choose a time')}
-          </ThemedText>
         </View>
-        <ThemedText themeColor="textSecondary">{tx('更改', 'Change')} ›</ThemedText>
+        <Chevron color={theme.textSecondary} />
       </Pressable>
       {picker}
     </View>

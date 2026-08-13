@@ -1,0 +1,33 @@
+# TripFlow UI redesign tasks
+
+## Shared shell and auth
+
+- [x] Keep the authenticated shell behind one initial recovery state.
+- [x] Make Screen headers compact and combine subtitle/meta into one context row.
+- [x] Remove redundant InfoCard eyebrow copy while preserving accessibility context.
+- [x] Recompose login into a focused mobile-first form with a calm desktop split layout.
+- [ ] Add a reusable compact status/toast region for local success and error feedback.
+
+## Today
+
+- [x] Keep add-plan reachable from a persistent action and scroll to the composer anchor.
+- [x] Confirm trip-date extension before adding an out-of-range plan.
+- [ ] Reduce route/location helper copy and make the next-step action hierarchy clearer.
+- [ ] Verify timeline, stays, and transport at 375px/768px/1280px in light and dark themes.
+
+## Ledger
+
+- [x] Keep add-expense reachable from a persistent action and stack narrow controls.
+- [ ] Make the settlement task the dominant first action and move history behind progressive disclosure.
+- [ ] Shorten AI/receipt guidance without removing confirmation or recovery paths.
+
+## Trips and Profile
+
+- [x] Stack narrow management/editor controls before they collide.
+- [ ] Make active-trip switching and member actions more visibly task-oriented.
+- [ ] Group account settings by frequency and isolate destructive actions.
+
+## Verification
+
+- [ ] Run local visual checks at 375px, 768px, and 1280px plus dark mode.
+- [ ] Run lint, typecheck, tests, web export, CI, merge, and production smoke tests for each slice.
