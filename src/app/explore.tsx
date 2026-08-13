@@ -64,7 +64,7 @@ export default function TripsScreen() {
 
   const tripSummary = useMemo(() => activeTrip
     ? tx(`${activeTrip.startsOn} 至 ${activeTrip.endsOn} · ${activeTrip.homeCurrency}`, `${activeTrip.startsOn} to ${activeTrip.endsOn} · ${activeTrip.homeCurrency}`)
-    : tx('先创建一个旅行空间，之后随时邀请同行者。', 'Create your first trip, then invite travellers anytime.'), [activeTrip, tx]);
+    : undefined, [activeTrip, tx]);
   const currencyOptions = getCurrencyOptions(locale === 'en');
   const timeZoneOptions = getTimeZoneOptions(locale === 'en');
 
@@ -197,7 +197,7 @@ export default function TripsScreen() {
   }
 
   return (
-    <Screen title={tx('行程', 'Trips')} subtitle={tx('选择旅程，管理同行者。', 'Choose a trip and manage the group.')}>
+    <Screen title={tx('行程', 'Trips')} subtitle={tx('创建 · 加入 · 管理', 'Create · join · manage')}>
       {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
       {actionError ? <InlineNotice tone="error">{actionError}</InlineNotice> : null}
       {success ? <InlineNotice>{success}</InlineNotice> : null}
@@ -207,7 +207,6 @@ export default function TripsScreen() {
         <View style={styles.heroTop}>
           <View style={styles.heroCopy}>
             <SectionHeading
-              eyebrow={tx('当前行程', 'Current trip')}
               title={activeTrip?.name ?? tx('还没有行程', 'No trip yet')}
               detail={tripSummary}
             />
@@ -223,7 +222,7 @@ export default function TripsScreen() {
 
       {openPanel === 'create' ? (
         <View style={[styles.focusPanel, { backgroundColor: theme.backgroundElement }]}>
-          <PanelHeading title={tx('创建新行程', 'Create a new trip')} caption={tx('先设置基本信息，详细安排可以稍后添加。', 'Start with the basics. Add the detailed plan later.')} />
+          <PanelHeading title={tx('创建新行程', 'Create a new trip')} />
           <TripForm name={name} setName={setName} startsOn={startsOn} setStartsOn={setStartsOn} endsOn={endsOn} setEndsOn={setEndsOn} currency={currency} setCurrency={setCurrency} timeZone={timeZone} setTimeZone={setTimeZone} currencyOptions={currencyOptions} timeZoneOptions={timeZoneOptions} tx={tx} />
           <ActionButton busy={busyAction === 'create'} disabled={!name.trim()} onPress={() => void submitTrip()}>{tx('创建并进入行程', 'Create and open trip')}</ActionButton>
         </View>
@@ -231,7 +230,7 @@ export default function TripsScreen() {
 
       {openPanel === 'join' ? (
         <View style={[styles.focusPanel, { backgroundColor: theme.backgroundElement }]}>
-          <PanelHeading title={tx('加入同行者的行程', 'Join a shared trip')} caption={tx('扫描邀请二维码，或粘贴 48 位邀请码。', 'Scan an invite QR code or paste the 48-character code.')} />
+          <PanelHeading title={tx('加入同行者的行程', 'Join a shared trip')} />
           <ActionButton tone="secondary" onPress={() => setScanningInvite((current) => !current)}>{scanningInvite ? tx('关闭扫码', 'Close scanner') : tx('扫描二维码', 'Scan QR code')}</ActionButton>
           {scanningInvite ? <InviteQrScanner tx={tx} onToken={acceptScannedInvite} /> : null}
           <FormField label={tx('邀请码', 'Invite code')} value={inviteCode} onChangeText={setInviteCode} autoCapitalize="none" autoCorrect={false} placeholder={tx('粘贴邀请码', 'Paste invite code')} />
@@ -242,7 +241,7 @@ export default function TripsScreen() {
       {openPanel === 'manage' && activeTrip ? (
         <View style={[styles.focusPanel, { backgroundColor: theme.backgroundElement }]}>
           <View style={styles.manageHeader}>
-            <PanelHeading title={activeTrip.name} caption={tx('行程资料与同行者', 'Trip details and travellers')} />
+            <PanelHeading title={activeTrip.name} />
             <Pressable accessibilityRole="button" onPress={() => setOpenPanel(null)} style={({ pressed }) => [styles.textButton, pressed && styles.pressed]}><ThemedText type="smallBold" themeColor="textSecondary">{tx('关闭', 'Close')}</ThemedText></Pressable>
           </View>
 
@@ -276,7 +275,7 @@ export default function TripsScreen() {
 
           <View style={[styles.travellersBlock, { borderTopColor: theme.backgroundSelected }]}>
             <View style={styles.sectionHeading}>
-              <View style={styles.sectionHeadingCopy}><ThemedText type="smallBold" style={styles.sectionTitle}>{tx('同行者', 'Travellers')}</ThemedText><ThemedText type="small" themeColor="textSecondary">{isOwner ? tx('点击成员可调整权限或移出行程。', 'Open a traveller to change access or remove them.') : tx('共同参与这次旅程的人。', 'People sharing this trip.')}</ThemedText></View>
+              <View style={styles.sectionHeadingCopy}><ThemedText type="smallBold" style={styles.sectionTitle}>{tx('同行者', 'Travellers')}</ThemedText></View>
               <ThemedText type="small" themeColor="textSecondary">{members.length}</ThemedText>
             </View>
             <View>
@@ -309,7 +308,7 @@ export default function TripsScreen() {
 
             {isOwner ? (
               <View style={[styles.inviteArea, { borderTopColor: theme.backgroundSelected }]}>
-                <PanelHeading title={tx('邀请新同行者', 'Invite a traveller')} caption={tx('选择初始权限，生成一枚可分享的邀请码。', 'Choose initial access and create a shareable code.')} />
+                <PanelHeading title={tx('邀请新同行者', 'Invite a traveller')} />
                 <View style={styles.roleRow}><ChoiceChip selected={inviteRole === 'editor'} onPress={() => setInviteRole('editor')}>{tx('可编辑', 'Can edit')}</ChoiceChip><ChoiceChip selected={inviteRole === 'viewer'} onPress={() => setInviteRole('viewer')}>{tx('仅查看', 'View only')}</ChoiceChip></View>
                 <ActionButton tone="secondary" busy={busyAction === 'invite'} onPress={() => void generateInvite()}>{tx('生成邀请码', 'Create invite code')}</ActionButton>
                 {generatedInvite ? (
@@ -336,7 +335,7 @@ export default function TripsScreen() {
   );
 }
 
-function PanelHeading({ title, caption }: { title: string; caption: string }) { return <View style={styles.panelHeader}><ThemedText type="smallBold" style={styles.panelTitle}>{title}</ThemedText><ThemedText type="small" themeColor="textSecondary">{caption}</ThemedText></View>; }
+function PanelHeading({ title, caption }: { title: string; caption?: string }) { return <View style={styles.panelHeader}><ThemedText type="smallBold" style={styles.panelTitle}>{title}</ThemedText>{caption ? <ThemedText type="small" themeColor="textSecondary">{caption}</ThemedText> : null}</View>; }
 function Detail({ label, value }: { label: string; value: string }) { return <View style={styles.detail}><ThemedText type="small" themeColor="textSecondary">{label}</ThemedText><ThemedText type="smallBold">{value}</ThemedText></View>; }
 
 function TripForm(props: { name: string; setName: (value: string) => void; startsOn: string; setStartsOn: (value: string) => void; endsOn: string; setEndsOn: (value: string) => void; currency: string; setCurrency: (value: string) => void; timeZone: string; setTimeZone: (value: string) => void; currencyOptions: { label: string; value: string }[]; timeZoneOptions: { label: string; value: string }[]; tx: (zh: string, en: string) => string }) {
