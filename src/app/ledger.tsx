@@ -1098,14 +1098,16 @@ function SettlementWorkspace(props: {
           const received = sumSettlements(props.settlements, snapshot.currency, 'to', props.currentUserId);
           return (
             <View key={snapshot.currency} style={[styles.personalCurrencyRow, props.compact && styles.personalCurrencyRowCompact]}>
-              <View style={styles.currencyIdentity}>
+              <View style={[styles.currencyIdentity, props.compact && styles.currencyIdentityCompact]}>
                 <ThemedText type="smallBold" style={[styles.currencyCode, { color: props.positiveColor }]}>{snapshot.currency}</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">{snapshot.currency.toUpperCase() === props.baseCurrency.toUpperCase() ? tx('行程本位币', 'Trip base') : tx('实际支付币种', 'Payment currency')}</ThemedText>
               </View>
-              <Metric label={tx('待转出', 'To send')} value={formatMinorAmount(pendingOut, snapshot.currency)} color={props.dangerColor} />
-              <Metric label={tx('已转出', 'Sent')} value={formatMinorAmount(sent, snapshot.currency)} />
-              <Metric label={tx('待收款', 'To receive')} value={formatMinorAmount(pendingIn, snapshot.currency)} />
-              <Metric label={tx('已收款', 'Received')} value={formatMinorAmount(received, snapshot.currency)} color={props.positiveColor} />
+              <View style={[styles.metricGrid, props.compact && styles.metricGridCompact]}>
+                <Metric compact={props.compact} label={tx('待转出', 'To send')} value={formatMinorAmount(pendingOut, snapshot.currency)} color={props.dangerColor} />
+                <Metric compact={props.compact} label={tx('已转出', 'Sent')} value={formatMinorAmount(sent, snapshot.currency)} />
+                <Metric compact={props.compact} label={tx('待收款', 'To receive')} value={formatMinorAmount(pendingIn, snapshot.currency)} />
+                <Metric compact={props.compact} label={tx('已收款', 'Received')} value={formatMinorAmount(received, snapshot.currency)} color={props.positiveColor} />
+              </View>
             </View>
           );
         })}
@@ -1356,9 +1358,9 @@ function ExpenseActivity(props: {
   );
 }
 
-function Metric({ label, value, color }: { label: string; value: string; color?: string }) {
+function Metric({ compact = false, label, value, color }: { compact?: boolean; label: string; value: string; color?: string }) {
   return (
-    <View style={styles.metric}>
+    <View style={[styles.metric, compact && styles.metricCompact]}>
       <ThemedText type="small" themeColor="textSecondary">{label}</ThemedText>
       <ThemedText type="smallBold" style={color ? { color } : undefined}>{value}</ThemedText>
     </View>
@@ -1452,11 +1454,12 @@ const styles = StyleSheet.create({
   personalSummary: { gap: 18, paddingVertical: 6 },
   summaryHeading: { gap: 4 },
   sectionTitle: { fontSize: 22, lineHeight: 28, fontWeight: '700' },
-  personalCurrencyRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', gap: 14, paddingVertical: 14, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#AFCACA' },
-  personalCurrencyRowCompact: { gap: 10 },
-  currencyIdentity: { minWidth: 90, gap: 2, paddingBottom: 2 },
+  personalCurrencyRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 14, paddingVertical: 14, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#AFCACA' },
+  personalCurrencyRowCompact: { flexDirection: 'column', alignItems: 'stretch', gap: 12 },
+  currencyIdentity: { minWidth: 90, gap: 2, paddingBottom: 2 }, currencyIdentityCompact: { minWidth: 0 },
   currencyCode: { minWidth: 42, paddingBottom: 2 },
-  metric: { minWidth: 94, flexGrow: 1, gap: 2 },
+  metricGrid: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', gap: 14 }, metricGridCompact: { gap: 10, alignItems: 'flex-start' },
+  metric: { minWidth: 94, flexGrow: 1, gap: 2 }, metricCompact: { minWidth: 0, flexBasis: 0 },
   sectionBlock: { gap: 0 },
   sectionHeading: { gap: 4, paddingBottom: 10 },
   transferRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingVertical: 16, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#AFCACA' },

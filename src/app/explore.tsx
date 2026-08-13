@@ -222,9 +222,9 @@ export default function TripsScreen() {
           {activeTrip ? <View style={[styles.memberCount, { backgroundColor: theme.backgroundSelected }]}><ThemedText type="smallBold">{tx(`${members.length} 人`, `${members.length} people`)}</ThemedText></View> : null}
         </View>
         <View style={[styles.quickActions, compact && styles.quickActionsCompact]}>
-          {activeTrip ? <View style={styles.actionGrow}><ActionButton onPress={() => void openTrip(activeTrip)}>{tx('管理当前行程', 'Manage current trip')}</ActionButton></View> : null}
-          <View style={styles.actionGrow}><ActionButton tone={activeTrip ? 'secondary' : 'primary'} onPress={() => showPanel('create')}>{openPanel === 'create' ? tx('收起', 'Close') : tx('新建行程', 'New trip')}</ActionButton></View>
-          <View style={styles.actionGrow}><ActionButton tone="secondary" onPress={() => showPanel('join')}>{openPanel === 'join' ? tx('收起', 'Close') : tx('邀请码 / 扫码', 'Invite / scan')}</ActionButton></View>
+          {activeTrip ? <View style={[styles.actionGrow, compact && styles.actionGrowCompact]}><ActionButton onPress={() => void openTrip(activeTrip)}>{tx('管理当前行程', 'Manage current trip')}</ActionButton></View> : null}
+          <View style={[styles.actionGrow, compact && styles.actionGrowCompact]}><ActionButton tone={activeTrip ? 'secondary' : 'primary'} onPress={() => showPanel('create')}>{openPanel === 'create' ? tx('收起', 'Close') : tx('新建行程', 'New trip')}</ActionButton></View>
+          <View style={[styles.actionGrow, compact && styles.actionGrowCompact]}><ActionButton tone="secondary" onPress={() => showPanel('join')}>{openPanel === 'join' ? tx('收起', 'Close') : tx('邀请码 / 扫码', 'Invite / scan')}</ActionButton></View>
         </View>
       </View>
 
@@ -364,7 +364,7 @@ const styles = StyleSheet.create({
   tripHero: { gap: 20, paddingVertical: 2 },
   heroTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 16 }, heroCopy: { flex: 1, gap: 4 },
   memberCount: { minHeight: 36, borderRadius: 999, paddingHorizontal: 12, justifyContent: 'center' },
-  quickActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 }, quickActionsCompact: { flexDirection: 'column' }, actionGrow: { flexGrow: 1, flexBasis: 150 },
+  quickActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 }, quickActionsCompact: { flexDirection: 'column', gap: 10 }, actionGrow: { flexGrow: 1, flexBasis: 150 }, actionGrowCompact: { flexGrow: 0, flexBasis: 'auto' },
   focusPanel: { borderRadius: 16, padding: 18, gap: 18, shadowColor: '#17324D', shadowOpacity: 0.07, shadowRadius: 18, shadowOffset: { width: 0, height: 7 } },
   panelHeader: { flex: 1, gap: 3 }, panelTitle: { fontSize: 20, lineHeight: 26 }, manageHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 16 },
   formStack: { gap: 14 }, formRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 }, formRowCompact: { flexDirection: 'column' }, fieldGrow: { flexGrow: 1, flexBasis: 220 }, fieldGrowCompact: { flexBasis: 'auto' },
