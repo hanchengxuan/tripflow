@@ -1,4 +1,4 @@
-import { useEffect, useRef, type PropsWithChildren, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, type PropsWithChildren, type ReactNode } from 'react';
 import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -19,6 +19,10 @@ export function Screen({ floatingAction, meta, scrollToKey, scrollToOffset, scro
   const insets = useSafeAreaInsets();
   const theme = useTheme();
   const scrollRef = useRef<ScrollView>(null);
+  const scrollToTarget = useCallback(() => {
+    if (!scrollToKey || scrollToOffset === undefined) return;
+    scrollRef.current?.scrollTo({ y: Math.max(0, scrollToOffset - 16), animated: true });
+  }, [scrollToKey, scrollToOffset]);
 
   useEffect(() => {
     if (!scrollToEndKey) return;
@@ -28,9 +32,15 @@ export function Screen({ floatingAction, meta, scrollToKey, scrollToOffset, scro
 
   useEffect(() => {
     if (!scrollToKey || scrollToOffset === undefined) return;
-    const timeout = setTimeout(() => scrollRef.current?.scrollTo({ y: Math.max(0, scrollToOffset - 16), animated: true }), 0);
-    return () => clearTimeout(timeout);
-  }, [scrollToKey, scrollToOffset]);
+    let secondFrame = 0;
+    const frame = requestAnimationFrame(() => {
+      secondFrame = requestAnimationFrame(scrollToTarget);
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      if (secondFrame) cancelAnimationFrame(secondFrame);
+    };
+  }, [scrollToKey, scrollToOffset, scrollToTarget]);
 
   return (
     <View style={[styles.frame, { backgroundColor: theme.background }]}>

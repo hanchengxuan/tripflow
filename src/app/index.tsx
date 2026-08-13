@@ -190,6 +190,7 @@ export default function TodayScreen() {
     const start = isoToZonedDateTime(item.startsAt, tripTimeZone);
     const end = isoToZonedDateTime(item.endsAt ?? item.startsAt, tripTimeZone);
     setEditingItemId(item.id);
+    setComposerOffset(undefined);
     setComposerOpen(true);
     setConfirmDeleteItem(deleteFirst);
     setTitle(item.title);
@@ -218,6 +219,7 @@ export default function TodayScreen() {
 
   function openNewComposer() {
     setEditingItemId(undefined);
+    setComposerOffset(undefined);
     setPendingTripRange(undefined);
     setConfirmDeleteItem(false);
     setTitle('');

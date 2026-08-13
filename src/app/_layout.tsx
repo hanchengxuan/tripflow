@@ -8,7 +8,7 @@ import AppTabs from '@/components/app-tabs';
 import { AuthProvider, useAuth } from '@/features/auth/auth-provider';
 import { AuthLoadingScreen, AuthScreen, OnboardingScreen } from '@/features/auth/auth-screen';
 import { LanguageProvider, useI18n } from '@/features/i18n/i18n-provider';
-import { MvpProvider } from '@/features/mvp/mvp-provider';
+import { MvpProvider, useMvp } from '@/features/mvp/mvp-provider';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -24,9 +24,14 @@ function SessionRouter() {
 
   return (
     <MvpProvider>
-      <AppTabs />
+      <ProductRouter />
     </MvpProvider>
   );
+}
+
+function ProductRouter() {
+  const { initialLoading } = useMvp();
+  return initialLoading ? <AuthLoadingScreen configured /> : <AppTabs />;
 }
 
 function LocalizedHead() {
