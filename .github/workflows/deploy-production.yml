@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  deployments: write
 
 concurrency:
   group: production-deploy
@@ -63,7 +64,21 @@ jobs:
           echo "Deployed $url"
       - name: Smoke test deployment URL
         run: |
-          curl --fail --silent --show-error --location --retry 3 --retry-all-errors "${{ steps.deploy.outputs.url }}/"
-          curl --fail --silent --show-error --location --retry 3 --retry-all-errors "${{ steps.deploy.outputs.url }}/privacy"
+          for path in / /ledger /explore /privacy /support; do
+            curl --fail --silent --show-error --location --retry 5 --retry-all-errors --max-time 30 "${{ steps.deploy.outputs.url }}$path" > /dev/null
+          done
       - name: Smoke test production alias
-        run: curl --fail --silent --show-error --location --retry 3 --retry-all-errors "$PRODUCTION_URL/"
+        run: |
+          for path in / /ledger /privacy /support; do
+            curl --fail --silent --show-error --location --retry 5 --retry-all-errors --max-time 30 "$PRODUCTION_URL$path" > /dev/null
+          done
+      - name: Deployment summary
+        if: success()
+        run: |
+          {
+            echo "### Production deployment"
+            echo "- Preview artifact: ${{ steps.deploy.outputs.url }}"
+            echo "- Production alias: $PRODUCTION_URL"
+            echo "- Commit: $GITHUB_SHA"
+            echo "- Smoke tests: passed (/, /ledger, /explore, /privacy, /support)"
+          } >> "$GITHUB_STEP_SUMMARY"

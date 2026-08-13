@@ -33,7 +33,12 @@ jobs:
       - name: Unit tests
         run: npm test -- --ci --watchman=false
       - name: Dependency audit
-        run: npm audit --omit=dev --audit-level=high
+        shell: bash
+        run: |
+          audit_file="$(mktemp)"
+          trap 'rm -f "$audit_file"' EXIT
+          npm audit --omit=dev --audit-level=high --json > "$audit_file" || true
+          node scripts/check-npm-audit.mjs "$audit_file"
       - name: Build web export
         run: npm run build:web
       - name: Verify web artifact
