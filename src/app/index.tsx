@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Linking, Pressable, StyleSheet, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { DateTimeField } from '@/components/date-time-field';
 import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/form-controls';
@@ -59,7 +59,9 @@ const routeTravelModes: RouteTravelMode[] = ['DRIVE', 'TRANSIT', 'WALK', 'BICYCL
 export default function TodayScreen() {
   const { locale, languageTag, tx } = useI18n();
   const theme = useTheme();
-  const { activeTrip, members, itineraryItems, loading, error, currentUserId, addItineraryItem, addStayTransfer, saveItineraryItem, setItineraryRouteMode, removeItineraryItem } = useMvp();
+  const { width } = useWindowDimensions();
+  const compact = width < 520;
+  const { activeTrip, members, itineraryItems, error, currentUserId, addItineraryItem, addStayTransfer, saveItineraryItem, saveTrip, setItineraryRouteMode, removeItineraryItem } = useMvp();
   const [title, setTitle] = useState('');
   const [location, setLocation] = useState('');
   const [googlePlaceId, setGooglePlaceId] = useState('');
@@ -76,6 +78,8 @@ export default function TodayScreen() {
   const [currentTimestamp, setCurrentTimestamp] = useState(0);
   const [editingItemId, setEditingItemId] = useState<string>();
   const [composerOpen, setComposerOpen] = useState(false);
+  const [composerOffset, setComposerOffset] = useState<number>();
+  const [pendingTripRange, setPendingTripRange] = useState<{ startsOn: string; endsOn: string }>();
   const [confirmDeleteItem, setConfirmDeleteItem] = useState(false);
   const [routeEstimates, setRouteEstimates] = useState<Record<string, RouteEstimate>>({});
 
@@ -97,6 +101,8 @@ export default function TodayScreen() {
       setCurrentTimestamp(Date.now());
       setEditingItemId(undefined);
       setComposerOpen(false);
+      setComposerOffset(undefined);
+      setPendingTripRange(undefined);
       setConfirmDeleteItem(false);
     }, 0);
     return () => clearTimeout(timeout);
@@ -126,7 +132,7 @@ export default function TodayScreen() {
     return () => { cancelled = true; };
   }, [activeTrip, itineraryItems]);
 
-  async function submitItem() {
+  async function submitItem(acceptTripRangeChange = false) {
     setBusy(true);
     setFormError(undefined);
     setSuccess(undefined);
@@ -137,6 +143,24 @@ export default function TodayScreen() {
         ? editingItem.endsAt
         : zonedDateTimeToIso(kind === 'lodging' ? endDate : date, endTime, tripTimeZone);
       if (new Date(endsAt) <= new Date(startsAt)) throw new Error(tx('结束时间需要晚于开始时间。', 'End time must be later than start time.'));
+      const nextTripRange = activeTrip ? {
+        startsOn: date < activeTrip.startsOn ? date : activeTrip.startsOn,
+        endsOn: (kind === 'lodging' ? endDate : date) > activeTrip.endsOn ? (kind === 'lodging' ? endDate : date) : activeTrip.endsOn,
+      } : undefined;
+      const tripRangeChanged = Boolean(nextTripRange && activeTrip && (nextTripRange.startsOn !== activeTrip.startsOn || nextTripRange.endsOn !== activeTrip.endsOn));
+      if (!editingItem && tripRangeChanged && !acceptTripRangeChange) {
+        setPendingTripRange(nextTripRange);
+        return;
+      }
+      if (!editingItem && tripRangeChanged && nextTripRange && activeTrip) {
+        await saveTrip({
+          name: activeTrip.name,
+          startsOn: nextTripRange.startsOn,
+          endsOn: nextTripRange.endsOn,
+          homeCurrency: activeTrip.homeCurrency,
+          defaultTimeZone: activeTrip.defaultTimeZone,
+        });
+      }
       if (editingItem) {
         await saveItineraryItem({ itemId: editingItem.id, title, locationLabel: editingItem.linkedStayId ? editingItem.locationLabel : location, googlePlaceId: editingItem.linkedStayId ? editingItem.googlePlaceId : googlePlaceId, startsAt, endsAt });
       } else {
@@ -147,8 +171,12 @@ export default function TodayScreen() {
       setGooglePlaceId('');
       setEditingItemId(undefined);
       setComposerOpen(false);
+      setComposerOffset(undefined);
+      setPendingTripRange(undefined);
       setConfirmDeleteItem(false);
-      setSuccess(editingItem
+      setSuccess(tripRangeChanged
+        ? tx('行程日期已扩展，安排已加入时间线。', 'Trip dates were extended and the plan was added to the timeline.')
+        : editingItem
         ? (kind === 'lodging' ? tx('住宿已更新；旧的酒店交通已移除，请按需要重新添加。', 'Stay updated. Its old hotel transfer was removed so you can add a fresh route.') : tx('安排已更新。', 'Plan updated.'))
         : (kind === 'lodging' ? tx('住宿已按入住区间加入，不需要每天重复添加。', 'Stay added for the full date range. No daily duplicates needed.') : tx('安排已加入共享时间线。', 'Plan added to the shared timeline.')));
     } catch (caught) {
@@ -179,6 +207,8 @@ export default function TodayScreen() {
   function cancelEdit() {
     setEditingItemId(undefined);
     setComposerOpen(false);
+    setComposerOffset(undefined);
+    setPendingTripRange(undefined);
     setConfirmDeleteItem(false);
     setTitle('');
     setLocation('');
@@ -188,6 +218,7 @@ export default function TodayScreen() {
 
   function openNewComposer() {
     setEditingItemId(undefined);
+    setPendingTripRange(undefined);
     setConfirmDeleteItem(false);
     setTitle('');
     setLocation('');
@@ -200,6 +231,16 @@ export default function TodayScreen() {
     setFormError(undefined);
     setSuccess(undefined);
     setComposerOpen(true);
+  }
+
+  function updatePlanDate(value: string) {
+    setDate(value);
+    setPendingTripRange(undefined);
+  }
+
+  function updatePlanEndDate(value: string) {
+    setEndDate(value);
+    setPendingTripRange(undefined);
   }
 
   async function deleteSelectedItem() {
@@ -293,8 +334,8 @@ export default function TodayScreen() {
     const { steps, walking } = estimate.transit;
     const walkingMinutes = Math.round(walking.durationSeconds / 60);
     return (
-      <View style={[styles.transitPlan, { backgroundColor: theme.backgroundSelected }]}>
-        <View style={styles.transitPlanHeading}>
+      <View style={[styles.transitPlan, compact && styles.transitPlanCompact, { backgroundColor: theme.backgroundSelected }]}>
+        <View style={[styles.transitPlanHeading, compact && styles.transitPlanHeadingCompact]}>
           <ThemedText type="smallBold">{tx('公交路线', 'Transit route')}</ThemedText>
           {walkingMinutes > 0 ? (
             <ThemedText type="small" themeColor="textSecondary">
@@ -385,13 +426,32 @@ export default function TodayScreen() {
 
   return (
     <Screen
-      scrollToEndKey={composerOpen ? (editingItemId ?? 'new-plan') : undefined}
+      scrollToKey={composerOpen ? (editingItemId ?? 'new-plan') : undefined}
+      scrollToOffset={composerOffset}
       meta={activeTrip ? tripRange : tx('今天', 'Today')}
       title={activeTrip?.name ?? tx('把旅程安排成一条可执行的流', 'Turn the trip into one shared flow')}
       subtitle={activeTrip ? tx('下一项安排', 'Next up') : tx('从“行程”创建或加入一个行程。', 'Create or join a trip from Trips.')}
+      floatingAction={activeTrip && canEdit ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={composerOpen ? tx('关闭添加安排', 'Close add plan') : tx('添加安排', 'Add plan')}
+          accessibilityState={{ expanded: composerOpen }}
+          onPress={() => {
+            if (composerOpen) {
+              cancelEdit();
+              return;
+            }
+            openNewComposer();
+          }}
+          style={({ pressed }) => [styles.floatingAdd, pressed && styles.pressed]}>
+          <View style={styles.plusIcon}>
+            <View style={styles.plusHorizontal} />
+            <View style={styles.plusVertical} />
+          </View>
+        </Pressable>
+      ) : null}
     >
       {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
-      {loading ? <InlineNotice>{tx('正在刷新共享时间线…', 'Refreshing the shared timeline…')}</InlineNotice> : null}
       {success ? <InlineNotice>{success}</InlineNotice> : null}
 
       {activeTrip ? (
@@ -408,50 +468,28 @@ export default function TodayScreen() {
             </View>
           </View>
 
-          <View style={styles.summaryStrip}>
-            <View style={styles.summaryItem}>
+          <View style={[styles.summaryStrip, compact && styles.summaryStripCompact]}>
+            <View style={[styles.summaryItem, compact && styles.summaryItemCompact]}>
               <ThemedText type="smallBold">{upcomingItems.length}</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">{tx('安排', 'plans')}</ThemedText>
             </View>
             <View style={[styles.summaryDivider, { backgroundColor: theme.backgroundSelected }]} />
-            <View style={styles.summaryItem}>
+            <View style={[styles.summaryItem, compact && styles.summaryItemCompact]}>
               <ThemedText type="smallBold">{members.length}</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">{tx('同行', 'travellers')}</ThemedText>
             </View>
             <View style={[styles.summaryDivider, { backgroundColor: theme.backgroundSelected }]} />
-            <View style={styles.summaryItem}>
-              <ThemedText type="smallBold">{tripRange}</ThemedText>
+            <View style={[styles.summaryItem, compact && styles.summaryItemCompact]}>
+              <ThemedText type="smallBold" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{tripRange}</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">{tx('日期', 'dates')}</ThemedText>
             </View>
           </View>
         </View>
       ) : null}
 
-      {activeTrip && canEdit ? (
-        <View style={styles.quickAddRow}>
-          <View style={styles.quickAddCopy}>
-            <ThemedText type="smallBold">{tx('行程安排', 'Plans')}</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">{tx(`${upcomingItems.length} 项`, `${upcomingItems.length} upcoming`)}</ThemedText>
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityState={{ expanded: composerOpen }}
-            accessibilityLabel={composerOpen ? tx('收起添加安排', 'Close add plan') : tx('添加安排', 'Add plan')}
-            onPress={() => {
-              if (composerOpen) {
-                cancelEdit();
-                return;
-              }
-              openNewComposer();
-            }}
-            style={({ pressed }) => [styles.quickAddButton, pressed && styles.pressed]}>
-            <ThemedText type="smallBold" style={styles.quickAddButtonText}>{composerOpen ? tx('收起', 'Close') : tx('添加安排', 'Add plan')}</ThemedText>
-          </Pressable>
-        </View>
-      ) : null}
-
       {activeTrip && canEdit && composerOpen ? (
-        <InfoCard label={editingItem ? tx('编辑', 'Edit') : tx('新安排', 'New plan')} title={editingItem ? editingItem.title : tx('添加安排', 'Add plan')} accent={editingItem ? getKindAccent(editingItem.kind) : '#D86E35'}>
+        <View onLayout={({ nativeEvent }) => setComposerOffset(nativeEvent.layout.y)}>
+          <InfoCard label={editingItem ? tx('编辑', 'Edit') : tx('新安排', 'New plan')} title={editingItem ? editingItem.title : tx('添加安排', 'Add plan')} accent={editingItem ? getKindAccent(editingItem.kind) : '#D86E35'}>
           <View style={styles.form}>
             {editingItem ? null : <View style={styles.templateWrap}>
               {quickTemplates.map((template) => (
@@ -468,13 +506,32 @@ export default function TodayScreen() {
             </View>}
             <FormField label={tx('安排', 'Plan')} value={title} onChangeText={setTitle} placeholder={tx('例如：机场快线 → 中环', 'For example: Airport Express → Central')} />
             {editingItem?.linkedStayId ? <View style={[styles.lockedDestination, { backgroundColor: theme.backgroundSelected }]}><ThemedText type="smallBold">{tx('酒店交通', 'Hotel transfer')}</ThemedText><ThemedText type="small" themeColor="textSecondary">{tx(`${editingItem.locationLabel ?? '—'} · ${formatZonedDateTimeRange(editingItem.endsAt ?? editingItem.startsAt, undefined, languageTag, tripTimeZone)}`, `${editingItem.locationLabel ?? '—'} · ${formatZonedDateTimeRange(editingItem.endsAt ?? editingItem.startsAt, undefined, languageTag, tripTimeZone)}`)}</ThemedText></View> : <LocationField value={location} onChange={(value) => { setLocation(value); setGooglePlaceId(''); }} onSelect={(suggestion) => { setLocation(suggestion.text); setGooglePlaceId(suggestion.placeId); }} />}
-            {editingItem?.linkedStayId ? <View style={styles.row}><View style={styles.dateField}><DateTimeField label={tx('日期', 'Date')} value={date} mode="date" minimumDate={new Date(`${activeTrip.startsOn}T12:00:00`)} maximumDate={new Date(`${activeTrip.endsOn}T12:00:00`)} onChange={setDate} /></View><View style={styles.grow}><DateTimeField label={tx('时间', 'Time')} value={startTime} mode="time" onChange={setStartTime} /></View></View> : kind === 'lodging' ? <><View style={styles.row}><View style={styles.dateField}><DateTimeField label={tx('入住日期', 'Check-in')} value={date} mode="date" minimumDate={new Date(`${activeTrip.startsOn}T12:00:00`)} maximumDate={new Date(`${activeTrip.endsOn}T12:00:00`)} onChange={(value) => { setDate(value); if (endDate < value) setEndDate(value); }} /></View><View style={styles.grow}><DateTimeField label={tx('入住时间', 'Time')} value={startTime} mode="time" onChange={setStartTime} /></View></View><View style={styles.row}><View style={styles.dateField}><DateTimeField label={tx('退房日期', 'Check-out')} value={endDate} mode="date" minimumDate={new Date(`${date}T12:00:00`)} maximumDate={new Date(`${activeTrip.endsOn}T12:00:00`)} onChange={setEndDate} /></View><View style={styles.grow}><DateTimeField label={tx('退房时间', 'Time')} value={endTime} mode="time" onChange={setEndTime} /></View></View></> : <View style={styles.row}><View style={styles.dateField}><DateTimeField label={tx('日期', 'Date')} value={date} mode="date" minimumDate={new Date(`${activeTrip.startsOn}T12:00:00`)} maximumDate={new Date(`${activeTrip.endsOn}T12:00:00`)} onChange={setDate} /></View><View style={styles.grow}><DateTimeField label={tx('开始', 'Starts')} value={startTime} mode="time" onChange={setStartTime} /></View><View style={styles.grow}><DateTimeField label={tx('结束', 'Ends')} value={endTime} mode="time" onChange={setEndTime} /></View></View>}
+            {editingItem?.linkedStayId ? (
+              <View style={styles.row}><View style={styles.dateField}><DateTimeField label={tx('日期', 'Date')} value={date} mode="date" onChange={updatePlanDate} /></View><View style={styles.grow}><DateTimeField label={tx('时间', 'Time')} value={startTime} mode="time" onChange={setStartTime} /></View></View>
+            ) : kind === 'lodging' ? (
+              <>
+                <View style={styles.row}><View style={styles.dateField}><DateTimeField label={tx('入住日期', 'Check-in')} value={date} mode="date" onChange={(value) => { updatePlanDate(value); if (endDate < value) updatePlanEndDate(value); }} /></View><View style={styles.grow}><DateTimeField label={tx('入住时间', 'Time')} value={startTime} mode="time" onChange={setStartTime} /></View></View>
+                <View style={styles.row}><View style={styles.dateField}><DateTimeField label={tx('退房日期', 'Check-out')} value={endDate} mode="date" onChange={updatePlanEndDate} /></View><View style={styles.grow}><DateTimeField label={tx('退房时间', 'Time')} value={endTime} mode="time" onChange={setEndTime} /></View></View>
+              </>
+            ) : (
+              <View style={styles.row}><View style={styles.dateField}><DateTimeField label={tx('日期', 'Date')} value={date} mode="date" onChange={updatePlanDate} /></View><View style={styles.grow}><DateTimeField label={tx('开始', 'Starts')} value={startTime} mode="time" onChange={setStartTime} /></View><View style={styles.grow}><DateTimeField label={tx('结束', 'Ends')} value={endTime} mode="time" onChange={setEndTime} /></View></View>
+            )}
             {kind !== 'lodging' ? <View style={styles.durationRow}>{[30, 60, 120, 180].map((minutes) => <ChoiceChip key={minutes} selected={endTime === addMinutes(startTime, minutes)} onPress={() => setEndTime(addMinutes(startTime, minutes))}>{minutes < 60 ? `${minutes}m` : `${minutes / 60}h`}</ChoiceChip>)}</View> : null}
             {!editingItem ? <View style={styles.chips}>{itineraryKinds.map((itemKind) => <ChoiceChip key={itemKind} selected={kind === itemKind} onPress={() => chooseKind(itemKind)}>{kindLabel(itemKind)}</ChoiceChip>)}</View> : null}
-            {confirmDeleteItem && editingItem ? <View style={[styles.deleteConfirm, { borderTopColor: theme.backgroundSelected }]}><ThemedText type="smallBold">{tx(`删除“${editingItem.title}”？`, `Delete “${editingItem.title}”?`)}</ThemedText><ThemedText type="small" themeColor="textSecondary">{tx('此操作无法恢复。', 'This cannot be undone.')}</ThemedText><View style={styles.formActions}><View style={styles.actionGrow}><ActionButton tone="secondary" onPress={() => setConfirmDeleteItem(false)}>{tx('保留', 'Keep')}</ActionButton></View><View style={styles.actionGrow}><Pressable accessibilityRole="button" disabled={busy} onPress={() => void deleteSelectedItem()} style={({ pressed }) => [styles.dangerConfirm, pressed && styles.pressed, busy && styles.disabled]}><ThemedText type="smallBold" style={styles.dangerConfirmText}>{busy ? tx('删除中…', 'Deleting…') : tx('删除', 'Delete')}</ThemedText></Pressable></View></View></View> : <View style={styles.formActions}>{editingItem ? <View style={styles.actionGrow}><ActionButton tone="secondary" onPress={cancelEdit}>{tx('取消', 'Cancel')}</ActionButton></View> : null}<View style={styles.actionGrow}><ActionButton busy={busy} disabled={!title.trim() || (kind === 'lodging' && !location.trim())} onPress={submitItem}>{editingItem ? tx('保存', 'Save') : tx('加入行程', 'Add')}</ActionButton></View></View>}
+            {pendingTripRange ? (
+              <View style={styles.rangeConfirm}>
+                <InlineNotice>{tx(`这项安排超出当前行程。要把行程调整为 ${pendingTripRange.startsOn} — ${pendingTripRange.endsOn} 吗？`, `This plan is outside the current trip. Extend it to ${pendingTripRange.startsOn} — ${pendingTripRange.endsOn}?`)}</InlineNotice>
+                <View style={styles.formActions}>
+                  <View style={styles.actionGrow}><ActionButton tone="secondary" onPress={() => setPendingTripRange(undefined)}>{tx('返回修改', 'Edit dates')}</ActionButton></View>
+                  <View style={styles.actionGrow}><ActionButton busy={busy} onPress={() => void submitItem(true)}>{tx('调整并加入', 'Extend and add')}</ActionButton></View>
+                </View>
+              </View>
+            ) : null}
+            {confirmDeleteItem && editingItem ? <View style={[styles.deleteConfirm, { borderTopColor: theme.backgroundSelected }]}><ThemedText type="smallBold">{tx(`删除“${editingItem.title}”？`, `Delete “${editingItem.title}”?`)}</ThemedText><ThemedText type="small" themeColor="textSecondary">{tx('此操作无法恢复。', 'This cannot be undone.')}</ThemedText><View style={styles.formActions}><View style={styles.actionGrow}><ActionButton tone="secondary" onPress={() => setConfirmDeleteItem(false)}>{tx('保留', 'Keep')}</ActionButton></View><View style={styles.actionGrow}><Pressable accessibilityRole="button" disabled={busy} onPress={() => void deleteSelectedItem()} style={({ pressed }) => [styles.dangerConfirm, pressed && styles.pressed, busy && styles.disabled]}><ThemedText type="smallBold" style={styles.dangerConfirmText}>{busy ? tx('删除中…', 'Deleting…') : tx('删除', 'Delete')}</ThemedText></Pressable></View></View></View> : !pendingTripRange ? <View style={styles.formActions}>{editingItem ? <View style={styles.actionGrow}><ActionButton tone="secondary" onPress={cancelEdit}>{tx('取消', 'Cancel')}</ActionButton></View> : null}<View style={styles.actionGrow}><ActionButton busy={busy} disabled={!title.trim() || (kind === 'lodging' && !location.trim())} onPress={() => void submitItem()}>{editingItem ? tx('保存', 'Save') : tx('加入行程', 'Add')}</ActionButton></View></View> : null}
             {formError ? <InlineNotice tone="error">{formError}</InlineNotice> : null}
           </View>
-        </InfoCard>
+          </InfoCard>
+        </View>
       ) : null}
 
       {!activeTrip ? (
@@ -503,7 +560,7 @@ export default function TodayScreen() {
                         </ThemedText>
                         {stay.locationLabel ? <ThemedText type="small" themeColor="textSecondary">{stay.locationLabel}</ThemedText> : null}
                       </View>
-                      <View style={styles.stayActions}>
+                    <View style={[styles.stayActions, compact && styles.stayActionsCompact]}>
                         {stay.locationLabel ? (
                           <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(stay.locationLabel ?? '')}`)} style={({ pressed }) => [styles.stayTextAction, pressed && styles.pressed]}>
                             <ThemedText type="smallBold" style={styles.linkText}>{tx('查看地图', 'Map')}</ThemedText>
@@ -516,7 +573,7 @@ export default function TodayScreen() {
                             accessibilityRole="button"
                             accessibilityState={{ disabled: Boolean(busyRouteId) || transferExists }}
                             onPress={() => void addRouteToStay(stay)}
-                            style={({ pressed }) => [styles.routeAction, { backgroundColor: theme.backgroundSelected }, pressed && styles.pressed, (Boolean(busyRouteId) || transferExists) && styles.disabled]}>
+                            style={({ pressed }) => [styles.routeAction, compact && styles.routeActionCompact, { backgroundColor: theme.backgroundSelected }, pressed && styles.pressed, (Boolean(busyRouteId) || transferExists) && styles.disabled]}>
                             <ThemedText type="smallBold">{transferExists ? tx('已添加交通', 'Transfer added') : busyRouteId === stay.id ? tx('添加中…', 'Adding…') : tx('添加前往酒店', 'Add transfer')}</ThemedText>
                             <ThemedText type="small" themeColor="textSecondary">{tx(`从 ${previous.locationLabel}`, `From ${previous.locationLabel}`)}</ThemedText>
                           </Pressable>
@@ -529,15 +586,15 @@ export default function TodayScreen() {
               {upcomingStays.length > visibleStays.length ? <ThemedText type="small" themeColor="textSecondary">{tx(`另有 ${upcomingStays.length - visibleStays.length} 段住宿显示在后续时间线中`, `${upcomingStays.length - visibleStays.length} more stays appear later in the timeline`)}</ThemedText> : null}
             </View>
           ) : null}
-          <View style={[styles.nextRail, { backgroundColor: theme.backgroundElement }]}>
+          <View style={[styles.nextRail, compact && styles.nextRailCompact, { backgroundColor: theme.backgroundElement }]}>
             <View style={styles.nextHeading}>
               <View style={[styles.kindPill, { backgroundColor: getKindAccent(upcomingItems[0].kind) }]}>
                 <ThemedText type="smallBold" style={styles.kindPillText}>{kindLabel(upcomingItems[0].kind)}</ThemedText>
               </View>
               <ThemedText type="small" themeColor="textSecondary">{tx('下一步', 'Up next')}</ThemedText>
             </View>
-            <ThemedText type="subtitle" style={styles.nextTitle}>{upcomingItems[0].title}</ThemedText>
-            <View style={styles.nextMetaGrid}>
+            <ThemedText type="subtitle" style={[styles.nextTitle, compact && styles.nextTitleCompact]}>{upcomingItems[0].title}</ThemedText>
+            <View style={[styles.nextMetaGrid, compact && styles.nextMetaGridCompact]}>
               <View style={styles.metaChip}>
                 <ThemedText type="smallBold">{tx('时间', 'When')}</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">{formatZonedDateTimeRange(upcomingItems[0].startsAt, upcomingItems[0].endsAt, languageTag, tripTimeZone)}</ThemedText>
@@ -578,14 +635,18 @@ export default function TodayScreen() {
                     <View style={styles.timelineDot} />
                   </View>
                   <View style={styles.timelineContent}>
-                    {routeDetails(item)}
-                    <ThemedText type="small" themeColor="textSecondary">{formatZonedDateTimeRange(item.startsAt, item.endsAt, languageTag, tripTimeZone)}</ThemedText>
-                    <ThemedText type="smallBold">{item.title}</ThemedText>
+                    <View style={styles.timelineHeader}>
+                      <View style={styles.timelineHeading}>
+                        <ThemedText type="small" themeColor="textSecondary">{formatZonedDateTimeRange(item.startsAt, item.endsAt, languageTag, tripTimeZone)}</ThemedText>
+                        <ThemedText type="smallBold">{item.title}</ThemedText>
+                      </View>
+                      <View style={[styles.kindOutline, { borderColor: getKindAccent(item.kind) }]}>
+                        <ThemedText type="small" style={{ color: getKindAccent(item.kind) }}>{kindLabel(item.kind)}</ThemedText>
+                      </View>
+                    </View>
                     {item.locationLabel ? <ThemedText type="small" themeColor="textSecondary">{item.locationLabel}</ThemedText> : null}
+                    {routeDetails(item)}
                     {itemActions(item)}
-                  </View>
-                  <View style={[styles.kindOutline, { borderColor: getKindAccent(item.kind) }]}>
-                    <ThemedText type="small" style={{ color: getKindAccent(item.kind) }}>{kindLabel(item.kind)}</ThemedText>
                   </View>
                 </View>
               ))}
@@ -607,6 +668,7 @@ export default function TodayScreen() {
 
 const styles = StyleSheet.create({
   form: { gap: 14 },
+  rangeConfirm: { gap: 10 },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   grow: { flexGrow: 1, flexBasis: 140 },
   dateField: { flexGrow: 2, flexBasis: 200 },
@@ -614,10 +676,10 @@ const styles = StyleSheet.create({
   templateWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   formActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   actionGrow: { flexGrow: 1, flexBasis: 150 },
-  quickAddRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 4 },
-  quickAddCopy: { flex: 1, gap: 1 },
-  quickAddButton: { minHeight: 44, borderRadius: 14, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: '#087F6A' },
-  quickAddButtonText: { color: '#FFFFFF' },
+  floatingAdd: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#087F6A', alignItems: 'center', justifyContent: 'center', shadowColor: '#17324D', shadowOpacity: 0.2, shadowRadius: 14, shadowOffset: { width: 0, height: 6 } },
+  plusIcon: { width: 20, height: 20, alignItems: 'center', justifyContent: 'center' },
+  plusHorizontal: { position: 'absolute', width: 18, height: 2, borderRadius: 1, backgroundColor: '#FFFFFF' },
+  plusVertical: { position: 'absolute', width: 2, height: 18, borderRadius: 1, backgroundColor: '#FFFFFF' },
   lockedDestination: { borderRadius: 12, padding: 14, gap: 3 },
   deleteConfirm: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 14, gap: 10 },
   dangerConfirm: { minHeight: 48, borderRadius: 12, paddingHorizontal: 14, justifyContent: 'center', alignItems: 'center', backgroundColor: '#B4413E' },
@@ -627,32 +689,41 @@ const styles = StyleSheet.create({
   heroCopy: { flex: 1, gap: 6 },
   heroBadge: { minWidth: 74, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 12, alignItems: 'center', gap: 2 },
   summaryStrip: { flexDirection: 'row', alignItems: 'stretch', paddingHorizontal: 4, gap: 12 },
-  summaryItem: { flex: 1, alignItems: 'center', gap: 2 },
+  summaryStripCompact: { gap: 8 },
+  summaryItem: { flex: 1, minWidth: 0, alignItems: 'center', gap: 2 },
+  summaryItemCompact: { flexBasis: 0 },
   summaryDivider: { width: StyleSheet.hairlineWidth, alignSelf: 'stretch' },
   nextRail: { borderRadius: 26, padding: 22, gap: 16, shadowColor: '#17324D', shadowOpacity: 0.08, shadowRadius: 28, shadowOffset: { width: 0, height: 10 } },
+  nextRailCompact: { borderRadius: 20, padding: 18, gap: 14 },
   nextHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   nextTitle: { fontSize: 34, lineHeight: 40 },
+  nextTitleCompact: { fontSize: 28, lineHeight: 34 },
   nextMetaGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  metaChip: { minWidth: 136, gap: 2 },
+  nextMetaGridCompact: { gap: 8 },
+  metaChip: { flexGrow: 1, flexBasis: 136, minWidth: 0, gap: 2 },
   kindPill: { alignSelf: 'flex-start', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7 },
   kindPillText: { color: '#FFFFFF' },
   kindOutline: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6, alignSelf: 'center' },
   mapAction: { minHeight: 68, borderRadius: 16, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 },
   placeCopy: { flex: 1 },
   timelineSection: { gap: 6, paddingTop: 8 },
-  timelineRow: { minHeight: 76, flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
+  timelineRow: { minHeight: 76, flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
   timelineRail: { width: 16, alignItems: 'center', height: '100%', borderRightWidth: 1 },
   timelineDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: '#1B70A6', marginRight: -1, marginTop: 7 },
-  timelineContent: { flex: 1, gap: 2, paddingBottom: 16 },
+  timelineContent: { flex: 1, minWidth: 0, gap: 2, paddingBottom: 16 },
+  timelineHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  timelineHeading: { flex: 1, minWidth: 0, gap: 2 },
   routeEstimate: { color: '#087F6A' },
   routeDetails: { gap: 7, paddingVertical: 4 },
   routeModeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
   transitPlan: { borderRadius: 14, padding: 12, gap: 10 },
+  transitPlanCompact: { padding: 10, gap: 8 },
   transitPlanHeading: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 8 },
+  transitPlanHeadingCompact: { flexDirection: 'column', alignItems: 'flex-start', gap: 2 },
   transitStep: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   transitStepMarker: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1B70A6' },
   transitStepNumber: { color: '#FFFFFF' },
-  transitStepCopy: { flex: 1, gap: 2 },
+  transitStepCopy: { flex: 1, minWidth: 0, gap: 2 },
   durationRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
   staySection: { gap: 10, paddingVertical: 8 },
   stayHeading: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 },
@@ -660,10 +731,12 @@ const styles = StyleSheet.create({
   stayRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', gap: 14, paddingVertical: 10 },
   stayCopy: { flex: 1, minWidth: 0, gap: 2 },
   stayActions: { width: '100%', flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 },
+  stayActionsCompact: { flexDirection: 'column', alignItems: 'stretch' },
   stayTextAction: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 },
   itemActions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 4 },
   itemTextAction: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 },
   routeAction: { minHeight: 48, flexGrow: 1, flexBasis: 220, maxWidth: '100%', minWidth: 0, justifyContent: 'center', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6 },
+  routeActionCompact: { width: '100%', flexGrow: 0, flexBasis: 'auto' },
   stayDivider: { height: StyleSheet.hairlineWidth },
   stayFormGroup: { gap: 8 },
   linkText: { color: '#1B70A6' },
