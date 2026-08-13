@@ -442,9 +442,9 @@ export default function TodayScreen() {
             openNewComposer();
           }}
           style={({ pressed }) => [styles.floatingAdd, pressed && styles.pressed]}>
-          <View style={styles.plusIcon}>
-            <View style={styles.plusHorizontal} />
-            <View style={styles.plusVertical} />
+          <View style={composerOpen ? styles.closeIcon : styles.plusIcon}>
+            <View style={composerOpen ? styles.closeDiagonalOne : styles.plusHorizontal} />
+            <View style={composerOpen ? styles.closeDiagonalTwo : styles.plusVertical} />
           </View>
         </Pressable>
       ) : null}
@@ -509,12 +509,27 @@ export default function TodayScreen() {
               <View style={styles.rangeConfirm}>
                 <InlineNotice>{tx(`这项安排超出当前行程。要把行程调整为 ${pendingTripRange.startsOn} — ${pendingTripRange.endsOn} 吗？`, `This plan is outside the current trip. Extend it to ${pendingTripRange.startsOn} — ${pendingTripRange.endsOn}?`)}</InlineNotice>
                 <View style={styles.formActions}>
+                  <View style={styles.actionGrow}><ActionButton tone="secondary" onPress={cancelEdit}>{tx('取消', 'Cancel')}</ActionButton></View>
                   <View style={styles.actionGrow}><ActionButton tone="secondary" onPress={() => setPendingTripRange(undefined)}>{tx('返回修改', 'Edit dates')}</ActionButton></View>
                   <View style={styles.actionGrow}><ActionButton busy={busy} onPress={() => void submitItem(true)}>{tx('调整并加入', 'Extend and add')}</ActionButton></View>
                 </View>
               </View>
             ) : null}
-            {confirmDeleteItem && editingItem ? <View style={[styles.deleteConfirm, { borderTopColor: theme.backgroundSelected }]}><ThemedText type="smallBold">{tx(`删除“${editingItem.title}”？`, `Delete “${editingItem.title}”?`)}</ThemedText><ThemedText type="small" themeColor="textSecondary">{tx('此操作无法恢复。', 'This cannot be undone.')}</ThemedText><View style={styles.formActions}><View style={styles.actionGrow}><ActionButton tone="secondary" onPress={() => setConfirmDeleteItem(false)}>{tx('保留', 'Keep')}</ActionButton></View><View style={styles.actionGrow}><Pressable accessibilityRole="button" disabled={busy} onPress={() => void deleteSelectedItem()} style={({ pressed }) => [styles.dangerConfirm, pressed && styles.pressed, busy && styles.disabled]}><ThemedText type="smallBold" style={styles.dangerConfirmText}>{busy ? tx('删除中…', 'Deleting…') : tx('删除', 'Delete')}</ThemedText></Pressable></View></View></View> : !pendingTripRange ? <View style={styles.formActions}>{editingItem ? <View style={styles.actionGrow}><ActionButton tone="secondary" onPress={cancelEdit}>{tx('取消', 'Cancel')}</ActionButton></View> : null}<View style={styles.actionGrow}><ActionButton busy={busy} disabled={!title.trim() || (kind === 'lodging' && !location.trim())} onPress={() => void submitItem()}>{editingItem ? tx('保存', 'Save') : tx('加入行程', 'Add')}</ActionButton></View></View> : null}
+            {confirmDeleteItem && editingItem ? (
+              <View style={[styles.deleteConfirm, { borderTopColor: theme.backgroundSelected }]}>
+                <ThemedText type="smallBold">{tx(`删除“${editingItem.title}”？`, `Delete “${editingItem.title}”?`)}</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">{tx('此操作无法恢复。', 'This cannot be undone.')}</ThemedText>
+                <View style={styles.formActions}>
+                  <View style={styles.actionGrow}><ActionButton tone="secondary" onPress={() => setConfirmDeleteItem(false)}>{tx('保留', 'Keep')}</ActionButton></View>
+                  <View style={styles.actionGrow}><Pressable accessibilityRole="button" disabled={busy} onPress={() => void deleteSelectedItem()} style={({ pressed }) => [styles.dangerConfirm, pressed && styles.pressed, busy && styles.disabled]}><ThemedText type="smallBold" style={styles.dangerConfirmText}>{busy ? tx('删除中…', 'Deleting…') : tx('删除', 'Delete')}</ThemedText></Pressable></View>
+                </View>
+              </View>
+            ) : !pendingTripRange ? (
+              <View style={styles.formActions}>
+                <View style={styles.actionGrow}><ActionButton tone="secondary" onPress={cancelEdit}>{tx('取消', 'Cancel')}</ActionButton></View>
+                <View style={styles.actionGrow}><ActionButton busy={busy} disabled={!title.trim() || (kind === 'lodging' && !location.trim())} onPress={() => void submitItem()}>{editingItem ? tx('保存', 'Save') : tx('加入行程', 'Add')}</ActionButton></View>
+              </View>
+            ) : null}
             {formError ? <InlineNotice tone="error">{formError}</InlineNotice> : null}
           </View>
           </InfoCard>
@@ -665,8 +680,11 @@ const styles = StyleSheet.create({
   actionGrow: { flexGrow: 1, flexBasis: 150 },
   floatingAdd: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#087F6A', alignItems: 'center', justifyContent: 'center', shadowColor: '#17324D', shadowOpacity: 0.2, shadowRadius: 14, shadowOffset: { width: 0, height: 6 } },
   plusIcon: { width: 20, height: 20, alignItems: 'center', justifyContent: 'center' },
+  closeIcon: { width: 20, height: 20, alignItems: 'center', justifyContent: 'center' },
   plusHorizontal: { position: 'absolute', width: 18, height: 2, borderRadius: 1, backgroundColor: '#FFFFFF' },
   plusVertical: { position: 'absolute', width: 2, height: 18, borderRadius: 1, backgroundColor: '#FFFFFF' },
+  closeDiagonalOne: { position: 'absolute', width: 18, height: 2, borderRadius: 1, backgroundColor: '#FFFFFF', transform: [{ rotate: '45deg' }] },
+  closeDiagonalTwo: { position: 'absolute', width: 18, height: 2, borderRadius: 1, backgroundColor: '#FFFFFF', transform: [{ rotate: '-45deg' }] },
   lockedDestination: { borderRadius: 12, padding: 14, gap: 3 },
   deleteConfirm: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 14, gap: 10 },
   dangerConfirm: { minHeight: 48, borderRadius: 12, paddingHorizontal: 14, justifyContent: 'center', alignItems: 'center', backgroundColor: '#B4413E' },
