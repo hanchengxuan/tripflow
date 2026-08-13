@@ -75,13 +75,13 @@ npx expo-doctor
 
 ### CI/CD
 
-GitHub Actions runs formatting checks, lint, TypeScript, Jest, a production-dependency audit, and the Expo web export on every pull request and on `main`. A push to `main` starts the production workflow only after that quality gate passes; it pulls the production Vercel environment, builds a prebuilt artifact, deploys it, and smoke-tests both the deployment URL and the public production alias.
+GitHub Actions runs formatting checks, lint, TypeScript, Jest, a production-dependency audit, and the Expo web export on every pull request and on `main`. A push to `main` starts the production verification workflow only after that quality gate passes; it waits for the Vercel Git Integration deployment for the exact commit, then smoke-tests the public production alias.
 
-Configure these GitHub Actions secrets before enabling automatic deployment:
+Production deployment:
 
-- `VERCEL_TOKEN`: a Vercel token with access to the project;
-- `VERCEL_ORG_ID`: the Vercel team/user ID;
-- `VERCEL_PROJECT_ID`: the TripFlow Vercel project ID.
+- Production deploys are handled by the Vercel Git Integration for `main`.
+- For manual Vercel CLI deployments, set `VERCEL_TOKEN`, `VERCEL_ORG_ID`, and
+  `VERCEL_PROJECT_ID` as local environment variables without committing them.
 
 The Vercel project must also contain `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and `EXPO_PUBLIC_SUPPORT_EMAIL` in its production environment. The deploy workflow intentionally does not store or expose those values in Git.
 

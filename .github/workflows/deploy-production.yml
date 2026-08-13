@@ -14,8 +14,6 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  NODE_VERSION: 24
-  VERCEL_CLI_VERSION: 41.6.0
   PRODUCTION_URL: https://tripflow-liart.vercel.app
 
 jobs:
@@ -25,7 +23,7 @@ jobs:
     uses: ./.github/workflows/ci.yml
 
   deploy:
-    name: Vercel production deploy
+    name: Verify Vercel production deploy
     if: github.ref == 'refs/heads/main'
     needs: quality
     runs-on: ubuntu-latest
@@ -33,46 +31,42 @@ jobs:
     environment:
       name: production
       url: ${{ steps.deploy.outputs.url }}
-    env:
-      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-      VERCEL_GLOBAL_CONFIG: /tmp/tripflow-vercel-global-config
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-      - run: npm ci
-      - name: Verify Vercel credentials
+      # Vercel's Git Integration deploys every main commit. Wait for that
+      # commit-specific status before testing the production alias.
+      - name: Wait for Vercel Git deployment
+        id: deploy
+        env:
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          test -n "$VERCEL_TOKEN" || { echo "Missing VERCEL_TOKEN" >&2; exit 1; }
-          test -n "$VERCEL_ORG_ID" || { echo "Missing VERCEL_ORG_ID" >&2; exit 1; }
-          test -n "$VERCEL_PROJECT_ID" || { echo "Missing VERCEL_PROJECT_ID" >&2; exit 1; }
-      - name: Configure Vercel CLI credentials
-        run: node scripts/setup-vercel-auth.mjs
-      - name: Link Vercel project
-        run: npx --yes vercel@${{ env.VERCEL_CLI_VERSION }} --global-config="$VERCEL_GLOBAL_CONFIG" link --yes --project="$VERCEL_PROJECT_ID"
-      - name: Pull production environment
-        run: npx --yes vercel@${{ env.VERCEL_CLI_VERSION }} --global-config="$VERCEL_GLOBAL_CONFIG" pull --yes --environment=production
-      - name: Build production artifact
-        run: npx --yes vercel@${{ env.VERCEL_CLI_VERSION }} --global-config="$VERCEL_GLOBAL_CONFIG" build --prod
-      - name: Deploy prebuilt artifact
-        id: deploy
-        run: |
-          url="$(npx --yes vercel@${{ env.VERCEL_CLI_VERSION }} --global-config="$VERCEL_GLOBAL_CONFIG" deploy --prebuilt --prod)"
-          echo "url=$url" >> "$GITHUB_OUTPUT"
-          echo "Deployed $url"
-      - name: Smoke test deployment URL
-        run: |
-          for path in / /ledger /explore /privacy /support; do
-            curl --fail --silent --show-error --location --retry 5 --retry-all-errors --max-time 30 "${{ steps.deploy.outputs.url }}$path" > /dev/null
+          deadline=$((SECONDS + 900))
+          while (( SECONDS < deadline )); do
+            status="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/status" --jq '[.statuses[] | select(.context == "Vercel")][0].state // ""')"
+            vercel_url="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/status" --jq '[.statuses[] | select(.context == "Vercel")][0].target_url // ""')"
+
+            case "$status" in
+              success)
+                echo "Vercel Git deployment succeeded: $vercel_url"
+                echo "url=$PRODUCTION_URL" >> "$GITHUB_OUTPUT"
+                echo "vercel_url=$vercel_url" >> "$GITHUB_OUTPUT"
+                exit 0
+                ;;
+              failure|error)
+                echo "Vercel Git deployment failed: $vercel_url" >&2
+                exit 1
+                ;;
+            esac
+
+            echo "Waiting for Vercel Git deployment (state=${status:-pending})"
+            sleep 15
           done
+
+          echo "Timed out waiting for the Vercel Git deployment." >&2
+          exit 1
       - name: Smoke test production alias
         run: |
-          for path in / /ledger /privacy /support; do
+          for path in / /ledger /explore /privacy /support; do
             curl --fail --silent --show-error --location --retry 5 --retry-all-errors --max-time 30 "$PRODUCTION_URL$path" > /dev/null
           done
       - name: Deployment summary
@@ -80,11 +74,8 @@ jobs:
         run: |
           {
             echo "### Production deployment"
-            echo "- Preview artifact: ${{ steps.deploy.outputs.url }}"
             echo "- Production alias: $PRODUCTION_URL"
+            echo "- Vercel deployment: ${{ steps.deploy.outputs.vercel_url }}"
             echo "- Commit: $GITHUB_SHA"
             echo "- Smoke tests: passed (/, /ledger, /explore, /privacy, /support)"
           } >> "$GITHUB_STEP_SUMMARY"
-      - name: Remove Vercel CLI credentials
-        if: always()
-        run: rm -rf "$VERCEL_GLOBAL_CONFIG"
