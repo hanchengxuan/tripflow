@@ -95,6 +95,7 @@ export interface Expense {
   tripId: TripId;
   createdBy?: UserId;
   segmentId?: SegmentId;
+  itineraryItemId?: string;
   title: string;
   currency: string;
   totalMinor: number;
@@ -106,6 +107,9 @@ export interface Expense {
   shares: ExpenseShare[];
   occurredAt: string;
   source: 'manual' | 'text' | 'voice' | 'receipt';
+  settledAt?: string;
+  settledBy?: UserId;
+  settlementSource?: 'manual' | 'automatic';
   receipts?: ExpenseReceipt[];
 }
 

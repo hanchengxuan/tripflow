@@ -24,7 +24,7 @@ import {
   parseAmountToMinor,
 } from '@/domain/ledger';
 import { assertAllocationsTotal, minimizeSettlementTransfers, splitByExactAmounts, splitByPercentages, splitByWeights, splitEqually, type SettlementTransfer } from '@/domain/money';
-import type { Expense, Settlement, TripMember } from '@/domain/models';
+import type { Expense, ItineraryItem, Settlement, TripMember } from '@/domain/models';
 import { type AiExpenseDraft, parseExpenseAudio, parseExpenseText } from '@/features/ai/expense-parser';
 import { useI18n } from '@/features/i18n/i18n-provider';
 import { useMvp } from '@/features/mvp/mvp-provider';
@@ -63,11 +63,13 @@ export default function LedgerScreen() {
     activeTrip,
     members,
     ledgerMembers,
+    itineraryItems,
     expenses,
     settlements,
     currentUserId,
     addCustomExpense,
     updateCustomExpense,
+    setExpenseSettled,
     attachExpenseReceipt,
     markSettlement,
     unmarkSettlement,
@@ -78,6 +80,7 @@ export default function LedgerScreen() {
   const [composerOpen, setComposerOpen] = useState(false);
   const [composerOffset, setComposerOffset] = useState<number>();
   const [editingExpenseId, setEditingExpenseId] = useState<string>();
+  const [itineraryItemId, setItineraryItemId] = useState('');
   const [entryMode, setEntryMode] = useState<'manual' | 'ai'>('manual');
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
@@ -93,6 +96,7 @@ export default function LedgerScreen() {
   const [receipt, setReceipt] = useState<ReceiptDraft>();
   const [expandedExpenseId, setExpandedExpenseId] = useState<string>();
   const [busyAction, setBusyAction] = useState<'parse' | 'save' | 'receipt'>();
+  const [busyExpenseId, setBusyExpenseId] = useState<string>();
   const [busySettlementId, setBusySettlementId] = useState<string>();
   const [settlementDrafts, setSettlementDrafts] = useState<Record<string, SettlementDraft>>({});
   const [expandedSettlementKey, setExpandedSettlementKey] = useState<string>();
@@ -112,6 +116,18 @@ export default function LedgerScreen() {
   const memberById = useMemo(() => new Map(ledgerMembers.map((member) => [member.userId, member])), [ledgerMembers]);
   const memberIds = useMemo(() => ledgerMembers.map(({ userId }) => userId), [ledgerMembers]);
   const currencyOptions = getCurrencyOptions(locale === 'en');
+  const itineraryOptions = useMemo(
+    () => [
+      { value: '', label: tx('不关联安排', 'No linked plan') },
+      ...[...itineraryItems]
+        .sort((left, right) => left.startsAt.localeCompare(right.startsAt))
+        .map((item) => ({
+          value: item.id,
+          label: `${item.title} · ${formatDateTime(item.startsAt)}`,
+        })),
+    ],
+    [formatDateTime, itineraryItems, tx],
+  );
   const darkMode = theme.background === '#0C1924';
   const positiveColor = darkMode ? '#69D4BC' : '#087F6A';
   const dangerColor = darkMode ? '#FF9B96' : '#B4413E';
@@ -188,6 +204,7 @@ export default function LedgerScreen() {
 
   function resetExpenseForm() {
     setEditingExpenseId(undefined);
+    setItineraryItemId('');
     setTitle('');
     setAmount('');
     setCurrencyOverride('');
@@ -230,6 +247,7 @@ export default function LedgerScreen() {
     setComposerOffset(undefined);
     setComposerOpen(true);
     setEditingExpenseId(expense.id);
+    setItineraryItemId(expense.itineraryItemId ?? '');
     setEntryMode('manual');
     setTitle(expense.title);
     setAmount(amountInputFromMinor(expense.totalMinor, expense.currency));
@@ -418,6 +436,7 @@ export default function LedgerScreen() {
           exchangeRateSource: 'manual',
           payerAllocations: payerAllocationsInput,
           shareAllocations: shareAllocationsInput,
+          itineraryItemId: itineraryItemId || undefined,
         })
         : await addCustomExpense({
           title,
@@ -429,6 +448,7 @@ export default function LedgerScreen() {
           exchangeRateSource: 'manual',
           payerAllocations: payerAllocationsInput,
           shareAllocations: shareAllocationsInput,
+          itineraryItemId: itineraryItemId || undefined,
           source: aiNotice ? 'text' : 'manual',
           clientMutationId: `${activeTrip?.id ?? 'trip'}:${Date.now()}:${Math.random().toString(36).slice(2, 10)}`,
           receipt,
@@ -451,6 +471,7 @@ export default function LedgerScreen() {
       setSplitMode('equal');
       setAiNotice(undefined);
       setEditingExpenseId(undefined);
+      setItineraryItemId('');
       setComposerOpen(false);
       setActiveView('activity');
       if (!editingExpenseId || !receipt) {
@@ -517,6 +538,20 @@ export default function LedgerScreen() {
     }
   }
 
+  async function toggleExpenseSettlement(expense: Expense) {
+    setBusyExpenseId(expense.id);
+    setFormError(undefined);
+    setSuccess(undefined);
+    try {
+      await setExpenseSettled(expense.id, !expense.settledAt);
+      setSuccess(expense.settledAt ? tx('已恢复为未结清。', 'Marked as unsettled again.') : tx('这笔支出已标记为结清。', 'This expense is marked as settled.'));
+    } catch (caught) {
+      setFormError(toUserMessage(caught, tx('无法更新结清状态，请稍后重试。', 'Could not update the settlement state. Please try again.')));
+    } finally {
+      setBusyExpenseId(undefined);
+    }
+  }
+
   return (
     <Screen
       scrollToKey={composerOpen ? 'expense-composer' : undefined}
@@ -561,6 +596,9 @@ export default function LedgerScreen() {
           dangerColor={dangerColor}
           tx={tx}
           editing={Boolean(editingExpenseId)}
+          itineraryItemId={itineraryItemId}
+          itineraryOptions={itineraryOptions}
+          setItineraryItemId={setItineraryItemId}
           entryMode={entryMode}
           chooseEntryMode={chooseEntryMode}
           aiText={aiText}
@@ -643,6 +681,9 @@ export default function LedgerScreen() {
           onEditExpense={startEditingExpense}
           canEditExpense={(expense) => Boolean(currentMember && ['owner', 'editor'].includes(currentMember.role)) || expense.createdBy === currentUserId || expense.payers.some(({ userId }) => userId === currentUserId)}
           settlementStatusByUser={settlementStatusByUser}
+          itineraryItems={itineraryItems}
+          onToggleExpenseSettled={toggleExpenseSettlement}
+          busyExpenseId={busyExpenseId}
           pickReceipt={pickReceipt}
           receiptBusy={busyAction === 'receipt'}
           themeSelected={theme.backgroundSelected}
@@ -671,6 +712,9 @@ function ExpenseComposer(props: {
   dangerColor: string;
   tx: (zh: string, en: string) => string;
   editing: boolean;
+  itineraryItemId: string;
+  itineraryOptions: { value: string; label: string }[];
+  setItineraryItemId: (value: string) => void;
   entryMode: 'manual' | 'ai';
   chooseEntryMode: (mode: 'manual' | 'ai') => void;
   aiText: string;
@@ -751,6 +795,12 @@ function ExpenseComposer(props: {
         <View style={styles.formGroup}>
           {props.aiNotice ? <InlineNotice>{props.aiNotice}</InlineNotice> : null}
           <FormField label={tx('支出内容', 'Expense')} value={props.title} onChangeText={props.setTitle} placeholder={tx('例如：晚餐', 'For example: Dinner')} />
+          <SelectionField
+            label={tx('关联安排（可选）', 'Link to a plan (optional)')}
+            value={props.itineraryItemId}
+            options={props.itineraryOptions}
+            onChange={props.setItineraryItemId}
+          />
           <View style={[styles.amountRow, compact && styles.amountRowCompact]}>
             <View style={styles.grow}>
               <FormField label={tx('金额', 'Amount')} value={props.amount} onChangeText={props.setAmount} keyboardType="decimal-pad" placeholder="860.00" />
@@ -1263,6 +1313,7 @@ function SettlementWorkspace(props: {
 function ExpenseActivity(props: {
   tx: (zh: string, en: string) => string;
   expenses: Expense[];
+  itineraryItems: ItineraryItem[];
   names: Map<string, string>;
   memberById: Map<string, TripMember>;
   formatDateTime: (value: string) => string;
@@ -1271,6 +1322,8 @@ function ExpenseActivity(props: {
   onEditExpense: (expense: Expense) => void;
   canEditExpense: (expense: Expense) => boolean;
   settlementStatusByUser: Map<string, { label: string; color?: string }>;
+  onToggleExpenseSettled: (expense: Expense) => Promise<void>;
+  busyExpenseId?: string;
   pickReceipt: (source: 'camera' | 'library', expenseId?: string) => Promise<void>;
   receiptBusy: boolean;
   themeSelected: string;
@@ -1290,6 +1343,7 @@ function ExpenseActivity(props: {
       <SectionHeading title={tx('消费明细', 'Expense activity')} />
       {props.expenses.map((expense) => {
         const expanded = props.expandedExpenseId === expense.id;
+        const linkedItem = props.itineraryItems.find((item) => item.id === expense.itineraryItemId);
         const primaryPayer = props.memberById.get(expense.payers[0]?.userId);
         const payerNames = expense.payers.map(({ userId }) => props.names.get(userId) ?? tx('同行者', 'Traveller')).join(tx('、', ', '));
         const shareText = expense.shares
@@ -1313,12 +1367,46 @@ function ExpenseActivity(props: {
                 <ThemedText type="smallBold">{formatMinorAmount(expense.totalMinor, expense.currency)}</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">{expense.baseCurrency && expense.baseCurrency !== expense.currency ? tx(`记入 ${expense.baseCurrency} ${formatMinorAmount(expense.baseAmountMinor ?? 0, expense.baseCurrency)}`, `Books ${formatMinorAmount(expense.baseAmountMinor ?? 0, expense.baseCurrency)}`) : tx('本位币', 'Base currency')}</ThemedText>
                 {(expense.receipts?.length ?? 0) > 0 ? <ThemedText type="small" style={{ color: props.positiveColor }}>{tx('有小票', 'Receipt')}</ThemedText> : null}
+                <ThemedText type="smallBold" style={{ color: expense.settledAt ? props.positiveColor : undefined }}>
+                  {expense.settledAt ? tx('已结清', 'Settled') : tx('待结清', 'Unsettled')}
+                </ThemedText>
               </View>
             </Pressable>
             {expanded ? (
               <View style={styles.expenseDetails}>
                 <View style={styles.detailLine}><ThemedText type="smallBold">{tx('分摊', 'Split')}</ThemedText><ThemedText type="small" themeColor="textSecondary" style={styles.grow}>{shareText}</ThemedText></View>
                 <View style={styles.detailLine}><ThemedText type="smallBold">{tx('结算', 'Settlement')}</ThemedText><ThemedText type="small" themeColor="textSecondary" style={styles.grow}>{tx('按当前账本合并显示每位同行者的转账状态。', 'Status is calculated across the current trip ledger.')}</ThemedText></View>
+                <View style={styles.detailLine}>
+                  <ThemedText type="smallBold">{tx('这笔状态', 'Expense status')}</ThemedText>
+                  <View style={styles.grow}>
+                    <ThemedText type="small" themeColor="textSecondary">
+                      {expense.settledAt
+                        ? expense.settlementSource === 'automatic'
+                          ? tx('所有待转款项完成后自动结清', 'Automatically settled after all transfers completed')
+                          : tx('手动标记为已结清', 'Marked settled manually')
+                        : tx('仍有待结算金额', 'Transfers are still outstanding')}
+                    </ThemedText>
+                    {props.canEditExpense(expense) ? (
+                      <Pressable
+                        accessibilityRole="button"
+                        disabled={Boolean(props.busyExpenseId)}
+                        onPress={() => void props.onToggleExpenseSettled(expense)}
+                        style={({ pressed }) => [styles.textButton, pressed && styles.pressed, Boolean(props.busyExpenseId) && styles.disabled]}>
+                        <ThemedText type="smallBold" style={{ color: props.positiveColor }}>
+                          {expense.settledAt ? tx('恢复未结清', 'Mark unsettled') : tx('标记已结清', 'Mark settled')}
+                        </ThemedText>
+                      </Pressable>
+                    ) : null}
+                  </View>
+                </View>
+                {linkedItem ? (
+                  <View style={styles.detailLine}>
+                    <ThemedText type="smallBold">{tx('关联安排', 'Linked plan')}</ThemedText>
+                    <ThemedText type="small" themeColor="textSecondary" style={styles.grow}>
+                      {linkedItem.title} · {props.formatDateTime(linkedItem.startsAt)}
+                    </ThemedText>
+                  </View>
+                ) : null}
                 <View style={styles.sharePeople}>{expense.shares.map((share) => { const member = props.memberById.get(share.userId); const status = props.settlementStatusByUser.get(share.userId); return <View key={share.userId} style={styles.sharePerson}><MemberAvatar avatarUrl={member?.avatarUrl} displayName={member?.displayName ?? tx('同行者', 'Traveller')} size={30} /><ThemedText type="small" style={styles.grow}>{member?.displayName ?? tx('同行者', 'Traveller')}</ThemedText><View style={styles.shareAmount}><ThemedText type="smallBold">{formatMinorAmount(share.amountMinor, expense.currency)}</ThemedText><ThemedText type="smallBold" style={status?.color ? { color: status.color } : undefined}>{status?.label ?? tx('待结算', 'Pending')}</ThemedText></View></View>; })}</View>
                 {(expense.receipts?.length ?? 0) > 0 ? (
                   <View style={styles.receiptGallery}>
