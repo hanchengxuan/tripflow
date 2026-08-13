@@ -75,7 +75,7 @@ export function CustomTabList(props: TabListProps) {
           compact && styles.innerContainerCompact,
           {
             backgroundColor: dark ? 'rgba(20,39,56,0.68)' : 'rgba(255,255,255,0.72)',
-            shadowColor: dark ? '#000000' : '#15344A',
+            boxShadow: dark ? '0 8px 18px rgba(0,0,0,0.20)' : '0 8px 18px rgba(21,52,74,0.16)',
           },
           styles.glassEffect,
         ]}>
@@ -114,10 +114,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    shadowOpacity: 0.2,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 5,
   },
   innerContainerCompact: { paddingHorizontal: 6, justifyContent: 'space-between', gap: 0 },
   glassEffect: {
