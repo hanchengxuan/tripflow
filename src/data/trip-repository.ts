@@ -349,6 +349,7 @@ export async function listExpenses(tripId: string): Promise<Expense[]> {
   return data.map((expense) => ({
     id: expense.id,
     tripId: expense.trip_id,
+    createdBy: expense.created_by,
     segmentId: expense.segment_id ?? undefined,
     title: expense.title,
     currency: expense.currency,
@@ -468,6 +469,37 @@ export async function createCustomExpense(input: {
   } catch (receiptError) {
     return { expenseId, receiptUploaded: false, receiptError };
   }
+}
+
+export async function updateCustomExpense(input: {
+  userId: string;
+  expenseId: string;
+  title: string;
+  currency: string;
+  totalMinor: number;
+  baseCurrency: string;
+  baseAmountMinor: number;
+  exchangeRate: number;
+  exchangeRateSource?: string;
+  payerAllocations: { userId: string; amountMinor: number }[];
+  shareAllocations: { userId: string; amountMinor: number }[];
+}) {
+  const { data: expenseId, error } = await getSupabaseClient().rpc('update_custom_expense', {
+    requested_expense_id: input.expenseId,
+    expense_title: input.title,
+    expense_currency: input.currency,
+    expense_total_minor: input.totalMinor,
+    expense_base_currency: input.baseCurrency,
+    expense_base_amount_minor: input.baseAmountMinor,
+    expense_exchange_rate: input.exchangeRate,
+    expense_exchange_rate_source: input.exchangeRateSource ?? 'manual',
+    payer_user_ids: input.payerAllocations.map(({ userId }) => userId),
+    payer_amounts: input.payerAllocations.map(({ amountMinor }) => amountMinor),
+    participant_user_ids: input.shareAllocations.map(({ userId }) => userId),
+    participant_amounts: input.shareAllocations.map(({ amountMinor }) => amountMinor),
+  });
+  if (error) throw error;
+  return { expenseId };
 }
 
 export async function addExpenseReceipt(

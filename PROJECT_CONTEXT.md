@@ -114,6 +114,7 @@ See `planning.md` for the complete P0/P1 scope, non-goals, architecture, milesto
 - Project-local `$tripflow-review`, `$tripflow-qa`, and `$tripflow-ship` skills now encode evidence-based pre-landing review, diff-aware safe browser QA, and the full rebase-to-production delivery workflow. `AGENTS.md` also records focused-diff, component-boundary, type-safety, platform-parity, and verification rules.
 - CI is split into parallel static, Jest, Expo health/export, and Playwright gates behind the existing stable `validate` result name. Expo Doctor, web export, iOS export, and six mobile/desktop Chromium smoke cases are covered; browser failures upload reports and traces. An advisory PR-size workflow excludes lockfile and generated database-type churn.
 - The new browser gate found a real public-route transition failure: returning from Support to the app could render Today outside `MvpProvider`. The Web back link now performs an explicit same-tab document navigation, and the mobile/desktop regression flow passes without runtime console errors.
+- Ledger clarity slice is complete on this branch: settlement rows now label trip-base versus payment currency, and activity details expose base-currency conversion plus per-traveller settlement status. A protected `update_custom_expense` RPC preserves the expense id/receipts while atomically replacing payer and share allocations; the UI opens the existing composer in edit mode for the creator, a payer, or a trip editor. The live RPC migration is applied and Supabase advisors show only existing baseline warnings; browser QA is limited to the configured local shell because this isolated worktree has no public Supabase variables.
 
 ## Applied Supabase migrations
 
@@ -140,6 +141,7 @@ See `planning.md` for the complete P0/P1 scope, non-goals, architecture, milesto
 - `harden_profile_onboarding`
 - `multicurrency_base_amounts`
 - `custom_expense_splits`
+- `update_custom_expense`
 
 The live migration list was rechecked after applying `custom_expense_splits`; no pending TripFlow migration remains.
 

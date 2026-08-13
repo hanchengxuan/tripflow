@@ -24,6 +24,7 @@
 - [x] Keep add-expense reachable from a persistent action and stack narrow controls.
 - [x] Make the settlement task the dominant first action and move completed/group history behind progressive disclosure.
 - [x] Shorten AI/receipt guidance without removing confirmation or recovery paths.
+- [x] Label settlement currencies by meaning and make activity expenses editable with visible base-currency conversion and settlement guidance.
 
 ## Trips and Profile
 

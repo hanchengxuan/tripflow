@@ -93,6 +93,7 @@ export interface ExpenseReceipt {
 export interface Expense {
   id: ExpenseId;
   tripId: TripId;
+  createdBy?: UserId;
   segmentId?: SegmentId;
   title: string;
   currency: string;
