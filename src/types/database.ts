@@ -284,9 +284,13 @@ export type Database = {
           exchange_rate: number | null
           exchange_rate_source: string | null
           id: string
+          itinerary_item_id: string | null
           occurred_at: string
           parser_confidence: number | null
           segment_id: string | null
+          settled_at: string | null
+          settled_by: string | null
+          settlement_source: string | null
           source: Database["public"]["Enums"]["expense_source"]
           source_transcript: string | null
           title: string
@@ -305,9 +309,13 @@ export type Database = {
           exchange_rate?: number | null
           exchange_rate_source?: string | null
           id?: string
+          itinerary_item_id?: string | null
           occurred_at: string
           parser_confidence?: number | null
           segment_id?: string | null
+          settled_at?: string | null
+          settled_by?: string | null
+          settlement_source?: string | null
           source?: Database["public"]["Enums"]["expense_source"]
           source_transcript?: string | null
           title: string
@@ -326,9 +334,13 @@ export type Database = {
           exchange_rate?: number | null
           exchange_rate_source?: string | null
           id?: string
+          itinerary_item_id?: string | null
           occurred_at?: string
           parser_confidence?: number | null
           segment_id?: string | null
+          settled_at?: string | null
+          settled_by?: string | null
+          settlement_source?: string | null
           source?: Database["public"]["Enums"]["expense_source"]
           source_transcript?: string | null
           title?: string
@@ -346,6 +358,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "expenses_itinerary_item_id_fkey"
+            columns: ["itinerary_item_id"]
+            isOneToOne: false
+            referencedRelation: "itinerary_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_itinerary_item_same_trip_fk"
+            columns: ["itinerary_item_id", "trip_id"]
+            isOneToOne: false
+            referencedRelation: "itinerary_items"
+            referencedColumns: ["id", "trip_id"]
+          },
+          {
             foreignKeyName: "expenses_segment_id_fkey"
             columns: ["segment_id"]
             isOneToOne: false
@@ -358,6 +384,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "segments"
             referencedColumns: ["id", "trip_id"]
+          },
+          {
+            foreignKeyName: "expenses_settled_by_fkey"
+            columns: ["settled_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "expenses_trip_id_fkey"
@@ -1044,6 +1077,17 @@ export type Database = {
           settlement_currency: string
         }
         Returns: string
+      }
+      set_expense_itinerary_item: {
+        Args: {
+          requested_expense_id: string
+          requested_itinerary_item_id: string | null
+        }
+        Returns: string
+      }
+      set_expense_settled: {
+        Args: { requested_expense_id: string; requested_settled: boolean }
+        Returns: undefined
       }
       unrecord_settlement: {
         Args: { requested_settlement_id: string }

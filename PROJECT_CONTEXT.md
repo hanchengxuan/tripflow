@@ -116,6 +116,7 @@ See `planning.md` for the complete P0/P1 scope, non-goals, architecture, milesto
 - The new browser gate found a real public-route transition failure: returning from Support to the app could render Today outside `MvpProvider`. The Web back link now performs an explicit same-tab document navigation, and the mobile/desktop regression flow passes without runtime console errors.
 - Ledger clarity slice is complete on this branch: settlement rows now label trip-base versus payment currency, and activity details expose base-currency conversion plus per-traveller settlement status. A protected `update_custom_expense` RPC preserves the expense id/receipts while atomically replacing payer and share allocations; the UI opens the existing composer in edit mode for the creator, a payer, or a trip editor. The live RPC migration is applied and Supabase advisors show only existing baseline warnings; browser QA is limited to the configured local shell because this isolated worktree has no public Supabase variables.
 - Mobile layout correction is complete: stacked Trips actions no longer inherit the desktop flex basis, and Ledger currency summaries use a stable two-column metric grid below the currency identity at narrow widths. Lint, TypeScript, 32 Jest tests, Expo Doctor 20/20, web/iOS exports, and six public-route Chromium checks passed on 2026-08-13.
+- Ledger settlement follow-up is implemented on `codex/ledger-settlement`: expense edits now preserve save/link state, each expense has an explicit manual or automatic settled marker with a reversible RPC, settlement inserts/deletes refresh automatic flags when normalized balances reach zero, and expenses can link to a specific itinerary item for review. The live migration `expense_settlement_and_itinerary_links` is applied; new Supabase advisor output contains only the existing auth/performance baseline plus the expected new foreign-key/index notices. Local Expo shell QA reaches the configured-Supabase notice without runtime console errors because this isolated worktree has no public Supabase variables.
 
 ## Applied Supabase migrations
 
@@ -143,8 +144,9 @@ See `planning.md` for the complete P0/P1 scope, non-goals, architecture, milesto
 - `multicurrency_base_amounts`
 - `custom_expense_splits`
 - `update_custom_expense`
+- `expense_settlement_and_itinerary_links`
 
-The live migration list was rechecked after applying `custom_expense_splits`; no pending TripFlow migration remains.
+The live migration list was rechecked after applying `expense_settlement_and_itinerary_links`; no pending TripFlow migration remains.
 
 Temporary acceptance fixtures are removed after each test; production may contain real user-created rows.
 

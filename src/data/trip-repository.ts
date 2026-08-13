@@ -351,6 +351,7 @@ export async function listExpenses(tripId: string): Promise<Expense[]> {
     tripId: expense.trip_id,
     createdBy: expense.created_by,
     segmentId: expense.segment_id ?? undefined,
+    itineraryItemId: expense.itinerary_item_id ?? undefined,
     title: expense.title,
     currency: expense.currency,
     totalMinor: expense.total_minor,
@@ -360,6 +361,11 @@ export async function listExpenses(tripId: string): Promise<Expense[]> {
     exchangeRateSource: expense.exchange_rate_source ?? undefined,
     occurredAt: expense.occurred_at,
     source: expense.source,
+    settledAt: expense.settled_at ?? undefined,
+    settledBy: expense.settled_by ?? undefined,
+    settlementSource: expense.settlement_source === 'manual' || expense.settlement_source === 'automatic'
+      ? expense.settlement_source
+      : undefined,
     receipts: expense.expense_receipts.map((receipt) => ({
       id: receipt.id,
       expenseId: receipt.expense_id,
@@ -438,6 +444,7 @@ export async function createCustomExpense(input: {
   shareAllocations: { userId: string; amountMinor: number }[];
   source?: Database['public']['Enums']['expense_source'];
   segmentId?: string;
+  itineraryItemId?: string;
   clientMutationId?: string;
   receipt?: { uri: string; base64?: string | null; mimeType?: string | null; fileSize?: number };
 }) {
@@ -462,6 +469,14 @@ export async function createCustomExpense(input: {
   });
   if (error) throw error;
 
+  if (input.itineraryItemId) {
+    const { error: linkError } = await client.rpc('set_expense_itinerary_item', {
+      requested_expense_id: expenseId,
+      requested_itinerary_item_id: input.itineraryItemId,
+    });
+    if (linkError) throw linkError;
+  }
+
   if (!input.receipt) return { expenseId, receiptUploaded: false };
   try {
     await addExpenseReceipt(input.userId, expenseId, input.receipt);
@@ -483,8 +498,10 @@ export async function updateCustomExpense(input: {
   exchangeRateSource?: string;
   payerAllocations: { userId: string; amountMinor: number }[];
   shareAllocations: { userId: string; amountMinor: number }[];
+  itineraryItemId?: string;
 }) {
-  const { data: expenseId, error } = await getSupabaseClient().rpc('update_custom_expense', {
+  const client = getSupabaseClient();
+  const { data: expenseId, error } = await client.rpc('update_custom_expense', {
     requested_expense_id: input.expenseId,
     expense_title: input.title,
     expense_currency: input.currency,
@@ -499,7 +516,21 @@ export async function updateCustomExpense(input: {
     participant_amounts: input.shareAllocations.map(({ amountMinor }) => amountMinor),
   });
   if (error) throw error;
+
+  const { error: linkError } = await client.rpc('set_expense_itinerary_item', {
+    requested_expense_id: expenseId,
+    requested_itinerary_item_id: input.itineraryItemId ?? null,
+  });
+  if (linkError) throw linkError;
   return { expenseId };
+}
+
+export async function setExpenseSettled(expenseId: string, settled: boolean) {
+  const { error } = await getSupabaseClient().rpc('set_expense_settled', {
+    requested_expense_id: expenseId,
+    requested_settled: settled,
+  });
+  if (error) throw error;
 }
 
 export async function addExpenseReceipt(
