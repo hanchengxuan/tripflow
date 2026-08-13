@@ -30,8 +30,8 @@ export function Screen({ meta, scrollToEndKey, title, subtitle, children }: Scre
       contentContainerStyle={[
         styles.content,
         {
-          paddingTop: insets.top + (Platform.OS === 'web' ? 104 : 20),
-          paddingBottom: insets.bottom + 104,
+          paddingTop: insets.top + (Platform.OS === 'web' ? 24 : 20),
+          paddingBottom: insets.bottom + (Platform.OS === 'web' ? 40 : 104),
         },
       ]}>
       <View style={styles.header}>
