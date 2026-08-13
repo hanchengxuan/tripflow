@@ -67,6 +67,7 @@ export default function LedgerScreen() {
     settlements,
     currentUserId,
     addCustomExpense,
+    updateCustomExpense,
     attachExpenseReceipt,
     markSettlement,
     unmarkSettlement,
@@ -76,6 +77,7 @@ export default function LedgerScreen() {
   const [showGroupSettlement, setShowGroupSettlement] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
   const [composerOffset, setComposerOffset] = useState<number>();
+  const [editingExpenseId, setEditingExpenseId] = useState<string>();
   const [entryMode, setEntryMode] = useState<'manual' | 'ai'>('manual');
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
@@ -161,18 +163,89 @@ export default function LedgerScreen() {
   const pendingTransfers = hasCompleteConversions ? normalizedPendingTransfers : sourcePendingTransfers;
   const myPendingTransfers = pendingTransfers.filter(({ fromParticipantId }) => fromParticipantId === currentUserId);
   const myIncomingTransfers = pendingTransfers.filter(({ toParticipantId }) => toParticipantId === currentUserId);
+  const currentMember = ledgerMembers.find(({ userId }) => userId === currentUserId);
+  const settlementStatusByUser = useMemo(() => {
+    const statuses = new Map<string, { label: string; color?: string }>();
+    for (const member of ledgerMembers) {
+      const outgoing = pendingTransfers.find(({ fromParticipantId }) => fromParticipantId === member.userId);
+      const completedOutgoing = settlements.find(({ fromUserId }) => fromUserId === member.userId);
+      const completedIncoming = settlements.find(({ toUserId }) => toUserId === member.userId);
+      statuses.set(member.userId, outgoing
+        ? { label: tx(`待转给 ${names.get(outgoing.toParticipantId) ?? '同行者'}`, `Pending to ${names.get(outgoing.toParticipantId) ?? 'traveller'}`), color: dangerColor }
+        : completedOutgoing
+          ? { label: tx('已转账', 'Sent') }
+          : completedIncoming
+            ? { label: tx('已收款', 'Received'), color: positiveColor }
+            : { label: tx('待结算', 'Pending') });
+    }
+    return statuses;
+  }, [dangerColor, ledgerMembers, names, pendingTransfers, positiveColor, settlements, tx]);
 
   function chooseEntryMode(mode: 'ai' | 'manual') {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setEntryMode(mode);
   }
 
-  function toggleComposer() {
+  function resetExpenseForm() {
+    setEditingExpenseId(undefined);
+    setTitle('');
+    setAmount('');
+    setCurrencyOverride('');
+    setExchangeRate('1');
+    setPayerOverride('');
+    setPayerIds([]);
+    setPayerAmounts({});
+    setAllocationValues({});
+    setSplitMode('equal');
+    setAiText('');
+    setReceipt(undefined);
+    setAiNotice(undefined);
+    setFormError(undefined);
+  }
+
+  function closeComposer() {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setComposerOffset(undefined);
-    setComposerOpen((open) => !open);
+    setComposerOpen(false);
+    resetExpenseForm();
+    setSuccess(undefined);
+  }
+
+  function toggleComposer() {
+    if (composerOpen) {
+      closeComposer();
+      return;
+    }
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setComposerOffset(undefined);
+    resetExpenseForm();
+    setComposerOpen(true);
     setFormError(undefined);
     setSuccess(undefined);
+  }
+
+  function startEditingExpense(expense: Expense) {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setActiveView('activity');
+    setComposerOffset(undefined);
+    setComposerOpen(true);
+    setEditingExpenseId(expense.id);
+    setEntryMode('manual');
+    setTitle(expense.title);
+    setAmount(amountInputFromMinor(expense.totalMinor, expense.currency));
+    setCurrencyOverride(expense.currency);
+    setExchangeRate(expense.exchangeRate ? String(expense.exchangeRate) : expense.currency.toUpperCase() === baseCurrency.toUpperCase() ? '1' : '');
+    setPayerIds(expense.payers.map(({ userId }) => userId));
+    setPayerOverride(expense.payers[0]?.userId ?? currentUserId);
+    setPayerAmounts(Object.fromEntries(expense.payers.map(({ userId, amountMinor }) => [userId, amountInputFromMinor(amountMinor, expense.currency)])));
+    setParticipantsByTrip((current) => ({ ...current, [expense.tripId]: expense.shares.map(({ userId }) => userId) }));
+    setSplitMode('exact');
+    setAllocationValues(Object.fromEntries(expense.shares.map(({ userId, amountMinor }) => [userId, amountInputFromMinor(amountMinor, expense.currency)])));
+    setReceipt(undefined);
+    setAiNotice(undefined);
+    setFormError(undefined);
+    setSuccess(undefined);
+    setExpandedExpenseId(undefined);
   }
 
   function toggleParticipant(userId: string) {
@@ -331,20 +404,42 @@ export default function LedgerScreen() {
     setFormError(undefined);
     setSuccess(undefined);
     try {
-      const result = await addCustomExpense({
-        title,
-        currency: currency.toUpperCase(),
-        totalMinor,
-        baseCurrency: baseCurrency.toUpperCase(),
-        baseAmountMinor,
-        exchangeRate: rate,
-        exchangeRateSource: 'manual',
-        payerAllocations: payerAllocations.map(({ participantId, amountMinor }) => ({ userId: participantId, amountMinor })),
-        shareAllocations: allocationPreview.map(({ participantId, amountMinor }) => ({ userId: participantId, amountMinor })),
-        source: aiNotice ? 'text' : 'manual',
-        clientMutationId: `${activeTrip?.id ?? 'trip'}:${Date.now()}:${Math.random().toString(36).slice(2, 10)}`,
-        receipt,
-      });
+      const payerAllocationsInput = payerAllocations.map(({ participantId, amountMinor }) => ({ userId: participantId, amountMinor }));
+      const shareAllocationsInput = allocationPreview.map(({ participantId, amountMinor }) => ({ userId: participantId, amountMinor }));
+      const result = editingExpenseId
+        ? await updateCustomExpense({
+          expenseId: editingExpenseId,
+          title,
+          currency: currency.toUpperCase(),
+          totalMinor,
+          baseCurrency: baseCurrency.toUpperCase(),
+          baseAmountMinor,
+          exchangeRate: rate,
+          exchangeRateSource: 'manual',
+          payerAllocations: payerAllocationsInput,
+          shareAllocations: shareAllocationsInput,
+        })
+        : await addCustomExpense({
+          title,
+          currency: currency.toUpperCase(),
+          totalMinor,
+          baseCurrency: baseCurrency.toUpperCase(),
+          baseAmountMinor,
+          exchangeRate: rate,
+          exchangeRateSource: 'manual',
+          payerAllocations: payerAllocationsInput,
+          shareAllocations: shareAllocationsInput,
+          source: aiNotice ? 'text' : 'manual',
+          clientMutationId: `${activeTrip?.id ?? 'trip'}:${Date.now()}:${Math.random().toString(36).slice(2, 10)}`,
+          receipt,
+        });
+      if (editingExpenseId && receipt) {
+        try {
+          await attachExpenseReceipt(editingExpenseId, receipt);
+        } catch {
+          setSuccess(tx('支出已更新，但小票上传失败；可在支出详情中重新添加。', 'Expense updated, but the receipt upload failed. Add it again from the expense details.'));
+        }
+      }
       setTitle('');
       setAmount('');
       setExchangeRate('1');
@@ -355,11 +450,16 @@ export default function LedgerScreen() {
       setAllocationValues({});
       setSplitMode('equal');
       setAiNotice(undefined);
+      setEditingExpenseId(undefined);
       setComposerOpen(false);
       setActiveView('activity');
-      setSuccess(result.receiptError
-        ? tx('支出已保存，但小票上传失败；可在支出详情中重新添加。', 'Expense saved, but the receipt upload failed. Add it again from the expense details.')
-        : tx('支出已保存，分摊和结算待办已更新。', 'Expense saved. Shares and settlement tasks are updated.'));
+      if (!editingExpenseId || !receipt) {
+        setSuccess('receiptError' in result && result.receiptError
+          ? tx('支出已保存，但小票上传失败；可在支出详情中重新添加。', 'Expense saved, but the receipt upload failed. Add it again from the expense details.')
+          : editingExpenseId
+            ? tx('支出已更新，分摊和结算待办已更新。', 'Expense updated. Shares and settlement tasks are updated.')
+            : tx('支出已保存，分摊和结算待办已更新。', 'Expense saved. Shares and settlement tasks are updated.'));
+      }
     } catch (caught) {
       setFormError(toUserMessage(caught, tx('无法保存支出，请稍后重试。', 'Could not save the expense. Please try again.')));
     } finally {
@@ -460,6 +560,7 @@ export default function LedgerScreen() {
           themeSelected={theme.backgroundSelected}
           dangerColor={dangerColor}
           tx={tx}
+          editing={Boolean(editingExpenseId)}
           entryMode={entryMode}
           chooseEntryMode={chooseEntryMode}
           aiText={aiText}
@@ -494,6 +595,7 @@ export default function LedgerScreen() {
           receipt={receipt}
           setReceipt={setReceipt}
           pickReceipt={pickReceipt}
+          closeComposer={closeComposer}
             submitExpense={submitExpense}
           />
         </View>
@@ -538,6 +640,9 @@ export default function LedgerScreen() {
           formatDateTime={formatDateTime}
           expandedExpenseId={expandedExpenseId}
           setExpandedExpenseId={setExpandedExpenseId}
+          onEditExpense={startEditingExpense}
+          canEditExpense={(expense) => Boolean(currentMember && ['owner', 'editor'].includes(currentMember.role)) || expense.createdBy === currentUserId || expense.payers.some(({ userId }) => userId === currentUserId)}
+          settlementStatusByUser={settlementStatusByUser}
           pickReceipt={pickReceipt}
           receiptBusy={busyAction === 'receipt'}
           themeSelected={theme.backgroundSelected}
@@ -565,6 +670,7 @@ function ExpenseComposer(props: {
   themeSelected: string;
   dangerColor: string;
   tx: (zh: string, en: string) => string;
+  editing: boolean;
   entryMode: 'manual' | 'ai';
   chooseEntryMode: (mode: 'manual' | 'ai') => void;
   aiText: string;
@@ -599,6 +705,7 @@ function ExpenseComposer(props: {
   receipt?: ReceiptDraft;
   setReceipt: (receipt?: ReceiptDraft) => void;
   pickReceipt: (source: 'camera' | 'library') => Promise<void>;
+  closeComposer: () => void;
   submitExpense: () => Promise<void>;
 }) {
   const { tx } = props;
@@ -607,7 +714,12 @@ function ExpenseComposer(props: {
   return (
     <View style={[styles.composer, compact && styles.composerCompact, { backgroundColor: props.themeSurface }]}>
       <View style={styles.composerHeading}>
-        <SectionHeading title={tx('记一笔', 'Add expense')} />
+        <View style={styles.composerTitleRow}>
+          <SectionHeading title={props.editing ? tx('编辑支出', 'Edit expense') : tx('记一笔', 'Add expense')} />
+          <Pressable accessibilityRole="button" accessibilityLabel={tx('取消编辑', 'Cancel')} onPress={props.closeComposer} style={({ pressed }) => [styles.textButton, pressed && styles.pressed]}>
+            <ThemedText type="smallBold">{tx('取消', 'Cancel')}</ThemedText>
+          </Pressable>
+        </View>
         <View style={styles.modeRow}>
           <ChoiceChip selected={props.entryMode === 'manual'} onPress={() => props.chooseEntryMode('manual')}>
             {tx('手动', 'Manual')}
@@ -761,7 +873,7 @@ function ExpenseComposer(props: {
             busy={props.busyAction === 'save'}
             disabled={Boolean(props.busyAction) || !props.title.trim() || !props.amount.trim() || props.participantIds.length === 0 || props.selectedPayerIds.length === 0 || (props.currency.toUpperCase() !== props.baseCurrency.toUpperCase() && !props.exchangeRate.trim())}
             onPress={() => void props.submitExpense()}>
-            {tx('保存支出', 'Save expense')}
+            {props.editing ? tx('保存修改', 'Save changes') : tx('保存支出', 'Save expense')}
           </ActionButton>
         </View>
       )}
@@ -986,7 +1098,10 @@ function SettlementWorkspace(props: {
           const received = sumSettlements(props.settlements, snapshot.currency, 'to', props.currentUserId);
           return (
             <View key={snapshot.currency} style={[styles.personalCurrencyRow, props.compact && styles.personalCurrencyRowCompact]}>
-              <ThemedText type="smallBold" style={[styles.currencyCode, { color: props.positiveColor }]}>{snapshot.currency}</ThemedText>
+              <View style={styles.currencyIdentity}>
+                <ThemedText type="smallBold" style={[styles.currencyCode, { color: props.positiveColor }]}>{snapshot.currency}</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">{snapshot.currency.toUpperCase() === props.baseCurrency.toUpperCase() ? tx('行程本位币', 'Trip base') : tx('实际支付币种', 'Payment currency')}</ThemedText>
+              </View>
               <Metric label={tx('待转出', 'To send')} value={formatMinorAmount(pendingOut, snapshot.currency)} color={props.dangerColor} />
               <Metric label={tx('已转出', 'Sent')} value={formatMinorAmount(sent, snapshot.currency)} />
               <Metric label={tx('待收款', 'To receive')} value={formatMinorAmount(pendingIn, snapshot.currency)} />
@@ -997,7 +1112,7 @@ function SettlementWorkspace(props: {
       </View>
 
       <View style={styles.sectionBlock}>
-        <SectionHeading title={tx('我的待办', 'My tasks')} />
+        <SectionHeading title={tx('我的待办', 'My tasks')} detail={tx('结算页的金额按币种汇总；明细页可编辑每笔支出。', 'Balances are grouped by currency; edit any expense from Activity.')} />
         {props.myPendingTransfers.length === 0 ? (
           <View style={styles.quietEmpty}>
             <ThemedText type="smallBold">{tx('待转出已清空', 'Nothing to send')}</ThemedText>
@@ -1151,6 +1266,9 @@ function ExpenseActivity(props: {
   formatDateTime: (value: string) => string;
   expandedExpenseId?: string;
   setExpandedExpenseId: (expenseId?: string) => void;
+  onEditExpense: (expense: Expense) => void;
+  canEditExpense: (expense: Expense) => boolean;
+  settlementStatusByUser: Map<string, { label: string; color?: string }>;
   pickReceipt: (source: 'camera' | 'library', expenseId?: string) => Promise<void>;
   receiptBusy: boolean;
   themeSelected: string;
@@ -1191,13 +1309,15 @@ function ExpenseActivity(props: {
               </View>
               <View style={styles.expenseAmountBlock}>
                 <ThemedText type="smallBold">{formatMinorAmount(expense.totalMinor, expense.currency)}</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">{expense.baseCurrency && expense.baseCurrency !== expense.currency ? tx(`记入 ${expense.baseCurrency} ${formatMinorAmount(expense.baseAmountMinor ?? 0, expense.baseCurrency)}`, `Books ${formatMinorAmount(expense.baseAmountMinor ?? 0, expense.baseCurrency)}`) : tx('本位币', 'Base currency')}</ThemedText>
                 {(expense.receipts?.length ?? 0) > 0 ? <ThemedText type="small" style={{ color: props.positiveColor }}>{tx('有小票', 'Receipt')}</ThemedText> : null}
               </View>
             </Pressable>
             {expanded ? (
               <View style={styles.expenseDetails}>
                 <View style={styles.detailLine}><ThemedText type="smallBold">{tx('分摊', 'Split')}</ThemedText><ThemedText type="small" themeColor="textSecondary" style={styles.grow}>{shareText}</ThemedText></View>
-                <View style={styles.sharePeople}>{expense.shares.map((share) => { const member = props.memberById.get(share.userId); return <View key={share.userId} style={styles.sharePerson}><MemberAvatar avatarUrl={member?.avatarUrl} displayName={member?.displayName ?? tx('同行者', 'Traveller')} size={30} /><ThemedText type="small" style={styles.grow}>{member?.displayName ?? tx('同行者', 'Traveller')}</ThemedText><ThemedText type="smallBold">{formatMinorAmount(share.amountMinor, expense.currency)}</ThemedText></View>; })}</View>
+                <View style={styles.detailLine}><ThemedText type="smallBold">{tx('结算', 'Settlement')}</ThemedText><ThemedText type="small" themeColor="textSecondary" style={styles.grow}>{tx('按当前账本合并显示每位同行者的转账状态。', 'Status is calculated across the current trip ledger.')}</ThemedText></View>
+                <View style={styles.sharePeople}>{expense.shares.map((share) => { const member = props.memberById.get(share.userId); const status = props.settlementStatusByUser.get(share.userId); return <View key={share.userId} style={styles.sharePerson}><MemberAvatar avatarUrl={member?.avatarUrl} displayName={member?.displayName ?? tx('同行者', 'Traveller')} size={30} /><ThemedText type="small" style={styles.grow}>{member?.displayName ?? tx('同行者', 'Traveller')}</ThemedText><View style={styles.shareAmount}><ThemedText type="smallBold">{formatMinorAmount(share.amountMinor, expense.currency)}</ThemedText><ThemedText type="smallBold" style={status?.color ? { color: status.color } : undefined}>{status?.label ?? tx('待结算', 'Pending')}</ThemedText></View></View>; })}</View>
                 {(expense.receipts?.length ?? 0) > 0 ? (
                   <View style={styles.receiptGallery}>
                     {expense.receipts?.map((item, index) => item.signedUrl ? (
@@ -1222,6 +1342,11 @@ function ExpenseActivity(props: {
                     <ThemedText type="smallBold">{tx('相册补充', 'Choose photo')}</ThemedText>
                   </Pressable>
                 </View>
+                {props.canEditExpense(expense) ? (
+                  <Pressable accessibilityRole="button" onPress={() => props.onEditExpense(expense)} style={({ pressed }) => [styles.editExpenseButton, pressed && styles.pressed]}>
+                    <ThemedText type="smallBold">{tx('编辑这笔支出', 'Edit expense')}</ThemedText>
+                  </Pressable>
+                ) : null}
               </View>
             ) : null}
           </View>
@@ -1289,6 +1414,7 @@ const styles = StyleSheet.create({
   composer: { gap: 20, borderRadius: 16, padding: 20, shadowColor: '#15344A', shadowOpacity: 0.1, shadowRadius: 20, shadowOffset: { width: 0, height: 8 }, elevation: 3 },
   composerCompact: { padding: 16, gap: 16 },
   composerHeading: { gap: 12 },
+  composerTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   modeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   formGroup: { gap: 16 },
   amountRow: { flexDirection: 'row', gap: 12, alignItems: 'flex-end' },
@@ -1328,6 +1454,7 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 22, lineHeight: 28, fontWeight: '700' },
   personalCurrencyRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', gap: 14, paddingVertical: 14, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#AFCACA' },
   personalCurrencyRowCompact: { gap: 10 },
+  currencyIdentity: { minWidth: 90, gap: 2, paddingBottom: 2 },
   currencyCode: { minWidth: 42, paddingBottom: 2 },
   metric: { minWidth: 94, flexGrow: 1, gap: 2 },
   sectionBlock: { gap: 0 },
@@ -1361,8 +1488,9 @@ const styles = StyleSheet.create({
   expenseSummary: { minHeight: 68, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14 },
   expenseAmountBlock: { alignItems: 'flex-end', gap: 2 },
   expenseDetails: { gap: 14, paddingBottom: 18 },
+  editExpenseButton: { minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 12, paddingHorizontal: 14, backgroundColor: '#D9EEEA' },
   detailLine: { flexDirection: 'row', alignItems: 'flex-start', gap: 16 },
-  sharePeople: { gap: 6 }, sharePerson: { minHeight: 38, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  sharePeople: { gap: 6 }, sharePerson: { minHeight: 38, flexDirection: 'row', alignItems: 'center', gap: 10 }, shareAmount: { alignItems: 'flex-end', gap: 1 },
   receiptGallery: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   receiptLarge: { width: 160, height: 190, borderRadius: 12, backgroundColor: '#D9EEEA' },
   grow: { flex: 1 },

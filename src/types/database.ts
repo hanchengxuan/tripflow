@@ -1049,6 +1049,23 @@ export type Database = {
         Args: { requested_settlement_id: string }
         Returns: undefined
       }
+      update_custom_expense: {
+        Args: {
+          expense_base_amount_minor: number
+          expense_base_currency: string
+          expense_currency: string
+          expense_exchange_rate: number
+          expense_exchange_rate_source?: string
+          expense_title: string
+          expense_total_minor: number
+          participant_amounts: number[]
+          participant_user_ids: string[]
+          payer_amounts: number[]
+          payer_user_ids: string[]
+          requested_expense_id: string
+        }
+        Returns: string
+      }
       update_trip_details: {
         Args: {
           requested_trip_id: string
