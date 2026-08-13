@@ -91,6 +91,7 @@ See `planning.md` for the complete P0/P1 scope, non-goals, architecture, milesto
 - Today now uses a persistent, accessible add-plan action; opening the composer scrolls to the form instead of the document end, and plans outside the trip dates require explicit confirmation before extending the trip
 - Auth/session recovery uses a single compact status state, while the shared Screen supports fixed contextual actions without covering content
 - Ledger now keeps “Add expense” available as a persistent compact action; mobile expense and settlement controls stack at narrow widths, and refresh state no longer inserts redundant inline copy
+- Trips and Profile now use shorter operational labels, remove redundant sync notices, and switch forms/settings to vertical mobile layouts before controls can collide
 - Profile avatars now propagate through the shared trip roster and ledger settlement identities, with an initials fallback and dark-mode-aware presentation
 - Every trip in My Trips opens a focused management workspace instead of only switching context; owners and editors can edit name, dates, home currency, and timezone
 - Trip owners can progressively manage another traveller's owner/editor/viewer role or remove them after their balance is fully settled, while preserving historical ledger evidence; direct membership mutation is revoked in favor of validated RPCs

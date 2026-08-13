@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { Link, type Href } from 'expo-router';
-import { LayoutAnimation, Pressable, StyleSheet, View } from 'react-native';
+import { LayoutAnimation, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/form-controls';
 import { OtpCodeInput } from '@/components/otp-code-input';
@@ -20,6 +20,8 @@ type AvatarDraft = { uri: string; mimeType?: string | null };
 
 export default function ProfileScreen() {
   const theme = useTheme();
+  const { width } = useWindowDimensions();
+  const compact = width < 520;
   const { locale, setLocale, tx } = useI18n();
   const { capabilities, session } = useAuth();
   const { profile, activeTrip, members, currentUserId, saveProfile } = useMvp();
@@ -164,10 +166,10 @@ export default function ProfileScreen() {
   }
 
   return (
-    <Screen title={tx('我的', 'Me')} subtitle={tx('个人资料、偏好与账号安全。', 'Profile, preferences, and account security.') }>
+    <Screen title={tx('我的', 'Me')} subtitle={tx('资料 · 偏好 · 安全', 'Profile · preferences · security')}>
       {notice ? <InlineNotice tone={notice.tone}>{notice.text}</InlineNotice> : null}
 
-      <View style={styles.identity}>
+      <View style={[styles.identity, compact && styles.identityCompact]}>
         <Pressable
           accessibilityLabel={tx('更换头像', 'Change avatar')}
           accessibilityRole="button"
@@ -210,7 +212,7 @@ export default function ProfileScreen() {
           <ThemedText type="small" themeColor="textSecondary">
             {tx('头像支持 JPG、PNG 或 WebP，最大 5 MB。', 'Use a JPG, PNG, or WebP image up to 5 MB.')}
           </ThemedText>
-          <View style={styles.editorActions}>
+          <View style={[styles.editorActions, compact && styles.editorActionsCompact]}>
             <View style={styles.actionGrow}>
               <ActionButton tone="secondary" disabled={busyAction === 'save'} onPress={cancelEditing}>{tx('取消', 'Cancel')}</ActionButton>
             </View>
@@ -224,10 +226,10 @@ export default function ProfileScreen() {
 
       <View style={styles.section}>
         <ThemedText type="smallBold" themeColor="textSecondary">{tx('偏好设置', 'Preferences')}</ThemedText>
-        <View style={styles.settingRow}>
+        <View style={[styles.settingRow, compact && styles.settingRowCompact]}>
           <View style={styles.settingCopy}>
             <ThemedText>{tx('界面语言', 'App language')}</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">{tx('日期和界面文字会同步切换', 'Dates and interface copy follow this choice')}</ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">{tx('语言也会影响日期格式', 'Also changes date format')}</ThemedText>
           </View>
           <View style={styles.languageChoices}>
             <ChoiceChip selected={locale === 'zh-CN'} onPress={() => setLocale('zh-CN')}>中文</ChoiceChip>
@@ -308,6 +310,7 @@ function SettingValue({ label, value }: { label: string; value: string }) {
 
 const styles = StyleSheet.create({
   identity: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingVertical: 8 },
+  identityCompact: { flexWrap: 'wrap', alignItems: 'flex-start' },
   avatar: { width: 88, height: 88, borderRadius: 44, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   avatarImage: { width: '100%', height: '100%' },
   initials: { fontSize: 28, lineHeight: 34, fontWeight: '700', color: '#087F6A' },
@@ -318,9 +321,11 @@ const styles = StyleSheet.create({
   editButton: { minHeight: 44, paddingHorizontal: 16, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   editor: { borderRadius: 16, padding: 18, gap: 12, shadowColor: '#17324D', shadowOpacity: 0.07, shadowRadius: 18, shadowOffset: { width: 0, height: 7 } },
   editorActions: { flexDirection: 'row', gap: 10 },
+  editorActionsCompact: { flexDirection: 'column' },
   actionGrow: { flex: 1 },
   section: { gap: 14, paddingTop: 18 },
   settingRow: { flexDirection: 'row', alignItems: 'center', gap: 18 },
+  settingRowCompact: { flexDirection: 'column', alignItems: 'stretch', gap: 10 },
   settingCopy: { flex: 1, gap: 2 },
   languageChoices: { flexDirection: 'row', gap: 8 },
   divider: { height: StyleSheet.hairlineWidth },
