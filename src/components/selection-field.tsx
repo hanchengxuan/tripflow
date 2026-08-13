@@ -60,7 +60,7 @@ export function SelectionField<T extends string>({
                   <Pressable
                     key={option.value}
                     accessibilityRole="radio"
-                    accessibilityState={{ selected }}
+                    accessibilityState={{ checked: selected, selected }}
                     onPress={() => {
                       onChange(option.value);
                       setOpen(false);

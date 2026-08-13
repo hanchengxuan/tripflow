@@ -78,7 +78,7 @@ export function ChoiceChip({
   return (
     <Pressable
       accessibilityRole={role}
-      accessibilityState={{ checked: role === 'checkbox' ? selected : undefined, selected: role !== 'checkbox' ? selected : undefined, disabled }}
+      accessibilityState={{ checked: role === 'checkbox' || role === 'radio' ? selected : undefined, selected: role === 'tab' ? selected : undefined, disabled }}
       disabled={disabled}
       onPress={onPress}
       style={[styles.chip, selected ? styles.chipSelected : { backgroundColor: theme.backgroundSelected }, disabled && styles.dimmed]}>

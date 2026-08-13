@@ -99,6 +99,7 @@ See `planning.md` for the complete P0/P1 scope, non-goals, architecture, milesto
 - Ledger settlement now keeps personal payment tasks in the open state while completed history and group status sit behind compact disclosures; AI/receipt helper copy is reduced and split panels follow the active theme in dark mode
 - Trips and Profile now use shorter operational labels, remove redundant sync notices, and switch forms/settings to vertical mobile layouts before controls can collide
 - Trips management now keeps invite generation behind a compact disclosure, while Profile keeps sign-in method linking collapsed until requested and uses radio semantics for the language switcher
+- Final browser audit found and fixed missing checked-state semantics on radio chips and selection-sheet options; production route smoke tests remain green across the authenticated shell entry and public pages
 - Profile avatars now propagate through the shared trip roster and ledger settlement identities, with an initials fallback and dark-mode-aware presentation
 - Every trip in My Trips opens a focused management workspace instead of only switching context; owners and editors can edit name, dates, home currency, and timezone
 - Trip owners can progressively manage another traveller's owner/editor/viewer role or remove them after their balance is fully settled, while preserving historical ledger evidence; direct membership mutation is revoked in favor of validated RPCs
