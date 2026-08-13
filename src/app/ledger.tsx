@@ -415,7 +415,7 @@ export default function LedgerScreen() {
   return (
     <Screen
       title={activeTrip ? tx(`${activeTrip.name} · 账本`, `${activeTrip.name} · ledger`) : tx('共享账本', 'Shared ledger')}
-      subtitle={tx('先处理待转，再查看明细。', 'Handle payments first, then review activity.')}>
+      subtitle={tx('结算 · 明细', 'Settle · activity')}>
       {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
       {formError ? <InlineNotice tone="error">{formError}</InlineNotice> : null}
       {success ? <InlineNotice>{success}</InlineNotice> : null}
@@ -586,7 +586,7 @@ function ExpenseComposer(props: {
   return (
     <View style={[styles.composer, { backgroundColor: props.themeSurface }]}>
       <View style={styles.composerHeading}>
-        <SectionHeading title={tx('记一笔', 'Add expense')} detail={tx('付款人、分摊和小票都可在这里确认。', 'Confirm the payer, split, and receipt here.')} />
+        <SectionHeading title={tx('记一笔', 'Add expense')} />
         <View style={styles.modeRow}>
           <ChoiceChip selected={props.entryMode === 'manual'} onPress={() => props.chooseEntryMode('manual')}>
             {tx('手动', 'Manual')}
@@ -609,9 +609,7 @@ function ExpenseComposer(props: {
             maxLength={500}
             style={styles.multiline}
           />
-          <ThemedText type="small" themeColor="textSecondary">
-            {tx('AI 只生成草稿；金额、付款人和分摊成员仍由你确认。', 'AI only creates a draft. You still confirm the amount, payer, and participants.')}
-          </ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">{tx('草稿需确认。', 'Draft needs review.')}</ThemedText>
           <ActionButton busy={props.busyAction === 'parse'} disabled={!props.aiText.trim() || Boolean(props.busyAction)} onPress={() => void props.parseWithAi()}>
             {tx('生成草稿', 'Create draft')}
           </ActionButton>
@@ -804,22 +802,34 @@ function VoiceExpenseInput(props: {
 
   return (
     <View style={styles.voiceGroup}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityState={{ disabled: props.disabled || processing, busy: processing }}
-        disabled={props.disabled || processing}
-        onPress={() => void (state.isRecording ? stopAndParse() : startRecording())}
-        style={({ pressed }) => [styles.voiceButton, state.isRecording && styles.voiceButtonRecording, pressed && styles.pressed, (props.disabled || processing) && styles.disabled]}>
-        <ThemedText type="smallBold" style={styles.voiceButtonText}>
-          {processing
-            ? props.tx('正在理解语音…', 'Understanding audio…')
+      <View style={styles.voiceControlRow}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={processing
+            ? props.tx('正在解析语音', 'Processing voice')
             : state.isRecording
-              ? props.tx(`结束并生成草稿 · ${Math.round(state.durationMillis / 1000)}s`, `Stop and create draft · ${Math.round(state.durationMillis / 1000)}s`)
-              : props.tx('语音记账', 'Record expense')}
-        </ThemedText>
-      </Pressable>
-      <ThemedText type="small" themeColor="textSecondary">{props.tx('建议控制在 60 秒内；录音仅用于本次解析，不会保存。', 'Keep it under 60 seconds. The recording is processed once and not stored.')}</ThemedText>
+              ? props.tx('结束语音记账', 'Finish voice expense')
+              : props.tx('开始语音记账', 'Start voice expense')}
+          accessibilityState={{ disabled: props.disabled || processing, busy: processing }}
+          disabled={props.disabled || processing}
+          onPress={() => void (state.isRecording ? stopAndParse() : startRecording())}
+          style={({ pressed }) => [styles.voiceButton, state.isRecording && styles.voiceButtonRecording, pressed && styles.pressed, (props.disabled || processing) && styles.disabled]}>
+          <MicrophoneGlyph active={state.isRecording || processing} />
+        </Pressable>
+        {processing ? <ThemedText type="small" themeColor="textSecondary">{props.tx('解析中…', 'Processing…')}</ThemedText> : state.isRecording ? <ThemedText type="smallBold">{Math.round(state.durationMillis / 1000)}s</ThemedText> : null}
+      </View>
       {voiceError ? <InlineNotice tone="error">{voiceError}</InlineNotice> : null}
+    </View>
+  );
+}
+
+function MicrophoneGlyph({ active }: { active: boolean }) {
+  return (
+    <View style={styles.micGlyph} accessibilityElementsHidden>
+      <View style={[styles.micBody, active && styles.micBodyActive]} />
+      <View style={[styles.micArc, active && styles.micArcActive]} />
+      <View style={[styles.micStem, active && styles.micStemActive]} />
+      <View style={[styles.micBase, active && styles.micBaseActive]} />
     </View>
   );
 }
@@ -962,7 +972,7 @@ function SettlementWorkspace(props: {
       </View>
 
       <View style={styles.sectionBlock}>
-        <SectionHeading title={tx('我的待办', 'My tasks')} detail={tx('标记自己已完成的转账。', 'Mark your own payments as sent.')} />
+        <SectionHeading title={tx('我的待办', 'My tasks')} />
         {props.myPendingTransfers.length === 0 ? (
           <View style={styles.quietEmpty}>
             <ThemedText type="smallBold">{tx('待转出已清空', 'Nothing to send')}</ThemedText>
@@ -1010,7 +1020,7 @@ function SettlementWorkspace(props: {
 
       {mySettlements.length > 0 ? (
         <View style={styles.sectionBlock}>
-          <SectionHeading title={tx('已完成', 'Completed')} detail={tx('可撤销误标的转账。', 'Undo an accidental status change.')} />
+          <SectionHeading title={tx('已完成', 'Completed')} />
           {mySettlements.map((settlement) => {
             const sentByMe = settlement.fromUserId === props.currentUserId;
             const otherMember = props.memberById.get(sentByMe ? settlement.toUserId : settlement.fromUserId);
@@ -1043,7 +1053,7 @@ function SettlementWorkspace(props: {
       ) : null}
 
       <View style={styles.sectionBlock}>
-        <SectionHeading title={tx('全员结算', 'Group settlement')} detail={tx('按币种查看每人的余额。', 'Balances by currency.')} />
+        <SectionHeading title={tx('全员结算', 'Group settlement')} />
         {props.balanceSnapshots.map((snapshot) => (
           <View key={snapshot.currency} style={styles.groupCurrency}>
             <ThemedText type="smallBold" style={[styles.currencyDivider, { color: props.positiveColor }]}>{snapshot.currency}</ThemedText>
@@ -1112,7 +1122,7 @@ function ExpenseActivity(props: {
 
   return (
     <View style={styles.sectionBlock}>
-      <SectionHeading title={tx('消费明细', 'Expense activity')} detail={tx('展开查看付款人、分摊和小票。', 'Expand to see the payer, split, and receipt.')} />
+      <SectionHeading title={tx('消费明细', 'Expense activity')} />
       {props.expenses.map((expense) => {
         const expanded = props.expandedExpenseId === expense.id;
         const primaryPayer = props.memberById.get(expense.payers[0]?.userId);
@@ -1236,9 +1246,18 @@ const styles = StyleSheet.create({
   conversionPreview: { flexGrow: 1, flexBasis: 150, gap: 2, paddingBottom: 10 },
   multiline: { minHeight: 96, textAlignVertical: 'top' },
   voiceGroup: { gap: 8 },
-  voiceButton: { minHeight: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14, backgroundColor: '#1B70A6' },
+  voiceControlRow: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 48 },
+  voiceButton: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1B70A6' },
   voiceButtonRecording: { backgroundColor: '#B4413E' },
-  voiceButtonText: { color: '#FFFFFF' },
+  micGlyph: { width: 24, height: 28, alignItems: 'center', justifyContent: 'flex-start' },
+  micBody: { width: 10, height: 16, borderRadius: 6, backgroundColor: '#FFFFFF' },
+  micBodyActive: { backgroundColor: '#FFF5F3' },
+  micArc: { position: 'absolute', top: 8, width: 20, height: 14, borderWidth: 2, borderTopColor: 'transparent', borderLeftColor: '#FFFFFF', borderRightColor: '#FFFFFF', borderBottomColor: '#FFFFFF', borderRadius: 12 },
+  micArcActive: { borderLeftColor: '#FFF5F3', borderRightColor: '#FFF5F3', borderBottomColor: '#FFF5F3' },
+  micStem: { position: 'absolute', bottom: 2, width: 2, height: 6, borderRadius: 1, backgroundColor: '#FFFFFF' },
+  micStemActive: { backgroundColor: '#FFF5F3' },
+  micBase: { position: 'absolute', bottom: 0, width: 14, height: 2, borderRadius: 1, backgroundColor: '#FFFFFF' },
+  micBaseActive: { backgroundColor: '#FFF5F3' },
   fieldGroup: { gap: 8 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   splitFields: { gap: 10, padding: 12, borderRadius: 12, backgroundColor: '#F0F7F6' },
