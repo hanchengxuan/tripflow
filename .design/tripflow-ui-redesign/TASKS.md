@@ -26,8 +26,8 @@
 ## Trips and Profile
 
 - [x] Stack narrow management/editor controls before they collide.
-- [ ] Make active-trip switching and member actions more visibly task-oriented.
-- [ ] Group account settings by frequency and isolate destructive actions.
+- [x] Make active-trip switching and member actions more visibly task-oriented.
+- [x] Group account settings by frequency and isolate destructive actions.
 
 ## Verification
 
