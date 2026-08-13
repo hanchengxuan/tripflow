@@ -36,7 +36,6 @@ import type { Database } from '@/types/database';
 
 interface MvpContextValue {
   loading: boolean;
-  initialLoading: boolean;
   error?: string;
   trips: Trip[];
   activeTrip?: Trip;
@@ -77,7 +76,6 @@ export function MvpProvider({ children }: PropsWithChildren) {
   const { session } = useAuth();
   const currentUserId = session?.user.id ?? '';
   const [loading, setLoading] = useState(true);
-  const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState<string>();
   const [trips, setTrips] = useState<Trip[]>([]);
   const [activeTrip, setActiveTrip] = useState<Trip>();
@@ -125,7 +123,6 @@ export function MvpProvider({ children }: PropsWithChildren) {
       setError(toUserMessage(caught));
     } finally {
       setLoading(false);
-      setInitialLoading(false);
     }
   }, [activeTrip?.id, currentUserId, loadTripDetails]);
 
@@ -303,7 +300,6 @@ export function MvpProvider({ children }: PropsWithChildren) {
 
   const value = useMemo<MvpContextValue>(() => ({
     loading,
-    initialLoading,
     error,
     trips,
     activeTrip,
@@ -336,7 +332,7 @@ export function MvpProvider({ children }: PropsWithChildren) {
     attachExpenseReceipt,
     markSettlement,
     unmarkSettlement,
-  }), [loading, initialLoading, error, trips, activeTrip, members, ledgerMembers, itineraryItems, expenses, settlements, profile, currentUserId, selectTrip, refresh, createTripAction, joinTrip, createInvite, saveTrip, deleteTripAction, setMemberRole, removeMember, saveProfile, addItineraryItem, addStayTransfer, saveItineraryItem, setItineraryRouteMode, removeItineraryItem, addEqualExpense, addCustomExpense, updateCustomExpenseAction, setExpenseSettledAction, attachExpenseReceipt, markSettlement, unmarkSettlement]);
+  }), [loading, error, trips, activeTrip, members, ledgerMembers, itineraryItems, expenses, settlements, profile, currentUserId, selectTrip, refresh, createTripAction, joinTrip, createInvite, saveTrip, deleteTripAction, setMemberRole, removeMember, saveProfile, addItineraryItem, addStayTransfer, saveItineraryItem, setItineraryRouteMode, removeItineraryItem, addEqualExpense, addCustomExpense, updateCustomExpenseAction, setExpenseSettledAction, attachExpenseReceipt, markSettlement, unmarkSettlement]);
 
   return <MvpContext.Provider value={value}>{children}</MvpContext.Provider>;
 }
