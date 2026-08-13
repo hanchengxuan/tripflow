@@ -19,7 +19,6 @@ export default function AppTabs() {
   const { tx } = useI18n();
   return (
     <Tabs>
-      <TabSlot style={{ height: '100%' }} />
       <TabList asChild>
         <CustomTabList>
           <TabTrigger name="home" href="/" asChild>
@@ -36,6 +35,7 @@ export default function AppTabs() {
           </TabTrigger>
         </CustomTabList>
       </TabList>
+      <TabSlot style={styles.tabSlot} />
     </Tabs>
   );
 }
@@ -74,9 +74,10 @@ export function CustomTabList(props: TabListProps) {
 
 const styles = StyleSheet.create({
   tabListContainer: {
-    position: 'absolute',
     width: '100%',
-    padding: Spacing.three,
+    paddingTop: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    paddingBottom: Spacing.two,
     justifyContent: 'center',
     alignItems: 'center',
     flexDirection: 'row',
@@ -93,6 +94,7 @@ const styles = StyleSheet.create({
     maxWidth: MaxContentWidth,
   },
   innerContainerCompact: { paddingHorizontal: 8, justifyContent: 'space-between', gap: 0 },
+  tabSlot: { flex: 1, minHeight: 0 },
   brandText: {
     marginRight: 'auto',
   },

@@ -87,6 +87,7 @@ See `planning.md` for the complete P0/P1 scope, non-goals, architecture, milesto
 - Today itinerary editing now uses a closed-by-default quick-add composer: the timeline stays visible first, editors open a compact Add plan action when needed, and existing item edits reuse the same surface. Summary labels and helper copy were shortened to keep the next action visually primary.
 - Ledger expense entry now presents voice capture as a compact microphone control with accessible state labels; recording duration or processing status appears only while active, and the previous long voice guidance copy is removed.
 - Trips management now keeps the hero focused on the selected trip and action buttons; panel captions and redundant helper sentences are optional, so create/join/manage surfaces reveal only the information needed for the current task.
+- Mobile web shell now keeps the top tab navigation in document flow instead of overlaying scroll content; Screen reserves a smaller, explicit web inset, compact stays actions wrap below their copy, and shared controls use theme-aware surfaces/text in dark mode.
 - The shared web shell reserves space for its fixed navigation, removing the previous title overlap at desktop and mobile widths
 - Profile avatars now propagate through the shared trip roster and ledger settlement identities, with an initials fallback and dark-mode-aware presentation
 - Every trip in My Trips opens a focused management workspace instead of only switching context; owners and editors can edit name, dates, home currency, and timezone
