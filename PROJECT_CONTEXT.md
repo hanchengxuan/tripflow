@@ -1,6 +1,6 @@
 # TripFlow project context
 
-Last verified: 2026-08-12 UTC
+Last verified: 2026-08-13 UTC
 
 This file is the durable, version-controlled source of truth for engineering continuity. It contains only project-safe context. Product detail belongs in `planning.md`; implementation history belongs in Git.
 
@@ -30,7 +30,7 @@ See `planning.md` for the complete P0/P1 scope, non-goals, architecture, milesto
 
 - Expo SDK 57, React Native, Expo Router, TypeScript, React 19
 - Supabase Postgres, Auth, and Row Level Security
-- Jest with `jest-expo`, ESLint, TypeScript checks, GitHub Actions
+- Jest with `jest-expo`, ESLint, TypeScript checks, GitHub Actions CI/CD
 - Amounts use integer minor units with deterministic remainder allocation
 
 ## Verified completed work
@@ -81,6 +81,7 @@ See `planning.md` for the complete P0/P1 scope, non-goals, architecture, milesto
 - Expense receipts can be captured with the camera or selected from the photo library during entry or attached later; files are normalized client-side and stored privately with expense-scoped access policies
 - Settlement status is stored independently from immutable expense evidence, recalculates remaining transfer routes after every payment, and is serialized by trip/currency to prevent concurrent overpayment
 - The ledger UI now asks for a source currency and explicit source-to-home-currency rate when they differ; settlement tasks can record the actual payment currency and amount while showing the converted bookkeeping amount. Unconverted legacy cross-currency rows remain flagged in the normalized calculation instead of receiving a guessed rate.
+- The `multicurrency_base_amounts` migration is applied to the live Supabase project, adding auditable home-currency amounts/rates to expenses, payer/share rows, and settlements plus normalized settlement RPC overloads.
 - Today, Trips, and Ledger use a shared compact section-heading pattern, flatter overview surfaces, shorter utility copy, and progressive payment-currency controls so the next action is visually primary.
 - The shared web shell reserves space for its fixed navigation, removing the previous title overlap at desktop and mobile widths
 - Profile avatars now propagate through the shared trip roster and ledger settlement identities, with an initials fallback and dark-mode-aware presentation
@@ -90,6 +91,8 @@ See `planning.md` for the complete P0/P1 scope, non-goals, architecture, milesto
 - Removed travellers retain a read-only trip-scoped name/avatar snapshot for historical ledger auditability, and expense creation shares a membership lock with removal to prevent concurrent stranded balances
 - Lodging is modeled as one multi-day check-in/check-out interval in the trip timezone rather than repeated daily itinerary rows; Today surfaces a compact Stays rail and can atomically add one transfer from the latest valid prior placed item to the saved hotel
 - Owners/editors can edit or delete timeline items through validated RPCs; lodging changes remove stale generated transfers. The trip creator can permanently delete a trip through an explicit confirmation flow, while the protected `delete-trip` Edge Function removes database data before best-effort cleanup of private receipt objects.
+- CI runs formatting boundaries, lint, TypeScript, Jest, the web export, and an exact reviewed npm-audit GHSA allowlist that hard-fails critical or newly unreviewed high advisories.
+- Production CD waits for the exact `main` commit's Vercel Git Integration status, then smoke-tests `/`, `/ledger`, `/explore`, `/privacy`, and `/support` on `https://tripflow-liart.vercel.app`; the 2026-08-13 run passed for deployment `61ZgGMyXP6hzAoJYsmwXWGahZSKp`.
 
 ## Applied Supabase migrations
 
@@ -114,8 +117,9 @@ See `planning.md` for the complete P0/P1 scope, non-goals, architecture, milesto
 - `itinerary_route_modes`
 - `profile_onboarding`
 - `harden_profile_onboarding`
+- `multicurrency_base_amounts`
 
-Pending on this branch (not yet verified against the live project): `multicurrency_base_amounts`, which adds auditable base amounts/rates to expenses, payer/share rows, and settlements and adds normalized settlement RPC overloads.
+The live migration list was rechecked after applying `multicurrency_base_amounts`; no pending TripFlow migration remains.
 
 Temporary acceptance fixtures are removed after each test; production may contain real user-created rows.
 
@@ -125,7 +129,7 @@ Temporary acceptance fixtures are removed after each test; production may contai
 2. Choose and configure the long-term public support email through `EXPO_PUBLIC_SUPPORT_EMAIL`, then finalize App Privacy disclosures, age rating, and Chinese screenshots.
 3. Run TestFlight acceptance on a current iPhone and human acceptance with real owner/editor/viewer accounts, including QR camera scanning, avatar propagation, and trip/member management.
 4. Add segment/branch creation and segment-scoped itinerary membership.
-5. Expand the validated ledger beyond equal splits to multiple payers, exclusions, unequal shares, partial transfers, and exchange-rate snapshots; first deploy and verify the pending base-currency migration.
+5. Expand the validated ledger beyond equal splits to multiple payers, exclusions, unequal shares, partial transfers, and richer exchange-rate snapshots.
 6. Address performance-advisor warnings before the dataset grows, and enable Supabase leaked-password protection before broader password-login beta distribution.
 7. Configure conservative Google Places and Routes quotas/budget alerts, then monitor production usage before increasing limits.
 8. Continue the itinerary experience milestone with Place details, participant/status controls, booking essentials, and richer branch interactions.
@@ -141,6 +145,7 @@ Temporary acceptance fixtures are removed after each test; production may contai
 - Never place a service-role key, database password, or signing secret in the Expo client or Git.
 - Client configuration uses only the project URL and a publishable key in ignored local/deployment environment variables.
 - Database migrations are reviewed before deployment and followed by RLS/security advisor checks.
+- Production deployment uses the Vercel Git Integration as the single deploy path from `main`; GitHub Actions verifies the provider status after the quality gate and performs public-route smoke tests.
 
 ## Continuity workflow
 
