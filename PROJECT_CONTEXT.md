@@ -90,6 +90,8 @@ See `planning.md` for the complete P0/P1 scope, non-goals, architecture, milesto
 - Mobile web shell now keeps the top tab navigation in document flow instead of overlaying scroll content; Screen reserves a smaller, explicit web inset, compact stays actions wrap below their copy, and shared controls use theme-aware surfaces/text in dark mode.
 - Today now uses a persistent, accessible add-plan action; opening the composer scrolls to the form instead of the document end, and plans outside the trip dates require explicit confirmation before extending the trip
 - Auth/session recovery uses a single compact status state, while the shared Screen supports fixed contextual actions without covering content
+- The authenticated product now holds the shell on that same compact recovery state until the first trip/profile load completes, preventing a false empty Today/Ledger frame during lock-screen or reload recovery; later background refreshes keep existing content in place
+- Today’s fixed add-plan action clears stale anchor measurements and uses a two-frame target scroll so opening a new or edited plan lands on the composer instead of the document end
 - Ledger now keeps “Add expense” available as a persistent compact action; mobile expense and settlement controls stack at narrow widths, and refresh state no longer inserts redundant inline copy
 - Trips and Profile now use shorter operational labels, remove redundant sync notices, and switch forms/settings to vertical mobile layouts before controls can collide
 - Profile avatars now propagate through the shared trip roster and ledger settlement identities, with an initials fallback and dark-mode-aware presentation
