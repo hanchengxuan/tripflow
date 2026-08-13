@@ -20,10 +20,11 @@ Never record credentials, access tokens, database passwords, service-role keys, 
 All agents share this checkout, so never develop directly on `main` and never reset or discard another agent's work.
 
 1. Start from a fresh local view of `main`: inspect status and recent commits, then create a focused `codex/<short-topic>` branch.
-2. Keep one coherent change per branch/PR. Commit implementation, tests, and the matching `PROJECT_CONTEXT.md` update together when they belong to the same milestone.
+2. Every feature, fix, design slice, or workflow change gets its own focused `codex/<short-topic>` branch and its own PR. Keep one coherent change per branch/PR; do not batch unrelated features for a later merge. Commit implementation, tests, and the matching `PROJECT_CONTEXT.md` update together when they belong to the same milestone.
 3. Before pushing, fetch the latest `origin/main`, rebase the branch onto it, and resolve conflicts by preserving the newest compatible behavior from both sides. Run the relevant checks again after the rebase.
 4. Push the branch and open a non-draft PR with a concise summary, verification evidence, migration notes, and any known blockers. Do not claim a PR is mergeable until the live base branch and checks confirm it.
-5. After approval/checks pass, merge the PR into `main`, then update local refs. If GitHub access is unavailable, keep the branch and commit intact and report the exact authentication or remote error; do not rewrite history to pretend it was merged.
-6. When another agent is active, communicate the branch name, commit SHA, files in scope, and any migration/deployment dependency. Preserve useful uncommitted work in a named stash before switching branches.
+5. As soon as required CI, preview, and review gates pass, merge that PR into `main` immediately; do not wait to bundle it with later work. Then update local refs and verify the production CD run for the merge commit. A feature is not complete until its production deployment and relevant smoke tests pass.
+6. If GitHub, CI, Vercel, or deployment access is unavailable, keep the branch and commit intact and report the exact authentication or remote error; do not rewrite history to pretend it was merged or deployed.
+7. When another agent is active, communicate the branch name, commit SHA, files in scope, and any migration/deployment dependency. Preserve useful uncommitted work in a named stash before switching branches.
 
 Never commit secrets or paste tokens into chat, workflow files, project context, or PR descriptions.
