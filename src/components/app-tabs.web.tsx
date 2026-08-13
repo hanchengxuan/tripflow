@@ -10,10 +10,10 @@ import type { Href } from 'expo-router';
 import { Pressable, View, StyleSheet, useWindowDimensions } from 'react-native';
 
 import { ThemedText } from './themed-text';
-import { ThemedView } from './themed-view';
 
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 import { useI18n } from '@/features/i18n/i18n-provider';
+import { useTheme } from '@/hooks/use-theme';
 
 export default function AppTabs() {
   const { tx } = useI18n();
@@ -41,25 +41,44 @@ export default function AppTabs() {
 }
 
 export function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps) {
+  const theme = useTheme();
+  const dark = theme.background === '#0C1924';
+
   return (
     <Pressable {...props} style={({ pressed }) => pressed && styles.pressed}>
-      <ThemedView
-        type={isFocused ? 'backgroundSelected' : 'backgroundElement'}
-        style={styles.tabButtonView}>
+      <View
+        style={[
+          styles.tabButtonView,
+          isFocused && {
+            backgroundColor: dark ? 'rgba(105,212,188,0.22)' : 'rgba(8,127,106,0.14)',
+          },
+        ]}>
         <ThemedText type="small" themeColor={isFocused ? 'text' : 'textSecondary'}>
           {children}
         </ThemedText>
-      </ThemedView>
+      </View>
     </Pressable>
   );
 }
 
 export function CustomTabList(props: TabListProps) {
   const { width } = useWindowDimensions();
+  const theme = useTheme();
   const compact = width < 440;
+  const dark = theme.background === '#0C1924';
+
   return (
     <View {...props} style={[styles.tabListContainer, compact && styles.tabListContainerCompact]}>
-      <ThemedView type="backgroundElement" style={[styles.innerContainer, compact && styles.innerContainerCompact]}>
+      <View
+        style={[
+          styles.innerContainer,
+          compact && styles.innerContainerCompact,
+          {
+            backgroundColor: dark ? 'rgba(20,39,56,0.68)' : 'rgba(255,255,255,0.72)',
+            shadowColor: dark ? '#000000' : '#15344A',
+          },
+          styles.glassEffect,
+        ]}>
         {!compact ? (
           <ThemedText type="smallBold" style={styles.brandText}>
             TripFlow
@@ -67,7 +86,7 @@ export function CustomTabList(props: TabListProps) {
         ) : null}
 
         {props.children}
-      </ThemedView>
+      </View>
     </View>
   );
 }
@@ -75,35 +94,50 @@ export function CustomTabList(props: TabListProps) {
 const styles = StyleSheet.create({
   tabListContainer: {
     width: '100%',
-    paddingTop: Spacing.two,
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 16,
     paddingHorizontal: Spacing.three,
-    paddingBottom: Spacing.two,
     justifyContent: 'center',
     alignItems: 'center',
     flexDirection: 'row',
+    zIndex: 20,
   },
-  tabListContainerCompact: { paddingHorizontal: 10 },
+  tabListContainerCompact: { bottom: 12, paddingHorizontal: 12 },
   innerContainer: {
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.five,
-    borderRadius: Spacing.five,
+    width: '100%',
+    maxWidth: 520,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 28,
     flexDirection: 'row',
     alignItems: 'center',
-    flexGrow: 1,
-    gap: Spacing.two,
-    maxWidth: MaxContentWidth,
+    gap: 6,
+    shadowOpacity: 0.2,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 5,
   },
-  innerContainerCompact: { paddingHorizontal: 8, justifyContent: 'space-between', gap: 0 },
+  innerContainerCompact: { paddingHorizontal: 6, justifyContent: 'space-between', gap: 0 },
+  glassEffect: {
+    // React Native Web forwards these properties to CSS for the frosted surface.
+    backdropFilter: 'blur(18px) saturate(145%)',
+    WebkitBackdropFilter: 'blur(18px) saturate(145%)',
+  } as any,
   tabSlot: { flex: 1, minHeight: 0 },
   brandText: {
-    marginRight: 'auto',
+    marginHorizontal: 8,
   },
   pressed: {
     opacity: 0.7,
   },
   tabButtonView: {
-    paddingVertical: Spacing.one,
-    paddingHorizontal: Spacing.three,
-    borderRadius: Spacing.three,
+    minHeight: 40,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

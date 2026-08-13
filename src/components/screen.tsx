@@ -5,6 +5,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 
+const WEB_NAV_CLEARANCE = 112;
+const WEB_ACTION_OFFSET = 92;
+
 interface ScreenProps extends PropsWithChildren {
   floatingAction?: ReactNode;
   meta?: string;
@@ -53,7 +56,7 @@ export function Screen({ floatingAction, meta, scrollToKey, scrollToOffset, scro
           styles.content,
           {
             paddingTop: insets.top + (Platform.OS === 'web' ? 24 : 20),
-            paddingBottom: insets.bottom + (Platform.OS === 'web' ? 40 : 104),
+            paddingBottom: insets.bottom + (Platform.OS === 'web' ? WEB_NAV_CLEARANCE : 104),
           },
         ]}>
         <View style={[styles.header, compact && styles.headerCompact]}>
@@ -65,7 +68,7 @@ export function Screen({ floatingAction, meta, scrollToKey, scrollToOffset, scro
         </View>
         {children}
       </ScrollView>
-      {floatingAction ? <View style={[styles.floatingAction, { bottom: insets.bottom + (Platform.OS === 'web' ? 24 : 84) }]}>{floatingAction}</View> : null}
+      {floatingAction ? <View style={[styles.floatingAction, { bottom: insets.bottom + (Platform.OS === 'web' ? WEB_ACTION_OFFSET : 84) }]}>{floatingAction}</View> : null}
     </View>
   );
 }

@@ -6,6 +6,7 @@
 - [x] Make Screen headers compact and combine subtitle/meta into one context row.
 - [x] Remove redundant InfoCard eyebrow copy while preserving accessibility context.
 - [x] Recompose login into a focused mobile-first form with a calm desktop split layout.
+- [x] Keep web navigation compact, bottom-floating, and translucent so content remains the visual focus.
 - [ ] Add a reusable compact status/toast region for local success and error feedback.
 
 ## Today
