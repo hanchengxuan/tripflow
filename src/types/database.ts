@@ -277,6 +277,7 @@ export type Database = {
         Row: {
           base_amount_minor: number | null
           base_currency: string | null
+          client_mutation_id: string | null
           created_at: string
           created_by: string
           currency: string
@@ -297,6 +298,7 @@ export type Database = {
         Insert: {
           base_amount_minor?: number | null
           base_currency?: string | null
+          client_mutation_id?: string | null
           created_at?: string
           created_by: string
           currency: string
@@ -317,6 +319,7 @@ export type Database = {
         Update: {
           base_amount_minor?: number | null
           base_currency?: string | null
+          client_mutation_id?: string | null
           created_at?: string
           created_by?: string
           currency?: string
@@ -934,6 +937,27 @@ export type Database = {
           participant_user_ids: string[]
           payer_user_id: string
           requested_segment_id?: string
+          requested_trip_id: string
+        }
+        Returns: string
+      }
+      create_custom_expense: {
+        Args: {
+          expense_base_amount_minor?: number
+          expense_base_currency?: string
+          expense_currency: string
+          expense_exchange_rate?: number
+          expense_exchange_rate_source?: string
+          expense_occurred_at?: string
+          expense_title: string
+          expense_total_minor: number
+          participant_amounts: number[]
+          participant_user_ids: string[]
+          payer_amounts: number[]
+          payer_user_ids: string[]
+          requested_mutation_id?: string
+          requested_segment_id?: string
+          requested_source?: Database["public"]["Enums"]["expense_source"]
           requested_trip_id: string
         }
         Returns: string

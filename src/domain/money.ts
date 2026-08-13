@@ -8,6 +8,11 @@ export interface WeightedParticipant {
   weight: number;
 }
 
+export interface PercentageParticipant {
+  participantId: string;
+  percentage: number;
+}
+
 export interface Balance {
   participantId: string;
   netMinor: number;
@@ -85,6 +90,34 @@ export function splitByWeights(
   }
   unallocated = 0;
 
+  return raw.map(({ participantId, amountMinor }) => ({ participantId, amountMinor }));
+}
+
+export function splitByExactAmounts(totalMinor: number, allocations: Allocation[]): Allocation[] {
+  assertAllocationsTotal(totalMinor, allocations, 'Exact allocations');
+  return allocations;
+}
+
+export function splitByPercentages(totalMinor: number, participants: PercentageParticipant[]): Allocation[] {
+  assertMinorAmount(totalMinor, 'totalMinor');
+  assertUniqueParticipantIds(participants.map(({ participantId }) => participantId));
+  if (participants.length === 0) throw new Error('At least one participant is required');
+  if (participants.some(({ percentage }) => !Number.isSafeInteger(percentage) || percentage < 0)) {
+    throw new Error('Percentages must be non-negative integers');
+  }
+  const totalPercentage = participants.reduce((sum, { percentage }) => sum + percentage, 0);
+  if (totalPercentage !== 100) throw new Error('Percentages must add up to 100');
+  const total = BigInt(totalMinor);
+  const raw = participants.map(({ participantId, percentage }, index) => {
+    const numerator = total * BigInt(percentage);
+    return { participantId, index, amountMinor: Number(numerator / 100n), remainder: numerator % 100n };
+  });
+  let unallocated = totalMinor - raw.reduce((sum, item) => sum + item.amountMinor, 0);
+  for (const item of [...raw].sort((left, right) => right.remainder > left.remainder ? -1 : right.remainder < left.remainder ? 1 : left.index - right.index)) {
+    if (unallocated <= 0) break;
+    item.amountMinor += 1;
+    unallocated -= 1;
+  }
   return raw.map(({ participantId, amountMinor }) => ({ participantId, amountMinor }));
 }
 

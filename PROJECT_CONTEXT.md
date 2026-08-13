@@ -82,6 +82,7 @@ See `planning.md` for the complete P0/P1 scope, non-goals, architecture, milesto
 - Settlement status is stored independently from immutable expense evidence, recalculates remaining transfer routes after every payment, and is serialized by trip/currency to prevent concurrent overpayment
 - The ledger UI now asks for a source currency and explicit source-to-home-currency rate when they differ; settlement tasks can record the actual payment currency and amount while showing the converted bookkeeping amount. Unconverted legacy cross-currency rows remain flagged in the normalized calculation instead of receiving a guessed rate.
 - The `multicurrency_base_amounts` migration is applied to the live Supabase project, adding auditable home-currency amounts/rates to expenses, payer/share rows, and settlements plus normalized settlement RPC overloads.
+- Ledger expense entry now supports multiple payers, exact/percentage/share allocations, deterministic remainder handling, and idempotent retries. The `custom_expense_splits` migration is applied to the live Supabase project; custom expenses validate membership and source/base totals server-side and persist proportional base-currency allocations.
 - Today, Trips, and Ledger use a shared compact section-heading pattern, flatter overview surfaces, shorter utility copy, and progressive payment-currency controls so the next action is visually primary.
 - The shared web shell reserves space for its fixed navigation, removing the previous title overlap at desktop and mobile widths
 - Profile avatars now propagate through the shared trip roster and ledger settlement identities, with an initials fallback and dark-mode-aware presentation
@@ -118,8 +119,9 @@ See `planning.md` for the complete P0/P1 scope, non-goals, architecture, milesto
 - `profile_onboarding`
 - `harden_profile_onboarding`
 - `multicurrency_base_amounts`
+- `custom_expense_splits`
 
-The live migration list was rechecked after applying `multicurrency_base_amounts`; no pending TripFlow migration remains.
+The live migration list was rechecked after applying `custom_expense_splits`; no pending TripFlow migration remains.
 
 Temporary acceptance fixtures are removed after each test; production may contain real user-created rows.
 
@@ -129,7 +131,7 @@ Temporary acceptance fixtures are removed after each test; production may contai
 2. Choose and configure the long-term public support email through `EXPO_PUBLIC_SUPPORT_EMAIL`, then finalize App Privacy disclosures, age rating, and Chinese screenshots.
 3. Run TestFlight acceptance on a current iPhone and human acceptance with real owner/editor/viewer accounts, including QR camera scanning, avatar propagation, and trip/member management.
 4. Add segment/branch creation and segment-scoped itinerary membership.
-5. Expand the validated ledger beyond equal splits to multiple payers, exclusions, unequal shares, partial transfers, and richer exchange-rate snapshots.
+5. Expand the validated ledger with exclusions, item-level sub-splits, partial transfers, and richer exchange-rate snapshots.
 6. Address performance-advisor warnings before the dataset grows, and enable Supabase leaked-password protection before broader password-login beta distribution.
 7. Configure conservative Google Places and Routes quotas/budget alerts, then monitor production usage before increasing limits.
 8. Continue the itinerary experience milestone with Place details, participant/status controls, booking essentials, and richer branch interactions.
