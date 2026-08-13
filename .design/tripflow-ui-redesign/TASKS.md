@@ -20,8 +20,8 @@
 ## Ledger
 
 - [x] Keep add-expense reachable from a persistent action and stack narrow controls.
-- [ ] Make the settlement task the dominant first action and move history behind progressive disclosure.
-- [ ] Shorten AI/receipt guidance without removing confirmation or recovery paths.
+- [x] Make the settlement task the dominant first action and move completed/group history behind progressive disclosure.
+- [x] Shorten AI/receipt guidance without removing confirmation or recovery paths.
 
 ## Trips and Profile
 
