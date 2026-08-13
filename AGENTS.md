@@ -42,6 +42,11 @@ Never record credentials, access tokens, database passwords, service-role keys, 
 - Database changes require the live migration check, backward-compatible migration review, generated type refresh, transactional acceptance, and post-apply RLS/security verification.
 - Workflow changes require validating permissions, concurrency, exact-commit selection, failure behavior, and the checks that branch protection will actually require.
 
+### Merge gate availability
+
+- `validate` is the stable CI merge gate. Before merging, confirm it and the relevant Preview/deployment checks belong to the exact PR head SHA.
+- The current private-repository plan does not expose GitHub branch protection or rulesets; the REST API returns 403 until the plan is upgraded or repository visibility changes. Until then, these checks are a manual maintainer gate: do not merge a stale, failed, or incomplete PR even if GitHub permits the button.
+
 ## Project skills
 
 - Use `$tripflow-review` for pre-landing review or when asked whether a branch is safe to merge.

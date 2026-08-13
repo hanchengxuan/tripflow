@@ -18,6 +18,19 @@ try {
   process.exit(2);
 }
 
+if (
+  !report
+  || typeof report !== 'object'
+  || report.error
+  || !report.vulnerabilities
+  || typeof report.vulnerabilities !== 'object'
+  || !report.metadata?.vulnerabilities
+) {
+  const detail = report?.error?.summary ?? report?.error?.message ?? 'the report is incomplete';
+  console.error(`npm audit did not return a complete vulnerability report: ${detail}`);
+  process.exit(2);
+}
+
 // Expo SDK 57 currently reports these advisories through its Metro/Xcode
 // build-time dependency graph. Keep this list exact and small so any new
 // high/critical advisory still fails the quality gate.

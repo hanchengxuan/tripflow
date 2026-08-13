@@ -117,10 +117,9 @@ const styles = StyleSheet.create({
   },
   innerContainerCompact: { paddingHorizontal: 6, justifyContent: 'space-between', gap: 0 },
   glassEffect: {
-    // React Native Web forwards these properties to CSS for the frosted surface.
+    // React Native Web prefixes backdropFilter for browsers that need it.
     backdropFilter: 'blur(18px) saturate(145%)',
-    WebkitBackdropFilter: 'blur(18px) saturate(145%)',
-  } as any,
+  },
   tabSlot: { flex: 1, minHeight: 0 },
   brandText: {
     marginHorizontal: 8,
