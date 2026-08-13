@@ -2,7 +2,7 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { Link, type Href, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/form-controls';
 import { InfoCard } from '@/components/info-card';
@@ -246,10 +246,24 @@ function LanguageAndLegal(props: { locale: string; setLocale: (locale: 'zh-CN' |
 
 export function AuthLoadingScreen({ configured }: { configured: boolean }) {
   const { tx } = useI18n();
-  return <Screen meta="TripFlow" title={configured ? tx('正在恢复你的旅程', 'Restoring your trip') : tx('需要完成配置', 'Setup required')} subtitle={configured ? tx('正在检查安全登录状态…', 'Checking your secure session…') : tx('请添加 Supabase 公共地址与发布密钥后再启动应用。', 'Add the Supabase public URL and publishable key before starting the app.')}>{!configured ? <InlineNotice tone="error">{tx('请设置 EXPO_PUBLIC_SUPABASE_URL 和 EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY。', 'Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY.')}</InlineNotice> : null}</Screen>;
+  const theme = useTheme();
+  if (configured) {
+    return (
+      <View style={[styles.loadingScreen, { backgroundColor: theme.background }]}>
+        <ActivityIndicator color="#087F6A" />
+        <ThemedText type="small" themeColor="textSecondary">{tx('正在恢复行程…', 'Restoring your trip…')}</ThemedText>
+      </View>
+    );
+  }
+  return (
+    <Screen title={tx('需要完成配置', 'Setup required')} subtitle={tx('应用还没有连接到 Supabase。', 'Supabase is not connected yet.')}>
+      <InlineNotice tone="error">{tx('请设置 Supabase 公共地址和发布密钥。', 'Set the Supabase public URL and publishable key.')}</InlineNotice>
+    </Screen>
+  );
 }
 
 const styles = StyleSheet.create({
+  loadingScreen: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, padding: 24 },
   form: { gap: 12 },
   methodChoices: { flexDirection: 'row', gap: 8 },
   flowChoices: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
