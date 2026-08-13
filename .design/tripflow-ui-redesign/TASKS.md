@@ -13,6 +13,8 @@
 - [x] Keep add-plan reachable from a persistent action and scroll to the composer anchor.
 - [x] Confirm trip-date extension before adding an out-of-range plan.
 - [x] Reduce route/location helper copy and make the next-step action hierarchy clearer.
+- [x] Replace space-heavy duration/template chips with compact type selection and explicit start/end date-time fields.
+- [x] Show route mode controls for any consecutive located items and provide a Google Maps directions hand-off.
 - [ ] Verify timeline, stays, and transport at 375px/768px/1280px in light and dark themes.
 
 ## Ledger

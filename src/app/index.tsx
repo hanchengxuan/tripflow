@@ -6,6 +6,7 @@ import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/
 import { Chevron } from '@/components/chevron';
 import { InfoCard } from '@/components/info-card';
 import { LocationField } from '@/components/location-field';
+import { SelectionField } from '@/components/selection-field';
 import { Screen } from '@/components/screen';
 import { SectionHeading } from '@/components/section-heading';
 import { ThemedText } from '@/components/themed-text';
@@ -22,12 +23,6 @@ function formatTripDates(startsOn: string, endsOn: string, locale: string) {
   const start = new Date(`${startsOn}T12:00:00`);
   const end = new Date(`${endsOn}T12:00:00`);
   return `${start.toLocaleDateString(locale, { month: 'short', day: 'numeric' })} — ${end.toLocaleDateString(locale, { month: 'short', day: 'numeric' })}`;
-}
-
-function addMinutes(time: string, minutes: number) {
-  const [hours, currentMinutes] = time.split(':').map(Number);
-  const total = (hours * 60 + currentMinutes + minutes) % (24 * 60);
-  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
 }
 
 function getKindAccent(kind: ItineraryKind) {
@@ -47,13 +42,6 @@ function getKindAccent(kind: ItineraryKind) {
       return '#526F7E';
   }
 }
-
-const quickTemplates: { kind: ItineraryKind; zh: string; en: string }[] = [
-  { kind: 'transport', zh: '机场 / 车站接驳', en: 'Airport / station transfer' },
-  { kind: 'lodging', zh: '酒店入住 / 退房', en: 'Hotel check-in / out' },
-  { kind: 'food', zh: '一起吃饭', en: 'Shared meal' },
-  { kind: 'activity', zh: '景点 / 演出', en: 'Activity / tickets' },
-];
 
 const routeTravelModes: RouteTravelMode[] = ['DRIVE', 'TRANSIT', 'WALK', 'BICYCLE'];
 
@@ -146,7 +134,7 @@ export default function TodayScreen() {
       if (new Date(endsAt) <= new Date(startsAt)) throw new Error(tx('结束时间需要晚于开始时间。', 'End time must be later than start time.'));
       const nextTripRange = activeTrip ? {
         startsOn: date < activeTrip.startsOn ? date : activeTrip.startsOn,
-        endsOn: (kind === 'lodging' ? endDate : date) > activeTrip.endsOn ? (kind === 'lodging' ? endDate : date) : activeTrip.endsOn,
+        endsOn: endDate > activeTrip.endsOn ? endDate : activeTrip.endsOn,
       } : undefined;
       const tripRangeChanged = Boolean(nextTripRange && activeTrip && (nextTripRange.startsOn !== activeTrip.startsOn || nextTripRange.endsOn !== activeTrip.endsOn));
       if (!editingItem && tripRangeChanged && !acceptTripRangeChange) {
@@ -238,6 +226,7 @@ export default function TodayScreen() {
 
   function updatePlanDate(value: string) {
     setDate(value);
+    if (endDate < value) setEndDate(value);
     setPendingTripRange(undefined);
   }
 
@@ -394,8 +383,9 @@ export default function TodayScreen() {
   function routeDetails(item: ItineraryItem) {
     const itemIndex = itineraryItems.findIndex(({ id }) => id === item.id);
     const previous = itemIndex > 0 ? itineraryItems[itemIndex - 1] : undefined;
-    if (!previous?.googlePlaceId || !item.googlePlaceId) return null;
+    if (!item.locationLabel || !previous?.locationLabel) return null;
     const estimate = formatRouteEstimate(routeEstimates[item.id]);
+    const mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(previous.locationLabel)}${previous.googlePlaceId ? `&origin_place_id=${encodeURIComponent(previous.googlePlaceId)}` : ''}&destination=${encodeURIComponent(item.locationLabel)}${item.googlePlaceId ? `&destination_place_id=${encodeURIComponent(item.googlePlaceId)}` : ''}&travelmode=${item.routeTravelMode === 'TRANSIT' ? 'transit' : item.routeTravelMode === 'WALK' ? 'walking' : item.routeTravelMode === 'BICYCLE' ? 'bicycling' : 'driving'}`;
     return (
       <View style={styles.routeDetails}>
         <View style={styles.routeModeRow}>
@@ -411,9 +401,13 @@ export default function TodayScreen() {
           )) : <ThemedText type="smallBold">{routeModeLabel(item.routeTravelMode)}</ThemedText>}
         </View>
         <ThemedText type="smallBold" style={styles.routeEstimate}>
-          {busyTravelModeId === item.id ? tx('正在重新计算…', 'Recalculating…') : estimate ?? tx('此方式暂无可用路线', 'No route available for this mode')}
+          {busyTravelModeId === item.id ? tx('正在重新计算…', 'Recalculating…') : estimate ?? tx('路线详情待生成', 'Route estimate pending')}
         </ThemedText>
         {item.routeTravelMode === 'TRANSIT' && busyTravelModeId !== item.id ? transitRouteDetails(routeEstimates[item.id]) : null}
+        <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(mapsUrl)} style={({ pressed }) => [styles.googleRouteLink, pressed && styles.pressed]}>
+          <ThemedText type="smallBold" style={styles.linkText}>{tx('在 Google 地图中规划路线', 'Plan route in Google Maps')}</ThemedText>
+          <Chevron color={theme.textSecondary} />
+        </Pressable>
       </View>
     );
   }
@@ -495,33 +489,22 @@ export default function TodayScreen() {
         <View onLayout={({ nativeEvent }) => setComposerOffset(nativeEvent.layout.y)}>
           <InfoCard label={editingItem ? tx('编辑', 'Edit') : tx('新安排', 'New plan')} title={editingItem ? editingItem.title : tx('添加安排', 'Add plan')} accent={editingItem ? getKindAccent(editingItem.kind) : '#D86E35'}>
           <View style={styles.form}>
-            {editingItem ? null : <View style={styles.templateWrap}>
-              {quickTemplates.map((template) => (
-                <ChoiceChip
-                  key={template.zh}
-                  selected={title === (locale === 'zh-CN' ? template.zh : template.en)}
-                  onPress={() => {
-                    setTitle(locale === 'zh-CN' ? template.zh : template.en);
-                    chooseKind(template.kind);
-                  }}>
-                  {locale === 'zh-CN' ? template.zh : template.en}
-                </ChoiceChip>
-              ))}
-            </View>}
             <FormField label={tx('安排', 'Plan')} value={title} onChangeText={setTitle} placeholder={tx('例如：机场快线 → 中环', 'For example: Airport Express → Central')} />
+            {!editingItem ? <SelectionField label={tx('类型', 'Type')} value={kind} options={itineraryKinds.map((itemKind) => ({ value: itemKind, label: kindLabel(itemKind) }))} onChange={(value) => chooseKind(value as ItineraryKind)} /> : null}
             {editingItem?.linkedStayId ? <View style={[styles.lockedDestination, { backgroundColor: theme.backgroundSelected }]}><ThemedText type="smallBold">{tx('酒店交通', 'Hotel transfer')}</ThemedText><ThemedText type="small" themeColor="textSecondary">{tx(`${editingItem.locationLabel ?? '—'} · ${formatZonedDateTimeRange(editingItem.endsAt ?? editingItem.startsAt, undefined, languageTag, tripTimeZone)}`, `${editingItem.locationLabel ?? '—'} · ${formatZonedDateTimeRange(editingItem.endsAt ?? editingItem.startsAt, undefined, languageTag, tripTimeZone)}`)}</ThemedText></View> : <LocationField value={location} onChange={(value) => { setLocation(value); setGooglePlaceId(''); }} onSelect={(suggestion) => { setLocation(suggestion.text); setGooglePlaceId(suggestion.placeId); }} />}
             {editingItem?.linkedStayId ? (
-              <View style={styles.row}><View style={styles.dateField}><DateTimeField label={tx('日期', 'Date')} value={date} mode="date" onChange={updatePlanDate} /></View><View style={styles.grow}><DateTimeField label={tx('时间', 'Time')} value={startTime} mode="time" onChange={setStartTime} /></View></View>
+              <View style={[styles.row, compact && styles.rowCompact]}><View style={styles.grow}><DateTimeField label={tx('日期', 'Date')} value={date} mode="date" onChange={updatePlanDate} /></View><View style={styles.grow}><DateTimeField label={tx('时间', 'Time')} value={startTime} mode="time" onChange={setStartTime} /></View></View>
             ) : kind === 'lodging' ? (
               <>
-                <View style={styles.row}><View style={styles.dateField}><DateTimeField label={tx('入住日期', 'Check-in')} value={date} mode="date" onChange={(value) => { updatePlanDate(value); if (endDate < value) updatePlanEndDate(value); }} /></View><View style={styles.grow}><DateTimeField label={tx('入住时间', 'Time')} value={startTime} mode="time" onChange={setStartTime} /></View></View>
-                <View style={styles.row}><View style={styles.dateField}><DateTimeField label={tx('退房日期', 'Check-out')} value={endDate} mode="date" onChange={updatePlanEndDate} /></View><View style={styles.grow}><DateTimeField label={tx('退房时间', 'Time')} value={endTime} mode="time" onChange={setEndTime} /></View></View>
+                <View style={[styles.row, compact && styles.rowCompact]}><View style={styles.grow}><DateTimeField label={tx('入住日期', 'Check-in')} value={date} mode="date" onChange={updatePlanDate} /></View><View style={styles.grow}><DateTimeField label={tx('入住时间', 'Time')} value={startTime} mode="time" onChange={setStartTime} /></View></View>
+                <View style={[styles.row, compact && styles.rowCompact]}><View style={styles.grow}><DateTimeField label={tx('退房日期', 'Check-out')} value={endDate} mode="date" onChange={updatePlanEndDate} /></View><View style={styles.grow}><DateTimeField label={tx('退房时间', 'Time')} value={endTime} mode="time" onChange={setEndTime} /></View></View>
               </>
             ) : (
-              <View style={styles.row}><View style={styles.dateField}><DateTimeField label={tx('日期', 'Date')} value={date} mode="date" onChange={updatePlanDate} /></View><View style={styles.grow}><DateTimeField label={tx('开始', 'Starts')} value={startTime} mode="time" onChange={setStartTime} /></View><View style={styles.grow}><DateTimeField label={tx('结束', 'Ends')} value={endTime} mode="time" onChange={setEndTime} /></View></View>
+              <>
+                <View style={[styles.row, compact && styles.rowCompact]}><View style={styles.grow}><DateTimeField label={tx('开始日期', 'Start date')} value={date} mode="date" onChange={updatePlanDate} /></View><View style={styles.grow}><DateTimeField label={tx('开始时间', 'Starts')} value={startTime} mode="time" onChange={setStartTime} /></View></View>
+                <View style={[styles.row, compact && styles.rowCompact]}><View style={styles.grow}><DateTimeField label={tx('结束日期', 'End date')} value={endDate} mode="date" onChange={updatePlanEndDate} /></View><View style={styles.grow}><DateTimeField label={tx('结束时间', 'Ends')} value={endTime} mode="time" onChange={setEndTime} /></View></View>
+              </>
             )}
-            {kind !== 'lodging' ? <View style={styles.durationRow}>{[30, 60, 120, 180].map((minutes) => <ChoiceChip key={minutes} selected={endTime === addMinutes(startTime, minutes)} onPress={() => setEndTime(addMinutes(startTime, minutes))}>{minutes < 60 ? `${minutes}m` : `${minutes / 60}h`}</ChoiceChip>)}</View> : null}
-            {!editingItem ? <View style={styles.chips}>{itineraryKinds.map((itemKind) => <ChoiceChip key={itemKind} selected={kind === itemKind} onPress={() => chooseKind(itemKind)}>{kindLabel(itemKind)}</ChoiceChip>)}</View> : null}
             {pendingTripRange ? (
               <View style={styles.rangeConfirm}>
                 <InlineNotice>{tx(`这项安排超出当前行程。要把行程调整为 ${pendingTripRange.startsOn} — ${pendingTripRange.endsOn} 吗？`, `This plan is outside the current trip. Extend it to ${pendingTripRange.startsOn} — ${pendingTripRange.endsOn}?`)}</InlineNotice>
@@ -676,10 +659,8 @@ const styles = StyleSheet.create({
   form: { gap: 14 },
   rangeConfirm: { gap: 10 },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  rowCompact: { flexDirection: 'column', gap: 12 },
   grow: { flexGrow: 1, flexBasis: 140 },
-  dateField: { flexGrow: 2, flexBasis: 200 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  templateWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   formActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   actionGrow: { flexGrow: 1, flexBasis: 150 },
   floatingAdd: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#087F6A', alignItems: 'center', justifyContent: 'center', shadowColor: '#17324D', shadowOpacity: 0.2, shadowRadius: 14, shadowOffset: { width: 0, height: 6 } },
@@ -724,6 +705,7 @@ const styles = StyleSheet.create({
   routeEstimate: { color: '#087F6A' },
   routeDetails: { gap: 7, paddingVertical: 4 },
   routeModeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
+  googleRouteLink: { minHeight: 42, flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 4, paddingVertical: 6 },
   transitPlan: { borderRadius: 14, padding: 12, gap: 10 },
   transitPlanCompact: { padding: 10, gap: 8 },
   transitPlanHeading: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 8 },
@@ -732,7 +714,6 @@ const styles = StyleSheet.create({
   transitStepMarker: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1B70A6' },
   transitStepNumber: { color: '#FFFFFF' },
   transitStepCopy: { flex: 1, minWidth: 0, gap: 2 },
-  durationRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
   staySection: { gap: 10, paddingVertical: 8 },
   stayHeading: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 },
   sectionTitle: { fontSize: 20, lineHeight: 26 },
