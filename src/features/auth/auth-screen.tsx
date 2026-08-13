@@ -133,8 +133,8 @@ export function AuthScreen() {
   }
 
   const cardLabel = method === 'phone' ? tx('手机号登录或注册', 'Phone sign-in or registration') : flow === 'login' ? tx('登录', 'Sign in') : flow === 'register' ? tx('注册', 'Register') : tx('验证码登录', 'Code sign-in');
-  const screenTitle = inviteToken ? tx('登录并加入行程', 'Sign in to join') : tx('TripFlow', 'TripFlow');
-  const screenSubtitle = inviteToken ? tx('完成后确认加入。', 'Confirm the invite after signing in.') : tx('共享行程，清楚分账。', 'Shared plans. Clear balances.');
+  const screenTitle = inviteToken ? tx('加入行程', 'Join a trip') : tx('共享行程', 'Shared trips');
+  const screenSubtitle = inviteToken ? tx('登录后确认加入。', 'Sign in, then confirm.') : tx('清楚分账，马上开始。', 'Clear balances, ready to go.');
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const compact = width < 720;
@@ -152,7 +152,7 @@ export function AuthScreen() {
           <View style={[styles.authPanel, { backgroundColor: theme.backgroundElement }]}>
             <View style={styles.authPanelHeader}>
               <ThemedText type="smallBold" style={styles.authPanelLabel}>{cardLabel}</ThemedText>
-              <ThemedText type="title">{verifying ? (method === 'email' ? email : phone) : method === 'phone' ? tx('短信验证码', 'SMS code') : flow === 'register' ? tx('创建账号', 'Create account') : tx('欢迎回来', 'Welcome back')}</ThemedText>
+              <ThemedText type="smallBold" style={styles.authPanelTitle}>{verifying ? (method === 'email' ? email : phone) : method === 'phone' ? tx('短信验证码', 'SMS code') : flow === 'register' ? tx('创建账号', 'Create account') : tx('欢迎回来', 'Welcome back')}</ThemedText>
             </View>
             {capabilities.google ? <ActionButton tone="secondary" busy={busy} onPress={() => void googleLogin()}>{tx('使用 Google 继续', 'Continue with Google')}</ActionButton> : null}
             <View style={styles.methodChoices}>
@@ -295,6 +295,7 @@ const styles = StyleSheet.create({
   authPanel: { flex: 1, maxWidth: 500, borderRadius: 24, padding: 22, gap: 16, shadowColor: '#17324D', shadowOpacity: 0.09, shadowRadius: 28, shadowOffset: { width: 0, height: 12 } },
   authPanelHeader: { gap: 5 },
   authPanelLabel: { color: '#087F6A' },
+  authPanelTitle: { fontSize: 26, lineHeight: 32 },
   loadingScreen: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, padding: 24 },
   form: { gap: 12 },
   methodChoices: { flexDirection: 'row', gap: 8 },
