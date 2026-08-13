@@ -6,6 +6,7 @@ import { useMemo, useState } from 'react';
 import { LayoutAnimation, Linking, Platform, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/form-controls';
+import { Chevron } from '@/components/chevron';
 import { MemberAvatar } from '@/components/member-avatar';
 import { Screen } from '@/components/screen';
 import { SelectionField } from '@/components/selection-field';
@@ -72,6 +73,7 @@ export default function LedgerScreen() {
     error,
   } = useMvp();
   const [activeView, setActiveView] = useState<'settle' | 'activity'>('settle');
+  const [showGroupSettlement, setShowGroupSettlement] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
   const [composerOffset, setComposerOffset] = useState<number>();
   const [entryMode, setEntryMode] = useState<'manual' | 'ai'>('manual');
@@ -518,6 +520,8 @@ export default function LedgerScreen() {
           setExpandedSettlementKey={setExpandedSettlementKey}
           busySettlementId={busySettlementId}
           compact={compact}
+          showGroupSettlement={showGroupSettlement}
+          toggleGroupSettlement={() => setShowGroupSettlement((current) => !current)}
           themeSelected={theme.backgroundSelected}
           positiveColor={positiveColor}
           dangerColor={dangerColor}
@@ -620,13 +624,12 @@ function ExpenseComposer(props: {
             label={tx('描述这笔支出', 'Describe the expense')}
             value={props.aiText}
             onChangeText={props.setAiText}
-            placeholder={tx('例如：晚餐 860 港币，小王付的，三个人均分', 'For example: Dinner was HKD 860, paid by Sam and split three ways')}
+            placeholder={tx('晚餐 860 港币，小王付款，三人均分', 'Dinner 860 HKD, paid by Sam, split three ways')}
             multiline
             numberOfLines={3}
             maxLength={500}
             style={styles.multiline}
           />
-          <ThemedText type="small" themeColor="textSecondary">{tx('草稿需确认。', 'Draft needs review.')}</ThemedText>
           <ActionButton busy={props.busyAction === 'parse'} disabled={!props.aiText.trim() || Boolean(props.busyAction)} onPress={() => void props.parseWithAi()}>
             {tx('生成草稿', 'Create draft')}
           </ActionButton>
@@ -676,7 +679,7 @@ function ExpenseComposer(props: {
             ))}
           </FieldGroup>
           {props.selectedPayerIds.length > 1 ? (
-            <View style={styles.splitFields}>
+          <View style={[styles.splitFields, { backgroundColor: props.themeSelected }]}>
               <ThemedText type="small" themeColor="textSecondary">{tx('填写每位付款人的实际金额，总和必须等于支出总额。', 'Enter what each payer actually paid; the total must match the expense.')}</ThemedText>
               {props.selectedPayerIds.map((userId) => (
                 <FormField
@@ -702,11 +705,11 @@ function ExpenseComposer(props: {
               ['percentage', tx('按比例', 'Percent')],
               ['shares', tx('按份数', 'Shares')],
             ] as const).map(([mode, label]) => (
-              <ChoiceChip key={mode} selected={props.splitMode === mode} onPress={() => props.changeSplitMode(mode)}>{label}</ChoiceChip>
+              <ChoiceChip role="radio" key={mode} selected={props.splitMode === mode} onPress={() => props.changeSplitMode(mode)}>{label}</ChoiceChip>
             ))}
           </FieldGroup>
           {props.splitMode !== 'equal' ? (
-            <View style={styles.splitFields}>
+            <View style={[styles.splitFields, { backgroundColor: props.themeSelected }]}>
               <ThemedText type="small" themeColor="textSecondary">
                 {props.splitMode === 'exact' ? tx('输入每人的金额。', 'Enter an amount for each person.') : props.splitMode === 'percentage' ? tx('输入百分比，总和必须为 100。', 'Enter percentages that add up to 100.') : tx('输入每人的份数，例如 1、2、3。', 'Enter weights such as 1, 2, 3.')}
               </ThemedText>
@@ -732,10 +735,9 @@ function ExpenseComposer(props: {
               ))}
             </View>
           ) : null}
-          <View style={styles.receiptGroup}>
-            <View style={styles.receiptCopy}>
-              <ThemedText type="smallBold">{tx('小票（可选）', 'Receipt (optional)')}</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">{tx('拍照或从相册选择，最大 10 MB。', 'Take a photo or choose from your library, up to 10 MB.')}</ThemedText>
+            <View style={styles.receiptGroup}>
+              <View style={styles.receiptCopy}>
+                <ThemedText type="smallBold">{tx('小票（可选）', 'Receipt (optional)')}</ThemedText>
             </View>
             {props.receipt ? (
               <View style={styles.receiptPreviewRow}>
@@ -759,7 +761,7 @@ function ExpenseComposer(props: {
             busy={props.busyAction === 'save'}
             disabled={Boolean(props.busyAction) || !props.title.trim() || !props.amount.trim() || props.participantIds.length === 0 || props.selectedPayerIds.length === 0 || (props.currency.toUpperCase() !== props.baseCurrency.toUpperCase() && !props.exchangeRate.trim())}
             onPress={() => void props.submitExpense()}>
-            {tx('保存并更新结算', 'Save and update settlements')}
+            {tx('保存支出', 'Save expense')}
           </ActionButton>
         </View>
       )}
@@ -951,6 +953,8 @@ function SettlementWorkspace(props: {
   setExpandedSettlementKey: (key?: string) => void;
   busySettlementId?: string;
   compact: boolean;
+  showGroupSettlement: boolean;
+  toggleGroupSettlement: () => void;
   themeSelected: string;
   positiveColor: string;
   dangerColor: string;
@@ -959,6 +963,7 @@ function SettlementWorkspace(props: {
   undoTransfer: (settlement: Settlement) => Promise<void>;
 }) {
   const { tx } = props;
+  const [showCompleted, setShowCompleted] = useState(false);
   const mySettlements = props.settlements.filter((settlement) =>
     settlement.fromUserId === props.currentUserId || settlement.toUserId === props.currentUserId,
   );
@@ -1040,8 +1045,18 @@ function SettlementWorkspace(props: {
 
       {mySettlements.length > 0 ? (
         <View style={styles.sectionBlock}>
-          <SectionHeading title={tx('已完成', 'Completed')} />
-          {mySettlements.map((settlement) => {
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ expanded: showCompleted }}
+            onPress={() => setShowCompleted((current) => !current)}
+            style={({ pressed }) => [styles.settlementDisclosure, pressed && styles.pressed]}>
+            <View style={styles.grow}>
+              <ThemedText type="smallBold">{tx('已完成', 'Completed')}</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">{tx(`${mySettlements.length} 笔`, `${mySettlements.length} payment${mySettlements.length === 1 ? '' : 's'}`)}</ThemedText>
+            </View>
+            <Chevron color={props.linkColor} direction={showCompleted ? 'down' : 'right'} />
+          </Pressable>
+          {showCompleted ? mySettlements.map((settlement) => {
             const sentByMe = settlement.fromUserId === props.currentUserId;
             const otherMember = props.memberById.get(sentByMe ? settlement.toUserId : settlement.fromUserId);
             return (
@@ -1061,19 +1076,30 @@ function SettlementWorkspace(props: {
                     disabled={Boolean(props.busySettlementId)}
                     onPress={() => void props.undoTransfer(settlement)}
                     style={({ pressed }) => [styles.textButton, pressed && styles.pressed, Boolean(props.busySettlementId) && styles.disabled]}>
-                  <ThemedText type="smallBold" style={{ color: props.linkColor }}>{tx('恢复未转账', 'Mark unsent')}</ThemedText>
+                    <ThemedText type="smallBold" style={{ color: props.linkColor }}>{tx('恢复未转账', 'Mark unsent')}</ThemedText>
                   </Pressable>
                 ) : (
                   <ThemedText type="smallBold" style={{ color: props.positiveColor }}>{tx('已收入', 'Received')}</ThemedText>
                 )}
               </View>
             );
-          })}
+          }) : null}
         </View>
       ) : null}
 
-      <View style={styles.sectionBlock}>
-        <SectionHeading title={tx('全员结算', 'Group settlement')} />
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded: props.showGroupSettlement }}
+        onPress={props.toggleGroupSettlement}
+        style={({ pressed }) => [styles.settlementDisclosure, pressed && styles.pressed]}>
+        <View style={styles.grow}>
+          <ThemedText type="smallBold">{tx('全员结算', 'Group settlement')}</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">{tx('查看全员状态', 'View group status')}</ThemedText>
+        </View>
+        <Chevron color={props.linkColor} direction={props.showGroupSettlement ? 'down' : 'right'} />
+      </Pressable>
+
+      {props.showGroupSettlement ? <View style={styles.sectionBlock}>
         {props.balanceSnapshots.map((snapshot) => (
           <View key={snapshot.currency} style={styles.groupCurrency}>
             <ThemedText type="smallBold" style={[styles.currencyDivider, { color: props.positiveColor }]}>{snapshot.currency}</ThemedText>
@@ -1112,7 +1138,7 @@ function SettlementWorkspace(props: {
         ) : props.balanceSnapshots.length > 0 ? (
           <ThemedText type="smallBold" style={{ color: props.positiveColor }}>{tx('全部结清', 'All settled')}</ThemedText>
         ) : null}
-      </View>
+      </View> : null}
     </View>
   );
 }
@@ -1135,7 +1161,6 @@ function ExpenseActivity(props: {
     return (
       <View style={styles.quietEmpty}>
         <ThemedText style={styles.sectionTitle}>{tx('还没有支出', 'No expenses yet')}</ThemedText>
-        <ThemedText themeColor="textSecondary">{tx('点击“记一笔”添加共同消费和小票。', 'Tap “Add expense” to record a shared cost and receipt.')}</ThemedText>
       </View>
     );
   }
@@ -1288,7 +1313,7 @@ const styles = StyleSheet.create({
   micBaseActive: { backgroundColor: '#FFF5F3' },
   fieldGroup: { gap: 8 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  splitFields: { gap: 10, padding: 12, borderRadius: 12, backgroundColor: '#F0F7F6' },
+  splitFields: { gap: 10, padding: 12, borderRadius: 12 },
   splitPreview: { gap: 4, padding: 12, borderRadius: 12 },
   memberChoice: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 9, paddingVertical: 6, borderRadius: 999 },
   memberChoiceTextSelected: { color: '#FFFFFF' },
@@ -1322,6 +1347,7 @@ const styles = StyleSheet.create({
   completedRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#AFCACA' },
   textButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 4 },
   quietEmpty: { gap: 4, paddingVertical: 22, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#AFCACA' },
+  settlementDisclosure: { minHeight: 60, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#AFCACA' },
   groupCurrency: { gap: 0, paddingBottom: 18 },
   currencyDivider: { paddingVertical: 10 },
   memberSettlementRow: { gap: 8, paddingVertical: 13, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#AFCACA' },
