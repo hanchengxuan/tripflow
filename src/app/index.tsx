@@ -3,6 +3,7 @@ import { Linking, Pressable, StyleSheet, useWindowDimensions, View } from 'react
 
 import { DateTimeField } from '@/components/date-time-field';
 import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/form-controls';
+import { Chevron } from '@/components/chevron';
 import { InfoCard } from '@/components/info-card';
 import { LocationField } from '@/components/location-field';
 import { Screen } from '@/components/screen';
@@ -401,6 +402,7 @@ export default function TodayScreen() {
           {canEdit ? routeTravelModes.map((mode) => (
             <ChoiceChip
               key={mode}
+              role="radio"
               selected={item.routeTravelMode === mode}
               disabled={Boolean(busyTravelModeId)}
               onPress={() => void changeRouteMode(item, mode)}>
@@ -554,7 +556,7 @@ export default function TodayScreen() {
                 return (
                   <View key={stay.id}>
                     {index > 0 ? <View style={[styles.stayDivider, { backgroundColor: theme.backgroundSelected }]} /> : null}
-                    <View style={styles.stayRow}>
+                    <View style={[styles.stayRow, compact && styles.stayRowCompact]}>
                       <View style={styles.stayCopy}>
                         <ThemedText type="smallBold">{stay.title}</ThemedText>
                         <ThemedText type="small" themeColor="textSecondary">
@@ -614,14 +616,14 @@ export default function TodayScreen() {
                 style={[styles.mapAction, { backgroundColor: theme.backgroundSelected }]}>
                 <View style={styles.placeCopy}>
                   <ThemedText type="smallBold">{upcomingItems[0].locationLabel}</ThemedText>
-                  <ThemedText type="small" themeColor="textSecondary">{tx('一键打开 Google 地图查看路线', 'Open in Google Maps for directions')} ›</ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary">{tx('打开地图', 'Open map')}</ThemedText>
                 </View>
+                <Chevron color={theme.textSecondary} />
               </Pressable>
             ) : (
               <View style={[styles.mapAction, { backgroundColor: theme.backgroundSelected }]}>
                 <View style={styles.placeCopy}>
                   <ThemedText type="smallBold">{tx('还没设置地点', 'No place yet')}</ThemedText>
-                  <ThemedText type="small" themeColor="textSecondary">{tx('补上地点后，大家会更容易集合和导航。', 'Add a place so the group can meet and navigate faster.')}</ThemedText>
                 </View>
               </View>
             )}
@@ -637,12 +639,12 @@ export default function TodayScreen() {
                     <View style={styles.timelineDot} />
                   </View>
                   <View style={styles.timelineContent}>
-                    <View style={styles.timelineHeader}>
+                    <View style={[styles.timelineHeader, compact && styles.timelineHeaderCompact]}>
                       <View style={styles.timelineHeading}>
                         <ThemedText type="small" themeColor="textSecondary">{formatZonedDateTimeRange(item.startsAt, item.endsAt, languageTag, tripTimeZone)}</ThemedText>
                         <ThemedText type="smallBold">{item.title}</ThemedText>
                       </View>
-                      <View style={[styles.kindOutline, { borderColor: getKindAccent(item.kind) }]}>
+                      <View style={[styles.kindOutline, compact && styles.kindOutlineCompact, { borderColor: getKindAccent(item.kind) }]}>
                         <ThemedText type="small" style={{ color: getKindAccent(item.kind) }}>{kindLabel(item.kind)}</ThemedText>
                       </View>
                     </View>
@@ -662,7 +664,9 @@ export default function TodayScreen() {
       )}
 
       {activeTrip && !canEdit ? (
-        <InlineNotice>{tx('你当前是仅查看成员，可以查看共享时间线，但不能编辑。', 'You can view this shared timeline, but your current role cannot edit it.')}</InlineNotice>
+        <View style={[styles.readOnlyBadge, { backgroundColor: theme.backgroundSelected }]}>
+          <ThemedText type="smallBold">{tx('仅查看', 'View only')}</ThemedText>
+        </View>
       ) : null}
     </Screen>
   );
@@ -706,6 +710,7 @@ const styles = StyleSheet.create({
   kindPill: { alignSelf: 'flex-start', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7 },
   kindPillText: { color: '#FFFFFF' },
   kindOutline: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6, alignSelf: 'center' },
+  kindOutlineCompact: { alignSelf: 'flex-start' },
   mapAction: { minHeight: 68, borderRadius: 16, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 },
   placeCopy: { flex: 1 },
   timelineSection: { gap: 6, paddingTop: 8 },
@@ -714,6 +719,7 @@ const styles = StyleSheet.create({
   timelineDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: '#1B70A6', marginRight: -1, marginTop: 7 },
   timelineContent: { flex: 1, minWidth: 0, gap: 2, paddingBottom: 16 },
   timelineHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  timelineHeaderCompact: { flexDirection: 'column', gap: 6 },
   timelineHeading: { flex: 1, minWidth: 0, gap: 2 },
   routeEstimate: { color: '#087F6A' },
   routeDetails: { gap: 7, paddingVertical: 4 },
@@ -730,10 +736,11 @@ const styles = StyleSheet.create({
   staySection: { gap: 10, paddingVertical: 8 },
   stayHeading: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 },
   sectionTitle: { fontSize: 20, lineHeight: 26 },
-  stayRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', gap: 14, paddingVertical: 10 },
+  stayRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 14, paddingVertical: 10 },
+  stayRowCompact: { flexDirection: 'column' },
   stayCopy: { flex: 1, minWidth: 0, gap: 2 },
-  stayActions: { width: '100%', flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 },
-  stayActionsCompact: { flexDirection: 'column', alignItems: 'stretch' },
+  stayActions: { width: 280, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end', gap: 8 },
+  stayActionsCompact: { width: '100%', flexDirection: 'column', alignItems: 'stretch' },
   stayTextAction: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 },
   itemActions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 4 },
   itemTextAction: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 },
@@ -741,6 +748,7 @@ const styles = StyleSheet.create({
   routeActionCompact: { width: '100%', flexGrow: 0, flexBasis: 'auto' },
   stayDivider: { height: StyleSheet.hairlineWidth },
   stayFormGroup: { gap: 8 },
+  readOnlyBadge: { alignSelf: 'flex-start', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 },
   linkText: { color: '#1B70A6' },
   pressed: { opacity: 0.68 },
   disabled: { opacity: 0.5 },
