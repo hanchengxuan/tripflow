@@ -12,7 +12,7 @@
 
 - [x] Keep add-plan reachable from a persistent action and scroll to the composer anchor.
 - [x] Confirm trip-date extension before adding an out-of-range plan.
-- [ ] Reduce route/location helper copy and make the next-step action hierarchy clearer.
+- [x] Reduce route/location helper copy and make the next-step action hierarchy clearer.
 - [ ] Verify timeline, stays, and transport at 375px/768px/1280px in light and dark themes.
 
 ## Ledger
