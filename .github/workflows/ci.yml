@@ -20,13 +20,30 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: npm
       - run: npm ci
       - name: Check formatting boundaries
-        run: git diff --check
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PUSH_BASE_SHA: ${{ github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            test -n "$PR_BASE_SHA"
+            test -n "$PR_HEAD_SHA"
+            git diff --check "$PR_BASE_SHA...$PR_HEAD_SHA"
+          elif [ -n "$PUSH_BASE_SHA" ] && [ "$PUSH_BASE_SHA" != "0000000000000000000000000000000000000000" ]; then
+            git diff --check "$PUSH_BASE_SHA" "$HEAD_SHA"
+          else
+            git diff --check HEAD^ HEAD
+          fi
       - name: Lint
         run: npm run lint -- --no-cache
       - name: Typecheck
@@ -36,7 +53,15 @@ jobs:
         run: |
           audit_file="$(mktemp)"
           trap 'rm -f "$audit_file"' EXIT
-          npm audit --omit=dev --audit-level=high --json > "$audit_file" || true
+          set +e
+          npm audit --omit=dev --audit-level=high --json > "$audit_file"
+          audit_status=$?
+          set -e
+          if [ "$audit_status" -gt 1 ]; then
+            echo "npm audit could not complete (exit $audit_status)." >&2
+            cat "$audit_file" >&2 || true
+            exit "$audit_status"
+          fi
           node scripts/check-npm-audit.mjs "$audit_file"
 
   unit:
