@@ -22,7 +22,7 @@ import {
   parseExchangeRate,
   parseAmountToMinor,
 } from '@/domain/ledger';
-import { minimizeSettlementTransfers, type SettlementTransfer } from '@/domain/money';
+import { assertAllocationsTotal, minimizeSettlementTransfers, splitByExactAmounts, splitByPercentages, splitByWeights, splitEqually, type SettlementTransfer } from '@/domain/money';
 import type { Expense, Settlement, TripMember } from '@/domain/models';
 import { type AiExpenseDraft, parseExpenseAudio, parseExpenseText } from '@/features/ai/expense-parser';
 import { useI18n } from '@/features/i18n/i18n-provider';
@@ -44,6 +44,15 @@ type BalanceSnapshot = {
 
 type SettlementDraft = { currency: string; amount: string; rate: string };
 
+function defaultAllocationValueFor(mode: 'equal' | 'exact' | 'percentage' | 'shares', index: number, count: number) {
+  if (mode === 'shares') return '1';
+  if (mode === 'percentage') {
+    const base = Math.floor(100 / Math.max(count, 1));
+    return String(base + (index < 100 % Math.max(count, 1) ? 1 : 0));
+  }
+  return '';
+}
+
 export default function LedgerScreen() {
   const theme = useTheme();
   const { locale, formatDateTime, tx } = useI18n();
@@ -54,7 +63,7 @@ export default function LedgerScreen() {
     expenses,
     settlements,
     currentUserId,
-    addEqualExpense,
+    addCustomExpense,
     attachExpenseReceipt,
     markSettlement,
     unmarkSettlement,
@@ -69,6 +78,10 @@ export default function LedgerScreen() {
   const [currencyOverride, setCurrencyOverride] = useState('');
   const [exchangeRate, setExchangeRate] = useState('1');
   const [payerOverride, setPayerOverride] = useState('');
+  const [payerIds, setPayerIds] = useState<string[]>([]);
+  const [payerAmounts, setPayerAmounts] = useState<Record<string, string>>({});
+  const [splitMode, setSplitMode] = useState<'equal' | 'exact' | 'percentage' | 'shares'>('equal');
+  const [allocationValues, setAllocationValues] = useState<Record<string, string>>({});
   const [participantsByTrip, setParticipantsByTrip] = useState<Record<string, string[]>>({});
   const [aiText, setAiText] = useState('');
   const [receipt, setReceipt] = useState<ReceiptDraft>();
@@ -84,9 +97,11 @@ export default function LedgerScreen() {
   const currency = currencyOverride || activeTrip?.homeCurrency || 'HKD';
   const baseCurrency = activeTrip?.homeCurrency || 'HKD';
   const payerUserId = members.some(({ userId }) => userId === payerOverride) ? payerOverride : currentUserId;
-  const participantIds = activeTrip
-    ? participantsByTrip[activeTrip.id] ?? members.map(({ userId }) => userId)
-    : [];
+  const selectedPayerIds = payerIds.length > 0 ? payerIds : [payerUserId];
+  const participantIds = useMemo(
+    () => activeTrip ? participantsByTrip[activeTrip.id] ?? members.map(({ userId }) => userId) : [],
+    [activeTrip, members, participantsByTrip],
+  );
   const names = useMemo(() => new Map(ledgerMembers.map(({ userId, displayName }) => [userId, displayName])), [ledgerMembers]);
   const memberById = useMemo(() => new Map(ledgerMembers.map((member) => [member.userId, member])), [ledgerMembers]);
   const memberIds = useMemo(() => ledgerMembers.map(({ userId }) => userId), [ledgerMembers]);
@@ -95,6 +110,19 @@ export default function LedgerScreen() {
   const positiveColor = darkMode ? '#69D4BC' : '#087F6A';
   const dangerColor = darkMode ? '#FF9B96' : '#B4413E';
   const linkColor = darkMode ? '#8DD8FF' : '#1B70A6';
+
+  const allocationPreview = useMemo(() => {
+    if (!amount.trim() || participantIds.length === 0) return [];
+    try {
+      const totalMinor = parseAmountToMinor(amount, currency);
+      if (splitMode === 'equal') return splitEqually(totalMinor, participantIds);
+      if (splitMode === 'exact') return splitByExactAmounts(totalMinor, participantIds.map((participantId) => ({ participantId, amountMinor: parseAmountToMinor(allocationValues[participantId] ?? '', currency) })));
+      if (splitMode === 'percentage') return splitByPercentages(totalMinor, participantIds.map((participantId, index) => ({ participantId, percentage: Number(allocationValues[participantId] ?? defaultAllocationValueFor(splitMode, index, participantIds.length)) })));
+      return splitByWeights(totalMinor, participantIds.map((participantId, index) => ({ participantId, weight: Number(allocationValues[participantId] ?? defaultAllocationValueFor(splitMode, index, participantIds.length)) })));
+    } catch {
+      return [];
+    }
+  }, [allocationValues, amount, currency, participantIds, splitMode]);
 
   function chooseCurrency(nextCurrency: string) {
     setCurrencyOverride(nextCurrency);
@@ -150,6 +178,28 @@ export default function LedgerScreen() {
         ? participantIds.filter((id) => id !== userId)
         : [...participantIds, userId],
     }));
+  }
+
+  function togglePayer(userId: string) {
+    const current = selectedPayerIds;
+    if (current.includes(userId)) {
+      if (current.length === 1) return;
+      const next = current.filter((id) => id !== userId);
+      setPayerIds(next);
+      setPayerOverride(next[0]);
+      return;
+    }
+    setPayerIds([...current, userId]);
+    setPayerAmounts((values) => ({ ...values, [userId]: values[userId] ?? '' }));
+  }
+
+  function changeSplitMode(mode: 'equal' | 'exact' | 'percentage' | 'shares') {
+    setSplitMode(mode);
+    if (mode === 'equal') {
+      setAllocationValues({});
+      return;
+    }
+    setAllocationValues((current) => Object.fromEntries(participantIds.map((participantId, index) => [participantId, current[participantId] ?? defaultAllocationValueFor(mode, index, participantIds.length)])));
   }
 
   async function pickReceipt(source: 'camera' | 'library', expenseId?: string) {
@@ -226,6 +276,10 @@ export default function LedgerScreen() {
     setAmount(draft.amount);
     setCurrencyOverride(draft.currency);
     setPayerOverride(draft.payerUserId);
+    setPayerIds([draft.payerUserId]);
+    setPayerAmounts({});
+    setSplitMode('equal');
+    setAllocationValues({});
     setParticipantsByTrip((current) => ({ ...current, [activeTrip.id]: draft.participantUserIds }));
     setEntryMode('manual');
     const confidence = Math.round(draft.confidence * 100);
@@ -251,14 +305,28 @@ export default function LedgerScreen() {
   }
 
   async function submitExpense() {
+    let totalMinor: number;
+    let rate: number;
+    let baseAmountMinor: number;
+    let payerAllocations: { participantId: string; amountMinor: number }[];
+    try {
+      totalMinor = parseAmountToMinor(amount, currency);
+      rate = currency.toUpperCase() === baseCurrency.toUpperCase() ? 1 : parseExchangeRate(exchangeRate);
+      baseAmountMinor = convertMinorAmount(totalMinor, currency, baseCurrency, rate);
+      if (allocationPreview.length !== participantIds.length) throw new Error(tx('请完成分摊设置，并确保总额一致。', 'Complete the split and make sure it adds up to the total.'));
+      payerAllocations = selectedPayerIds.length === 1
+        ? [{ participantId: selectedPayerIds[0], amountMinor: totalMinor }]
+        : selectedPayerIds.map((participantId) => ({ participantId, amountMinor: parseAmountToMinor(payerAmounts[participantId] ?? '', currency) }));
+      assertAllocationsTotal(totalMinor, payerAllocations, tx('付款金额', 'Payer amounts'));
+    } catch (caught) {
+      setFormError(toUserMessage(caught, tx('请检查金额、汇率和分摊设置。', 'Check the amount, rate, and split.')));
+      return;
+    }
     setBusyAction('save');
     setFormError(undefined);
     setSuccess(undefined);
     try {
-      const totalMinor = parseAmountToMinor(amount, currency);
-      const rate = currency.toUpperCase() === baseCurrency.toUpperCase() ? 1 : parseExchangeRate(exchangeRate);
-      const baseAmountMinor = convertMinorAmount(totalMinor, currency, baseCurrency, rate);
-      const result = await addEqualExpense({
+      const result = await addCustomExpense({
         title,
         currency: currency.toUpperCase(),
         totalMinor,
@@ -266,8 +334,10 @@ export default function LedgerScreen() {
         baseAmountMinor,
         exchangeRate: rate,
         exchangeRateSource: 'manual',
-        payerUserId,
-        participantUserIds: participantIds,
+        payerAllocations: payerAllocations.map(({ participantId, amountMinor }) => ({ userId: participantId, amountMinor })),
+        shareAllocations: allocationPreview.map(({ participantId, amountMinor }) => ({ userId: participantId, amountMinor })),
+        source: aiNotice ? 'text' : 'manual',
+        clientMutationId: `${activeTrip?.id ?? 'trip'}:${Date.now()}:${Math.random().toString(36).slice(2, 10)}`,
         receipt,
       });
       setTitle('');
@@ -275,6 +345,10 @@ export default function LedgerScreen() {
       setExchangeRate('1');
       setAiText('');
       setReceipt(undefined);
+      setPayerIds([]);
+      setPayerAmounts({});
+      setAllocationValues({});
+      setSplitMode('equal');
       setAiNotice(undefined);
       setComposerOpen(false);
       setActiveView('activity');
@@ -390,10 +464,18 @@ export default function LedgerScreen() {
           setCurrencyOverride={chooseCurrency}
           setExchangeRate={setExchangeRate}
           members={members}
-          payerUserId={payerUserId}
-          setPayerOverride={setPayerOverride}
+          selectedPayerIds={selectedPayerIds}
+          payerAmounts={payerAmounts}
+          setPayerAmount={(userId, value) => setPayerAmounts((current) => ({ ...current, [userId]: value }))}
+          togglePayer={togglePayer}
           participantIds={participantIds}
           toggleParticipant={toggleParticipant}
+          splitMode={splitMode}
+          changeSplitMode={changeSplitMode}
+          allocationValues={allocationValues}
+          setAllocationValue={(userId, value) => setAllocationValues((current) => ({ ...current, [userId]: value }))}
+          allocationPreview={allocationPreview}
+          names={names}
           receipt={receipt}
           setReceipt={setReceipt}
           pickReceipt={pickReceipt}
@@ -483,10 +565,18 @@ function ExpenseComposer(props: {
   setCurrencyOverride: (value: string) => void;
   setExchangeRate: (value: string) => void;
   members: TripMember[];
-  payerUserId: string;
-  setPayerOverride: (value: string) => void;
+  selectedPayerIds: string[];
+  payerAmounts: Record<string, string>;
+  setPayerAmount: (userId: string, value: string) => void;
+  togglePayer: (userId: string) => void;
   participantIds: string[];
   toggleParticipant: (userId: string) => void;
+  splitMode: 'equal' | 'exact' | 'percentage' | 'shares';
+  changeSplitMode: (mode: 'equal' | 'exact' | 'percentage' | 'shares') => void;
+  allocationValues: Record<string, string>;
+  setAllocationValue: (userId: string, value: string) => void;
+  allocationPreview: { participantId: string; amountMinor: number }[];
+  names: Map<string, string>;
   receipt?: ReceiptDraft;
   setReceipt: (receipt?: ReceiptDraft) => void;
   pickReceipt: (source: 'camera' | 'library') => Promise<void>;
@@ -565,16 +655,68 @@ function ExpenseComposer(props: {
               </View>
             </View>
           ) : null}
-          <FieldGroup label={tx('谁付款？', 'Who paid?')}>
+          <FieldGroup label={tx('谁付款？可多选', 'Who paid? You can choose more than one')}>
             {props.members.map((member) => (
-              <MemberChoice key={member.userId} member={member} selected={props.payerUserId === member.userId} role="radio" onPress={() => props.setPayerOverride(member.userId)} />
+              <MemberChoice key={member.userId} member={member} selected={props.selectedPayerIds.includes(member.userId)} onPress={() => props.togglePayer(member.userId)} />
             ))}
           </FieldGroup>
+          {props.selectedPayerIds.length > 1 ? (
+            <View style={styles.splitFields}>
+              <ThemedText type="small" themeColor="textSecondary">{tx('填写每位付款人的实际金额，总和必须等于支出总额。', 'Enter what each payer actually paid; the total must match the expense.')}</ThemedText>
+              {props.selectedPayerIds.map((userId) => (
+                <FormField
+                  key={userId}
+                  label={tx(`${props.names.get(userId) ?? '同行者'} 付款金额`, `${props.names.get(userId) ?? 'Traveller'} paid`)}
+                  value={props.payerAmounts[userId] ?? ''}
+                  onChangeText={(value) => props.setPayerAmount(userId, value)}
+                  keyboardType="decimal-pad"
+                  placeholder="0.00"
+                />
+              ))}
+            </View>
+          ) : null}
           <FieldGroup label={tx('谁参与分摊？', 'Who shares it?')}>
             {props.members.map((member) => (
               <MemberChoice key={member.userId} member={member} selected={props.participantIds.includes(member.userId)} onPress={() => props.toggleParticipant(member.userId)} />
             ))}
           </FieldGroup>
+          <FieldGroup label={tx('怎么分？', 'How should it split?')}>
+            {([
+              ['equal', tx('均分', 'Equal')],
+              ['exact', tx('指定金额', 'Exact')],
+              ['percentage', tx('按比例', 'Percent')],
+              ['shares', tx('按份数', 'Shares')],
+            ] as const).map(([mode, label]) => (
+              <ChoiceChip key={mode} selected={props.splitMode === mode} onPress={() => props.changeSplitMode(mode)}>{label}</ChoiceChip>
+            ))}
+          </FieldGroup>
+          {props.splitMode !== 'equal' ? (
+            <View style={styles.splitFields}>
+              <ThemedText type="small" themeColor="textSecondary">
+                {props.splitMode === 'exact' ? tx('输入每人的金额。', 'Enter an amount for each person.') : props.splitMode === 'percentage' ? tx('输入百分比，总和必须为 100。', 'Enter percentages that add up to 100.') : tx('输入每人的份数，例如 1、2、3。', 'Enter weights such as 1, 2, 3.')}
+              </ThemedText>
+              {props.participantIds.map((userId, index) => (
+                <FormField
+                  key={userId}
+                  label={tx(`${props.names.get(userId) ?? '同行者'} 的${props.splitMode === 'exact' ? '金额' : props.splitMode === 'percentage' ? '比例' : '份数'}`, `${props.names.get(userId) ?? 'Traveller'} ${props.splitMode === 'exact' ? 'amount' : props.splitMode === 'percentage' ? 'percent' : 'shares'}`)}
+                  value={props.allocationValues[userId] ?? defaultAllocationValueFor(props.splitMode, index, props.participantIds.length)}
+                  onChangeText={(value) => props.setAllocationValue(userId, value)}
+                  keyboardType="decimal-pad"
+                  placeholder={props.splitMode === 'exact' ? '0.00' : props.splitMode === 'percentage' ? '50' : '1'}
+                />
+              ))}
+            </View>
+          ) : null}
+          {props.allocationPreview.length > 0 ? (
+            <View style={[styles.splitPreview, { backgroundColor: props.themeSelected }]}>
+              <ThemedText type="smallBold">{tx('分摊预览', 'Split preview')}</ThemedText>
+              {props.allocationPreview.map(({ participantId, amountMinor }) => (
+                <ThemedText key={participantId} type="small" themeColor="textSecondary">
+                  {props.names.get(participantId) ?? tx('同行者', 'Traveller')} · {formatMinorAmount(amountMinor, props.currency)}
+                </ThemedText>
+              ))}
+            </View>
+          ) : null}
           <View style={styles.receiptGroup}>
             <View style={styles.receiptCopy}>
               <ThemedText type="smallBold">{tx('小票（可选）', 'Receipt (optional)')}</ThemedText>
@@ -600,7 +742,7 @@ function ExpenseComposer(props: {
           </View>
           <ActionButton
             busy={props.busyAction === 'save'}
-            disabled={Boolean(props.busyAction) || !props.title.trim() || !props.amount.trim() || props.participantIds.length === 0 || !props.payerUserId || (props.currency.toUpperCase() !== props.baseCurrency.toUpperCase() && !props.exchangeRate.trim())}
+            disabled={Boolean(props.busyAction) || !props.title.trim() || !props.amount.trim() || props.participantIds.length === 0 || props.selectedPayerIds.length === 0 || (props.currency.toUpperCase() !== props.baseCurrency.toUpperCase() && !props.exchangeRate.trim())}
             onPress={() => void props.submitExpense()}>
             {tx('保存并更新结算', 'Save and update settlements')}
           </ActionButton>
@@ -1099,6 +1241,8 @@ const styles = StyleSheet.create({
   voiceButtonText: { color: '#FFFFFF' },
   fieldGroup: { gap: 8 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  splitFields: { gap: 10, padding: 12, borderRadius: 12, backgroundColor: '#F0F7F6' },
+  splitPreview: { gap: 4, padding: 12, borderRadius: 12 },
   memberChoice: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 9, paddingVertical: 6, borderRadius: 999 },
   memberChoiceTextSelected: { color: '#FFFFFF' },
   receiptGroup: { gap: 10, paddingTop: 4 },

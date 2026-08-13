@@ -1,6 +1,8 @@
 import {
   assertAllocationsTotal,
   minimizeSettlementTransfers,
+  splitByExactAmounts,
+  splitByPercentages,
   splitByWeights,
   splitEqually,
 } from '@/domain/money';
@@ -33,6 +35,28 @@ describe('splitByWeights', () => {
       { participantId: 'c', amountMinor: 50 },
     ]);
     expect(() => assertAllocationsTotal(100, allocations)).not.toThrow();
+  });
+});
+
+describe('custom split rules', () => {
+  it('validates exact amounts without changing them', () => {
+    expect(splitByExactAmounts(1000, [
+      { participantId: 'a', amountMinor: 250 },
+      { participantId: 'b', amountMinor: 750 },
+    ])).toEqual([
+      { participantId: 'a', amountMinor: 250 },
+      { participantId: 'b', amountMinor: 750 },
+    ]);
+  });
+
+  it('allocates percentage remainders deterministically', () => {
+    expect(splitByPercentages(101, [
+      { participantId: 'a', percentage: 50 },
+      { participantId: 'b', percentage: 50 },
+    ])).toEqual([
+      { participantId: 'a', amountMinor: 51 },
+      { participantId: 'b', amountMinor: 50 },
+    ]);
   });
 });
 

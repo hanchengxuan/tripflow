@@ -423,6 +423,53 @@ export async function createEqualExpense(input: {
   }
 }
 
+export async function createCustomExpense(input: {
+  userId: string;
+  tripId: string;
+  title: string;
+  currency: string;
+  totalMinor: number;
+  baseCurrency?: string;
+  baseAmountMinor?: number;
+  exchangeRate?: number;
+  exchangeRateSource?: string;
+  payerAllocations: { userId: string; amountMinor: number }[];
+  shareAllocations: { userId: string; amountMinor: number }[];
+  source?: Database['public']['Enums']['expense_source'];
+  segmentId?: string;
+  clientMutationId?: string;
+  receipt?: { uri: string; base64?: string | null; mimeType?: string | null; fileSize?: number };
+}) {
+  const client = getSupabaseClient();
+  const { data: expenseId, error } = await client.rpc('create_custom_expense', {
+    requested_trip_id: input.tripId,
+    expense_title: input.title,
+    expense_currency: input.currency,
+    expense_total_minor: input.totalMinor,
+    expense_base_currency: input.baseCurrency,
+    expense_base_amount_minor: input.baseAmountMinor,
+    expense_exchange_rate: input.exchangeRate,
+    expense_exchange_rate_source: input.exchangeRateSource,
+    payer_user_ids: input.payerAllocations.map(({ userId }) => userId),
+    payer_amounts: input.payerAllocations.map(({ amountMinor }) => amountMinor),
+    participant_user_ids: input.shareAllocations.map(({ userId }) => userId),
+    participant_amounts: input.shareAllocations.map(({ amountMinor }) => amountMinor),
+    requested_source: input.source ?? 'manual',
+    expense_occurred_at: new Date().toISOString(),
+    requested_segment_id: input.segmentId,
+    requested_mutation_id: input.clientMutationId,
+  });
+  if (error) throw error;
+
+  if (!input.receipt) return { expenseId, receiptUploaded: false };
+  try {
+    await addExpenseReceipt(input.userId, expenseId, input.receipt);
+    return { expenseId, receiptUploaded: true };
+  } catch (receiptError) {
+    return { expenseId, receiptUploaded: false, receiptError };
+  }
+}
+
 export async function addExpenseReceipt(
   userId: string,
   expenseId: string,
