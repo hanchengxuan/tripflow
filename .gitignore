@@ -48,3 +48,6 @@ example
 /android
 .vercel/
 .impeccable/review/
+
+# design bundle output; rebuild with `node .design/tripflow-ui-2.0/build.mjs`
+.design/tripflow-ui-2.0/*.html

@@ -1,0 +1,412 @@
+<!-- @dsCard group="Components" -->
+<title>TripFlow · Patterns</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="kit.css">
+<style>
+  .doc { width: 1180px; display: flex; flex-direction: column; gap: 32px; }
+  .intro { background: var(--bg-surface); border-radius: 24px; padding: 34px 40px 36px; }
+  .intro .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 1.6px; text-transform: uppercase; color: var(--accent-primary); margin-bottom: 10px; }
+  .intro h1 { margin: 0 0 8px; font-size: 30px; letter-spacing: -0.5px; }
+  .intro p { margin: 0; font-size: 14px; line-height: 21px; color: var(--text-secondary); max-width: 820px; }
+
+  .comp { background: var(--bg-surface); border-radius: 24px; padding: 30px 36px 34px; display: flex; gap: 40px; align-items: flex-start; }
+  .comp .info { width: 268px; flex: none; }
+  .comp .info h2 { margin: 0 0 6px; font-size: 19px; letter-spacing: -0.2px; }
+  .comp .info p { margin: 0 0 14px; font-size: 13px; line-height: 20px; color: var(--text-secondary); }
+  .comp .info dl { margin: 0; font-size: 12px; line-height: 18px; }
+  .comp .info dt { font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; font-size: 10px; margin-top: 10px; }
+  .comp .info dd { margin: 2px 0 0; color: var(--text-secondary); }
+  .comp .info code { font-size: 11px; background: var(--bg-subtle); border-radius: 5px; padding: 1px 5px; }
+
+  .demo { flex: 1; min-width: 0; background: var(--bg-canvas); border-radius: var(--radius-xl); padding: 22px; display: flex; flex-direction: column; gap: 18px; }
+  .demo.cols { flex-direction: row; flex-wrap: wrap; gap: 22px; align-items: flex-start; }
+  .demo .col { width: 342px; display: flex; flex-direction: column; gap: 10px; }
+  .state { font-size: 11px; font-weight: 600; letter-spacing: 0.6px; text-transform: uppercase; color: var(--text-muted); }
+</style>
+
+<div class="gallery">
+  <div class="doc">
+
+    <div class="intro">
+      <div class="eyebrow">Components · Patterns</div>
+      <h1>组合层：直接对应界面上的一个决策</h1>
+      <p>Atom 层（按钮、chip、字段、通知）在 <em>Components</em> 页。这一页是组合层：每个 pattern 都对应用户要做的一个判断——下一步去哪、这段路怎么走、这笔钱谁付、这个人有什么权限。所有尺寸按 390pt 屏幕的 342pt 内容宽度给出。</p>
+    </div>
+
+    <!-- NEXT UP RAIL -->
+    <section class="comp">
+      <div class="info">
+        <h2>Next up rail</h2>
+        <p>Today 上唯一一个抬升面。一眼回答「什么 / 何时 / 谁看得到 / 在哪」，然后把用户交给地图。</p>
+        <dl>
+          <dt>Anatomy</dt><dd>Kind pill (solid) + eyebrow → 30/36 标题 → 两块 meta → 地点动作行</dd>
+          <dt>Surface</dt><dd><code>bg/raised</code> · <code>radius/2xl</code> · Elevation/Raised</dd>
+          <dt>Rules</dt><dd>每屏只出现一次；没有地点时地点行降级为静态说明，不做成可点</dd>
+        </dl>
+      </div>
+      <div class="demo">
+        <div class="hero">
+          <div class="eyebrow"><span class="pill solid k-transport">交通 Transport</span><em>下一步 Up next</em></div>
+          <h2>机场快线 → 中环</h2>
+          <div class="meta">
+            <div><span>时间 When</span><strong>09:20 — 09:44</strong></div>
+            <div><span>同行 Who</span><strong>4 人可见</strong></div>
+          </div>
+          <div class="placebtn">
+            <div><strong>香港国际机场 T1</strong><small>打开地图 Open map</small></div>
+            <span class="chev"></span>
+          </div>
+        </div>
+        <span class="state">无地点 · no place yet</span>
+        <div class="hero">
+          <div class="eyebrow"><span class="pill solid k-task">待办 Task</span><em>下一步 Up next</em></div>
+          <h2>兑换八达通</h2>
+          <div class="meta">
+            <div><span>时间 When</span><strong>今天 19:00</strong></div>
+            <div><span>同行 Who</span><strong>4 人可见</strong></div>
+          </div>
+          <div class="placebtn" style="background:var(--bg-subtle)">
+            <div><strong style="color:var(--text-secondary)">还没设置地点</strong></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION HEADING -->
+    <section class="comp">
+      <div class="info">
+        <h2>Section heading</h2>
+        <p>标题加一个可选计数。绝不写成解释性段落——控件本身已经说明了它是什么。</p>
+        <dl>
+          <dt>Type</dt><dd>Title/Section 20/26 · 计数用 Caption/Default</dd>
+          <dt>Rules</dt><dd>计数是数量不是状态；需要动作时用右侧文字按钮，不用图标</dd>
+        </dl>
+      </div>
+      <div class="demo">
+        <div class="sect"><h2>后续安排 Later</h2><span>5</span></div>
+        <div class="sect"><h2>住宿 Stays</h2><span>1 段</span></div>
+        <div class="sect"><h2>我的待办</h2><span class="act" style="font-size:13px;font-weight:600;color:var(--text-link)">全部标记已转</span></div>
+        <div class="sect"><h2>同行者</h2><span>4</span></div>
+      </div>
+    </section>
+
+    <!-- METRIC -->
+    <section class="comp">
+      <div class="info">
+        <h2>Metric</h2>
+        <p>一个金额加上它的角色。颜色说明方向，但颜色从不单独承担含义——标题里也写着方向。</p>
+        <dl>
+          <dt>Tones</dt><dd><code>money/out</code> 要付 · <code>money/in</code> 该收 · <code>money/settled</code> 已结清</dd>
+          <dt>Rules</dt><dd>四个以上并排时改用 Balance bar；金额永远带币种前缀</dd>
+        </dl>
+      </div>
+      <div class="demo">
+        <div class="row" style="gap:34px;flex-wrap:wrap">
+          <div><span class="state">待转出 To send</span><div style="font-size:20px;font-weight:600;color:var(--money-out);letter-spacing:-.3px;margin-top:2px">HK$ 412.50</div></div>
+          <div><span class="state">待收款 To receive</span><div style="font-size:20px;font-weight:600;color:var(--money-in);letter-spacing:-.3px;margin-top:2px">HK$ 268.00</div></div>
+          <div><span class="state">已结清 Settled</span><div style="font-size:20px;font-weight:600;color:var(--money-settled);letter-spacing:-.3px;margin-top:2px">HK$ 1,204.00</div></div>
+        </div>
+        <div class="hr"></div>
+        <span class="state">四项以上 → 改用 Balance bar</span>
+        <div class="balance">
+          <div class="legend">
+            <div class="out"><span>你要付 To send</span><strong>HK$ 412.50</strong></div>
+            <div class="in"><span>该收 To receive</span><strong>HK$ 268.00</strong></div>
+          </div>
+          <div class="track">
+            <span class="fill out" style="left:36%;width:34%"></span>
+            <span class="fill in" style="left:70%;width:22%"></span>
+            <span class="zero" style="left:70%"></span>
+          </div>
+          <div class="net">净额 Net <b>−HK$ 144.50</b> · 2 笔待转出 · 1 笔待收</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TIMELINE ITEM -->
+    <section class="comp">
+      <div class="info">
+        <h2>Timeline item</h2>
+        <p>轨上的平面行。时刻固定在 46pt 左槽，所有标题起点对齐同一轴；轨点承担类型色。</p>
+        <dl>
+          <dt>Anatomy</dt><dd>gutter 46 · spine 12（点 10 + 2pt 线）· 内容 FILL</dd>
+          <dt>Rules</dt><dd>行本身不加卡片、不加阴影；类型用 soft pill，不用 solid</dd>
+          <dt>Kinds</dt><dd>交通 · 住宿 · 餐饮 · 活动 · 待办 · 备注</dd>
+        </dl>
+      </div>
+      <div class="demo">
+        <div class="rail">
+          <div class="railrow">
+            <div class="gutter"><b>09:20</b><span>09:44</span></div>
+            <div class="spine"><span class="dot" style="background:var(--kind-transport)"></span><span class="line"></span></div>
+            <div class="body">
+              <div class="head"><h3>机场快线 → 中环</h3><span class="pill k-transport"><i></i>交通</span></div>
+              <div class="place">香港国际机场 T1</div>
+            </div>
+          </div>
+          <div class="railrow">
+            <div class="gutter"><b>15:00</b><span>16:00</span></div>
+            <div class="spine"><span class="dot" style="background:var(--kind-lodging)"></span><span class="line"></span></div>
+            <div class="body">
+              <div class="head"><h3>入住半岛酒店</h3><span class="pill k-lodging"><i></i>住宿</span></div>
+              <div class="place">尖沙咀梳士巴利道</div>
+            </div>
+          </div>
+          <div class="railrow">
+            <div class="gutter"><b>18:30</b><span>20:00</span></div>
+            <div class="spine"><span class="dot" style="background:var(--kind-food)"></span><span class="line"></span></div>
+            <div class="body">
+              <div class="head"><h3>添好运 点心晚餐</h3><span class="pill k-food"><i></i>餐饮</span></div>
+              <div class="place">深水埗福荣街 9-11 号</div>
+            </div>
+          </div>
+          <div class="railrow">
+            <div class="gutter"><b>21:00</b><span>22:00</span></div>
+            <div class="spine"><span class="dot" style="background:var(--kind-activity)"></span><span class="line"></span></div>
+            <div class="body">
+              <div class="head"><h3>维多利亚港夜景</h3><span class="pill k-activity"><i></i>活动</span></div>
+              <div class="place">尖沙咀海滨长廊</div>
+            </div>
+          </div>
+          <div class="railrow">
+            <div class="gutter"><b>19:00</b><span></span></div>
+            <div class="spine"><span class="dot" style="background:var(--kind-task)"></span><span class="line"></span></div>
+            <div class="body">
+              <div class="head"><h3>兑换八达通</h3><span class="pill k-task"><i></i>待办</span></div>
+            </div>
+          </div>
+          <div class="railrow">
+            <div class="gutter"><b>全天</b><span></span></div>
+            <div class="spine"><span class="dot" style="background:var(--kind-note)"></span><span class="line" style="background:transparent"></span></div>
+            <div class="body">
+              <div class="head"><h3>记得带转换插头</h3><span class="pill k-note"><i></i>备注</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ROUTE SEGMENT -->
+    <section class="comp">
+      <div class="info">
+        <h2>Route segment</h2>
+        <p>交通住在两项安排之间的<em>间隙</em>里，不在卡片里。点 chip 换出行方式，估算原地刷新，不跳页。</p>
+        <dl>
+          <dt>Anatomy</dt><dd>与 Timeline item 共用 gutter + spine；spine 用虚线区分「在途」</dd>
+          <dt>Modes</dt><dd>驾车 · 公共交通 · 步行 · 骑行</dd>
+          <dt>Rules</dt><dd>仅当前后两项都有地点时出现；估算未就绪时显示「路线待生成」而非留空</dd>
+        </dl>
+      </div>
+      <div class="demo">
+        <div class="rail">
+          <div class="railseg">
+            <div class="gutter"></div><div class="spine"><span class="line"></span></div>
+            <div class="body"><span class="estimate"><b>公共交通</b><i></i>3.2 km · 约 18 分钟</span><span class="maplink">地图 Map</span></div>
+          </div>
+          <div class="railseg">
+            <div class="gutter"></div><div class="spine"><span class="line"></span></div>
+            <div class="body"><span class="estimate"><b>步行</b><i></i>650 m · 约 9 分钟</span><span class="maplink">地图 Map</span></div>
+          </div>
+          <div class="railseg">
+            <div class="gutter"></div><div class="spine"><span class="line"></span></div>
+            <div class="body"><span class="estimate"><b>驾车</b><i></i>14.8 km · 约 22 分钟</span><span class="maplink">地图 Map</span></div>
+          </div>
+          <div class="railseg">
+            <div class="gutter"></div><div class="spine"><span class="line"></span></div>
+            <div class="body"><span class="estimate" style="background:var(--bg-subtle);color:var(--text-secondary)"><b>骑行</b><i></i>正在重新计算…</span></div>
+          </div>
+        </div>
+        <span class="state">展开：切换出行方式</span>
+        <div class="row" style="flex-wrap:wrap;gap:8px;padding-left:58px">
+          <span class="chip" style="height:32px;font-size:13px">驾车</span>
+          <span class="chip on" style="height:32px;font-size:13px">公共交通</span>
+          <span class="chip" style="height:32px;font-size:13px">步行</span>
+          <span class="chip" style="height:32px;font-size:13px">骑行</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- STAY CARD -->
+    <section class="comp">
+      <div class="info">
+        <h2>Stay card</h2>
+        <p>住宿跨越若干晚，所以只陈述一次区间——绝不在轨上按天重复。</p>
+        <dl>
+          <dt>Anatomy</dt><dd>4pt 类型条 + 名称/区间/地点 + 晚数块</dd>
+          <dt>Rules</dt><dd>晚数由入住/退房日期推导，不手填；最多显示 3 段，其余留在轨上</dd>
+        </dl>
+      </div>
+      <div class="demo">
+        <div class="stay">
+          <span class="bar"></span>
+          <div class="copy"><strong>半岛酒店 The Peninsula</strong><span>3月12日 15:00 — 3月15日 11:00</span><small>尖沙咀梳士巴利道</small></div>
+          <div class="nights"><b>3</b><span>晚 nights</span></div>
+        </div>
+        <div class="stay">
+          <span class="bar"></span>
+          <div class="copy"><strong>Airbnb · 上环</strong><span>3月15日 16:00 — 3月16日 11:00</span><small>还没设置地点</small></div>
+          <div class="nights"><b>1</b><span>晚 nights</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SETTLEMENT TASK -->
+    <section class="comp">
+      <div class="info">
+        <h2>Settlement task</h2>
+        <p>结算是待办，不是报表。默认只给一个动作「标记已转账」；换币种付款藏在次级展开里。</p>
+        <dl>
+          <dt>States</dt><dd>待转出 · 换币种展开 · 已完成 · 待收（对方未转）</dd>
+          <dt>Rules</dt><dd>金额用 <code>money/out</code>；已完成行整体降到 <code>money/settled</code> 并保留「恢复未转账」</dd>
+        </dl>
+      </div>
+      <div class="demo">
+        <div class="task">
+          <span class="avatar">小王</span>
+          <div class="copy"><strong>转给 小王</strong><small>用其他币种付款</small></div>
+          <div class="right"><span class="amt">HK$ 286.50</span><button class="btn btn-sm btn-primary">标记已转账</button></div>
+        </div>
+
+        <span class="state">展开 · 用其他币种付款</span>
+        <div class="task" style="flex-direction:column;align-items:stretch;gap:12px">
+          <div class="row">
+            <span class="avatar">小王</span>
+            <div class="copy"><strong>转给 小王</strong><small>收起付款设置</small></div>
+            <span class="amt">HK$ 286.50</span>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>付款币种</label><div class="box">CNY</div></div>
+            <div class="field"><label>实际转账金额</label><div class="box">260.00</div></div>
+          </div>
+          <div class="field"><label>汇率：1 CNY = ? HKD</label><div class="box">1.10</div></div>
+          <div class="dim">记入 HK$ 286.00 · 待转 HK$ 286.50</div>
+          <button class="btn btn-sm btn-primary btn-block">标记已转账</button>
+        </div>
+
+        <span class="state">已完成</span>
+        <div class="task" style="background:var(--bg-subtle)">
+          <span class="avatar">Ana</span>
+          <div class="copy"><strong style="color:var(--money-settled)">已转给 Ana</strong><small>恢复未转账</small></div>
+          <div class="right"><span class="amt" style="color:var(--money-settled)">HK$ 126.00</span></div>
+        </div>
+
+        <span class="state">待收 · 对方尚未转出</span>
+        <div class="task">
+          <span class="avatar">Kai</span>
+          <div class="copy"><strong>Kai 应转给你</strong><small>等待对方标记</small></div>
+          <div class="right"><span class="amt" style="color:var(--money-in)">HK$ 268.00</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- EXPENSE ROW -->
+    <section class="comp">
+      <div class="info">
+        <h2>Expense row</h2>
+        <p>一笔支出的最小可判断单位：谁付的、多少、怎么分。点开才展开每人金额和小票。</p>
+        <dl>
+          <dt>States</dt><dd>默认 · 你垫付 · 外币（保留原币与汇率）· 有小票 · 展开</dd>
+          <dt>Rules</dt><dd>原币种绝不被本位币吞掉；「你垫付」用 <code>money/in</code> 强调</dd>
+        </dl>
+      </div>
+      <div class="demo">
+        <div class="rowlist">
+          <div class="exp">
+            <span class="avatar sm">小王</span>
+            <div class="copy"><strong>添好运 点心晚餐</strong><span>3月12 19:40 · 小王付款</span></div>
+            <div class="right"><b>HK$ 860.00</b><span>均分 4 人</span></div>
+          </div>
+          <div class="hr"></div>
+          <div class="exp">
+            <span class="avatar sm">你</span>
+            <div class="copy"><strong>机场快线 ×4</strong><span>3月12 09:10 · 你付款 · 有小票</span></div>
+            <div class="right"><b>HK$ 460.00</b><span class="paid">你垫付</span></div>
+          </div>
+          <div class="hr"></div>
+          <div class="exp">
+            <span class="avatar sm">Kai</span>
+            <div class="copy"><strong>八达通充值</strong><span>3月12 10:05 · Kai 付款 · CNY 320</span></div>
+            <div class="right"><b>HK$ 352.00</b><span>汇率 1.10</span></div>
+          </div>
+        </div>
+
+        <span class="state">展开</span>
+        <div class="rowlist">
+          <div class="exp">
+            <span class="avatar sm">小王</span>
+            <div class="copy"><strong>添好运 点心晚餐</strong><span>3月12 19:40 · 小王付款</span></div>
+            <div class="right"><b>HK$ 860.00</b><span>均分 4 人</span></div>
+          </div>
+          <div class="hr"></div>
+          <div style="padding:12px 0;display:flex;flex-direction:column;gap:8px">
+            <div class="row" style="justify-content:space-between"><span class="dim">小王</span><b style="font-size:14px">HK$ 215.00</b></div>
+            <div class="row" style="justify-content:space-between"><span class="dim">你</span><b style="font-size:14px">HK$ 215.00</b></div>
+            <div class="row" style="justify-content:space-between"><span class="dim">Ana</span><b style="font-size:14px">HK$ 215.00</b></div>
+            <div class="row" style="justify-content:space-between"><span class="dim">Kai</span><b style="font-size:14px">HK$ 215.00</b></div>
+            <div class="dim" style="margin-top:4px">这笔支出还没有小票。<span class="maplink">拍照补充</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ROWS -->
+    <section class="comp">
+      <div class="info">
+        <h2>List rows</h2>
+        <p>三种行共用同一骨架，靠右侧承载物区分意图：值、动作、还是导航。</p>
+        <dl>
+          <dt>Member row</dt><dd>头像 + 名称/权限 + 「管理」（仅拥有者可见，且不能管理自己）</dd>
+          <dt>Setting row</dt><dd>右侧是值（只读）或动作（可变更）或 chevron（进入下一层）</dd>
+          <dt>Trip row</dt><dd>当前行程用 soft pill 标记，不用勾选图标</dd>
+          <dt>Rules</dt><dd>行高 ≥ 44pt；销毁性动作用 <code>danger/base</code> 且必须单独成行</dd>
+        </dl>
+      </div>
+      <div class="demo cols">
+        <div class="col">
+          <span class="state">Member row</span>
+          <div class="rowlist">
+            <div class="listrow"><span class="avatar sm">你</span><div class="copy"><strong>Liam（你）</strong><span>拥有者</span></div></div>
+            <div class="hr"></div>
+            <div class="listrow"><span class="avatar sm">小王</span><div class="copy"><strong>小王</strong><span>可编辑</span></div><span class="act">管理</span></div>
+            <div class="hr"></div>
+            <div class="listrow"><span class="avatar sm">Kai</span><div class="copy"><strong>Kai</strong><span>仅查看</span></div><span class="act">管理</span></div>
+          </div>
+          <span class="state">展开 · 变更权限</span>
+          <div class="rowlist" style="background:var(--bg-selected);padding:14px 16px">
+            <div class="row" style="flex-wrap:wrap;gap:8px">
+              <span class="chip on" style="height:32px;font-size:13px">拥有者</span>
+              <span class="chip" style="height:32px;font-size:13px">可编辑</span>
+              <span class="chip" style="height:32px;font-size:13px">仅查看</span>
+            </div>
+            <div style="margin-top:12px;font-size:13px;font-weight:600;color:var(--danger-base)">移出此行程</div>
+          </div>
+        </div>
+
+        <div class="col">
+          <span class="state">Setting row</span>
+          <div class="rowlist">
+            <div class="listrow"><div class="copy"><strong>当前行程</strong></div><span class="val">香港五日</span></div>
+            <div class="hr"></div>
+            <div class="listrow"><div class="copy"><strong>邮箱</strong><span>hanchengxuan98@gmail.com</span></div><span class="val">已绑定</span></div>
+            <div class="hr"></div>
+            <div class="listrow"><div class="copy"><strong>手机号</strong></div><span class="act">添加</span></div>
+            <div class="hr"></div>
+            <div class="listrow"><div class="copy"><strong>隐私政策</strong></div><span class="chev"></span></div>
+            <div class="hr"></div>
+            <div class="listrow"><div class="copy"><strong style="color:var(--danger-base)">删除账号</strong></div></div>
+          </div>
+
+          <span class="state">Trip row</span>
+          <div class="rowlist">
+            <div class="listrow"><div class="copy"><strong>香港五日</strong><span>3月12 — 3月16 · HKD</span></div><span class="pill k-activity"><i></i>当前</span></div>
+            <div class="hr"></div>
+            <div class="listrow"><div class="copy"><strong>关西樱花季</strong><span>4月2 — 4月9 · JPY</span></div><span class="act">查看</span></div>
+            <div class="hr"></div>
+            <div class="listrow"><div class="copy"><strong>Tasmania road trip</strong><span>已结束 · 2月1 — 2月8 · AUD</span></div><span class="act">查看</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</div>

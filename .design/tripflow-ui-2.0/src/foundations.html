@@ -1,0 +1,163 @@
+<!-- @dsCard group="Foundations" -->
+<title>TripFlow · Foundations</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="kit.css">
+<style>
+  .doc { width: 1100px; display: flex; flex-direction: column; gap: 40px; }
+  .card { background: var(--bg-surface); border-radius: 24px; padding: 36px 40px 40px; }
+  .card h2 { margin: 0 0 6px; font-size: 28px; letter-spacing: -0.4px; }
+  .card .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 1.6px; text-transform: uppercase; color: var(--accent-primary); margin-bottom: 10px; }
+  .card p.lead { margin: 0 0 26px; font-size: 14px; line-height: 21px; color: var(--text-secondary); max-width: 760px; }
+
+  .banner { background: linear-gradient(115deg, #0E6E57 0%, #1E4A46 52%, #0F1413 100%); border-radius: 28px; padding: 64px 56px; color: #fff; }
+  .banner .eyebrow { color: #9FD3C1; }
+  .banner h1 { margin: 0 0 14px; font-size: 76px; line-height: 78px; letter-spacing: -2.4px; font-weight: 600; }
+  .banner p { margin: 0; font-size: 20px; line-height: 30px; color: #CFE3DA; max-width: 640px; }
+  .banner .facts { display: flex; gap: 48px; margin-top: 36px; }
+  .banner .facts div span { display: block; font-size: 11px; font-weight: 600; letter-spacing: 1px; color: #6FC5A6; text-transform: uppercase; }
+  .banner .facts div strong { display: block; font-size: 15px; font-weight: 500; margin-top: 5px; }
+
+  table.tok { border-collapse: collapse; width: 100%; font-size: 13px; }
+  table.tok th { text-align: left; font-size: 11px; letter-spacing: 0.8px; text-transform: uppercase; color: var(--text-muted); padding-bottom: 10px; font-weight: 600; }
+  table.tok td { padding: 7px 16px 7px 0; vertical-align: middle; border-top: 1px solid var(--border-hairline); }
+  table.tok td.name { font-weight: 500; width: 190px; }
+  table.tok td.use { color: var(--text-secondary); }
+  table.tok td.hexes { color: var(--text-muted); font-size: 12px; width: 160px; }
+  .sw { width: 60px; height: 34px; border-radius: 9px; border: 1px solid var(--border-hairline); display: inline-block; }
+
+  .ramp { display: flex; flex-direction: column; }
+  .ramp .r { display: flex; align-items: center; gap: 24px; padding: 8px 0; border-top: 1px solid var(--border-hairline); }
+  .ramp .r .n { width: 140px; font-size: 12px; font-weight: 500; flex: none; }
+  .ramp .r .s { width: 110px; font-size: 11px; color: var(--text-muted); flex: none; }
+
+  .bars { display: flex; align-items: flex-end; gap: 18px; }
+  .bars div { text-align: center; }
+  .bars i { display: block; background: var(--accent-primary); border-radius: 4px; height: 56px; margin-bottom: 8px; }
+  .bars b { display: block; font-size: 12px; }
+  .bars span { display: block; font-size: 11px; color: var(--text-muted); }
+
+  .radii { display: flex; gap: 18px; }
+  .radii div { text-align: center; }
+  .radii i { display: block; width: 74px; height: 56px; background: var(--bg-selected); border: 1px solid var(--border-field); margin-bottom: 8px; }
+
+  .elev { display: flex; gap: 28px; }
+  .elev div { width: 190px; }
+  .elev i { display: block; height: 84px; border-radius: 20px; background: var(--bg-surface); margin-bottom: 10px; }
+  .elev b { font-size: 13px; }
+  .elev span { display: block; font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+  .rules { display: grid; grid-template-columns: 1fr 1fr; gap: 22px 40px; }
+  .rules div h3 { margin: 0 0 5px; font-size: 15px; }
+  .rules div p { margin: 0; font-size: 13px; line-height: 20px; color: var(--text-secondary); }
+</style>
+
+<div class="gallery">
+  <div class="doc">
+
+    <div class="banner">
+      <div class="eyebrow">TripFlow · Design system v2.0</div>
+      <h1>Rail &amp; Ledger</h1>
+      <p>One rail for time. One bar for money.<br>为“同行、分头、再汇合”的旅行小组重新设计的界面系统。</p>
+      <div class="facts">
+        <div><span>Platform</span><strong>iOS · Android · Web (Expo)</strong></div>
+        <div><span>Locales</span><strong>简体中文 · English</strong></div>
+        <div><span>Base grid</span><strong>4 pt · 390×844</strong></div>
+        <div><span>Palette</span><strong>Neutral Ink &amp; Pine</strong></div>
+      </div>
+    </div>
+
+    <section class="card">
+      <div class="eyebrow">Principles</div>
+      <h2>六条不可协商的规则</h2>
+      <p class="lead">这些规则直接来自 app 的真实用法：一个共享行程、一条时间线、一本多币种的账。</p>
+      <div class="rules">
+        <div><h3>1 · One route rule</h3><p>松绿只标记一条主路径。每个界面只有一个主动作，其余全部降级为 secondary 或 ghost；表面本身不带任何色相。</p></div>
+        <div><h3>2 · Travel lives in the gap</h3><p>交通不是一张卡片，而是两项安排之间的间隙。改出行方式在原地刷新，不跳页。</p></div>
+        <div><h3>3 · Money has direction, not severity</h3><p>“要付”用赭色，“该收”用松绿；danger 红只留给错误与删除。金额是文字、主动作是填充块——形态先于色相做区分。</p></div>
+        <div><h3>4 · Confirm at the moment of impact</h3><p>改行程日期、改金额、动成员、删数据——都在提交前显式确认，且可返回修改。</p></div>
+        <div><h3>5 · Two languages, one layout</h3><p>中英文长度差异靠换行与 hug 吸收，绝不靠截断；缩短文案时必须保留恢复路径。</p></div>
+        <div><h3>6 · Grouping before cards</h3><p>先用间距和色调分组，卡片是最后手段。时间线保持平面，卡片只留给 Up next 与表单。</p></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="eyebrow">Semantic color · Neutral Ink &amp; Pine</div>
+      <h2>Light / Dark 成对定义</h2>
+      <p class="lead">表面是<b>无色相的中性灰</b>——颜色只花在唯一的主动作和状态上。深色模式用带极淡绿灰的近黑，而不是海军蓝，这样松绿仍然是画面里唯一真正的色相。名称与 Figma 的 “Color” 与 “Color · Dark” 集合一一对应，也与 CSS custom properties 同名。</p>
+      <table class="tok">
+        <tr><th>Light</th><th>Dark</th><th>Token</th><th>Hex</th><th>Use</th></tr>
+        <tr><td><i class="sw" style="background:#F7F8F8"></i></td><td><i class="sw" style="background:#0F1413"></i></td><td class="name">bg/canvas</td><td class="hexes">#F7F8F8 · #0F1413</td><td class="use">每个界面的底色，不带色相</td></tr>
+        <tr><td><i class="sw" style="background:#FFFFFF"></i></td><td><i class="sw" style="background:#171D1C"></i></td><td class="name">bg/surface</td><td class="hexes">#FFFFFF · #171D1C</td><td class="use">卡片、sheet、列表面</td></tr>
+        <tr><td><i class="sw" style="background:#EFF1F1"></i></td><td><i class="sw" style="background:#1D2523"></i></td><td class="name">bg/subtle</td><td class="hexes">#EFF1F1 · #1D2523</td><td class="use">不加卡片的分组</td></tr>
+        <tr><td><i class="sw" style="background:#E1EDE7"></i></td><td><i class="sw" style="background:#24322D"></i></td><td class="name">bg/selected</td><td class="hexes">#E1EDE7 · #24322D</td><td class="use">选中 chip、活动行、meta 块</td></tr>
+        <tr><td><i class="sw" style="background:#16211F"></i></td><td><i class="sw" style="background:#ECEFEE"></i></td><td class="name">text/primary</td><td class="hexes">#16211F · #ECEFEE</td><td class="use">标题、金额、字段值</td></tr>
+        <tr><td><i class="sw" style="background:#5A6663"></i></td><td><i class="sw" style="background:#9EAAA7"></i></td><td class="name">text/secondary</td><td class="hexes">#5A6663 · #9EAAA7</td><td class="use">时间、地点、辅助说明</td></tr>
+        <tr><td><i class="sw" style="background:#8A9491"></i></td><td><i class="sw" style="background:#7C8885"></i></td><td class="name">text/muted</td><td class="hexes">#8A9491 · #7C8885</td><td class="use">禁用、占位、已结清</td></tr>
+        <tr><td><i class="sw" style="background:#0E6E57"></i></td><td><i class="sw" style="background:#34A383"></i></td><td class="name">accent/primary</td><td class="hexes">#0E6E57 · #34A383</td><td class="use">唯一主路径，每屏只出现一次</td></tr>
+        <tr><td><i class="sw" style="background:#2E6A96"></i></td><td><i class="sw" style="background:#7FB6DC"></i></td><td class="name">accent/info</td><td class="hexes">#2E6A96 · #7FB6DC</td><td class="use">导航、路线、公交</td></tr>
+        <tr><td><i class="sw" style="background:#A65A2E"></i></td><td><i class="sw" style="background:#D08A5A"></i></td><td class="name">accent/plan</td><td class="hexes">#A65A2E · #D08A5A</td><td class="use">新建 / 未确认的安排</td></tr>
+        <tr><td><i class="sw" style="background:#AF3128"></i></td><td><i class="sw" style="background:#F09189"></i></td><td class="name">danger/base</td><td class="hexes">#AF3128 · #F09189</td><td class="use">删除、移出、失效</td></tr>
+        <tr><td><i class="sw" style="background:#0E6E57"></i></td><td><i class="sw" style="background:#34A383"></i></td><td class="name">money/in</td><td class="hexes">#0E6E57 · #34A383</td><td class="use">该收 · 已收</td></tr>
+        <tr><td><i class="sw" style="background:#A85A22"></i></td><td><i class="sw" style="background:#D08A5A"></i></td><td class="name">money/out</td><td class="hexes">#A85A22 · #D08A5A</td><td class="use">要付 · 待转（绝不用红）</td></tr>
+        <tr><td><i class="sw" style="background:#E2E5E5"></i></td><td><i class="sw" style="background:#2A3331"></i></td><td class="name">border/hairline</td><td class="hexes">#E2E5E5 · #2A3331</td><td class="use">分隔线、时间轨脊线</td></tr>
+        <tr><td><i class="sw" style="background:#2E6A96"></i></td><td><i class="sw" style="background:#E7EEF4"></i></td><td class="name">kind/transport</td><td class="hexes">#2E6A96 + tint</td><td class="use">交通</td></tr>
+        <tr><td><i class="sw" style="background:#63569B"></i></td><td><i class="sw" style="background:#ECEAF4"></i></td><td class="name">kind/lodging</td><td class="hexes">#63569B + tint</td><td class="use">住宿</td></tr>
+        <tr><td><i class="sw" style="background:#A05329"></i></td><td><i class="sw" style="background:#F4EAE3"></i></td><td class="name">kind/food</td><td class="hexes">#A05329 + tint</td><td class="use">餐饮</td></tr>
+        <tr><td><i class="sw" style="background:#2F7A62"></i></td><td><i class="sw" style="background:#E6F0EC"></i></td><td class="name">kind/activity</td><td class="hexes">#2F7A62 + tint</td><td class="use">活动（比主色浅，避免与主动作撞色）</td></tr>
+        <tr><td><i class="sw" style="background:#856520"></i></td><td><i class="sw" style="background:#F2EDE0"></i></td><td class="name">kind/task</td><td class="hexes">#856520 + tint</td><td class="use">待办</td></tr>
+        <tr><td><i class="sw" style="background:#5A6663"></i></td><td><i class="sw" style="background:#ECEEEE"></i></td><td class="name">kind/note</td><td class="hexes">#5A6663 + tint</td><td class="use">备注</td></tr>
+      </table>
+    </section>
+
+    <section class="card">
+      <div class="eyebrow">Type</div>
+      <h2>系统字体，14 个角色</h2>
+      <p class="lead">用 system-ui 出货，保证 Dynamic Type、中文回退与双语断行都是原生行为；品牌感来自节奏与颜色，不来自装饰字体。</p>
+      <div class="ramp">
+        <div class="r"><span class="n">Hero/Next-up</span><span class="s">34/40 Semi Bold</span><span style="font-size:34px;line-height:40px;font-weight:600;letter-spacing:-.6px">机场快线 → 中环</span></div>
+        <div class="r"><span class="n">Title/Screen</span><span class="s">28/34 Semi Bold</span><span style="font-size:28px;line-height:34px;font-weight:600;letter-spacing:-.4px">香港五日 · Hong Kong</span></div>
+        <div class="r"><span class="n">Title/Section</span><span class="s">20/26 Semi Bold</span><span style="font-size:20px;line-height:26px;font-weight:600">后续安排 Later</span></div>
+        <div class="r"><span class="n">Title/Card</span><span class="s">17/24 Semi Bold</span><span style="font-size:17px;line-height:24px;font-weight:600">半岛酒店 The Peninsula</span></div>
+        <div class="r"><span class="n">Body/Default</span><span class="s">16/24 Regular</span><span style="font-size:16px;line-height:24px">所有同行者都能看到这条时间线。</span></div>
+        <div class="r"><span class="n">Label/Strong</span><span class="s">14/20 Semi Bold</span><span style="font-size:14px;line-height:20px;font-weight:600">标记已转账 Mark sent</span></div>
+        <div class="r"><span class="n">Caption/Default</span><span class="s">13/18 Regular</span><span style="font-size:13px;line-height:18px">10:30 — 12:00 · 尖沙咀</span></div>
+        <div class="r"><span class="n">Meta/Eyebrow</span><span class="s">11/14 Semi Bold</span><span style="font-size:11px;line-height:14px;font-weight:600;letter-spacing:.8px;text-transform:uppercase">Up next · 下一步</span></div>
+        <div class="r"><span class="n">Amount/Display</span><span class="s">28/32 Semi Bold</span><span style="font-size:28px;line-height:32px;font-weight:600;letter-spacing:-.4px">HK$ 1,240.00</span></div>
+        <div class="r"><span class="n">Amount/Row</span><span class="s">16/22 Semi Bold</span><span style="font-size:16px;line-height:22px;font-weight:600">HK$ 286.67</span></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="eyebrow">Scale</div>
+      <h2>Spacing · radius · elevation</h2>
+      <p class="lead">4pt 基准。间距先于卡片承担分组；圆角随抬升递增；触控目标不低于 44pt。</p>
+      <div class="bars" style="margin-bottom:34px">
+        <div><i style="width:4px"></i><b>4</b><span>2xs</span></div>
+        <div><i style="width:8px"></i><b>8</b><span>xs</span></div>
+        <div><i style="width:12px"></i><b>12</b><span>sm</span></div>
+        <div><i style="width:16px"></i><b>16</b><span>md</span></div>
+        <div><i style="width:20px"></i><b>20</b><span>lg</span></div>
+        <div><i style="width:24px"></i><b>24</b><span>xl</span></div>
+        <div><i style="width:32px"></i><b>32</b><span>2xl</span></div>
+        <div><i style="width:40px"></i><b>40</b><span>3xl</span></div>
+        <div><i style="width:56px"></i><b>56</b><span>4xl</span></div>
+      </div>
+      <div class="radii" style="margin-bottom:34px">
+        <div><i style="border-radius:8px"></i><b>xs · 8</b><span>chip</span></div>
+        <div><i style="border-radius:12px"></i><b>sm · 12</b><span>field</span></div>
+        <div><i style="border-radius:14px"></i><b>md · 14</b><span>button</span></div>
+        <div><i style="border-radius:16px"></i><b>lg · 16</b><span>tile</span></div>
+        <div><i style="border-radius:20px"></i><b>xl · 20</b><span>card</span></div>
+        <div><i style="border-radius:26px"></i><b>2xl · 26</b><span>rail · nav</span></div>
+        <div><i style="border-radius:28px"></i><b>pill</b><span>chip</span></div>
+      </div>
+      <div class="elev">
+        <div><i style="border:1px solid var(--border-hairline)"></i><b>Flat</b><span>时间线行、列表行</span></div>
+        <div><i style="box-shadow:var(--elevation-card)"></i><b>Card</b><span>汇总与表单面</span></div>
+        <div><i style="box-shadow:var(--elevation-raised)"></i><b>Raised</b><span>Up next、composer</span></div>
+        <div><i style="box-shadow:var(--elevation-floating)"></i><b>Floating</b><span>FAB、玻璃导航</span></div>
+      </div>
+    </section>
+
+  </div>
+</div>
