@@ -6,12 +6,12 @@ import { DateTimePairField } from '@/components/date-time-field';
 import { DestinationAtlas } from '@/components/destination-atlas';
 import { DestinationField } from '@/components/destination-field';
 import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/form-controls';
-import { Chevron } from '@/components/chevron';
 import { InfoCard } from '@/components/info-card';
 import { ItineraryHealthCard } from '@/components/itinerary-health-card';
 import { ItineraryEditAssistant } from '@/components/itinerary-edit-assistant';
 import { LocationField } from '@/components/location-field';
 import { MoveItineraryCard } from '@/components/move-itinerary-card';
+import { NextUpCard } from '@/components/next-up-card';
 import { StayCard } from '@/components/stay-card';
 import { MapsLink, RouteEstimateChip, routeTravelModeLabel, routeTravelModes, TransitPlan } from '@/components/route-plan';
 import { DaySeparator, RouteSegment, TimelineRow } from '@/components/timeline-rail';
@@ -19,7 +19,7 @@ import { Screen } from '@/components/screen';
 import { SectionHeading } from '@/components/section-heading';
 import { ThemedText } from '@/components/themed-text';
 import { getCurrencyOptions, getTimeZoneOptions, itineraryKindLabels, itineraryKindLabelsEn, itineraryKinds } from '@/constants/options';
-import { Radius, Spacing, type ThemeColor } from '@/constants/theme';
+import { Spacing, type ThemeColor } from '@/constants/theme';
 import type { ItineraryDestination, ItineraryItem, ItineraryKind, RouteTravelMode } from '@/domain/models';
 import { destinationLabel, type DestinationSuggestion } from '@/features/destinations/destination-search';
 import { useI18n } from '@/features/i18n/i18n-provider';
@@ -524,20 +524,6 @@ export default function TodayScreen() {
     return <TransitPlan transit={transit} compact={compact} tx={tx} formatTime={(isoTime, localizedTime) => formatTransitTime(isoTime, localizedTime, itemTimeZoneFor(item))} />;
   }
 
-  /** Route block shown inside the Up-next card, where there is no rail to sit in. */
-  function routeDetails(item: ItineraryItem) {
-    const context = routeContext(item);
-    if (!context) return null;
-    return (
-      <View style={styles.routeDetails}>
-        {routeSummary(item, context.estimate)}
-        {routeModeControls(item)}
-        {transitPlan(item)}
-        <MapsLink url={context.mapsUrl} label={tx('在 Google 地图中规划路线', 'Plan route in Google Maps')} />
-      </View>
-    );
-  }
-
   /** Travel between two rail rows: it occupies the gap instead of nesting in a row. */
   function routeSegment(item: ItineraryItem) {
     const context = routeContext(item);
@@ -549,17 +535,6 @@ export default function TodayScreen() {
         {routeModeControls(item)}
         {transitPlan(item)}
       </RouteSegment>
-    );
-  }
-
-  function itemActions(item: ItineraryItem) {
-    if (!canEdit) return null;
-    return (
-      <View style={styles.itemActions}>
-        <Pressable accessibilityRole="button" onPress={() => beginEdit(item)} style={({ pressed }) => [styles.itemTextAction, pressed && styles.pressed]}><ThemedText type="smallBold" style={{ color: theme.link }}>{tx('编辑', 'Edit')}</ThemedText></Pressable>
-        {trips.length > 1 ? <Pressable accessibilityRole="button" onPress={() => beginMove(item)} style={({ pressed }) => [styles.itemTextAction, pressed && styles.pressed]}><ThemedText type="smallBold" style={{ color: theme.link }}>{tx('移动', 'Move')}</ThemedText></Pressable> : null}
-        <Pressable accessibilityRole="button" onPress={() => beginEdit(item, true)} style={({ pressed }) => [styles.itemTextAction, pressed && styles.pressed]}><ThemedText type="smallBold" style={{ color: theme.danger }}>{tx('删除', 'Delete')}</ThemedText></Pressable>
-      </View>
     );
   }
 
@@ -606,45 +581,20 @@ export default function TodayScreen() {
         </InfoCard>
       ) : upcomingItems.length > 0 ? (
         <>
-          <View style={[styles.nextRail, compact && styles.nextRailCompact, { backgroundColor: theme.backgroundElement, shadowColor: theme.shadow }]}>
-            <View style={styles.nextHeading}>
-              <View style={[styles.kindPill, { backgroundColor: kindAccent(upcomingItems[0].kind) }]}>
-                <ThemedText type="smallBold" style={{ color: theme.textOnAccent }}>{kindLabel(upcomingItems[0].kind)}</ThemedText>
-              </View>
-              <ThemedText type="small" themeColor="textSecondary">{tx('下一步', 'Up next')}</ThemedText>
-            </View>
-            <ThemedText type="subtitle" style={[styles.nextTitle, compact && styles.nextTitleCompact]}>{upcomingItems[0].title}</ThemedText>
-            <View style={[styles.nextMetaGrid, compact && styles.nextMetaGridCompact]}>
-              <View style={[styles.metaChip, { backgroundColor: theme.backgroundSubtle }]}>
-                <ThemedText type="smallBold">{tx('时间', 'When')}</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">{formatZonedDateTimeRange(upcomingItems[0].startsAt, upcomingItems[0].endsAt, languageTag, tripTimeZone)}</ThemedText>
-              </View>
-              <View style={[styles.metaChip, { backgroundColor: theme.backgroundSubtle }]}>
-                <ThemedText type="smallBold">{tx('同行者', 'Who')}</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">{tx(`${members.length} 人可见`, `${members.length} travellers can see this`)}</ThemedText>
-              </View>
-            </View>
-            {routeDetails(upcomingItems[0])}
-            {upcomingItems[0].locationLabel ? (
-              <Pressable
-                accessibilityRole="link"
-                onPress={() => void Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(upcomingItems[0].locationLabel ?? '')}`)}
-                style={[styles.mapAction, { backgroundColor: theme.backgroundSelected }]}>
-                <View style={styles.placeCopy}>
-                  <ThemedText type="smallBold">{upcomingItems[0].locationLabel}</ThemedText>
-                  <ThemedText type="small" themeColor="textSecondary">{tx('打开地图', 'Open map')}</ThemedText>
-                </View>
-                <Chevron color={theme.textSecondary} />
-              </Pressable>
-            ) : (
-              <View style={[styles.mapAction, { backgroundColor: theme.backgroundSelected }]}>
-                <View style={styles.placeCopy}>
-                  <ThemedText type="smallBold">{tx('还没设置地点', 'No place yet')}</ThemedText>
-                </View>
-              </View>
-            )}
-            {itemActions(upcomingItems[0])}
-          </View>
+          <NextUpCard
+            kindColor={kindAccent(upcomingItems[0].kind)}
+            kindLabel={tx(`${kindLabel(upcomingItems[0].kind)} ${itineraryKindLabelsEn[upcomingItems[0].kind].toUpperCase()}`, itineraryKindLabelsEn[upcomingItems[0].kind].toUpperCase())}
+            location={upcomingItems[0].locationLabel ?? tx('还没设置地点', 'No place yet')}
+            mapLabel={tx('打开地图 Open map', 'Open map')}
+            nextLabel={tx('下一步 UP NEXT', 'UP NEXT')}
+            onMapPress={upcomingItems[0].locationLabel ? () => void Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(upcomingItems[0].locationLabel ?? '')}`) : undefined}
+            onPress={canEdit ? () => beginEdit(upcomingItems[0]) : undefined}
+            timeLabel={formatZonedDateTimeRange(upcomingItems[0].startsAt, upcomingItems[0].endsAt, languageTag, tripTimeZone)}
+            timeMetaLabel={tx('时间 WHEN', 'WHEN')}
+            title={upcomingItems[0].title}
+            travellersMetaLabel={tx('同行 WHO', 'WHO')}
+            travellersLabel={tx(`${members.length} 人可见`, `${members.length} travellers can see this`)}
+          />
 
           {visibleStays.length > 0 ? (
             <View style={styles.staySection}>
@@ -653,37 +603,17 @@ export default function TodayScreen() {
                 trailing={<ThemedText type="small" themeColor="textSecondary">{tx(`${visibleStays.length} 段`, `${visibleStays.length}`)}</ThemedText>}
               />
               {visibleStays.map((stay) => {
-                const previous = previousPlaceFor(stay);
-                const transferExists = itineraryItems.some((item) => item.linkedStayId === stay.id);
                 const nights = stayNightsInZone(stay.startsAt, stay.endsAt, itemTimeZoneFor(stay));
                 return (
-                  <View key={stay.id} style={[styles.stayRow, compact && styles.stayRowCompact]}>
+                  <View key={stay.id} style={styles.stayRow}>
                     <StayCard
                       dateRange={formatZonedDateTimeRange(stay.startsAt, stay.endsAt, languageTag, itemTimeZoneFor(stay))}
                       location={itemPlace(stay) ?? tx('还没设置地点', 'No place yet')}
                       nights={nights}
+                      onPress={canEdit ? () => beginEdit(stay) : undefined}
                       style={styles.stayCard}
                       title={stay.title}
                     />
-                    <View style={[styles.stayActions, compact && styles.stayActionsCompact]}>
-                      {stay.locationLabel ? (
-                        <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(stay.locationLabel ?? '')}`)} style={({ pressed }) => [styles.stayTextAction, pressed && styles.pressed]}>
-                          <ThemedText type="smallBold" style={{ color: theme.link }}>{tx('查看地图', 'Map')}</ThemedText>
-                        </Pressable>
-                      ) : null}
-                      {itemActions(stay)}
-                      {canEdit && previous?.locationLabel && stay.locationLabel ? (
-                        <Pressable
-                          disabled={Boolean(busyRouteId) || transferExists}
-                          accessibilityRole="button"
-                          accessibilityState={{ disabled: Boolean(busyRouteId) || transferExists }}
-                          onPress={() => void addRouteToStay(stay)}
-                          style={({ pressed }) => [styles.routeAction, compact && styles.routeActionCompact, { backgroundColor: theme.backgroundSelected }, pressed && styles.pressed, (Boolean(busyRouteId) || transferExists) && styles.disabled]}>
-                          <ThemedText type="smallBold">{transferExists ? tx('已添加交通', 'Transfer added') : busyRouteId === stay.id ? tx('添加中…', 'Adding…') : tx('添加前往酒店', 'Add transfer')}</ThemedText>
-                          <ThemedText type="small" themeColor="textSecondary">{tx(`从 ${previous.locationLabel}`, `From ${previous.locationLabel}`)}</ThemedText>
-                        </Pressable>
-                      ) : null}
-                    </View>
                   </View>
                 );
               })}
@@ -714,9 +644,9 @@ export default function TodayScreen() {
                       kindColor={kindAccent(item.kind)}
                       kindSoftColor={kindSoftAccent(item.kind)}
                       kindLabel={kindLabel(item.kind)}
-                      last={index === laterItems.length - 1}>
-                      {itemActions(item)}
-                    </TimelineRow>
+                      last={index === laterItems.length - 1}
+                      onPress={canEdit ? () => beginEdit(item) : undefined}
+                    />
                   </Fragment>
                 );
               })}
@@ -811,6 +741,23 @@ export default function TodayScreen() {
               <DateTimePairField label={tx('结束', 'End')} dateLabel={tx('结束日期', 'End date')} dateValue={endDate} timeLabel={tx('结束时间', 'End time')} timeValue={endTime} onDateChange={updatePlanEndDate} onTimeChange={setEndTime} />
             </View>
           )}
+          {editingItem && !confirmDeleteItem ? (
+            <View style={styles.editingActions}>
+              {editingItem.locationLabel ? (
+                <ActionButton tone="secondary" onPress={() => void Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(editingItem.locationLabel ?? '')}`)}>{tx('查看地图', 'Open map')}</ActionButton>
+              ) : null}
+              {editingItem.kind === 'lodging'
+                && previousPlaceFor(editingItem)?.locationLabel
+                && editingItem.locationLabel
+                && !itineraryItems.some((item) => item.linkedStayId === editingItem.id) ? (
+                <ActionButton tone="secondary" busy={busyRouteId === editingItem.id} onPress={() => void addRouteToStay(editingItem)}>{tx('添加前往酒店', 'Add hotel transfer')}</ActionButton>
+              ) : null}
+              {trips.length > 1 ? <ActionButton tone="secondary" onPress={() => beginMove(editingItem)}>{tx('移动到其他行程', 'Move to another trip')}</ActionButton> : null}
+              <Pressable accessibilityRole="button" onPress={() => setConfirmDeleteItem(true)} style={({ pressed }) => [styles.deleteTrigger, pressed && styles.pressed]}>
+                <ThemedText type="smallBold" style={{ color: theme.danger }}>{tx('删除这项安排', 'Delete this plan')}</ThemedText>
+              </Pressable>
+            </View>
+          ) : null}
           {pendingTripRange ? (
             <View style={styles.rangeConfirm}>
               <InlineNotice>{tx(`这项安排超出当前行程。要把行程调整为 ${pendingTripRange.startsOn} — ${pendingTripRange.endsOn} 吗？`, `This plan is outside the current trip. Extend it to ${pendingTripRange.startsOn} — ${pendingTripRange.endsOn}?`)}</InlineNotice>
@@ -901,6 +848,8 @@ const styles = StyleSheet.create({
   dateTimeRow: { width: '100%', flexDirection: 'row', gap: Spacing.sm },
   formActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   actionGrow: { flexGrow: 1, flexBasis: 150 },
+  editingActions: { gap: Spacing.sm },
+  deleteTrigger: { minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   floatingAdd: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', shadowOpacity: 0.2, shadowRadius: 14, shadowOffset: { width: 0, height: 6 } },
   plusIcon: { width: 20, height: 20, alignItems: 'center', justifyContent: 'center' },
   closeIcon: { width: 20, height: 20, alignItems: 'center', justifyContent: 'center' },
@@ -916,33 +865,13 @@ const styles = StyleSheet.create({
   destinationSettingGrow: { flexGrow: 1, flexBasis: 180 },
   deleteConfirm: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 14, gap: 10 },
   dangerConfirm: { minHeight: 48, borderRadius: 12, paddingHorizontal: 14, justifyContent: 'center', alignItems: 'center' },
-  nextRail: { borderRadius: Radius['2xl'], paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, gap: Spacing.md, shadowOpacity: 0.08, shadowRadius: 28, shadowOffset: { width: 0, height: 10 } },
-  nextRailCompact: { borderRadius: 20, padding: 18, gap: 14 },
-  nextHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  nextTitle: { fontSize: 34, lineHeight: 40 },
-  nextTitleCompact: { fontSize: 28, lineHeight: 34 },
-  nextMetaGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  nextMetaGridCompact: { gap: 8 },
-  metaChip: { flexGrow: 1, flexBasis: 136, minWidth: 0, gap: Spacing['2xs'], borderRadius: Radius.sm, padding: Spacing.sm },
-  kindPill: { alignSelf: 'flex-start', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7 },
-  mapAction: { minHeight: 56, borderRadius: Radius.md, paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  placeCopy: { flex: 1 },
   timelineSection: { paddingTop: 8 },
-  routeDetails: { gap: 7, paddingVertical: 4 },
   routeModeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
   staySection: { gap: 10, paddingVertical: 8 },
   stayHeading: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 },
   sectionTitle: { fontSize: 20, lineHeight: 26 },
   stayRow: { flexDirection: 'row', alignItems: 'stretch', gap: 14 },
-  stayRowCompact: { flexDirection: 'column' },
   stayCard: { flex: 1 },
-  stayActions: { width: 280, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end', gap: 8 },
-  stayActionsCompact: { width: '100%', flexDirection: 'column', alignItems: 'stretch' },
-  stayTextAction: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 },
-  itemActions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 4 },
-  itemTextAction: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 },
-  routeAction: { minHeight: 48, flexGrow: 1, flexBasis: 220, maxWidth: '100%', minWidth: 0, justifyContent: 'center', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6 },
-  routeActionCompact: { width: '100%', flexGrow: 0, flexBasis: 'auto' },
   stayFormGroup: { gap: 8 },
   readOnlyBadge: { alignSelf: 'flex-start', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 },
   pressed: { opacity: 0.68 },

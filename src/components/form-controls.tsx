@@ -81,6 +81,7 @@ export function ChoiceChip({
       accessibilityRole={role}
       accessibilityState={{ checked: role === 'checkbox' || role === 'radio' ? selected : undefined, selected: role === 'tab' ? selected : undefined, disabled }}
       disabled={disabled}
+      hitSlop={4}
       onPress={onPress}
       style={[styles.chip, { backgroundColor: selected ? theme.accent : theme.backgroundSubtle }, disabled && styles.dimmed]}>
       <ThemedText type="smallBold" style={{ color: selected ? theme.textOnAccent : theme.text }}>
@@ -108,7 +109,7 @@ const styles = StyleSheet.create({
   input: { borderWidth: 1, borderRadius: 12, minHeight: 48, paddingHorizontal: 14, paddingVertical: 10 },
   button: { minHeight: 48, borderRadius: 14, paddingHorizontal: 18, paddingVertical: 12, alignItems: 'center', justifyContent: 'center' },
   dimmed: { opacity: 0.58 },
-  chip: { minHeight: 44, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 10, justifyContent: 'center' },
+  chip: { height: 36, borderRadius: 999, paddingHorizontal: 14, justifyContent: 'center' },
   notice: {
     borderRadius: Radius.md,
     paddingHorizontal: Spacing.md,

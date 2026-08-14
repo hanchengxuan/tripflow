@@ -1,16 +1,19 @@
 import { useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { LayoutAnimation, Pressable, Share, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { DateTimeField } from '@/components/date-time-field';
 import { Chevron } from '@/components/chevron';
 import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/form-controls';
 import { InviteQrCode, InviteQrScanner } from '@/components/invite-qr';
+import { KindPill } from '@/components/kind-pill';
+import { ListDivider, ListRow, ListSurface } from '@/components/list-surface';
 import { MemberAvatar } from '@/components/member-avatar';
 import { Screen } from '@/components/screen';
 import { SelectionField } from '@/components/selection-field';
 import { SectionHeading } from '@/components/section-heading';
 import { ThemedText } from '@/components/themed-text';
+import { TripOverviewCard } from '@/components/trip-overview-card';
 import { getCurrencyOptions, getTimeZoneOptions, tripRoleLabels, tripRoleLabelsEn } from '@/constants/options';
 import type { Trip, TripRole } from '@/domain/models';
 import { useI18n } from '@/features/i18n/i18n-provider';
@@ -25,6 +28,12 @@ function dateOffset(days: number) {
   const date = new Date();
   date.setDate(date.getDate() + days);
   return date.toISOString().slice(0, 10);
+}
+
+function formatTripRange(trip: Trip, locale: string) {
+  const start = new Date(`${trip.startsOn}T12:00:00`).toLocaleDateString(locale, { month: 'short', day: 'numeric' });
+  const end = new Date(`${trip.endsOn}T12:00:00`).toLocaleDateString(locale, { month: 'short', day: 'numeric' });
+  return `${start} — ${end}`;
 }
 
 export default function TripsScreen() {
@@ -66,9 +75,6 @@ export default function TripsScreen() {
   const handledInviteParam = useRef<string | undefined>(undefined);
   const inviteParam = Array.isArray(params.invite) ? params.invite[0] : params.invite;
 
-  const tripSummary = useMemo(() => activeTrip
-    ? tx(`${activeTrip.startsOn} 至 ${activeTrip.endsOn} · ${activeTrip.homeCurrency}`, `${activeTrip.startsOn} to ${activeTrip.endsOn} · ${activeTrip.homeCurrency}`)
-    : undefined, [activeTrip, tx]);
   const currencyOptions = getCurrencyOptions(locale === 'en');
   const timeZoneOptions = getTimeZoneOptions(locale === 'en');
 
@@ -211,21 +217,23 @@ export default function TripsScreen() {
       {actionError ? <InlineNotice tone="error">{actionError}</InlineNotice> : null}
       {success ? <InlineNotice>{success}</InlineNotice> : null}
 
-      <View style={styles.tripHero}>
-        <View style={styles.heroTop}>
-          <View style={styles.heroCopy}>
-            <SectionHeading
-              title={activeTrip?.name ?? tx('还没有行程', 'No trip yet')}
-              detail={tripSummary}
-            />
-          </View>
-          {activeTrip ? <View style={[styles.memberCount, { backgroundColor: theme.backgroundSelected }]}><ThemedText type="smallBold">{tx(`${members.length} 人`, `${members.length} people`)}</ThemedText></View> : null}
-        </View>
-        <View style={[styles.quickActions, compact && styles.quickActionsCompact]}>
-          {activeTrip ? <View style={[styles.actionGrow, compact && styles.actionGrowCompact]}><ActionButton onPress={() => void openTrip(activeTrip)}>{tx('管理当前行程', 'Manage current trip')}</ActionButton></View> : null}
-          <View style={[styles.actionGrow, compact && styles.actionGrowCompact]}><ActionButton tone={activeTrip ? 'secondary' : 'primary'} onPress={() => showPanel('create')}>{openPanel === 'create' ? tx('收起', 'Close') : tx('新建行程', 'New trip')}</ActionButton></View>
-          <View style={[styles.actionGrow, compact && styles.actionGrowCompact]}><ActionButton tone="secondary" onPress={() => showPanel('join')}>{openPanel === 'join' ? tx('收起', 'Close') : tx('邀请码 / 扫码', 'Invite / scan')}</ActionButton></View>
-        </View>
+      {activeTrip ? (
+        <TripOverviewCard
+          activeLabel={tx('进行中', 'Active')}
+          currentLabel={tx('当前行程 Active', 'Current trip')}
+          dateLabel={tx('日期 Dates', 'Dates')}
+          dateRange={formatTripRange(activeTrip, locale)}
+          manageLabel={tx('管理当前行程', 'Manage current trip')}
+          onManage={() => void openTrip(activeTrip)}
+          peopleCount={tx(`${members.length} 人`, `${members.length} people`)}
+          peopleLabel={tx('同行 People', 'People')}
+          title={activeTrip.name}
+        />
+      ) : null}
+
+      <View style={styles.quickActions}>
+        <View style={styles.actionGrow}><ActionButton tone={activeTrip ? 'secondary' : 'primary'} onPress={() => showPanel('create')}>{openPanel === 'create' ? tx('收起', 'Close') : tx('新建行程', 'New trip')}</ActionButton></View>
+        <View style={styles.actionGrow}><ActionButton tone="secondary" onPress={() => showPanel('join')}>{openPanel === 'join' ? tx('收起', 'Close') : tx('邀请码 / 扫码', 'Invite / scan')}</ActionButton></View>
       </View>
 
       {openPanel === 'create' ? (
@@ -343,8 +351,25 @@ export default function TripsScreen() {
 
       {trips.length > 0 ? (
         <View style={styles.section}>
-          <SectionHeading title={tx('我的行程', 'My trips')} trailing={<ThemedText type="small" themeColor="textSecondary">{tx(`${trips.length} 个`, `${trips.length}`)}</ThemedText>} />
-          <View>{trips.map((trip, index) => { const selected = trip.id === activeTrip?.id; return <View key={trip.id}>{index > 0 ? <View style={[styles.divider, { backgroundColor: theme.backgroundSelected }]} /> : null}<Pressable accessibilityRole="button" onPress={() => void openTrip(trip)} style={({ pressed }) => [styles.tripRow, pressed && styles.pressed]}><View style={styles.tripRowCopy}><ThemedText type="smallBold">{trip.name}</ThemedText><ThemedText type="small" themeColor="textSecondary">{trip.startsOn} — {trip.endsOn} · {trip.homeCurrency}</ThemedText></View>{selected ? <ThemedText type="small" themeColor="textSecondary">{tx('当前 · ', 'Current · ')}</ThemedText> : null}<ThemedText type="smallBold" style={{ color: theme.text }}>{tx('查看', 'View')}</ThemedText></Pressable></View>; })}</View>
+          <SectionHeading title={tx('我的行程', 'My trips')} trailing={<ThemedText type="small" themeColor="textMuted">{trips.length}</ThemedText>} />
+          <ListSurface>
+            {trips.map((trip, index) => {
+              const selected = trip.id === activeTrip?.id;
+              return (
+                <View key={trip.id}>
+                  {index > 0 ? <ListDivider /> : null}
+                  <ListRow
+                    onPress={() => void openTrip(trip)}
+                    subtitle={`${formatTripRange(trip, locale)} · ${trip.homeCurrency}`}
+                    title={trip.name}
+                    trailing={selected ? (
+                      <KindPill color={theme.kindActivity} label={tx('当前', 'Current')} softColor={theme.kindActivitySoft} />
+                    ) : <ThemedText type="smallBold" style={{ color: theme.link }}>{tx('查看', 'View')}</ThemedText>}
+                  />
+                </View>
+              );
+            })}
+          </ListSurface>
         </View>
       ) : null}
     </Screen>
@@ -361,15 +386,12 @@ function TripForm(props: { name: string; setName: (value: string) => void; start
 }
 
 const styles = StyleSheet.create({
-  tripHero: { gap: 20, paddingVertical: 2 },
-  heroTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 16 }, heroCopy: { flex: 1, gap: 4 },
-  memberCount: { minHeight: 36, borderRadius: 999, paddingHorizontal: 12, justifyContent: 'center' },
-  quickActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 }, quickActionsCompact: { flexDirection: 'column', gap: 10 }, actionGrow: { flexGrow: 1, flexBasis: 150 }, actionGrowCompact: { flexGrow: 0, flexBasis: 'auto' },
+  quickActions: { flexDirection: 'row', gap: 10 }, actionGrow: { flex: 1, minWidth: 0 },
   focusPanel: { borderRadius: 16, padding: 18, gap: 18, shadowOpacity: 0.07, shadowRadius: 18, shadowOffset: { width: 0, height: 7 } },
   panelHeader: { flex: 1, gap: 3 }, panelTitle: { fontSize: 20, lineHeight: 26 }, manageHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 16 },
   formStack: { gap: 14 }, formRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 }, formRowCompact: { flexDirection: 'column' }, fieldGrow: { flexGrow: 1, flexBasis: 220 }, fieldGrowCompact: { flexBasis: 'auto' },
-  section: { paddingTop: 20, gap: 12 }, sectionHeading: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 }, sectionHeadingCopy: { flex: 1, gap: 2 }, sectionTitle: { fontSize: 20, lineHeight: 26 },
-  tripRow: { minHeight: 68, flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 8 }, tripRowCopy: { flex: 1, gap: 2 }, divider: { height: StyleSheet.hairlineWidth },
+  section: { gap: 12 }, sectionHeading: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 }, sectionHeadingCopy: { flex: 1, gap: 2 }, sectionTitle: { fontSize: 20, lineHeight: 26 },
+  divider: { height: StyleSheet.hairlineWidth },
   detailsBlock: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 }, detailsBlockCompact: { flexDirection: 'column' }, detail: { flexGrow: 1, flexBasis: 150, gap: 2 }, detailStacked: { flexGrow: 0, flexBasis: 'auto' },
   editorBlock: { gap: 14 }, editorActions: { flexDirection: 'row', gap: 10 },
   dangerAction: { minHeight: 48, borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, justifyContent: 'center', alignItems: 'center' },
