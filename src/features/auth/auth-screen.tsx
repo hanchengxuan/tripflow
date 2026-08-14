@@ -8,6 +8,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/form-controls';
 import { OtpCodeInput } from '@/components/otp-code-input';
 import { Screen } from '@/components/screen';
+import { GoogleMark } from '@/components/google-mark';
+import { Radius, Size, Spacing } from '@/constants/theme';
 import { ThemedText } from '@/components/themed-text';
 import { completeRegistration, sendEmailOtp, sendPhoneOtp, signInWithGoogle, signInWithPassword, signOut, verifyEmailOtp, verifyPhoneOtp } from '@/features/auth/auth-service';
 import { useAuth } from '@/features/auth/auth-provider';
@@ -133,8 +135,10 @@ export function AuthScreen() {
   }
 
   const cardLabel = method === 'phone' ? tx('手机号登录或注册', 'Phone sign-in or registration') : flow === 'login' ? tx('登录', 'Sign in') : flow === 'register' ? tx('注册', 'Register') : tx('验证码登录', 'Code sign-in');
-  const screenTitle = inviteToken ? tx('加入行程', 'Join a trip') : tx('共享行程', 'Shared trips');
-  const screenSubtitle = inviteToken ? tx('登录后确认加入。', 'Sign in, then confirm.') : tx('清楚分账，马上开始。', 'Clear balances, ready to go.');
+  const screenTitle = inviteToken ? tx('加入行程', 'Join a trip') : tx('结伴同行', 'Travel together');
+  const screenSubtitle = inviteToken
+    ? tx('登录后确认加入。', 'Sign in, then confirm.')
+    : tx('从出发到汇合，一路清楚。', 'From departure to reunion, always clear.');
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const compact = width < 720;
@@ -146,19 +150,37 @@ export function AuthScreen() {
             <ThemedText type="smallBold" style={[styles.authBrand, { color: theme.accent }]}>TripFlow</ThemedText>
             <ThemedText type="subtitle" style={[styles.authTitle, compact && styles.authTitleCompact]}>{screenTitle}</ThemedText>
             <ThemedText themeColor="textSecondary" style={styles.authSubtitle}>{screenSubtitle}</ThemedText>
-            <View style={[styles.authRule, { backgroundColor: theme.plan }]} />
-            <ThemedText type="small" themeColor="textSecondary">{inviteToken ? tx('邀请已保留。登录后仍需确认。', 'Your invite is saved. You will still confirm before joining.') : tx('先进入行程，再决定下一步。', 'Start with the trip, then choose the next step.')}</ThemedText>
+            {inviteToken ? <ThemedText type="small" themeColor="textSecondary">{tx('邀请已保留。登录后仍需确认。', 'Your invite is saved. You will still confirm before joining.')}</ThemedText> : null}
           </View>
           <View style={[styles.authPanel, { backgroundColor: theme.backgroundElement, shadowColor: theme.shadow }]}>
             <View style={styles.authPanelHeader}>
               <ThemedText type="smallBold" style={{ color: theme.accent }}>{cardLabel}</ThemedText>
               <ThemedText type="smallBold" style={styles.authPanelTitle}>{verifying ? (method === 'email' ? email : phone) : method === 'phone' ? tx('短信验证码', 'SMS code') : flow === 'register' ? tx('创建账号', 'Create account') : tx('欢迎回来', 'Welcome back')}</ThemedText>
             </View>
-            {capabilities.google ? <ActionButton tone="secondary" busy={busy} onPress={() => void googleLogin()}>{tx('使用 Google 继续', 'Continue with Google')}</ActionButton> : null}
-            <View style={styles.methodChoices}>
-              <ChoiceChip role="radio" selected={method === 'email'} onPress={() => { setMethod('email'); setVerifying(false); setToken(''); }}>{tx('邮箱', 'Email')}</ChoiceChip>
-              {capabilities.phone ? <ChoiceChip role="radio" selected={method === 'phone'} onPress={() => { setMethod('phone'); setVerifying(false); setToken(''); }}>{tx('手机号', 'Phone')}</ChoiceChip> : null}
-            </View>
+            {capabilities.google ? (
+              <>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ busy }}
+                  disabled={busy}
+                  onPress={() => void googleLogin()}
+                  style={({ pressed }) => [styles.provider, { backgroundColor: theme.backgroundElement, borderColor: theme.border }, (pressed || busy) && styles.providerPressed]}>
+                  <GoogleMark />
+                  <ThemedText type="smallBold">{tx('使用 Google 继续', 'Continue with Google')}</ThemedText>
+                </Pressable>
+                <View style={styles.divider}>
+                  <View style={[styles.dividerRule, { backgroundColor: theme.border }]} />
+                  <ThemedText type="small" themeColor="textMuted">{tx('或用邮箱', 'or with email')}</ThemedText>
+                  <View style={[styles.dividerRule, { backgroundColor: theme.border }]} />
+                </View>
+              </>
+            ) : null}
+            {capabilities.phone ? (
+              <View style={styles.methodChoices}>
+                <ChoiceChip role="radio" selected={method === 'email'} onPress={() => { setMethod('email'); setVerifying(false); setToken(''); }}>{tx('邮箱', 'Email')}</ChoiceChip>
+                <ChoiceChip role="radio" selected={method === 'phone'} onPress={() => { setMethod('phone'); setVerifying(false); setToken(''); }}>{tx('手机号', 'Phone')}</ChoiceChip>
+              </View>
+            ) : null}
             {method === 'email' ? (
             <View style={styles.flowChoices}>
               <ChoiceChip role="radio" selected={flow === 'login'} onPress={() => chooseFlow('login')}>{tx('密码登录', 'Sign in')}</ChoiceChip>
@@ -296,7 +318,10 @@ const styles = StyleSheet.create({
   authTitle: { fontSize: 38, lineHeight: 44, maxWidth: 520 },
   authTitleCompact: { fontSize: 30, lineHeight: 36 },
   authSubtitle: { fontSize: 18, lineHeight: 26, maxWidth: 440 },
-  authRule: { width: 56, height: 3, borderRadius: 2, marginTop: 8 },
+  provider: { minHeight: Size.control, borderRadius: Radius.md, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
+  providerPressed: { opacity: 0.68 },
+  divider: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  dividerRule: { flex: 1, height: 1 },
   authPanel: { flex: 1, maxWidth: 500, borderRadius: 24, padding: 22, gap: 16, shadowOpacity: 0.09, shadowRadius: 28, shadowOffset: { width: 0, height: 12 } },
   authPanelHeader: { gap: 5 },
   authPanelTitle: { fontSize: 26, lineHeight: 32 },
