@@ -171,6 +171,33 @@ The MVP deliberately does not include group chat, in-app booking, proprietary tu
 - Completed foundation: an airy coastal palette, stronger spacing, fewer elevated surfaces, and a durable product/design contract.
 - Next: add Place details, participant status, booking/document essentials, and reviewable photo/file/link itinerary import.
 
+### Gemini itinerary intelligence
+
+The itinerary is a good place for AI assistance because the model can explain a shared plan without taking control of it. The candidate backlog is:
+
+- A read-only health check for overlapping times, thin travel buffers, over-packed days, and missing locations.
+- A route-aware day optimizer that uses Google Routes for travel time, then proposes a reviewable reorder/diff.
+- Natural-language edits such as “move dinner to Friday after the museum” with an explicit preview before any write.
+- Reviewable imports from a message, screenshot, calendar, or booking confirmation into editable itinerary drafts.
+- Disruption replanning for delays, closures, weather, or fatigue, with the reason and trade-offs shown before applying.
+- Preference synthesis from votes, budgets, opening hours, and group constraints, producing ranked options rather than a single opaque answer.
+- Expense-to-itinerary linking so a meal, stay, or ticket can be reviewed against the corresponding plan item.
+
+#### Selected first vertical slice: itinerary health check (P1.1)
+
+The first implementation is a compact “行程检查 / itinerary check” action in Today. The initial slice performs deterministic checks on-device and returns the same versioned, read-only report contract that a future, explicitly opt-in Gemini analysis can enrich. Keeping the first pass local means full trip titles, locations, and dates do not leave the device by default. The report may flag `CONFLICT`, `BUFFER`, `DENSE_DAY`, or `MISSING_LOCATION` items, each with a severity, involved itinerary IDs, explanation, and confidence.
+
+Acceptance criteria:
+
+1. A traveller can run the check without leaving Today or opening a permanent form.
+2. Results are tied to real itinerary item IDs and are rendered as a compact review surface in Chinese and English.
+3. Unknown IDs, malformed model output, long text, and low-confidence values are rejected or bounded before display.
+4. The check never creates, moves, deletes, or silently edits an itinerary item; there is no automatic “apply” action in this slice.
+5. Empty itineraries show a quiet no-data state, while the local check remains usable offline; future remote opt-in must provide recoverable unauthorized and provider-error states (“重新检查 / Retry”).
+6. The next slice can add an explicit Gemini opt-in, Google Routes-backed travel gaps, and a reviewable diff without changing this report contract.
+
+Non-goals for P1.1: remote itinerary disclosure without opt-in, route-time invention by Gemini, weather/closure lookup, background checks, notifications, and autonomous itinerary mutation.
+
 ### Explicitly out of MVP
 
 - A general-purpose group chat; TripFlow links back to existing chat apps instead.
@@ -287,6 +314,7 @@ Expected result:
 - Store parser confidence and field-level uncertainties so the UI can require confirmation.
 - Initial languages: Mandarin Chinese and English. Cantonese and Japanese recognition should be tested during beta and can be enabled when quality is acceptable.
 - Expense recordings are processed only to create an editable draft and are not persisted by TripFlow.
+- Itinerary intelligence starts with on-device deterministic checks. Sending titles, locations, dates, or route context to Gemini requires a separate, explicit user opt-in and remains read-only until a reviewable diff is confirmed.
 
 ### Core data entities
 
