@@ -6,6 +6,7 @@ import { useMemo, useState } from 'react';
 import { LayoutAnimation, Linking, Platform, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/form-controls';
+import { BottomSheet } from '@/components/bottom-sheet';
 import { Chevron } from '@/components/chevron';
 import { MemberAvatar } from '@/components/member-avatar';
 import { Screen } from '@/components/screen';
@@ -81,7 +82,6 @@ export default function LedgerScreen() {
   const [activeView, setActiveView] = useState<'settle' | 'activity'>('settle');
   const [showGroupSettlement, setShowGroupSettlement] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
-  const [composerOffset, setComposerOffset] = useState<number>();
   const [editingExpenseId, setEditingExpenseId] = useState<string>();
   const [itineraryItemId, setItineraryItemId] = useState('');
   const [title, setTitle] = useState('');
@@ -248,8 +248,6 @@ export default function LedgerScreen() {
   }
 
   function closeComposer() {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setComposerOffset(undefined);
     setComposerOpen(false);
     resetExpenseForm();
     setSuccess(undefined);
@@ -260,8 +258,6 @@ export default function LedgerScreen() {
       closeComposer();
       return;
     }
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setComposerOffset(undefined);
     resetExpenseForm();
     setComposerOpen(true);
     setFormError(undefined);
@@ -269,9 +265,7 @@ export default function LedgerScreen() {
   }
 
   function startEditingExpense(expense: Expense) {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setActiveView('activity');
-    setComposerOffset(undefined);
     setComposerOpen(true);
     setEditingExpenseId(expense.id);
     setItineraryItemId(expense.itineraryItemId ?? '');
@@ -589,12 +583,11 @@ export default function LedgerScreen() {
   }
 
   return (
-    <Screen
+    <>
+      <Screen
       context={activeTrip
         ? [activeTrip.name, tx(`本位币 ${activeTrip.homeCurrency}`, `Home currency ${activeTrip.homeCurrency}`), tx(`${expenses.length} 笔支出`, `${expenses.length} expenses`)]
         : [tx('还没有进行中的行程', 'No active trip yet')]}
-      scrollToKey={composerOpen ? 'expense-composer' : undefined}
-      scrollToOffset={composerOffset}
       title={tx('账本', 'Ledger')}
       floatingAction={activeTrip ? (
         <Pressable
@@ -623,58 +616,6 @@ export default function LedgerScreen() {
               {tx('明细', 'Activity')}
             </ViewSwitchButton>
           </View>
-        </View>
-      ) : null}
-
-      {activeTrip && composerOpen ? (
-        <View onLayout={({ nativeEvent }) => setComposerOffset(nativeEvent.layout.y)}>
-          <ExpenseComposer
-          themeSurface={theme.backgroundElement}
-          themeSelected={theme.backgroundSelected}
-          dangerColor={dangerColor}
-          tx={tx}
-          editing={Boolean(editingExpenseId)}
-          itineraryItemId={itineraryItemId}
-          itineraryOptions={itineraryOptions}
-          setItineraryItemId={chooseItineraryItem}
-          aiText={aiText}
-          setAiText={setAiText}
-          parseWithAi={parseWithAi}
-          parseVoiceExpense={parseVoiceExpense}
-          busyAction={busyAction}
-          aiNotice={aiNotice}
-          formError={formError}
-          title={title}
-          setTitle={setTitle}
-          amount={amount}
-          setAmount={setAmount}
-          currency={currency}
-          baseCurrency={baseCurrency}
-          exchangeRate={effectiveExchangeRate}
-          exchangeRateSource={exchangeRateSource}
-          exchangeRateState={exchangeRateState}
-          currencyOptions={currencyOptions}
-          setCurrencyOverride={chooseCurrency}
-          setExchangeRate={changeExchangeRate}
-          members={members}
-          selectedPayerIds={selectedPayerIds}
-          payerAmounts={payerAmounts}
-          setPayerAmount={(userId, value) => setPayerAmounts((current) => ({ ...current, [userId]: value }))}
-          togglePayer={togglePayer}
-          participantIds={participantIds}
-          toggleParticipant={toggleParticipant}
-          splitMode={splitMode}
-          changeSplitMode={changeSplitMode}
-          allocationValues={allocationValues}
-          setAllocationValue={(userId, value) => setAllocationValues((current) => ({ ...current, [userId]: value }))}
-          allocationPreview={allocationPreview}
-          names={names}
-          receipt={receipt}
-          setReceipt={setReceipt}
-          pickReceipt={pickReceipt}
-          closeComposer={closeComposer}
-            submitExpense={submitExpense}
-          />
         </View>
       ) : null}
 
@@ -729,7 +670,60 @@ export default function LedgerScreen() {
           positiveColor={positiveColor}
         />
       )}
-    </Screen>
+      </Screen>
+
+      <BottomSheet
+        onDismiss={closeComposer}
+        title={editingExpenseId ? tx('编辑支出', 'Edit expense') : tx('记一笔', 'Add expense')}
+        visible={Boolean(activeTrip && composerOpen)}>
+        <ExpenseComposer
+          aiNotice={aiNotice}
+          aiText={aiText}
+          allocationPreview={allocationPreview}
+          allocationValues={allocationValues}
+          amount={amount}
+          baseCurrency={baseCurrency}
+          busyAction={busyAction}
+          changeSplitMode={changeSplitMode}
+          currency={currency}
+          currencyOptions={currencyOptions}
+          dangerColor={dangerColor}
+          editing={Boolean(editingExpenseId)}
+          exchangeRate={effectiveExchangeRate}
+          exchangeRateSource={exchangeRateSource}
+          exchangeRateState={exchangeRateState}
+          formError={formError}
+          itineraryItemId={itineraryItemId}
+          itineraryOptions={itineraryOptions}
+          members={members}
+          names={names}
+          parseVoiceExpense={parseVoiceExpense}
+          parseWithAi={parseWithAi}
+          participantIds={participantIds}
+          payerAmounts={payerAmounts}
+          pickReceipt={pickReceipt}
+          receipt={receipt}
+          selectedPayerIds={selectedPayerIds}
+          setAiText={setAiText}
+          setAllocationValue={(userId, value) => setAllocationValues((current) => ({ ...current, [userId]: value }))}
+          setAmount={setAmount}
+          setCurrencyOverride={chooseCurrency}
+          setExchangeRate={changeExchangeRate}
+          setItineraryItemId={setItineraryItemId}
+          setPayerAmount={(userId, value) => setPayerAmounts((current) => ({ ...current, [userId]: value }))}
+          setReceipt={setReceipt}
+          setTitle={setTitle}
+          splitMode={splitMode}
+          submitExpense={submitExpense}
+          themeSelected={theme.backgroundSelected}
+          themeSurface={theme.backgroundElement}
+          title={title}
+          toggleParticipant={toggleParticipant}
+          togglePayer={togglePayer}
+          tx={tx}
+        />
+      </BottomSheet>
+    </>
   );
 }
 
@@ -790,7 +784,6 @@ function ExpenseComposer(props: {
   receipt?: ReceiptDraft;
   setReceipt: (receipt?: ReceiptDraft) => void;
   pickReceipt: (source: 'camera' | 'library') => Promise<void>;
-  closeComposer: () => void;
   submitExpense: () => Promise<void>;
 }) {
   const { tx } = props;
@@ -798,16 +791,7 @@ function ExpenseComposer(props: {
   const { width } = useWindowDimensions();
   const compact = width < 520;
   return (
-    <View style={[styles.composer, compact && styles.composerCompact, { backgroundColor: props.themeSurface, shadowColor: theme.shadow }]}>
-      <View style={styles.composerHeading}>
-        <View style={styles.composerTitleRow}>
-          <SectionHeading title={props.editing ? tx('编辑支出', 'Edit expense') : tx('记一笔', 'Add expense')} />
-          <Pressable accessibilityRole="button" accessibilityLabel={tx('取消编辑', 'Cancel')} onPress={props.closeComposer} style={({ pressed }) => [styles.textButton, pressed && styles.pressed]}>
-            <ThemedText type="smallBold">{tx('取消', 'Cancel')}</ThemedText>
-          </Pressable>
-        </View>
-      </View>
-
+    <View style={styles.composer}>
       <View style={[styles.smartEntry, { backgroundColor: props.themeSurface, borderColor: props.themeSelected }]}>
         <View style={styles.smartEntryCopy}>
           <ThemedText type="smallBold">{tx('快速填入（可选）', 'Quick fill (optional)')}</ThemedText>
@@ -1561,10 +1545,7 @@ const styles = StyleSheet.create({
   plusIcon: { width: 20, height: 20, alignItems: 'center', justifyContent: 'center' },
   plusHorizontal: { position: 'absolute', width: 18, height: 2, borderRadius: 1 },
   plusVertical: { position: 'absolute', width: 2, height: 18, borderRadius: 1 },
-  composer: { gap: 20, borderRadius: 16, padding: 20, shadowOpacity: 0.1, shadowRadius: 20, shadowOffset: { width: 0, height: 8 }, elevation: 3 },
-  composerCompact: { padding: 16, gap: 16 },
-  composerHeading: { gap: 12 },
-  composerTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  composer: { gap: 20 },
   smartEntry: { gap: 12, padding: 14, borderRadius: 14, borderWidth: 1 },
   smartEntryCopy: { gap: 4 },
   smartEntryActions: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 10 },

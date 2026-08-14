@@ -16,6 +16,7 @@ export function MoveItineraryCard({
   onTargetTripChange,
   onCancel,
   onMove,
+  embedded = false,
 }: {
   item: ItineraryItem;
   targetTripId: string;
@@ -25,12 +26,12 @@ export function MoveItineraryCard({
   onTargetTripChange: (tripId: string) => void;
   onCancel: () => void;
   onMove: () => void;
+  embedded?: boolean;
 }) {
   const { tx } = useI18n();
 
-  return (
-    <InfoCard label={tx('移动安排', 'Move plan')} title={item.title} accent="#D86E35">
-      <View style={styles.content}>
+  const content = (
+    <View style={styles.content}>
         <SelectionField
           label={tx('目标行程', 'Move to')}
           value={targetTripId}
@@ -49,9 +50,11 @@ export function MoveItineraryCard({
           </View>
         </View>
         {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
-      </View>
-    </InfoCard>
+    </View>
   );
+
+  if (embedded) return content;
+  return <InfoCard label={tx('移动安排', 'Move plan')} title={item.title} accent="#D86E35">{content}</InfoCard>;
 }
 
 const styles = StyleSheet.create({

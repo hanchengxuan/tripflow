@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { Linking, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 
+import { BottomSheet } from '@/components/bottom-sheet';
 import { DateTimeField } from '@/components/date-time-field';
 import { DestinationAtlas } from '@/components/destination-atlas';
 import { DestinationField } from '@/components/destination-field';
@@ -11,7 +12,6 @@ import { ItineraryHealthCard } from '@/components/itinerary-health-card';
 import { ItineraryEditAssistant } from '@/components/itinerary-edit-assistant';
 import { LocationField } from '@/components/location-field';
 import { MoveItineraryCard } from '@/components/move-itinerary-card';
-import { SelectionField } from '@/components/selection-field';
 import { StayCard } from '@/components/stay-card';
 import { MapsLink, RouteEstimateChip, routeTravelModeLabel, routeTravelModes, TransitPlan } from '@/components/route-plan';
 import { DaySeparator, RouteSegment, TimelineRow } from '@/components/timeline-rail';
@@ -85,13 +85,11 @@ export default function TodayScreen() {
   const [currentTimestamp, setCurrentTimestamp] = useState(0);
   const [editingItemId, setEditingItemId] = useState<string>();
   const [composerOpen, setComposerOpen] = useState(false);
-  const [composerOffset, setComposerOffset] = useState<number>();
   const [pendingTripRange, setPendingTripRange] = useState<{ startsOn: string; endsOn: string }>();
   const [confirmDeleteItem, setConfirmDeleteItem] = useState(false);
   const [routeEstimates, setRouteEstimates] = useState<Record<string, RouteEstimate>>({});
   const [movingItemId, setMovingItemId] = useState<string>();
   const [moveTargetTripId, setMoveTargetTripId] = useState('');
-  const [moveOffset, setMoveOffset] = useState<number>();
   const [moveBusy, setMoveBusy] = useState(false);
   const [moveError, setMoveError] = useState<string>();
 
@@ -135,13 +133,11 @@ export default function TodayScreen() {
       setCurrentTimestamp(Date.now());
       setEditingItemId(undefined);
       setComposerOpen(false);
-      setComposerOffset(undefined);
       setPendingTripRange(undefined);
       setConfirmDeleteItem(false);
       setExpandedRouteModeId(undefined);
       setMovingItemId(undefined);
       setMoveTargetTripId('');
-      setMoveOffset(undefined);
       setMoveError(undefined);
     }, 0);
     return () => clearTimeout(timeout);
@@ -233,7 +229,6 @@ export default function TodayScreen() {
       setDestinationSettingsOpen(false);
       setEditingItemId(undefined);
       setComposerOpen(false);
-      setComposerOffset(undefined);
       setPendingTripRange(undefined);
       setConfirmDeleteItem(false);
       setSuccess(tripRangeChanged
@@ -251,7 +246,6 @@ export default function TodayScreen() {
   function cancelMove() {
     setMovingItemId(undefined);
     setMoveTargetTripId('');
-    setMoveOffset(undefined);
     setMoveError(undefined);
   }
 
@@ -259,7 +253,6 @@ export default function TodayScreen() {
     cancelEdit();
     setMovingItemId(item.id);
     setMoveTargetTripId(moveTripOptions[0]?.value ?? '');
-    setMoveOffset(undefined);
     setMoveError(undefined);
     setSuccess(undefined);
   }
@@ -288,7 +281,6 @@ export default function TodayScreen() {
     const start = isoToZonedDateTime(item.startsAt, nextTimeZone);
     const end = isoToZonedDateTime(item.endsAt ?? item.startsAt, nextTimeZone);
     setEditingItemId(item.id);
-    setComposerOffset(undefined);
     setComposerOpen(true);
     setConfirmDeleteItem(deleteFirst);
     setTitle(item.title);
@@ -311,7 +303,6 @@ export default function TodayScreen() {
   function cancelEdit() {
     setEditingItemId(undefined);
     setComposerOpen(false);
-    setComposerOffset(undefined);
     setPendingTripRange(undefined);
     setConfirmDeleteItem(false);
     setTitle('');
@@ -328,7 +319,6 @@ export default function TodayScreen() {
   function openNewComposer() {
     cancelMove();
     setEditingItemId(undefined);
-    setComposerOffset(undefined);
     setPendingTripRange(undefined);
     setConfirmDeleteItem(false);
     setTitle('');
@@ -576,12 +566,11 @@ export default function TodayScreen() {
   const interactionOpen = composerOpen || Boolean(movingItemId);
 
   return (
-    <Screen
+    <>
+      <Screen
       context={activeTrip
         ? [tripRange ?? '', tx(`${members.length} 人同行`, `${members.length} travellers`), tx(`${activeTrip.homeCurrency} 本位币`, `Home currency ${activeTrip.homeCurrency}`)]
         : [tx('还没有进行中的行程', 'No active trip yet')]}
-      scrollToKey={movingItemId ? 'move-plan' : composerOpen ? (editingItemId ?? 'new-plan') : undefined}
-      scrollToOffset={movingItemId ? moveOffset : composerOffset}
       title={activeTrip?.name ?? tx('今天', 'Today')}
       floatingAction={activeTrip && canEdit ? (
         <Pressable
@@ -610,21 +599,6 @@ export default function TodayScreen() {
       {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
       {success ? <InlineNotice>{success}</InlineNotice> : null}
 
-      {activeTrip && movingItem ? (
-        <View onLayout={({ nativeEvent }) => setMoveOffset(nativeEvent.layout.y)}>
-          <MoveItineraryCard
-            item={movingItem}
-            targetTripId={moveTargetTripId}
-            targetTripOptions={moveTripOptions}
-            busy={moveBusy}
-            error={moveError}
-            onTargetTripChange={setMoveTargetTripId}
-            onCancel={cancelMove}
-            onMove={() => void submitMove()}
-          />
-        </View>
-      ) : null}
-
       {activeTrip ? (
         <View style={styles.heroPanel}>
           <SectionHeading title={tx('行程总览', 'Trip overview')} />
@@ -651,103 +625,6 @@ export default function TodayScreen() {
       {activeTrip ? <ItineraryHealthCard items={upcomingItems.slice(0, 30)} onEditItem={canEdit ? beginEdit : undefined} /> : null}
 
       {activeTrip ? <DestinationAtlas items={itineraryItems} languageTag={languageTag} onViewItem={canEdit ? beginEdit : undefined} tx={tx} /> : null}
-
-      {activeTrip && canEdit && composerOpen ? (
-        <View onLayout={({ nativeEvent }) => setComposerOffset(nativeEvent.layout.y)}>
-          <InfoCard label={editingItem ? tx('编辑', 'Edit') : tx('新安排', 'New plan')} title={editingItem ? editingItem.title : tx('添加安排', 'Add plan')} accent={editingItem ? kindAccent(editingItem.kind) : theme.plan}>
-          {editingItem ? (
-            <ItineraryEditAssistant
-              key={editingItem.id}
-              trip={activeTrip}
-              item={editingItem}
-              items={itineraryItems}
-              onApply={async (candidate) => {
-                await saveItineraryItem({
-                  itemId: candidate.id,
-                  title: candidate.title,
-                  locationLabel: candidate.locationLabel,
-                  googlePlaceId: candidate.googlePlaceId,
-                  destination: candidate.destination,
-                  startsAt: candidate.startsAt,
-                  endsAt: candidate.endsAt,
-                });
-                beginEdit(candidate);
-              }}
-            />
-          ) : null}
-          <View style={styles.form}>
-            <FormField label={tx('安排', 'Plan')} value={title} onChangeText={setTitle} placeholder={tx('例如：机场快线 → 中环', 'For example: Airport Express → Central')} />
-            {!editingItem ? <SelectionField label={tx('类型', 'Type')} value={kind} options={itineraryKinds.map((itemKind) => ({ value: itemKind, label: kindLabel(itemKind) }))} onChange={(value) => chooseKind(value as ItineraryKind)} /> : null}
-            {editingItem?.linkedStayId ? (
-              <View style={[styles.lockedDestination, { backgroundColor: theme.backgroundSelected }]}>
-                <ThemedText type="smallBold">{tx('酒店交通', 'Hotel transfer')}</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  {tx(`${editingItem.destination?.cityName ?? editingItem.locationLabel ?? '—'} · ${formatZonedDateTimeRange(editingItem.endsAt ?? editingItem.startsAt, undefined, languageTag, itemTimeZoneFor(editingItem))}`, `${editingItem.destination?.cityName ?? editingItem.locationLabel ?? '—'} · ${formatZonedDateTimeRange(editingItem.endsAt ?? editingItem.startsAt, undefined, languageTag, itemTimeZoneFor(editingItem))}`)}
-                </ThemedText>
-              </View>
-            ) : (
-              <>
-                <DestinationField value={destinationText} onChange={changeDestinationText} onSelect={chooseDestination} />
-                {destination ? (
-                  <DestinationSettings
-                    currency={itemCurrency}
-                    currencyOptions={destinationCurrencyOptions}
-                    destination={destination}
-                    open={destinationSettingsOpen}
-                    timeZone={itemTimeZone}
-                    timeZoneOptions={destinationTimeZoneOptions}
-                    onCurrencyChange={setItemCurrency}
-                    onTimeZoneChange={setItemTimeZone}
-                    onToggle={() => setDestinationSettingsOpen((current) => !current)}
-                    tx={tx}
-                  />
-                ) : null}
-                <LocationField value={location} onChange={(value) => { setLocation(value); setGooglePlaceId(''); }} onSelect={(suggestion) => { setLocation(suggestion.text); setGooglePlaceId(suggestion.placeId); }} />
-              </>
-            )}
-            {editingItem?.linkedStayId ? (
-              <View style={[styles.row, compact && styles.rowCompact]}><View style={[styles.grow, compact && styles.growStacked]}><DateTimeField label={tx('日期', 'Date')} value={date} mode="date" onChange={updatePlanDate} /></View><View style={[styles.grow, compact && styles.growStacked]}><DateTimeField label={tx('时间', 'Time')} value={startTime} mode="time" onChange={setStartTime} /></View></View>
-            ) : kind === 'lodging' ? (
-              <>
-                <View style={[styles.row, compact && styles.rowCompact]}><View style={[styles.grow, compact && styles.growStacked]}><DateTimeField label={tx('入住日期', 'Check-in')} value={date} mode="date" onChange={updatePlanDate} /></View><View style={[styles.grow, compact && styles.growStacked]}><DateTimeField label={tx('入住时间', 'Time')} value={startTime} mode="time" onChange={setStartTime} /></View></View>
-                <View style={[styles.row, compact && styles.rowCompact]}><View style={[styles.grow, compact && styles.growStacked]}><DateTimeField label={tx('退房日期', 'Check-out')} value={endDate} mode="date" onChange={updatePlanEndDate} /></View><View style={[styles.grow, compact && styles.growStacked]}><DateTimeField label={tx('退房时间', 'Time')} value={endTime} mode="time" onChange={setEndTime} /></View></View>
-              </>
-            ) : (
-              <>
-                <View style={[styles.row, compact && styles.rowCompact]}><View style={[styles.grow, compact && styles.growStacked]}><DateTimeField label={tx('开始日期', 'Start date')} value={date} mode="date" onChange={updatePlanDate} /></View><View style={[styles.grow, compact && styles.growStacked]}><DateTimeField label={tx('开始时间', 'Starts')} value={startTime} mode="time" onChange={setStartTime} /></View></View>
-                <View style={[styles.row, compact && styles.rowCompact]}><View style={[styles.grow, compact && styles.growStacked]}><DateTimeField label={tx('结束日期', 'End date')} value={endDate} mode="date" onChange={updatePlanEndDate} /></View><View style={[styles.grow, compact && styles.growStacked]}><DateTimeField label={tx('结束时间', 'Ends')} value={endTime} mode="time" onChange={setEndTime} /></View></View>
-              </>
-            )}
-            {pendingTripRange ? (
-              <View style={styles.rangeConfirm}>
-                <InlineNotice>{tx(`这项安排超出当前行程。要把行程调整为 ${pendingTripRange.startsOn} — ${pendingTripRange.endsOn} 吗？`, `This plan is outside the current trip. Extend it to ${pendingTripRange.startsOn} — ${pendingTripRange.endsOn}?`)}</InlineNotice>
-                <View style={styles.formActions}>
-                  <View style={styles.actionGrow}><ActionButton tone="secondary" onPress={cancelEdit}>{tx('取消', 'Cancel')}</ActionButton></View>
-                  <View style={styles.actionGrow}><ActionButton tone="secondary" onPress={() => setPendingTripRange(undefined)}>{tx('返回修改', 'Edit dates')}</ActionButton></View>
-                  <View style={styles.actionGrow}><ActionButton busy={busy} onPress={() => void submitItem(true)}>{tx('调整并加入', 'Extend and add')}</ActionButton></View>
-                </View>
-              </View>
-            ) : null}
-            {confirmDeleteItem && editingItem ? (
-              <View style={[styles.deleteConfirm, { borderTopColor: theme.backgroundSelected }]}>
-                <ThemedText type="smallBold">{tx(`删除“${editingItem.title}”？`, `Delete “${editingItem.title}”?`)}</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">{tx('此操作无法恢复。', 'This cannot be undone.')}</ThemedText>
-                <View style={styles.formActions}>
-                  <View style={styles.actionGrow}><ActionButton tone="secondary" onPress={() => setConfirmDeleteItem(false)}>{tx('保留', 'Keep')}</ActionButton></View>
-                  <View style={styles.actionGrow}><Pressable accessibilityRole="button" disabled={busy} onPress={() => void deleteSelectedItem()} style={({ pressed }) => [styles.dangerConfirm, { backgroundColor: theme.danger }, pressed && styles.pressed, busy && styles.disabled]}><ThemedText type="smallBold" style={{ color: theme.textOnAccent }}>{busy ? tx('删除中…', 'Deleting…') : tx('删除', 'Delete')}</ThemedText></Pressable></View>
-                </View>
-              </View>
-            ) : !pendingTripRange ? (
-              <View style={styles.formActions}>
-                <View style={styles.actionGrow}><ActionButton tone="secondary" onPress={cancelEdit}>{tx('取消', 'Cancel')}</ActionButton></View>
-                <View style={styles.actionGrow}><ActionButton busy={busy} disabled={!title.trim() || (kind === 'lodging' && !location.trim())} onPress={() => void submitItem()}>{editingItem ? tx('保存', 'Save') : tx('加入行程', 'Add')}</ActionButton></View>
-              </View>
-            ) : null}
-            {formError ? <InlineNotice tone="error">{formError}</InlineNotice> : null}
-          </View>
-          </InfoCard>
-        </View>
-      ) : null}
 
       {!activeTrip ? (
         <InfoCard label={tx('暂无行程', 'No trip yet')} title={tx('创建或加入共享行程', 'Create or join a shared trip')}>
@@ -880,7 +757,81 @@ export default function TodayScreen() {
           <ThemedText type="smallBold">{tx('仅查看', 'View only')}</ThemedText>
         </View>
       ) : null}
-    </Screen>
+      </Screen>
+
+      <BottomSheet
+        onDismiss={cancelMove}
+        title={movingItem ? tx(`移动“${movingItem.title}”`, `Move “${movingItem.title}”`) : tx('移动安排', 'Move plan')}
+        visible={Boolean(activeTrip && movingItem)}>
+        {movingItem ? (
+          <MoveItineraryCard
+            busy={moveBusy}
+            embedded
+            error={moveError}
+            item={movingItem}
+            onCancel={cancelMove}
+            onMove={() => void submitMove()}
+            onTargetTripChange={setMoveTargetTripId}
+            targetTripId={moveTargetTripId}
+            targetTripOptions={moveTripOptions}
+          />
+        ) : null}
+      </BottomSheet>
+
+      <BottomSheet
+        onDismiss={cancelEdit}
+        title={editingItem ? tx('编辑安排', 'Edit plan') : tx('添加安排', 'Add plan')}
+        visible={Boolean(activeTrip && canEdit && composerOpen)}>
+        <View style={styles.form}>
+          {!editingItem ? (
+            <View style={styles.kindChoices}>
+              {itineraryKinds.map((itemKind) => (
+                <ChoiceChip key={itemKind} role="radio" selected={kind === itemKind} onPress={() => chooseKind(itemKind)}>
+                  {kindLabel(itemKind)}
+                </ChoiceChip>
+              ))}
+            </View>
+          ) : null}
+          <FormField label={tx('安排', 'Plan')} value={title} onChangeText={setTitle} placeholder={tx('例如：机场快线 → 中环', 'For example: Airport Express → Central')} />
+          {editingItem?.linkedStayId ? <View style={[styles.lockedDestination, { backgroundColor: theme.backgroundSelected }]}><ThemedText type="smallBold">{tx('酒店交通', 'Hotel transfer')}</ThemedText><ThemedText type="small" themeColor="textSecondary">{tx(`${editingItem.locationLabel ?? '—'} · ${formatZonedDateTimeRange(editingItem.endsAt ?? editingItem.startsAt, undefined, languageTag, tripTimeZone)}`, `${editingItem.locationLabel ?? '—'} · ${formatZonedDateTimeRange(editingItem.endsAt ?? editingItem.startsAt, undefined, languageTag, tripTimeZone)}`)}</ThemedText></View> : <LocationField value={location} onChange={(value) => { setLocation(value); setGooglePlaceId(''); }} onSelect={(suggestion) => { setLocation(suggestion.text); setGooglePlaceId(suggestion.placeId); }} />}
+          {editingItem?.linkedStayId ? (
+            <View style={[styles.row, compact && styles.rowCompact]}><View style={[styles.grow, compact && styles.growStacked]}><DateTimeField label={tx('日期', 'Date')} value={date} mode="date" onChange={updatePlanDate} /></View><View style={[styles.grow, compact && styles.growStacked]}><DateTimeField label={tx('时间', 'Time')} value={startTime} mode="time" onChange={setStartTime} /></View></View>
+          ) : kind === 'lodging' ? (
+            <>
+              <View style={[styles.row, compact && styles.rowCompact]}><View style={[styles.grow, compact && styles.growStacked]}><DateTimeField label={tx('入住日期', 'Check-in')} value={date} mode="date" onChange={updatePlanDate} /></View><View style={[styles.grow, compact && styles.growStacked]}><DateTimeField label={tx('入住时间', 'Time')} value={startTime} mode="time" onChange={setStartTime} /></View></View>
+              <View style={[styles.row, compact && styles.rowCompact]}><View style={[styles.grow, compact && styles.growStacked]}><DateTimeField label={tx('退房日期', 'Check-out')} value={endDate} mode="date" onChange={updatePlanEndDate} /></View><View style={[styles.grow, compact && styles.growStacked]}><DateTimeField label={tx('退房时间', 'Time')} value={endTime} mode="time" onChange={setEndTime} /></View></View>
+            </>
+          ) : (
+            <>
+              <View style={[styles.row, compact && styles.rowCompact]}><View style={[styles.grow, compact && styles.growStacked]}><DateTimeField label={tx('开始日期', 'Start date')} value={date} mode="date" onChange={updatePlanDate} /></View><View style={[styles.grow, compact && styles.growStacked]}><DateTimeField label={tx('开始时间', 'Starts')} value={startTime} mode="time" onChange={setStartTime} /></View></View>
+              <View style={[styles.row, compact && styles.rowCompact]}><View style={[styles.grow, compact && styles.growStacked]}><DateTimeField label={tx('结束日期', 'End date')} value={endDate} mode="date" onChange={updatePlanEndDate} /></View><View style={[styles.grow, compact && styles.growStacked]}><DateTimeField label={tx('结束时间', 'Ends')} value={endTime} mode="time" onChange={setEndTime} /></View></View>
+            </>
+          )}
+          {pendingTripRange ? (
+            <View style={styles.rangeConfirm}>
+              <InlineNotice>{tx(`这项安排超出当前行程。要把行程调整为 ${pendingTripRange.startsOn} — ${pendingTripRange.endsOn} 吗？`, `This plan is outside the current trip. Extend it to ${pendingTripRange.startsOn} — ${pendingTripRange.endsOn}?`)}</InlineNotice>
+              <View style={styles.formActions}>
+                <View style={styles.actionGrow}><ActionButton tone="secondary" onPress={() => setPendingTripRange(undefined)}>{tx('返回修改', 'Edit dates')}</ActionButton></View>
+                <View style={styles.actionGrow}><ActionButton busy={busy} onPress={() => void submitItem(true)}>{tx('调整并加入', 'Extend and add')}</ActionButton></View>
+              </View>
+            </View>
+          ) : null}
+          {confirmDeleteItem && editingItem ? (
+            <View style={[styles.deleteConfirm, { borderTopColor: theme.backgroundSelected }]}>
+              <ThemedText type="smallBold">{tx(`删除“${editingItem.title}”？`, `Delete “${editingItem.title}”?`)}</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">{tx('此操作无法恢复。', 'This cannot be undone.')}</ThemedText>
+              <View style={styles.formActions}>
+                <View style={styles.actionGrow}><ActionButton tone="secondary" onPress={() => setConfirmDeleteItem(false)}>{tx('保留', 'Keep')}</ActionButton></View>
+                <View style={styles.actionGrow}><Pressable accessibilityRole="button" disabled={busy} onPress={() => void deleteSelectedItem()} style={({ pressed }) => [styles.dangerConfirm, { backgroundColor: theme.danger }, pressed && styles.pressed, busy && styles.disabled]}><ThemedText type="smallBold" style={{ color: theme.textOnAccent }}>{busy ? tx('删除中…', 'Deleting…') : tx('删除', 'Delete')}</ThemedText></Pressable></View>
+              </View>
+            </View>
+          ) : !pendingTripRange ? (
+            <ActionButton busy={busy} disabled={!title.trim() || (kind === 'lodging' && !location.trim())} onPress={() => void submitItem()}>{editingItem ? tx('保存', 'Save') : tx('加入行程', 'Add')}</ActionButton>
+          ) : null}
+          {formError ? <InlineNotice tone="error">{formError}</InlineNotice> : null}
+        </View>
+      </BottomSheet>
+    </>
   );
 }
 
@@ -941,6 +892,7 @@ function DestinationSettings({
 
 const styles = StyleSheet.create({
   form: { gap: 14 },
+  kindChoices: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   rangeConfirm: { gap: 10 },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   rowCompact: { flexDirection: 'column', gap: 12 },

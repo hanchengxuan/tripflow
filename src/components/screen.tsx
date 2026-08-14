@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, type PropsWithChildren, type ReactNode } from 'react';
+import type { PropsWithChildren, ReactNode } from 'react';
 import { Platform, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -11,45 +11,17 @@ const WEB_ACTION_OFFSET = 92;
 interface ScreenProps extends PropsWithChildren {
   context: readonly string[];
   floatingAction?: ReactNode;
-  scrollToKey?: string;
-  scrollToOffset?: number;
-  scrollToEndKey?: string;
   title: string;
 }
 
-export function Screen({ context, floatingAction, scrollToKey, scrollToOffset, scrollToEndKey, title, children }: ScreenProps) {
+export function Screen({ context, floatingAction, title, children }: ScreenProps) {
   const insets = useSafeAreaInsets();
   const theme = useTheme();
   const { width } = useWindowDimensions();
   const compact = width < 520;
-  const scrollRef = useRef<ScrollView>(null);
-  const scrollToTarget = useCallback(() => {
-    if (!scrollToKey || scrollToOffset === undefined) return;
-    scrollRef.current?.scrollTo({ y: Math.max(0, scrollToOffset - 16), animated: true });
-  }, [scrollToKey, scrollToOffset]);
-
-  useEffect(() => {
-    if (!scrollToEndKey) return;
-    const timeout = setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 0);
-    return () => clearTimeout(timeout);
-  }, [scrollToEndKey]);
-
-  useEffect(() => {
-    if (!scrollToKey || scrollToOffset === undefined) return;
-    let secondFrame = 0;
-    const frame = requestAnimationFrame(() => {
-      secondFrame = requestAnimationFrame(scrollToTarget);
-    });
-    return () => {
-      cancelAnimationFrame(frame);
-      if (secondFrame) cancelAnimationFrame(secondFrame);
-    };
-  }, [scrollToKey, scrollToOffset, scrollToTarget]);
-
   return (
     <View style={[styles.frame, { backgroundColor: theme.background }]}>
       <ScrollView
-        ref={scrollRef}
         keyboardShouldPersistTaps="handled"
         style={styles.scroll}
         contentContainerStyle={[
