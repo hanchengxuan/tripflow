@@ -112,19 +112,15 @@ Kept current. Update a row when you close a gap.
 | Stay card with kind bar + nights tile | ✅ shipped | `src/components/stay-card.tsx`, `src/app/index.tsx` stays section |
 | Notice with a 3px accent bar | ✅ shipped | `src/components/form-controls.tsx` `InlineNotice` |
 | Screen header = title + one context row | ✅ shipped | `src/components/screen.tsx` and every `Screen` caller |
-| Travel modes compact until expanded | ❌ four full-size chips, wrap to two rows at 375px | `src/app/index.tsx` `routeModeControls` |
+| Travel modes compact until expanded | ✅ shipped | `RouteEstimateChip` toggles `src/app/index.tsx` `routeModeControls` |
 
-The last row is a real regression against the design's intent — the gap ends up taller than the plan row it serves. It was left alone deliberately: `PROJECT_CONTEXT.md` records that exposing route modes was an intentional decision, so collapsing them is a behaviour change that needs its own decision, not a silent tidy-up.
+The travel-mode product decision preserves explicit control without keeping four controls open: the current mode and estimate always remain visible, and pressing that chip reveals all four modes in place. Selecting one collapses the choices while the estimate refreshes.
 
 ## Next slice: pick up here
 
 Remaining gaps in the order they should be done. Each is its own `codex/*` branch and PR.
 
-### 1. Compact travel modes
-
-`src/app/index.tsx` `routeModeControls`. Four full-size chips wrap to two rows at 375px, making the route gap taller than the plan row it serves — a real regression against the design's intent. **This needs a product decision before code**: `PROJECT_CONTEXT.md` records that exposing route modes was deliberate, so collapsing them behind the estimate chip is a behaviour change, not a tidy-up.
-
-### 2. Sheet composers — largest, do last
+### 1. Sheet composers — largest, do last
 
 `src/app/index.tsx`, `src/app/ledger.tsx`, `src/components/screen.tsx`. Design: `screens-today.html` and `screens-ledger.html` bottom sheets with a scrim.
 
