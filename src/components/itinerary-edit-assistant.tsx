@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 
 import { ActionButton, FormField, InlineNotice } from '@/components/form-controls';
-import { SelectionField } from '@/components/selection-field';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import type { ItineraryItem, Trip } from '@/domain/models';
@@ -18,6 +18,7 @@ import { useTheme } from '@/hooks/use-theme';
 
 interface ItineraryEditAssistantProps {
   trip: Pick<Trip, 'id' | 'startsOn' | 'endsOn' | 'defaultTimeZone'>;
+  item: ItineraryItem;
   items: ItineraryItem[];
   onApply: (candidate: ItineraryItem & { endsAt: string }) => Promise<void>;
 }
@@ -30,24 +31,19 @@ function issueCopy(code: 'INVALID_RANGE' | 'OUTSIDE_TRIP' | 'OVERLAP', tx: (zh: 
   }[code];
 }
 
-export function ItineraryEditAssistant({ trip, items, onApply }: ItineraryEditAssistantProps) {
+export function ItineraryEditAssistant({ trip, item, items, onApply }: ItineraryEditAssistantProps) {
   const theme = useTheme();
   const { languageTag, tx } = useI18n();
   const [open, setOpen] = useState(false);
-  const [itemId, setItemId] = useState(items[0]?.id ?? '');
   const [instruction, setInstruction] = useState('');
   const [proposalState, setProposalState] = useState<{ signature: string; proposal: ItineraryEditProposal }>();
   const [busy, setBusy] = useState(false);
   const [applyBusy, setApplyBusy] = useState(false);
   const [error, setError] = useState<string>();
   const [success, setSuccess] = useState(false);
-  const selectedItem = items.find((item) => item.id === itemId) ?? items[0];
+  const selectedItem = item;
   const selectedSignature = selectedItem ? [selectedItem.id, selectedItem.title, selectedItem.startsAt, selectedItem.endsAt, selectedItem.locationLabel, selectedItem.googlePlaceId].join(':') : '';
   const proposal = proposalState?.signature === selectedSignature ? proposalState.proposal : undefined;
-  const itemOptions = useMemo(
-    () => items.slice(0, 30).map((item) => ({ value: item.id, label: `${item.title} · ${formatZonedDateTimeRange(item.startsAt, item.endsAt, languageTag, trip.defaultTimeZone)}` })),
-    [items, languageTag, trip.defaultTimeZone],
-  );
   const change = proposal?.changes[0];
   const candidate = selectedItem && change ? mergeItineraryEdit(selectedItem, change) : undefined;
   const candidateWithEnd = candidate?.endsAt ? candidate as ItineraryItem & { endsAt: string } : undefined;
@@ -55,13 +51,6 @@ export function ItineraryEditAssistant({ trip, items, onApply }: ItineraryEditAs
     if (!candidate) return undefined;
     return validateMergedItineraryEdit({ candidate, items, trip, timeZone: trip.defaultTimeZone });
   }, [candidate, items, trip]);
-
-  const selectItem = (nextItemId: string) => {
-    setItemId(nextItemId);
-    setProposalState(undefined);
-    setError(undefined);
-    setSuccess(false);
-  };
 
   const generatePreview = async () => {
     if (!selectedItem) return;
@@ -95,23 +84,32 @@ export function ItineraryEditAssistant({ trip, items, onApply }: ItineraryEditAs
   };
 
   return (
-    <View style={[styles.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+    <View style={styles.root}>
       <Pressable
         accessibilityRole="button"
+        accessibilityLabel={tx('为当前安排获取智能建议', 'Get a smart suggestion for this plan')}
         accessibilityState={{ expanded: open }}
-        onPress={() => setOpen((current) => !current)}
-        style={({ pressed }) => [styles.trigger, { backgroundColor: theme.backgroundSelected }, pressed && styles.pressed]}
+        onPress={() => {
+          setOpen((current) => !current);
+          setError(undefined);
+        }}
+        style={({ pressed }) => [styles.trigger, { borderColor: theme.borderField }, pressed && styles.pressed]}
       >
-        <View style={styles.triggerCopy}>
-          <ThemedText type="smallBold">✦ {tx('智能调整', 'Smart edit')}</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">{open ? tx('先选一项安排，再描述要改什么。', 'Choose one plan, then describe the change.') : tx('只在你请求预览时发送当前安排。', 'Only the selected plan is sent when you request a preview.')}</ThemedText>
-        </View>
-        <ThemedText type="smallBold" themeColor="link">{open ? '−' : '+'}</ThemedText>
+        <SparklesIcon color={theme.accent} />
+        <ThemedText type="smallBold" themeColor="link">{tx('智能建议', 'Smart suggestion')}</ThemedText>
       </Pressable>
 
       {open ? (
-        <View style={styles.body}>
-          <SelectionField label={tx('安排', 'Plan')} value={selectedItem?.id ?? ''} options={itemOptions} onChange={selectItem} />
+        <View style={[styles.panel, { backgroundColor: theme.backgroundSubtle, borderColor: theme.border }]}>
+          <View style={styles.panelHeader}>
+            <View style={styles.panelTitle}>
+              <ThemedText type="smallBold">{tx('调整这项安排', 'Adjust this plan')}</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary" numberOfLines={2}>{selectedItem.title}</ThemedText>
+            </View>
+            <Pressable accessibilityRole="button" accessibilityLabel={tx('关闭智能建议', 'Close smart suggestion')} onPress={() => setOpen(false)} style={({ pressed }) => [styles.closeAction, pressed && styles.pressed]}>
+              <ThemedText type="smallBold" themeColor="link">{tx('关闭', 'Close')}</ThemedText>
+            </Pressable>
+          </View>
           <FormField
             label={tx('想怎么改？', 'What should change?')}
             value={instruction}
@@ -155,6 +153,16 @@ export function ItineraryEditAssistant({ trip, items, onApply }: ItineraryEditAs
   );
 }
 
+function SparklesIcon({ color }: { color: string }) {
+  return (
+    <Svg width={18} height={18} viewBox="0 0 24 24" accessibilityElementsHidden>
+      <Path d="M4 20 15.5 8.5" fill="none" stroke={color} strokeLinecap="round" strokeWidth={2} />
+      <Path d="m15.5 3 .8 2.2L18.5 6l-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2Z" fill={color} />
+      <Path d="m6 10 .5 1.5L8 12l-1.5.5L6 14l-.5-1.5L4 12l1.5-.5L6 10Z" fill={color} />
+    </Svg>
+  );
+}
+
 function DiffRow({ label, before, after }: { label: string; before: string; after: string }) {
   const theme = useTheme();
   return (
@@ -169,12 +177,14 @@ function DiffRow({ label, before, after }: { label: string; before: string; afte
 }
 
 const styles = StyleSheet.create({
-  card: { borderWidth: 1, borderRadius: Radius.lg, overflow: 'hidden', marginTop: Spacing.md },
-  trigger: { minHeight: 56, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.md },
-  triggerCopy: { flex: 1, gap: 2 },
-  body: { padding: Spacing.md, gap: Spacing.md },
+  root: { alignSelf: 'flex-start', gap: Spacing.sm },
+  trigger: { minHeight: 44, borderWidth: 1, borderRadius: Radius.pill, paddingHorizontal: Spacing.sm, paddingVertical: Spacing.xs, flexDirection: 'row', alignItems: 'center', gap: Spacing.xs },
+  panel: { borderWidth: 1, borderRadius: Radius.md, padding: Spacing.md, gap: Spacing.md },
+  panelHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: Spacing.md },
+  panelTitle: { flex: 1, gap: 2 },
+  closeAction: { minHeight: 44, justifyContent: 'center', paddingHorizontal: Spacing.xs },
   input: { minHeight: 86 },
-  preview: { borderWidth: 1, borderRadius: Radius.md, padding: Spacing.md, gap: Spacing.sm },
+  preview: { borderWidth: 1, borderRadius: Radius.sm, padding: Spacing.md, gap: Spacing.sm },
   diffList: { gap: Spacing.sm },
   diffRow: { flexDirection: 'row', gap: Spacing.sm },
   diffCopy: { flex: 1, gap: 2 },

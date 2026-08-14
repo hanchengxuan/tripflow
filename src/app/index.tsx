@@ -569,26 +569,28 @@ export default function TodayScreen() {
 
       {activeTrip ? <ItineraryHealthCard items={upcomingItems.slice(0, 30)} onEditItem={canEdit ? beginEdit : undefined} /> : null}
 
-      {activeTrip && canEdit && upcomingItems.length > 0 ? (
-        <ItineraryEditAssistant
-          trip={activeTrip}
-          items={upcomingItems.slice(0, 30)}
-          onApply={async (candidate) => {
-            await saveItineraryItem({
-              itemId: candidate.id,
-              title: candidate.title,
-              locationLabel: candidate.locationLabel,
-              googlePlaceId: candidate.googlePlaceId,
-              startsAt: candidate.startsAt,
-              endsAt: candidate.endsAt,
-            });
-          }}
-        />
-      ) : null}
-
       {activeTrip && canEdit && composerOpen ? (
         <View onLayout={({ nativeEvent }) => setComposerOffset(nativeEvent.layout.y)}>
           <InfoCard label={editingItem ? tx('编辑', 'Edit') : tx('新安排', 'New plan')} title={editingItem ? editingItem.title : tx('添加安排', 'Add plan')} accent={editingItem ? kindAccent(editingItem.kind) : theme.plan}>
+          {editingItem ? (
+            <ItineraryEditAssistant
+              key={editingItem.id}
+              trip={activeTrip}
+              item={editingItem}
+              items={itineraryItems}
+              onApply={async (candidate) => {
+                await saveItineraryItem({
+                  itemId: candidate.id,
+                  title: candidate.title,
+                  locationLabel: candidate.locationLabel,
+                  googlePlaceId: candidate.googlePlaceId,
+                  startsAt: candidate.startsAt,
+                  endsAt: candidate.endsAt,
+                });
+                beginEdit(candidate);
+              }}
+            />
+          ) : null}
           <View style={styles.form}>
             <FormField label={tx('安排', 'Plan')} value={title} onChangeText={setTitle} placeholder={tx('例如：机场快线 → 中环', 'For example: Airport Express → Central')} />
             {!editingItem ? <SelectionField label={tx('类型', 'Type')} value={kind} options={itineraryKinds.map((itemKind) => ({ value: itemKind, label: kindLabel(itemKind) }))} onChange={(value) => chooseKind(value as ItineraryKind)} /> : null}
