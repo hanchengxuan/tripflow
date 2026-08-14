@@ -149,7 +149,22 @@ export const Fonts = Platform.select({
   },
 });
 
+/**
+ * 4pt base. Names mirror `--space-*` in
+ * `.design/tripflow-ui-2.0/src/tokens.css`; the legacy numeric names below
+ * remain for callers that have not been converted yet.
+ */
 export const Spacing = {
+  '2xs': 4,
+  xs: 8,
+  sm: 12,
+  md: 16,
+  lg: 20,
+  xl: 24,
+  '2xl': 32,
+  '3xl': 40,
+  '4xl': 56,
+
   half: 2,
   one: 4,
   two: 8,
@@ -157,6 +172,26 @@ export const Spacing = {
   four: 24,
   five: 32,
   six: 64,
+} as const;
+
+/** Corner radii; mirrors `--radius-*`. Radius rises with elevation. */
+export const Radius = {
+  xs: 8,
+  sm: 12,
+  md: 14,
+  lg: 16,
+  xl: 20,
+  '2xl': 26,
+  pill: 999,
+} as const;
+
+/** Fixed measures the design specifies; mirrors `--size-*`. */
+export const Size = {
+  touchMin: 44,
+  control: 48,
+  fab: 56,
+  railGutter: 46,
+  screenGutter: 20,
 } as const;
 
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;

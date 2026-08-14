@@ -1,0 +1,4 @@
+interface:
+  display_name: "TripFlow UI"
+  short_description: "Build TripFlow UI to match the Rail & Ledger design"
+  default_prompt: "Use $tripflow-ui to implement this screen against the design in .design/tripflow-ui-2.0/."
