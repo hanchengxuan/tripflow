@@ -32,7 +32,7 @@ export function BottomSheet({ children, onDismiss, title, visible }: BottomSheet
         <Pressable
           accessible={false}
           onPress={onDismiss}
-          style={[StyleSheet.absoluteFill, { backgroundColor: theme.scrim }]}
+          style={[StyleSheet.absoluteFill, { backgroundColor: theme.sheetScrim }]}
         />
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : Platform.OS === 'android' ? 'height' : undefined}
@@ -93,6 +93,6 @@ const styles = StyleSheet.create({
   title: { flex: 1, fontSize: 20, lineHeight: 26 },
   closeButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 4 },
   scroll: { flexShrink: 1 },
-  content: { gap: 14, paddingTop: 4 },
+  content: { width: '100%', gap: 14, paddingTop: 4 },
   pressed: { opacity: 0.68 },
 });

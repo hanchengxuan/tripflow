@@ -3,6 +3,7 @@ import { Platform, ScrollView, StyleSheet, useWindowDimensions, View } from 'rea
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
+import { Size } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 const WEB_NAV_CLEARANCE = 112;
@@ -37,7 +38,7 @@ export function Screen({ context, floatingAction, title, children }: ScreenProps
         </View>
         {children}
       </ScrollView>
-      {floatingAction ? <View style={[styles.floatingAction, { bottom: insets.bottom + (Platform.OS === 'web' ? WEB_ACTION_OFFSET : 84) }]}>{floatingAction}</View> : null}
+      {floatingAction ? <View style={[styles.floatingAction, { bottom: insets.bottom + (Platform.OS === 'web' ? WEB_ACTION_OFFSET : Size.fabClearance) }]}>{floatingAction}</View> : null}
     </View>
   );
 }

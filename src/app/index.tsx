@@ -2,7 +2,7 @@ import { Fragment, useEffect, useMemo, useState } from 'react';
 import { Linking, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { BottomSheet } from '@/components/bottom-sheet';
-import { DateTimeField } from '@/components/date-time-field';
+import { DateTimePairField } from '@/components/date-time-field';
 import { DestinationAtlas } from '@/components/destination-atlas';
 import { DestinationField } from '@/components/destination-field';
 import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/form-controls';
@@ -19,7 +19,7 @@ import { Screen } from '@/components/screen';
 import { SectionHeading } from '@/components/section-heading';
 import { ThemedText } from '@/components/themed-text';
 import { getCurrencyOptions, getTimeZoneOptions, itineraryKindLabels, itineraryKindLabelsEn, itineraryKinds } from '@/constants/options';
-import type { ThemeColor } from '@/constants/theme';
+import { Radius, Spacing, type ThemeColor } from '@/constants/theme';
 import type { ItineraryDestination, ItineraryItem, ItineraryKind, RouteTravelMode } from '@/domain/models';
 import { destinationLabel, type DestinationSuggestion } from '@/features/destinations/destination-search';
 import { useI18n } from '@/features/i18n/i18n-provider';
@@ -599,39 +599,53 @@ export default function TodayScreen() {
       {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
       {success ? <InlineNotice>{success}</InlineNotice> : null}
 
-      {activeTrip ? (
-        <View style={styles.heroPanel}>
-          <SectionHeading title={tx('行程总览', 'Trip overview')} />
-
-          <View style={[styles.summaryStrip, compact && styles.summaryStripCompact]}>
-            <View style={[styles.summaryItem, compact && styles.summaryItemCompact]}>
-              <ThemedText type="smallBold">{upcomingItems.length}</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">{tx('安排', 'plans')}</ThemedText>
-            </View>
-            <View style={[styles.summaryDivider, { backgroundColor: theme.backgroundSelected }]} />
-            <View style={[styles.summaryItem, compact && styles.summaryItemCompact]}>
-              <ThemedText type="smallBold">{members.length}</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">{tx('同行', 'travellers')}</ThemedText>
-            </View>
-            <View style={[styles.summaryDivider, { backgroundColor: theme.backgroundSelected }]} />
-            <View style={[styles.summaryItem, compact && styles.summaryItemCompact]}>
-              <ThemedText type="smallBold" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{tripRange}</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">{tx('日期', 'dates')}</ThemedText>
-            </View>
-          </View>
-        </View>
-      ) : null}
-
-      {activeTrip ? <ItineraryHealthCard items={upcomingItems.slice(0, 30)} onEditItem={canEdit ? beginEdit : undefined} /> : null}
-
       {activeTrip ? <DestinationAtlas items={itineraryItems} languageTag={languageTag} onViewItem={canEdit ? beginEdit : undefined} tx={tx} /> : null}
-
       {!activeTrip ? (
         <InfoCard label={tx('暂无行程', 'No trip yet')} title={tx('创建或加入共享行程', 'Create or join a shared trip')}>
           <ThemedText themeColor="textSecondary">{tx('加入后，所有成员都可以在这里查看下一项已确认的安排。', 'Once joined, everyone can see the next confirmed plan here.')}</ThemedText>
         </InfoCard>
       ) : upcomingItems.length > 0 ? (
         <>
+          <View style={[styles.nextRail, compact && styles.nextRailCompact, { backgroundColor: theme.backgroundElement, shadowColor: theme.shadow }]}>
+            <View style={styles.nextHeading}>
+              <View style={[styles.kindPill, { backgroundColor: kindAccent(upcomingItems[0].kind) }]}>
+                <ThemedText type="smallBold" style={{ color: theme.textOnAccent }}>{kindLabel(upcomingItems[0].kind)}</ThemedText>
+              </View>
+              <ThemedText type="small" themeColor="textSecondary">{tx('下一步', 'Up next')}</ThemedText>
+            </View>
+            <ThemedText type="subtitle" style={[styles.nextTitle, compact && styles.nextTitleCompact]}>{upcomingItems[0].title}</ThemedText>
+            <View style={[styles.nextMetaGrid, compact && styles.nextMetaGridCompact]}>
+              <View style={[styles.metaChip, { backgroundColor: theme.backgroundSubtle }]}>
+                <ThemedText type="smallBold">{tx('时间', 'When')}</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">{formatZonedDateTimeRange(upcomingItems[0].startsAt, upcomingItems[0].endsAt, languageTag, tripTimeZone)}</ThemedText>
+              </View>
+              <View style={[styles.metaChip, { backgroundColor: theme.backgroundSubtle }]}>
+                <ThemedText type="smallBold">{tx('同行者', 'Who')}</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">{tx(`${members.length} 人可见`, `${members.length} travellers can see this`)}</ThemedText>
+              </View>
+            </View>
+            {routeDetails(upcomingItems[0])}
+            {upcomingItems[0].locationLabel ? (
+              <Pressable
+                accessibilityRole="link"
+                onPress={() => void Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(upcomingItems[0].locationLabel ?? '')}`)}
+                style={[styles.mapAction, { backgroundColor: theme.backgroundSelected }]}>
+                <View style={styles.placeCopy}>
+                  <ThemedText type="smallBold">{upcomingItems[0].locationLabel}</ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary">{tx('打开地图', 'Open map')}</ThemedText>
+                </View>
+                <Chevron color={theme.textSecondary} />
+              </Pressable>
+            ) : (
+              <View style={[styles.mapAction, { backgroundColor: theme.backgroundSelected }]}>
+                <View style={styles.placeCopy}>
+                  <ThemedText type="smallBold">{tx('还没设置地点', 'No place yet')}</ThemedText>
+                </View>
+              </View>
+            )}
+            {itemActions(upcomingItems[0])}
+          </View>
+
           {visibleStays.length > 0 ? (
             <View style={styles.staySection}>
               <SectionHeading
@@ -676,49 +690,12 @@ export default function TodayScreen() {
               {upcomingStays.length > visibleStays.length ? <ThemedText type="small" themeColor="textSecondary">{tx(`另有 ${upcomingStays.length - visibleStays.length} 段住宿显示在后续时间线中`, `${upcomingStays.length - visibleStays.length} more stays appear later in the timeline`)}</ThemedText> : null}
             </View>
           ) : null}
-          <View style={[styles.nextRail, compact && styles.nextRailCompact, { backgroundColor: theme.backgroundElement, shadowColor: theme.shadow }]}>
-            <View style={styles.nextHeading}>
-              <View style={[styles.kindPill, { backgroundColor: kindAccent(upcomingItems[0].kind) }]}>
-                <ThemedText type="smallBold" style={{ color: theme.textOnAccent }}>{kindLabel(upcomingItems[0].kind)}</ThemedText>
-              </View>
-              <ThemedText type="small" themeColor="textSecondary">{tx('下一步', 'Up next')}</ThemedText>
-            </View>
-            <ThemedText type="subtitle" style={[styles.nextTitle, compact && styles.nextTitleCompact]}>{upcomingItems[0].title}</ThemedText>
-            <View style={[styles.nextMetaGrid, compact && styles.nextMetaGridCompact]}>
-              <View style={styles.metaChip}>
-                <ThemedText type="smallBold">{tx('时间', 'When')}</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">{formatZonedDateTimeRange(upcomingItems[0].startsAt, upcomingItems[0].endsAt, languageTag, itemTimeZoneFor(upcomingItems[0]))}</ThemedText>
-              </View>
-              <View style={styles.metaChip}>
-                <ThemedText type="smallBold">{tx('同行者', 'Who')}</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">{tx(`${members.length} 人可见`, `${members.length} travellers can see this`)}</ThemedText>
-              </View>
-            </View>
-            {routeDetails(upcomingItems[0])}
-            {upcomingItems[0].locationLabel ? (
-              <Pressable
-                accessibilityRole="link"
-                onPress={() => void Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(upcomingItems[0].locationLabel ?? '')}`)}
-                style={[styles.mapAction, { backgroundColor: theme.backgroundSelected }]}>
-                <View style={styles.placeCopy}>
-                  <ThemedText type="smallBold">{itemPlace(upcomingItems[0])}</ThemedText>
-                  <ThemedText type="small" themeColor="textSecondary">{tx('打开地图', 'Open map')}</ThemedText>
-                </View>
-                <Chevron color={theme.textSecondary} />
-              </Pressable>
-            ) : (
-              <View style={[styles.mapAction, { backgroundColor: theme.backgroundSelected }]}>
-                <View style={styles.placeCopy}>
-                  <ThemedText type="smallBold">{tx('还没设置地点', 'No place yet')}</ThemedText>
-                </View>
-              </View>
-            )}
-            {itemActions(upcomingItems[0])}
-          </View>
-
           {laterItems.length > 0 ? (
             <View style={styles.timelineSection}>
-              <SectionHeading title={tx('后续安排', 'Later')} />
+              <SectionHeading
+                title={tx('后续安排', 'Later')}
+                trailing={<ThemedText type="small" themeColor="textSecondary">{laterItems.length}</ThemedText>}
+              />
               {laterItems.map((item, index) => {
                 const itemTimeZone = itemTimeZoneFor(item);
                 const previousItem = laterItems[index - 1] ?? upcomingItems[0];
@@ -751,6 +728,25 @@ export default function TodayScreen() {
           <ThemedText themeColor="textSecondary">{tx('点击“添加安排”开始。', 'Choose Add plan to start.')}</ThemedText>
         </InfoCard>
       )}
+
+      {activeTrip ? <ItineraryHealthCard items={upcomingItems.slice(0, 30)} onEditItem={canEdit ? beginEdit : undefined} /> : null}
+
+      {activeTrip && canEdit && upcomingItems.length > 0 ? (
+        <ItineraryEditAssistant
+          trip={activeTrip}
+          items={upcomingItems.slice(0, 30)}
+          onApply={async (candidate) => {
+            await saveItineraryItem({
+              itemId: candidate.id,
+              title: candidate.title,
+              locationLabel: candidate.locationLabel,
+              googlePlaceId: candidate.googlePlaceId,
+              startsAt: candidate.startsAt,
+              endsAt: candidate.endsAt,
+            });
+          }}
+        />
+      ) : null}
 
       {activeTrip && !canEdit ? (
         <View style={[styles.readOnlyBadge, { backgroundColor: theme.backgroundSelected }]}>
@@ -795,17 +791,25 @@ export default function TodayScreen() {
           <FormField label={tx('安排', 'Plan')} value={title} onChangeText={setTitle} placeholder={tx('例如：机场快线 → 中环', 'For example: Airport Express → Central')} />
           {editingItem?.linkedStayId ? <View style={[styles.lockedDestination, { backgroundColor: theme.backgroundSelected }]}><ThemedText type="smallBold">{tx('酒店交通', 'Hotel transfer')}</ThemedText><ThemedText type="small" themeColor="textSecondary">{tx(`${editingItem.locationLabel ?? '—'} · ${formatZonedDateTimeRange(editingItem.endsAt ?? editingItem.startsAt, undefined, languageTag, tripTimeZone)}`, `${editingItem.locationLabel ?? '—'} · ${formatZonedDateTimeRange(editingItem.endsAt ?? editingItem.startsAt, undefined, languageTag, tripTimeZone)}`)}</ThemedText></View> : <LocationField value={location} onChange={(value) => { setLocation(value); setGooglePlaceId(''); }} onSelect={(suggestion) => { setLocation(suggestion.text); setGooglePlaceId(suggestion.placeId); }} />}
           {editingItem?.linkedStayId ? (
-            <View style={[styles.row, compact && styles.rowCompact]}><View style={[styles.grow, compact && styles.growStacked]}><DateTimeField label={tx('日期', 'Date')} value={date} mode="date" onChange={updatePlanDate} /></View><View style={[styles.grow, compact && styles.growStacked]}><DateTimeField label={tx('时间', 'Time')} value={startTime} mode="time" onChange={setStartTime} /></View></View>
+            <DateTimePairField
+              label={tx('时间', 'When')}
+              dateLabel={tx('日期', 'Date')}
+              dateValue={date}
+              timeLabel={tx('开始时间', 'Start time')}
+              timeValue={startTime}
+              onDateChange={updatePlanDate}
+              onTimeChange={setStartTime}
+            />
           ) : kind === 'lodging' ? (
-            <>
-              <View style={[styles.row, compact && styles.rowCompact]}><View style={[styles.grow, compact && styles.growStacked]}><DateTimeField label={tx('入住日期', 'Check-in')} value={date} mode="date" onChange={updatePlanDate} /></View><View style={[styles.grow, compact && styles.growStacked]}><DateTimeField label={tx('入住时间', 'Time')} value={startTime} mode="time" onChange={setStartTime} /></View></View>
-              <View style={[styles.row, compact && styles.rowCompact]}><View style={[styles.grow, compact && styles.growStacked]}><DateTimeField label={tx('退房日期', 'Check-out')} value={endDate} mode="date" onChange={updatePlanEndDate} /></View><View style={[styles.grow, compact && styles.growStacked]}><DateTimeField label={tx('退房时间', 'Time')} value={endTime} mode="time" onChange={setEndTime} /></View></View>
-            </>
+            <View style={styles.dateTimeRow}>
+              <DateTimePairField label={tx('入住', 'Check-in')} dateLabel={tx('入住日期', 'Check-in date')} dateValue={date} timeLabel={tx('入住时间', 'Check-in time')} timeValue={startTime} onDateChange={updatePlanDate} onTimeChange={setStartTime} />
+              <DateTimePairField label={tx('退房', 'Check-out')} dateLabel={tx('退房日期', 'Check-out date')} dateValue={endDate} timeLabel={tx('退房时间', 'Check-out time')} timeValue={endTime} onDateChange={updatePlanEndDate} onTimeChange={setEndTime} />
+            </View>
           ) : (
-            <>
-              <View style={[styles.row, compact && styles.rowCompact]}><View style={[styles.grow, compact && styles.growStacked]}><DateTimeField label={tx('开始日期', 'Start date')} value={date} mode="date" onChange={updatePlanDate} /></View><View style={[styles.grow, compact && styles.growStacked]}><DateTimeField label={tx('开始时间', 'Starts')} value={startTime} mode="time" onChange={setStartTime} /></View></View>
-              <View style={[styles.row, compact && styles.rowCompact]}><View style={[styles.grow, compact && styles.growStacked]}><DateTimeField label={tx('结束日期', 'End date')} value={endDate} mode="date" onChange={updatePlanEndDate} /></View><View style={[styles.grow, compact && styles.growStacked]}><DateTimeField label={tx('结束时间', 'Ends')} value={endTime} mode="time" onChange={setEndTime} /></View></View>
-            </>
+            <View style={styles.dateTimeRow}>
+              <DateTimePairField label={tx('开始', 'Start')} dateLabel={tx('开始日期', 'Start date')} dateValue={date} timeLabel={tx('开始时间', 'Start time')} timeValue={startTime} onDateChange={updatePlanDate} onTimeChange={setStartTime} />
+              <DateTimePairField label={tx('结束', 'End')} dateLabel={tx('结束日期', 'End date')} dateValue={endDate} timeLabel={tx('结束时间', 'End time')} timeValue={endTime} onDateChange={updatePlanEndDate} onTimeChange={setEndTime} />
+            </View>
           )}
           {pendingTripRange ? (
             <View style={styles.rangeConfirm}>
@@ -894,10 +898,7 @@ const styles = StyleSheet.create({
   form: { gap: 14 },
   kindChoices: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   rangeConfirm: { gap: 10 },
-  row: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  rowCompact: { flexDirection: 'column', gap: 12 },
-  grow: { flexGrow: 1, flexBasis: 140 },
-  growStacked: { flexGrow: 0, flexBasis: 'auto' },
+  dateTimeRow: { width: '100%', flexDirection: 'row', gap: Spacing.sm },
   formActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   actionGrow: { flexGrow: 1, flexBasis: 150 },
   floatingAdd: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', shadowOpacity: 0.2, shadowRadius: 14, shadowOffset: { width: 0, height: 6 } },
@@ -915,22 +916,16 @@ const styles = StyleSheet.create({
   destinationSettingGrow: { flexGrow: 1, flexBasis: 180 },
   deleteConfirm: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 14, gap: 10 },
   dangerConfirm: { minHeight: 48, borderRadius: 12, paddingHorizontal: 14, justifyContent: 'center', alignItems: 'center' },
-  heroPanel: { gap: 18, paddingVertical: 2 },
-  summaryStrip: { flexDirection: 'row', alignItems: 'stretch', paddingHorizontal: 4, gap: 12 },
-  summaryStripCompact: { gap: 8 },
-  summaryItem: { flex: 1, minWidth: 0, alignItems: 'center', gap: 2 },
-  summaryItemCompact: { flexBasis: 0 },
-  summaryDivider: { width: StyleSheet.hairlineWidth, alignSelf: 'stretch' },
-  nextRail: { borderRadius: 26, padding: 22, gap: 16, shadowOpacity: 0.08, shadowRadius: 28, shadowOffset: { width: 0, height: 10 } },
+  nextRail: { borderRadius: Radius['2xl'], paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, gap: Spacing.md, shadowOpacity: 0.08, shadowRadius: 28, shadowOffset: { width: 0, height: 10 } },
   nextRailCompact: { borderRadius: 20, padding: 18, gap: 14 },
   nextHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   nextTitle: { fontSize: 34, lineHeight: 40 },
   nextTitleCompact: { fontSize: 28, lineHeight: 34 },
   nextMetaGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   nextMetaGridCompact: { gap: 8 },
-  metaChip: { flexGrow: 1, flexBasis: 136, minWidth: 0, gap: 2 },
+  metaChip: { flexGrow: 1, flexBasis: 136, minWidth: 0, gap: Spacing['2xs'], borderRadius: Radius.sm, padding: Spacing.sm },
   kindPill: { alignSelf: 'flex-start', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7 },
-  mapAction: { minHeight: 68, borderRadius: 16, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  mapAction: { minHeight: 56, borderRadius: Radius.md, paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   placeCopy: { flex: 1 },
   timelineSection: { paddingTop: 8 },
   routeDetails: { gap: 7, paddingVertical: 4 },
