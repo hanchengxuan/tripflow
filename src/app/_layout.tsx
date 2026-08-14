@@ -6,7 +6,7 @@ import { useColorScheme } from 'react-native';
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import AppTabs from '@/components/app-tabs';
 import { AuthProvider, useAuth } from '@/features/auth/auth-provider';
-import { AuthLoadingScreen, AuthScreen, OnboardingScreen } from '@/features/auth/auth-screen';
+import { AuthScreen, OnboardingScreen, SessionLoadingScreen } from '@/features/auth/auth-screen';
 import { LanguageProvider, useI18n } from '@/features/i18n/i18n-provider';
 import { MvpProvider } from '@/features/mvp/mvp-provider';
 
@@ -18,7 +18,7 @@ function SessionRouter() {
 
   if (pathname === '/privacy' || pathname === '/support') return <Slot />;
 
-  if (!configured || loading) return <AuthLoadingScreen configured={configured} />;
+  if (!configured || loading) return <SessionLoadingScreen configured={configured} />;
   if (!session) return <AuthScreen />;
   if (!onboardingComplete) return <OnboardingScreen />;
 

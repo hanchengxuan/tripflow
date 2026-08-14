@@ -36,4 +36,4 @@ Trips → active trip → one of Create, Join, Manage. Manage opens a focused wo
 
 ### Recover a session
 
-Auth/session load → one compact recovery state → authenticated shell only after the initial trip/profile load. Background refresh keeps existing content visible.
+Auth/session load → one compact session-check state → authenticated shell only after the initial trip/profile load. Background refresh keeps existing content visible.

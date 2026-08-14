@@ -261,14 +261,19 @@ function LanguageAndLegal(props: { locale: string; setLocale: (locale: 'zh-CN' |
   return <><View style={styles.languageRow}><ChoiceChip selected={props.locale === 'zh-CN'} onPress={() => props.setLocale('zh-CN')}>简体中文</ChoiceChip><ChoiceChip selected={props.locale === 'en'} onPress={() => props.setLocale('en')}>English</ChoiceChip></View><View style={styles.legalLinks}><Link href={'/privacy' as Href} asChild><ThemedText type="linkPrimary">{props.tx('隐私政策', 'Privacy')}</ThemedText></Link><Link href={'/support' as Href} asChild><ThemedText type="linkPrimary">{props.tx('支持与帮助', 'Support')}</ThemedText></Link></View></>;
 }
 
-export function AuthLoadingScreen({ configured }: { configured: boolean }) {
+export function SessionLoadingScreen({ configured }: { configured: boolean }) {
   const { tx } = useI18n();
   const theme = useTheme();
   if (configured) {
     return (
-      <View style={[styles.loadingScreen, { backgroundColor: theme.background }]}>
+      <View
+        accessible
+        accessibilityLabel={tx('正在检查登录状态', 'Checking your sign-in status')}
+        accessibilityRole="progressbar"
+        accessibilityState={{ busy: true }}
+        style={[styles.loadingScreen, { backgroundColor: theme.background }]}
+      >
         <ActivityIndicator color="#087F6A" />
-        <ThemedText type="small" themeColor="textSecondary">{tx('正在恢复行程…', 'Restoring your trip…')}</ThemedText>
       </View>
     );
   }
@@ -296,7 +301,7 @@ const styles = StyleSheet.create({
   authPanelHeader: { gap: 5 },
   authPanelLabel: { color: '#087F6A' },
   authPanelTitle: { fontSize: 26, lineHeight: 32 },
-  loadingScreen: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, padding: 24 },
+  loadingScreen: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   form: { gap: 12 },
   methodChoices: { flexDirection: 'row', gap: 8 },
   flowChoices: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
