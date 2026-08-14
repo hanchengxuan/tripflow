@@ -1,0 +1,220 @@
+<!-- @dsCard group="Screens" -->
+<title>TripFlow · Auth</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="kit.css">
+<style>
+  .auth { padding: 0 24px; display: flex; flex-direction: column; gap: 22px; flex: 1; }
+  .brand { font-size: 13px; font-weight: 700; letter-spacing: 0.06em; color: var(--accent-primary); }
+  .auth h1 { margin: 0; font-size: 30px; line-height: 38px; letter-spacing: -0.5px; font-weight: 600; }
+  .auth .lede { margin: 6px 0 0; font-size: 15px; line-height: 22px; color: var(--text-secondary); }
+  .authtop { padding-top: 12px; }
+
+  /* Provider button: white ground + hairline, per Google's own guidance. */
+  .provider {
+    height: var(--size-control);
+    border-radius: var(--radius-md);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-hairline);
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    font-size: 16px; font-weight: 500; color: var(--text-primary);
+  }
+  .provider svg { width: 18px; height: 18px; flex: none; }
+
+  .or { display: flex; align-items: center; gap: 12px; }
+  .or i { flex: 1; height: 1px; background: var(--border-hairline); }
+  .or span { font-size: 12px; color: var(--text-muted); }
+
+  .switchrow { display: flex; justify-content: center; gap: 18px; padding-top: 2px; }
+  .switchrow a { font-size: 14px; font-weight: 600; color: var(--text-link); text-decoration: none; }
+
+  .legal { margin-top: auto; padding: 18px 0 24px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .legal .langs { display: flex; gap: 8px; }
+  .legal .links { display: flex; gap: 16px; font-size: 12px; }
+  .legal .links a { color: var(--text-muted); text-decoration: none; }
+  .fine { font-size: 11px; line-height: 16px; color: var(--text-muted); text-align: center; max-width: 300px; }
+
+  .otp { display: flex; gap: 6px; }
+  .otp i {
+    flex: 1; aspect-ratio: 0.82; border-radius: var(--radius-xs);
+    border: 1.5px solid var(--border-field); background: var(--bg-surface);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; font-weight: 700; font-style: normal;
+  }
+  .otp i.on { border-color: var(--border-focus); border-width: 2px; }
+  .otp i.empty { color: transparent; }
+
+  .avatarpick {
+    width: 88px; height: 88px; border-radius: 50%; align-self: center;
+    background: var(--bg-selected); color: var(--accent-primary);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 600; text-align: center; line-height: 16px;
+  }
+  .steps { display: flex; gap: 6px; align-items: center; }
+  .steps i { height: 3px; border-radius: 2px; background: var(--border-hairline); flex: 1; }
+  .steps i.on { background: var(--accent-primary); }
+</style>
+
+<div class="gallery">
+
+  <!-- ============ 1. SIGN IN ============ -->
+  <figure class="frame">
+    <div class="phone">
+      <div class="status"><span>9:41</span><span class="dots"><i></i><i></i><b></b></span></div>
+      <div class="auth">
+        <div class="authtop">
+          <div class="brand">TRIPFLOW</div>
+          <h1>一条时间线<br>一本共享的账</h1>
+          <p class="lede">登录后创建行程，或确认已收到的邀请。</p>
+        </div>
+
+        <div class="stack" style="gap:14px">
+          <div class="provider">
+            <svg viewBox="0 0 48 48" aria-hidden="true">
+              <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+              <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+              <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+              <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+            </svg>
+            使用 Google 继续
+          </div>
+
+          <div class="or"><i></i><span>或用邮箱</span><i></i></div>
+
+          <div class="field">
+            <label>邮箱</label>
+            <div class="box focus">hanchengxuan98@gmail.com</div>
+          </div>
+
+          <button class="btn btn-primary btn-block">发送登录验证码</button>
+
+          <div class="switchrow">
+            <a>用密码登录</a>
+            <a>注册新账号</a>
+          </div>
+        </div>
+
+        <div class="legal">
+          <p class="fine">继续即表示你同意隐私政策。验证码仅用于本次登录。</p>
+          <div class="langs">
+            <span class="chip on" style="height:32px;font-size:13px">简体中文</span>
+            <span class="chip" style="height:32px;font-size:13px">English</span>
+          </div>
+          <div class="links"><a>隐私政策</a><a>支持与帮助</a></div>
+        </div>
+      </div>
+    </div>
+    <figcaption>Auth — 登录
+      <span>Google 用官方 G 标；“或用邮箱”分隔两条路径；流程切换降为底部文字链，不再前置选择</span>
+    </figcaption>
+  </figure>
+
+  <!-- ============ 2. VERIFY CODE ============ -->
+  <figure class="frame">
+    <div class="phone">
+      <div class="status"><span>9:41</span><span class="dots"><i></i><i></i><b></b></span></div>
+      <div class="auth">
+        <div class="authtop">
+          <div class="brand">TRIPFLOW</div>
+          <h1>输入验证码</h1>
+          <p class="lede">已发送到 hanchengxuan98@gmail.com</p>
+        </div>
+
+        <div class="stack" style="gap:16px">
+          <div class="otp">
+            <i>4</i><i>7</i><i>2</i><i>9</i><i class="on empty">0</i><i class="empty">0</i><i class="empty">0</i><i class="empty">0</i>
+          </div>
+          <div class="dim">验证码 4:52 后过期。只有最新一封邮件里的验证码有效。</div>
+          <button class="btn btn-primary btn-block">验证并登录</button>
+          <div class="switchrow">
+            <a>重新发送</a>
+            <a>更换邮箱</a>
+          </div>
+        </div>
+
+        <div class="legal">
+          <div class="links"><a>隐私政策</a><a>支持与帮助</a></div>
+        </div>
+      </div>
+    </div>
+    <figcaption>Auth — 验证码
+      <span>8 位分格，当前格用 focus 描边；过期倒计时是说明不是警告，过期后才转 danger</span>
+    </figcaption>
+  </figure>
+
+  <!-- ============ 3. REGISTER · PROFILE SETUP ============ -->
+  <figure class="frame">
+    <div class="phone">
+      <div class="status"><span>9:41</span><span class="dots"><i></i><i></i><b></b></span></div>
+      <div class="auth">
+        <div class="authtop">
+          <div class="steps" style="margin-bottom:16px"><i class="on"></i><i class="on"></i><i class="on"></i></div>
+          <div class="brand">最后一步</div>
+          <h1>设置你的资料</h1>
+          <p class="lede">同行者会看到你的名称和头像。</p>
+        </div>
+
+        <div class="stack" style="gap:16px">
+          <div class="avatarpick">添加头像<br>可选</div>
+
+          <div class="field">
+            <label>显示名称</label>
+            <div class="box">Liam</div>
+          </div>
+          <div class="field">
+            <label>设置密码</label>
+            <div class="box ph">至少 8 位，含字母和数字</div>
+          </div>
+          <div class="field">
+            <label>确认密码</label>
+            <div class="box ph">再次输入密码</div>
+          </div>
+
+          <button class="btn btn-primary btn-block">完成注册</button>
+          <div class="switchrow"><a>退出并更换邮箱</a></div>
+        </div>
+      </div>
+    </div>
+    <figcaption>Auth — 注册资料（原来完全没有设计）
+      <span>三段进度条给出流程位置；头像可选且明说，不让用户猜是否必填</span>
+    </figcaption>
+  </figure>
+
+  <!-- ============ 4. INVITE CONTEXT ============ -->
+  <figure class="frame">
+    <div class="phone">
+      <div class="status"><span>9:41</span><span class="dots"><i></i><i></i><b></b></span></div>
+      <div class="auth">
+        <div class="authtop">
+          <div class="brand">TRIPFLOW</div>
+          <h1>加入「香港五日」</h1>
+          <p class="lede">小王邀请你加入这个行程。登录后仍需你确认。</p>
+        </div>
+
+        <div class="notice ok" style="margin-bottom:2px"><i></i>邀请已保留，完成登录后回到确认页。</div>
+
+        <div class="stack" style="gap:14px">
+          <div class="provider">
+            <svg viewBox="0 0 48 48" aria-hidden="true">
+              <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+              <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+              <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+              <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+            </svg>
+            使用 Google 继续
+          </div>
+          <div class="or"><i></i><span>或用邮箱</span><i></i></div>
+          <div class="field"><label>邮箱</label><div class="box ph">you@example.com</div></div>
+          <button class="btn btn-primary btn-block">发送登录验证码</button>
+        </div>
+
+        <div class="legal">
+          <div class="links"><a>隐私政策</a><a>支持与帮助</a></div>
+        </div>
+      </div>
+    </div>
+    <figcaption>Auth — 带邀请进入
+      <span>标题直接说明要加入哪个行程；邀请状态用 notice 说明，加入仍需显式确认</span>
+    </figcaption>
+  </figure>
+
+</div>
