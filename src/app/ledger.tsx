@@ -81,7 +81,6 @@ export default function LedgerScreen() {
   const [composerOffset, setComposerOffset] = useState<number>();
   const [editingExpenseId, setEditingExpenseId] = useState<string>();
   const [itineraryItemId, setItineraryItemId] = useState('');
-  const [entryMode, setEntryMode] = useState<'manual' | 'ai'>('manual');
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
   const [currencyOverride, setCurrencyOverride] = useState('');
@@ -197,11 +196,6 @@ export default function LedgerScreen() {
     return statuses;
   }, [dangerColor, ledgerMembers, names, pendingTransfers, positiveColor, settlements, tx]);
 
-  function chooseEntryMode(mode: 'ai' | 'manual') {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setEntryMode(mode);
-  }
-
   function resetExpenseForm() {
     setEditingExpenseId(undefined);
     setItineraryItemId('');
@@ -248,7 +242,6 @@ export default function LedgerScreen() {
     setComposerOpen(true);
     setEditingExpenseId(expense.id);
     setItineraryItemId(expense.itineraryItemId ?? '');
-    setEntryMode('manual');
     setTitle(expense.title);
     setAmount(amountInputFromMinor(expense.totalMinor, expense.currency));
     setCurrencyOverride(expense.currency);
@@ -377,7 +370,6 @@ export default function LedgerScreen() {
     setSplitMode('equal');
     setAllocationValues({});
     setParticipantsByTrip((current) => ({ ...current, [activeTrip.id]: draft.participantUserIds }));
-    setEntryMode('manual');
     const confidence = Math.round(draft.confidence * 100);
     setAiNotice([
       tx(`AI 已生成草稿（置信度 ${confidence}%），请核对后再保存。`, `AI created a draft (${confidence}% confidence). Review it before saving.`),
@@ -599,8 +591,6 @@ export default function LedgerScreen() {
           itineraryItemId={itineraryItemId}
           itineraryOptions={itineraryOptions}
           setItineraryItemId={setItineraryItemId}
-          entryMode={entryMode}
-          chooseEntryMode={chooseEntryMode}
           aiText={aiText}
           setAiText={setAiText}
           parseWithAi={parseWithAi}
@@ -715,8 +705,6 @@ function ExpenseComposer(props: {
   itineraryItemId: string;
   itineraryOptions: { value: string; label: string }[];
   setItineraryItemId: (value: string) => void;
-  entryMode: 'manual' | 'ai';
-  chooseEntryMode: (mode: 'manual' | 'ai') => void;
   aiText: string;
   setAiText: (value: string) => void;
   parseWithAi: () => Promise<void>;
@@ -764,35 +752,38 @@ function ExpenseComposer(props: {
             <ThemedText type="smallBold">{tx('取消', 'Cancel')}</ThemedText>
           </Pressable>
         </View>
-        <View style={styles.modeRow}>
-          <ChoiceChip selected={props.entryMode === 'manual'} onPress={() => props.chooseEntryMode('manual')}>
-            {tx('手动', 'Manual')}
-          </ChoiceChip>
-          <ChoiceChip selected={props.entryMode === 'ai'} onPress={() => props.chooseEntryMode('ai')}>
-            {tx('AI 一句话', 'AI sentence')}
-          </ChoiceChip>
+      </View>
+
+      <View style={[styles.smartEntry, { backgroundColor: props.themeSurface, borderColor: props.themeSelected }]}>
+        <View style={styles.smartEntryCopy}>
+          <ThemedText type="smallBold">{tx('快速填入（可选）', 'Quick fill (optional)')}</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            {tx('输入一句话或语音，自动填入下方字段；也可以直接手动填写。', 'Type or speak naturally to fill the fields below, or enter them manually.')}
+          </ThemedText>
+        </View>
+        <FormField
+          label={tx('一句话记账', 'One-line expense')}
+          value={props.aiText}
+          onChangeText={props.setAiText}
+          placeholder={tx('晚餐 860 港币，小王付款，三人均分', 'Dinner 860 HKD, paid by Sam, split three ways')}
+          multiline
+          numberOfLines={3}
+          maxLength={500}
+          style={styles.multiline}
+        />
+        <View style={[styles.smartEntryActions, compact && styles.smartEntryActionsCompact]}>
+          <View style={styles.smartEntryButton}>
+            <ActionButton busy={props.busyAction === 'parse'} disabled={!props.aiText.trim() || Boolean(props.busyAction)} onPress={() => void props.parseWithAi()}>
+              {tx('解析并填入', 'Parse & fill')}
+            </ActionButton>
+          </View>
+          <View style={styles.smartEntryVoice}>
+            <VoiceExpenseInput disabled={Boolean(props.busyAction)} tx={tx} onAudioReady={props.parseVoiceExpense} />
+          </View>
         </View>
       </View>
 
-      {props.entryMode === 'ai' ? (
-        <View style={styles.formGroup}>
-          <FormField
-            label={tx('描述这笔支出', 'Describe the expense')}
-            value={props.aiText}
-            onChangeText={props.setAiText}
-            placeholder={tx('晚餐 860 港币，小王付款，三人均分', 'Dinner 860 HKD, paid by Sam, split three ways')}
-            multiline
-            numberOfLines={3}
-            maxLength={500}
-            style={styles.multiline}
-          />
-          <ActionButton busy={props.busyAction === 'parse'} disabled={!props.aiText.trim() || Boolean(props.busyAction)} onPress={() => void props.parseWithAi()}>
-            {tx('生成草稿', 'Create draft')}
-          </ActionButton>
-          <VoiceExpenseInput disabled={Boolean(props.busyAction)} tx={tx} onAudioReady={props.parseVoiceExpense} />
-        </View>
-      ) : (
-        <View style={styles.formGroup}>
+      <View style={styles.formGroup}>
           {props.aiNotice ? <InlineNotice>{props.aiNotice}</InlineNotice> : null}
           <FormField label={tx('支出内容', 'Expense')} value={props.title} onChangeText={props.setTitle} placeholder={tx('例如：晚餐', 'For example: Dinner')} />
           <SelectionField
@@ -926,7 +917,6 @@ function ExpenseComposer(props: {
             {props.editing ? tx('保存修改', 'Save changes') : tx('保存支出', 'Save expense')}
           </ActionButton>
         </View>
-      )}
     </View>
   );
 }
@@ -997,7 +987,7 @@ function VoiceExpenseInput(props: {
           style={({ pressed }) => [styles.voiceButton, state.isRecording && styles.voiceButtonRecording, pressed && styles.pressed, (props.disabled || processing) && styles.disabled]}>
           <MicrophoneGlyph active={state.isRecording || processing} />
         </Pressable>
-        {processing ? <ThemedText type="small" themeColor="textSecondary">{props.tx('解析中…', 'Processing…')}</ThemedText> : state.isRecording ? <ThemedText type="smallBold">{Math.round(state.durationMillis / 1000)}s</ThemedText> : null}
+        {processing ? <ThemedText type="small" themeColor="textSecondary">{props.tx('解析中…', 'Processing…')}</ThemedText> : state.isRecording ? <ThemedText type="smallBold">{Math.round(state.durationMillis / 1000)}s</ThemedText> : <ThemedText type="smallBold" themeColor="textSecondary">{props.tx('语音填入', 'Voice fill')}</ThemedText>}
       </View>
       {voiceError ? <InlineNotice tone="error">{voiceError}</InlineNotice> : null}
     </View>
@@ -1505,7 +1495,12 @@ const styles = StyleSheet.create({
   composerCompact: { padding: 16, gap: 16 },
   composerHeading: { gap: 12 },
   composerTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  modeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  smartEntry: { gap: 12, padding: 14, borderRadius: 14, borderWidth: 1 },
+  smartEntryCopy: { gap: 4 },
+  smartEntryActions: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 10 },
+  smartEntryActionsCompact: { flexDirection: 'column', alignItems: 'stretch' },
+  smartEntryButton: { flexGrow: 1, flexBasis: 160 },
+  smartEntryVoice: { flexGrow: 1, flexBasis: 150 },
   formGroup: { gap: 16 },
   amountRow: { flexDirection: 'row', gap: 12, alignItems: 'flex-end' },
   amountRowCompact: { flexDirection: 'column', alignItems: 'stretch', gap: 14 },
