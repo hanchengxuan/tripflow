@@ -109,7 +109,7 @@ Kept current. Update a row when you close a gap.
 | Time rail, day separator, route in the gap | ✅ shipped | `src/components/timeline-rail.tsx`, `route-plan.tsx` |
 | Bipolar balance bar | ✅ shipped | `src/components/balance-bar.tsx`, `src/lib/balance-bar.ts` |
 | Add-plan and add-expense as bottom **sheets** | ❌ still inline blocks reached by scroll anchoring | `src/app/index.tsx`, `src/app/ledger.tsx`, `src/components/screen.tsx` |
-| Stay card with kind bar + nights tile | ❌ plain text rows | `src/app/index.tsx` stays section |
+| Stay card with kind bar + nights tile | ✅ shipped | `src/components/stay-card.tsx`, `src/app/index.tsx` stays section |
 | Notice with a 3px accent bar | ✅ shipped | `src/components/form-controls.tsx` `InlineNotice` |
 | Screen header = title + one context row | ❌ still title / subtitle / meta | `src/components/screen.tsx` |
 | Travel modes compact until expanded | ❌ four full-size chips, wrap to two rows at 375px | `src/app/index.tsx` `routeModeControls` |
@@ -120,21 +120,15 @@ The last row is a real regression against the design's intent — the gap ends u
 
 Remaining gaps in the order they should be done. Each is its own `codex/*` branch and PR.
 
-### 1. Stay card — smallest, do this first
-
-`src/app/index.tsx`, stays section. Design: `components-patterns.html` → **Stay card**.
-
-A 4pt kind-coloured bar down the left edge, name / date range / place stacked, and a nights tile on the right (`kind-soft/lodging` ground, the number large, `晚 nights` beneath). Today renders plain text rows. Nights already come from `stayNightsInZone` — do not recompute them. Extract to `src/components/stay-card.tsx`; `index.tsx` is past the 500-line boundary.
-
-### 2. Screen header
+### 1. Screen header
 
 `src/components/screen.tsx`. Design: title plus **one** context row of short facts separated by dots. The component takes `title` + `subtitle` + `meta` and callers pass sentences that repeat what the controls already say. Changing the signature touches every screen, so land it as one focused change and re-read each caller's copy rather than mechanically joining the three strings.
 
-### 3. Compact travel modes
+### 2. Compact travel modes
 
 `src/app/index.tsx` `routeModeControls`. Four full-size chips wrap to two rows at 375px, making the route gap taller than the plan row it serves — a real regression against the design's intent. **This needs a product decision before code**: `PROJECT_CONTEXT.md` records that exposing route modes was deliberate, so collapsing them behind the estimate chip is a behaviour change, not a tidy-up.
 
-### 4. Sheet composers — largest, do last
+### 3. Sheet composers — largest, do last
 
 `src/app/index.tsx`, `src/app/ledger.tsx`, `src/components/screen.tsx`. Design: `screens-today.html` and `screens-ledger.html` bottom sheets with a scrim.
 
