@@ -98,6 +98,35 @@ New keys the current theme does not have yet: `bg/subtle`, `text/muted`, `text/l
 `kind/*` and `kind-soft/*`, `avatar-fg`. These are currently hardcoded hexes scattered across
 `index.tsx`, `ledger.tsx`, and `app-tabs.web.tsx` — the redesign assumes they become theme keys.
 
+## Design vs. shipped app
+
+Kept current. Update a row when you close a gap.
+
+| Design | Shipped | Where |
+| --- | --- | --- |
+| Neutral Ink & Pine palette | ✅ shipped | `src/constants/theme.ts` |
+| Spacing / radius / size scales | ✅ tokens exist | `Spacing`, `Radius`, `Size` in `theme.ts` — new code should use them; existing files still hold literals |
+| Time rail, day separator, route in the gap | ✅ shipped | `src/components/timeline-rail.tsx`, `route-plan.tsx` |
+| Bipolar balance bar | ✅ shipped | `src/components/balance-bar.tsx`, `src/lib/balance-bar.ts` |
+| Add-plan and add-expense as bottom **sheets** | ❌ still inline blocks reached by scroll anchoring | `src/app/index.tsx`, `src/app/ledger.tsx`, `src/components/screen.tsx` |
+| Stay card with kind bar + nights tile | ❌ plain text rows | `src/app/index.tsx` stays section |
+| Notice with a 3px accent bar | ❌ flat tinted box | `src/components/form-controls.tsx` `InlineNotice` |
+| Screen header = title + one context row | ❌ still title / subtitle / meta | `src/components/screen.tsx` |
+| Travel modes compact until expanded | ❌ four full-size chips, wrap to two rows at 375px | `src/app/index.tsx` `routeModeControls` |
+
+The last row is a real regression against the design's intent — the gap ends up taller than the plan row it serves. It was left alone deliberately: `PROJECT_CONTEXT.md` records that exposing route modes was an intentional decision, so collapsing them is a behaviour change that needs its own decision, not a silent tidy-up.
+
+## Handing this to another agent
+
+Use the `$tripflow-ui` skill (`.agents/skills/tripflow-ui/`). It encodes the non-negotiable rules, token discipline, component boundaries, the verification loop, and the traps already hit.
+
+What still cannot be verified without help:
+
+- **The balance bar's proportional fill.** Needs a trip carrying an unsettled expense; the fill is otherwise only covered by `src/lib/__tests__/balance-bar-test.ts`.
+- **The day separator.** Needs a trip with plans on two different dates.
+- **A multi-leg transit plan.** Needs a route where the estimate service returns transit steps.
+- **Desktop width.** The browser pane's capture did not match the layout box it reported at 1280px, so no desktop claim in this work is trustworthy.
+
 ## Known limitation
 
 The Figma file's Light and Dark palettes are two separate single-mode collections rather than two
