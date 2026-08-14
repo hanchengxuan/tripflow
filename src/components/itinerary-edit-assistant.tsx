@@ -36,12 +36,14 @@ export function ItineraryEditAssistant({ trip, items, onApply }: ItineraryEditAs
   const [open, setOpen] = useState(false);
   const [itemId, setItemId] = useState(items[0]?.id ?? '');
   const [instruction, setInstruction] = useState('');
-  const [proposal, setProposal] = useState<ItineraryEditProposal>();
+  const [proposalState, setProposalState] = useState<{ signature: string; proposal: ItineraryEditProposal }>();
   const [busy, setBusy] = useState(false);
   const [applyBusy, setApplyBusy] = useState(false);
   const [error, setError] = useState<string>();
   const [success, setSuccess] = useState(false);
   const selectedItem = items.find((item) => item.id === itemId) ?? items[0];
+  const selectedSignature = selectedItem ? [selectedItem.id, selectedItem.title, selectedItem.startsAt, selectedItem.endsAt, selectedItem.locationLabel, selectedItem.googlePlaceId].join(':') : '';
+  const proposal = proposalState?.signature === selectedSignature ? proposalState.proposal : undefined;
   const itemOptions = useMemo(
     () => items.slice(0, 30).map((item) => ({ value: item.id, label: `${item.title} · ${formatZonedDateTimeRange(item.startsAt, item.endsAt, languageTag, trip.defaultTimeZone)}` })),
     [items, languageTag, trip.defaultTimeZone],
@@ -56,7 +58,7 @@ export function ItineraryEditAssistant({ trip, items, onApply }: ItineraryEditAs
 
   const selectItem = (nextItemId: string) => {
     setItemId(nextItemId);
-    setProposal(undefined);
+    setProposalState(undefined);
     setError(undefined);
     setSuccess(false);
   };
@@ -68,7 +70,7 @@ export function ItineraryEditAssistant({ trip, items, onApply }: ItineraryEditAs
     setSuccess(false);
     try {
       const nextProposal = await suggestItineraryEdit({ tripId: trip.id, itemId: selectedItem.id, instruction });
-      setProposal(nextProposal);
+      setProposalState({ signature: selectedSignature, proposal: nextProposal });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : tx('智能调整暂时不可用，请稍后重试。', 'Smart edit is unavailable. Try again later.'));
     } finally {
@@ -82,7 +84,7 @@ export function ItineraryEditAssistant({ trip, items, onApply }: ItineraryEditAs
     setError(undefined);
     try {
       await onApply(candidateWithEnd);
-      setProposal(undefined);
+      setProposalState(undefined);
       setInstruction('');
       setSuccess(true);
     } catch (caught) {
@@ -113,7 +115,7 @@ export function ItineraryEditAssistant({ trip, items, onApply }: ItineraryEditAs
           <FormField
             label={tx('想怎么改？', 'What should change?')}
             value={instruction}
-            onChangeText={(value) => { setInstruction(value); setProposal(undefined); setError(undefined); setSuccess(false); }}
+            onChangeText={(value) => { setInstruction(value); setProposalState(undefined); setError(undefined); setSuccess(false); }}
             placeholder={tx('例如：改到博物馆结束后，18:30 开始', 'For example: move it to after the museum, starting at 6:30 pm')}
             multiline
             maxLength={500}
@@ -142,7 +144,7 @@ export function ItineraryEditAssistant({ trip, items, onApply }: ItineraryEditAs
               <ActionButton tone="primary" busy={applyBusy} disabled={!candidateWithEnd || Boolean(validation?.errors.length) || !change} onPress={() => void applyPreview()}>
                 {tx('应用修改', 'Apply edit')}
               </ActionButton>
-              <Pressable accessibilityRole="button" onPress={() => { setProposal(undefined); setSuccess(false); }}>
+              <Pressable accessibilityRole="button" onPress={() => { setProposalState(undefined); setSuccess(false); }}>
                 <ThemedText type="smallBold" themeColor="link" style={styles.cancel}>{tx('取消预览', 'Discard preview')}</ThemedText>
               </Pressable>
             </View>
