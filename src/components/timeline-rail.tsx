@@ -59,9 +59,8 @@ export function TimelineRow({
         {endLabel ? <ThemedText type="small" themeColor="textMuted" style={styles.endTime}>{endLabel}</ThemedText> : null}
       </View>
       <View style={styles.spine}>
-        <View style={styles.dotSlot}>
-          <View style={[styles.dot, { backgroundColor: kindColor }]} />
-        </View>
+        <View style={[styles.spineStub, { backgroundColor: theme.border }]} />
+        <View style={[styles.dot, { backgroundColor: kindColor }]} />
         {last ? null : <View style={[styles.spineLine, { backgroundColor: theme.border }]} />}
       </View>
       <View style={styles.content}>
@@ -100,29 +99,29 @@ export function RouteSegment({ summary, trailing, children }: PropsWithChildren<
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', gap: 12, alignItems: 'stretch', paddingBottom: 18 },
-  segment: { flexDirection: 'row', gap: 12, alignItems: 'stretch', paddingBottom: 14 },
-  daySeparator: { flexDirection: 'row', gap: 12, alignItems: 'stretch', paddingBottom: 10 },
+  row: { flexDirection: 'row', gap: 12, alignItems: 'stretch' },
+  segment: { flexDirection: 'row', gap: 12, alignItems: 'stretch' },
+  daySeparator: { flexDirection: 'row', gap: 12, alignItems: 'stretch' },
 
-  gutter: { width: GUTTER_WIDTH, alignItems: 'flex-end', paddingTop: 1 },
+  gutter: { width: GUTTER_WIDTH, alignItems: 'flex-end', paddingTop: 1, alignSelf: 'flex-start' },
   startTime: { fontVariant: ['tabular-nums'] },
   endTime: { fontSize: 12, lineHeight: 16, fontVariant: ['tabular-nums'] },
 
   spine: { width: SPINE_WIDTH, alignItems: 'center' },
-  dotSlot: { height: 20, justifyContent: 'center' },
+  spineStub: { width: 2, height: 4 },
   dot: { width: 10, height: 10, borderRadius: 5 },
   spineLine: { width: 2, flex: 1, minHeight: 12, borderRadius: 1 },
   spineLineRoute: { opacity: 0.7 },
 
-  content: { flex: 1, minWidth: 0, gap: 3 },
+  content: { flex: 1, minWidth: 0, gap: 3, paddingBottom: 18 },
   head: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   title: { flex: 1, minWidth: 0, fontSize: 16, lineHeight: 22 },
   pill: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
   pillDot: { width: 7, height: 7, borderRadius: 4 },
 
-  segmentContent: { flex: 1, minWidth: 0, gap: 8, paddingTop: 2 },
+  segmentContent: { flex: 1, minWidth: 0, gap: 8, paddingTop: 2, paddingBottom: 14 },
   segmentSummary: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
 
-  dayCopy: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 10, paddingTop: 2 },
+  dayCopy: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 10, paddingTop: 2, paddingBottom: 10 },
   dayRule: { flex: 1, height: StyleSheet.hairlineWidth },
 });

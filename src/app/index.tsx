@@ -788,7 +788,7 @@ const styles = StyleSheet.create({
   kindPill: { alignSelf: 'flex-start', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7 },
   mapAction: { minHeight: 68, borderRadius: 16, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 },
   placeCopy: { flex: 1 },
-  timelineSection: { gap: 6, paddingTop: 8 },
+  timelineSection: { paddingTop: 8 },
   routeDetails: { gap: 7, paddingVertical: 4 },
   routeModeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
   staySection: { gap: 10, paddingVertical: 8 },
