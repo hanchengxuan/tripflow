@@ -1,5 +1,8 @@
 [functions.parse-expense]
 verify_jwt = false
 
+[functions.suggest-itinerary-edit]
+verify_jwt = false
+
 [functions.route-estimate]
 verify_jwt = false
