@@ -6,6 +6,7 @@ import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/
 import { Chevron } from '@/components/chevron';
 import { InfoCard } from '@/components/info-card';
 import { LocationField } from '@/components/location-field';
+import { MoveItineraryCard } from '@/components/move-itinerary-card';
 import { SelectionField } from '@/components/selection-field';
 import { Screen } from '@/components/screen';
 import { SectionHeading } from '@/components/section-heading';
@@ -50,7 +51,7 @@ export default function TodayScreen() {
   const theme = useTheme();
   const { width } = useWindowDimensions();
   const compact = width < 520;
-  const { activeTrip, members, itineraryItems, error, currentUserId, addItineraryItem, addStayTransfer, saveItineraryItem, saveTrip, setItineraryRouteMode, removeItineraryItem } = useMvp();
+  const { activeTrip, trips, members, itineraryItems, error, currentUserId, addItineraryItem, addStayTransfer, saveItineraryItem, saveTrip, setItineraryRouteMode, moveItineraryItem, removeItineraryItem } = useMvp();
   const [title, setTitle] = useState('');
   const [location, setLocation] = useState('');
   const [googlePlaceId, setGooglePlaceId] = useState('');
@@ -71,6 +72,11 @@ export default function TodayScreen() {
   const [pendingTripRange, setPendingTripRange] = useState<{ startsOn: string; endsOn: string }>();
   const [confirmDeleteItem, setConfirmDeleteItem] = useState(false);
   const [routeEstimates, setRouteEstimates] = useState<Record<string, RouteEstimate>>({});
+  const [movingItemId, setMovingItemId] = useState<string>();
+  const [moveTargetTripId, setMoveTargetTripId] = useState('');
+  const [moveOffset, setMoveOffset] = useState<number>();
+  const [moveBusy, setMoveBusy] = useState(false);
+  const [moveError, setMoveError] = useState<string>();
 
   const currentMember = members.find(({ userId }) => userId === currentUserId);
   const canEdit = currentMember?.role === 'owner' || currentMember?.role === 'editor';
@@ -81,6 +87,16 @@ export default function TodayScreen() {
   const tripRange = activeTrip ? formatTripDates(activeTrip.startsOn, activeTrip.endsOn, languageTag) : undefined;
   const tripTimeZone = activeTrip?.defaultTimeZone ?? 'UTC';
   const editingItem = itineraryItems.find(({ id }) => id === editingItemId);
+  const movingItem = itineraryItems.find(({ id }) => id === movingItemId);
+  const moveTripOptions = useMemo(
+    () => trips
+      .filter(({ id }) => id !== activeTrip?.id)
+      .map((trip) => ({
+        value: trip.id,
+        label: `${trip.name} · ${formatTripDates(trip.startsOn, trip.endsOn, languageTag)}`,
+      })),
+    [activeTrip?.id, languageTag, trips],
+  );
 
   useEffect(() => {
     if (!activeTrip) return;
@@ -93,6 +109,10 @@ export default function TodayScreen() {
       setComposerOffset(undefined);
       setPendingTripRange(undefined);
       setConfirmDeleteItem(false);
+      setMovingItemId(undefined);
+      setMoveTargetTripId('');
+      setMoveOffset(undefined);
+      setMoveError(undefined);
     }, 0);
     return () => clearTimeout(timeout);
   }, [activeTrip]);
@@ -120,6 +140,13 @@ export default function TodayScreen() {
       .catch(() => { if (!cancelled) setRouteEstimates({}); });
     return () => { cancelled = true; };
   }, [activeTrip, itineraryItems]);
+
+  useEffect(() => {
+    if (!movingItemId || moveTripOptions.some(({ value }) => value === moveTargetTripId)) return;
+    const nextTarget = moveTripOptions[0]?.value ?? '';
+    const timeout = setTimeout(() => setMoveTargetTripId(nextTarget), 0);
+    return () => clearTimeout(timeout);
+  }, [moveTargetTripId, moveTripOptions, movingItemId]);
 
   async function submitItem(acceptTripRangeChange = false) {
     setBusy(true);
@@ -175,7 +202,42 @@ export default function TodayScreen() {
     }
   }
 
+  function cancelMove() {
+    setMovingItemId(undefined);
+    setMoveTargetTripId('');
+    setMoveOffset(undefined);
+    setMoveError(undefined);
+  }
+
+  function beginMove(item: ItineraryItem) {
+    cancelEdit();
+    setMovingItemId(item.id);
+    setMoveTargetTripId(moveTripOptions[0]?.value ?? '');
+    setMoveOffset(undefined);
+    setMoveError(undefined);
+    setSuccess(undefined);
+  }
+
+  async function submitMove() {
+    if (!movingItem || !moveTargetTripId) return;
+    const targetTrip = trips.find(({ id }) => id === moveTargetTripId);
+    if (!targetTrip) return;
+    setMoveBusy(true);
+    setMoveError(undefined);
+    setSuccess(undefined);
+    try {
+      await moveItineraryItem(movingItem.id, targetTrip.id);
+      cancelMove();
+      setSuccess(tx(`“${movingItem.title}”已移动到${targetTrip.name}。`, `“${movingItem.title}” moved to ${targetTrip.name}.`));
+    } catch (caught) {
+      setMoveError(toUserMessage(caught, tx('无法移动这项安排，请稍后重试。', 'Could not move this plan. Please try again.')));
+    } finally {
+      setMoveBusy(false);
+    }
+  }
+
   function beginEdit(item: ItineraryItem, deleteFirst = false) {
+    cancelMove();
     const start = isoToZonedDateTime(item.startsAt, tripTimeZone);
     const end = isoToZonedDateTime(item.endsAt ?? item.startsAt, tripTimeZone);
     setEditingItemId(item.id);
@@ -207,6 +269,7 @@ export default function TodayScreen() {
   }
 
   function openNewComposer() {
+    cancelMove();
     setEditingItemId(undefined);
     setComposerOffset(undefined);
     setPendingTripRange(undefined);
@@ -417,40 +480,62 @@ export default function TodayScreen() {
     return (
       <View style={styles.itemActions}>
         <Pressable accessibilityRole="button" onPress={() => beginEdit(item)} style={({ pressed }) => [styles.itemTextAction, pressed && styles.pressed]}><ThemedText type="smallBold" style={styles.linkText}>{tx('编辑', 'Edit')}</ThemedText></Pressable>
+        {trips.length > 1 ? <Pressable accessibilityRole="button" onPress={() => beginMove(item)} style={({ pressed }) => [styles.itemTextAction, pressed && styles.pressed]}><ThemedText type="smallBold" style={styles.linkText}>{tx('移动', 'Move')}</ThemedText></Pressable> : null}
         <Pressable accessibilityRole="button" onPress={() => beginEdit(item, true)} style={({ pressed }) => [styles.itemTextAction, pressed && styles.pressed]}><ThemedText type="smallBold" style={{ color: theme.danger }}>{tx('删除', 'Delete')}</ThemedText></Pressable>
       </View>
     );
   }
 
+  const interactionOpen = composerOpen || Boolean(movingItemId);
+
   return (
     <Screen
-      scrollToKey={composerOpen ? (editingItemId ?? 'new-plan') : undefined}
-      scrollToOffset={composerOffset}
+      scrollToKey={movingItemId ? 'move-plan' : composerOpen ? (editingItemId ?? 'new-plan') : undefined}
+      scrollToOffset={movingItemId ? moveOffset : composerOffset}
       meta={activeTrip ? tripRange : tx('今天', 'Today')}
       title={activeTrip?.name ?? tx('把旅程安排成一条可执行的流', 'Turn the trip into one shared flow')}
       subtitle={activeTrip ? tx('下一项安排', 'Next up') : tx('从“行程”创建或加入一个行程。', 'Create or join a trip from Trips.')}
       floatingAction={activeTrip && canEdit ? (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={composerOpen ? tx('关闭添加安排', 'Close add plan') : tx('添加安排', 'Add plan')}
-          accessibilityState={{ expanded: composerOpen }}
+          accessibilityLabel={interactionOpen ? tx('关闭当前操作', 'Close current action') : tx('添加安排', 'Add plan')}
+          accessibilityState={{ expanded: interactionOpen }}
           onPress={() => {
             if (composerOpen) {
               cancelEdit();
               return;
             }
+            if (movingItemId) {
+              cancelMove();
+              return;
+            }
             openNewComposer();
           }}
           style={({ pressed }) => [styles.floatingAdd, pressed && styles.pressed]}>
-          <View style={composerOpen ? styles.closeIcon : styles.plusIcon}>
-            <View style={composerOpen ? styles.closeDiagonalOne : styles.plusHorizontal} />
-            <View style={composerOpen ? styles.closeDiagonalTwo : styles.plusVertical} />
+          <View style={interactionOpen ? styles.closeIcon : styles.plusIcon}>
+            <View style={interactionOpen ? styles.closeDiagonalOne : styles.plusHorizontal} />
+            <View style={interactionOpen ? styles.closeDiagonalTwo : styles.plusVertical} />
           </View>
         </Pressable>
       ) : null}
     >
       {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
       {success ? <InlineNotice>{success}</InlineNotice> : null}
+
+      {activeTrip && movingItem ? (
+        <View onLayout={({ nativeEvent }) => setMoveOffset(nativeEvent.layout.y)}>
+          <MoveItineraryCard
+            item={movingItem}
+            targetTripId={moveTargetTripId}
+            targetTripOptions={moveTripOptions}
+            busy={moveBusy}
+            error={moveError}
+            onTargetTripChange={setMoveTargetTripId}
+            onCancel={cancelMove}
+            onMove={() => void submitMove()}
+          />
+        </View>
+      ) : null}
 
       {activeTrip ? (
         <View style={styles.heroPanel}>

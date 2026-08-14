@@ -325,6 +325,15 @@ export async function updateItineraryRouteMode(itemId: string, travelMode: Route
   if (error) throw error;
 }
 
+export async function moveItineraryItem(itemId: string, targetTripId: string) {
+  const { data, error } = await getSupabaseClient().rpc('move_itinerary_item', {
+    requested_item_id: itemId,
+    requested_target_trip_id: targetTripId,
+  });
+  if (error) throw error;
+  return data;
+}
+
 export async function deleteItineraryItem(itemId: string) {
   const { error } = await getSupabaseClient().rpc('delete_itinerary_item', { requested_item_id: itemId });
   if (error) throw error;

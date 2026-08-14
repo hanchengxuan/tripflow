@@ -18,6 +18,7 @@ import {
   listSettlements,
   listTripMembers,
   listTrips,
+  moveItineraryItem as moveItineraryItemRepository,
   recordSettlement,
   removeTripMember,
   unrecordSettlement,
@@ -60,6 +61,7 @@ interface MvpContextValue {
   addStayTransfer: (input: { stayId: string; sourceItemId: string; title: string }) => Promise<void>;
   saveItineraryItem: (input: { itemId: string; title: string; startsAt: string; endsAt: string; locationLabel?: string; googlePlaceId?: string }) => Promise<void>;
   setItineraryRouteMode: (itemId: string, travelMode: RouteTravelMode) => Promise<void>;
+  moveItineraryItem: (itemId: string, targetTripId: string) => Promise<void>;
   removeItineraryItem: (itemId: string) => Promise<void>;
   addEqualExpense: (input: { title: string; currency: string; totalMinor: number; baseCurrency?: string; baseAmountMinor?: number; exchangeRate?: number; exchangeRateSource?: string; payerUserId: string; participantUserIds: string[]; receipt?: { uri: string; base64?: string | null; mimeType?: string | null; fileSize?: number } }) => Promise<{ receiptUploaded: boolean; receiptError?: unknown }>;
   addCustomExpense: (input: { title: string; currency: string; totalMinor: number; baseCurrency?: string; baseAmountMinor?: number; exchangeRate?: number; exchangeRateSource?: string; payerAllocations: { userId: string; amountMinor: number }[]; shareAllocations: { userId: string; amountMinor: number }[]; itineraryItemId?: string; source?: Database['public']['Enums']['expense_source']; clientMutationId?: string; receipt?: { uri: string; base64?: string | null; mimeType?: string | null; fileSize?: number } }) => Promise<{ receiptUploaded: boolean; receiptError?: unknown }>;
@@ -234,6 +236,13 @@ export function MvpProvider({ children }: PropsWithChildren) {
     setItineraryItems(await listItineraryItems(activeTrip.id));
   }, [activeTrip]);
 
+  const moveItineraryItemAction = useCallback(async (itemId: string, targetTripId: string) => {
+    if (!activeTrip) throw new Error('请先选择一个行程。');
+    if (!trips.some(({ id }) => id === targetTripId)) throw new Error('目标行程不存在。');
+    await moveItineraryItemRepository(itemId, targetTripId);
+    setItineraryItems(await listItineraryItems(activeTrip.id));
+  }, [activeTrip, trips]);
+
   const removeItineraryItem = useCallback(async (itemId: string) => {
     if (!activeTrip) throw new Error('请先创建或加入一个行程。');
     await deleteItineraryItem(itemId);
@@ -324,6 +333,7 @@ export function MvpProvider({ children }: PropsWithChildren) {
     addStayTransfer,
     saveItineraryItem,
     setItineraryRouteMode,
+    moveItineraryItem: moveItineraryItemAction,
     removeItineraryItem,
     addEqualExpense,
     addCustomExpense,
@@ -332,7 +342,7 @@ export function MvpProvider({ children }: PropsWithChildren) {
     attachExpenseReceipt,
     markSettlement,
     unmarkSettlement,
-  }), [loading, error, trips, activeTrip, members, ledgerMembers, itineraryItems, expenses, settlements, profile, currentUserId, selectTrip, refresh, createTripAction, joinTrip, createInvite, saveTrip, deleteTripAction, setMemberRole, removeMember, saveProfile, addItineraryItem, addStayTransfer, saveItineraryItem, setItineraryRouteMode, removeItineraryItem, addEqualExpense, addCustomExpense, updateCustomExpenseAction, setExpenseSettledAction, attachExpenseReceipt, markSettlement, unmarkSettlement]);
+  }), [loading, error, trips, activeTrip, members, ledgerMembers, itineraryItems, expenses, settlements, profile, currentUserId, selectTrip, refresh, createTripAction, joinTrip, createInvite, saveTrip, deleteTripAction, setMemberRole, removeMember, saveProfile, addItineraryItem, addStayTransfer, saveItineraryItem, setItineraryRouteMode, moveItineraryItemAction, removeItineraryItem, addEqualExpense, addCustomExpense, updateCustomExpenseAction, setExpenseSettledAction, attachExpenseReceipt, markSettlement, unmarkSettlement]);
 
   return <MvpContext.Provider value={value}>{children}</MvpContext.Provider>;
 }
