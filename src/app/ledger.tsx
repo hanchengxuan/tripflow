@@ -399,6 +399,11 @@ export default function LedgerScreen() {
     let baseAmountMinor: number;
     let payerAllocations: { participantId: string; amountMinor: number }[];
     try {
+      if (!activeTrip) throw new Error(tx('请先选择一个行程。', 'Choose a trip before saving an expense.'));
+      if (!title.trim()) throw new Error(tx('请填写支出内容。', 'Enter what this expense was for.'));
+      if (!amount.trim()) throw new Error(tx('请填写金额。', 'Enter an amount.'));
+      if (participantIds.length === 0) throw new Error(tx('请至少选择一位分摊人。', 'Choose at least one person to share the expense.'));
+      if (selectedPayerIds.length === 0) throw new Error(tx('请至少选择一位付款人。', 'Choose at least one payer.'));
       totalMinor = parseAmountToMinor(amount, currency);
       rate = currency.toUpperCase() === baseCurrency.toUpperCase() ? 1 : parseExchangeRate(exchangeRate);
       baseAmountMinor = convertMinorAmount(totalMinor, currency, baseCurrency, rate);
@@ -470,6 +475,10 @@ export default function LedgerScreen() {
       if (!editingExpenseId || !receipt) {
         setSuccess('receiptError' in result && result.receiptError
           ? tx('支出已保存，但小票上传失败；可在支出详情中重新添加。', 'Expense saved, but the receipt upload failed. Add it again from the expense details.')
+          : 'itineraryLinkError' in result && result.itineraryLinkError
+            ? tx('支出已保存，但关联安排失败；可稍后在明细中补充。', 'Expense saved, but linking the plan failed. Add the link later from the details.')
+            : 'refreshError' in result && result.refreshError
+              ? tx('支出已保存，但账本刷新失败；请刷新页面确认。', 'Expense saved, but the ledger could not refresh. Reload to confirm it.')
           : editingExpenseId
             ? tx('支出已更新，分摊和结算待办已更新。', 'Expense updated. Shares and settlement tasks are updated.')
             : tx('支出已保存，分摊和结算待办已更新。', 'Expense saved. Shares and settlement tasks are updated.'));
@@ -567,7 +576,7 @@ export default function LedgerScreen() {
         </Pressable>
       ) : null}>
       {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
-      {formError ? <InlineNotice tone="error">{formError}</InlineNotice> : null}
+      {!composerOpen && formError ? <InlineNotice tone="error">{formError}</InlineNotice> : null}
       {success ? <InlineNotice>{success}</InlineNotice> : null}
 
       {activeTrip ? (
@@ -600,6 +609,7 @@ export default function LedgerScreen() {
           parseVoiceExpense={parseVoiceExpense}
           busyAction={busyAction}
           aiNotice={aiNotice}
+          formError={formError}
           title={title}
           setTitle={setTitle}
           amount={amount}
@@ -715,6 +725,7 @@ function ExpenseComposer(props: {
   parseVoiceExpense: (audioBase64: string, audioMimeType: string) => Promise<void>;
   busyAction?: 'parse' | 'save' | 'receipt';
   aiNotice?: string;
+  formError?: string;
   title: string;
   setTitle: (value: string) => void;
   amount: string;
@@ -915,9 +926,10 @@ function ExpenseComposer(props: {
               </View>
             )}
           </View>
+          {props.formError ? <InlineNotice tone="error">{props.formError}</InlineNotice> : null}
           <ActionButton
             busy={props.busyAction === 'save'}
-            disabled={Boolean(props.busyAction) || !props.title.trim() || !props.amount.trim() || props.participantIds.length === 0 || props.selectedPayerIds.length === 0 || (props.currency.toUpperCase() !== props.baseCurrency.toUpperCase() && !props.exchangeRate.trim())}
+            disabled={Boolean(props.busyAction)}
             onPress={() => void props.submitExpense()}>
             {props.editing ? tx('保存修改', 'Save changes') : tx('保存支出', 'Save expense')}
           </ActionButton>

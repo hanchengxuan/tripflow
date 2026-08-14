@@ -64,7 +64,7 @@ interface MvpContextValue {
   moveItineraryItem: (itemId: string, targetTripId: string) => Promise<void>;
   removeItineraryItem: (itemId: string) => Promise<void>;
   addEqualExpense: (input: { title: string; currency: string; totalMinor: number; baseCurrency?: string; baseAmountMinor?: number; exchangeRate?: number; exchangeRateSource?: string; payerUserId: string; participantUserIds: string[]; receipt?: { uri: string; base64?: string | null; mimeType?: string | null; fileSize?: number } }) => Promise<{ receiptUploaded: boolean; receiptError?: unknown }>;
-  addCustomExpense: (input: { title: string; currency: string; totalMinor: number; baseCurrency?: string; baseAmountMinor?: number; exchangeRate?: number; exchangeRateSource?: string; payerAllocations: { userId: string; amountMinor: number }[]; shareAllocations: { userId: string; amountMinor: number }[]; itineraryItemId?: string; source?: Database['public']['Enums']['expense_source']; clientMutationId?: string; receipt?: { uri: string; base64?: string | null; mimeType?: string | null; fileSize?: number } }) => Promise<{ receiptUploaded: boolean; receiptError?: unknown }>;
+  addCustomExpense: (input: { title: string; currency: string; totalMinor: number; baseCurrency?: string; baseAmountMinor?: number; exchangeRate?: number; exchangeRateSource?: string; payerAllocations: { userId: string; amountMinor: number }[]; shareAllocations: { userId: string; amountMinor: number }[]; itineraryItemId?: string; source?: Database['public']['Enums']['expense_source']; clientMutationId?: string; receipt?: { uri: string; base64?: string | null; mimeType?: string | null; fileSize?: number } }) => Promise<{ receiptUploaded: boolean; receiptError?: unknown; itineraryLinkError?: unknown; refreshError?: unknown }>;
   updateCustomExpense: (input: { expenseId: string; title: string; currency: string; totalMinor: number; baseCurrency: string; baseAmountMinor: number; exchangeRate: number; exchangeRateSource?: string; payerAllocations: { userId: string; amountMinor: number }[]; shareAllocations: { userId: string; amountMinor: number }[]; itineraryItemId?: string }) => Promise<{ expenseId: string }>;
   setExpenseSettled: (expenseId: string, settled: boolean) => Promise<void>;
   attachExpenseReceipt: (expenseId: string, receipt: { uri: string; base64?: string | null; mimeType?: string | null; fileSize?: number }) => Promise<void>;
@@ -264,8 +264,14 @@ export function MvpProvider({ children }: PropsWithChildren) {
   const addCustomExpense = useCallback(async (input: { title: string; currency: string; totalMinor: number; baseCurrency?: string; baseAmountMinor?: number; exchangeRate?: number; exchangeRateSource?: string; payerAllocations: { userId: string; amountMinor: number }[]; shareAllocations: { userId: string; amountMinor: number }[]; itineraryItemId?: string; source?: Database['public']['Enums']['expense_source']; clientMutationId?: string; receipt?: { uri: string; base64?: string | null; mimeType?: string | null; fileSize?: number } }) => {
     if (!activeTrip) throw new Error('请先创建或加入一个行程。');
     const result = await createCustomExpense({ ...input, tripId: activeTrip.id, userId: currentUserId });
-    setExpenses(await listExpenses(activeTrip.id));
-    return result;
+    try {
+      setExpenses(await listExpenses(activeTrip.id));
+      return result;
+    } catch (refreshError) {
+      // The RPC has already committed the expense. A secondary list refresh
+      // must not make a successful save look like a failed write.
+      return { ...result, refreshError };
+    }
   }, [activeTrip, currentUserId]);
 
   const updateCustomExpenseAction = useCallback(async (input: { expenseId: string; title: string; currency: string; totalMinor: number; baseCurrency: string; baseAmountMinor: number; exchangeRate: number; exchangeRateSource?: string; payerAllocations: { userId: string; amountMinor: number }[]; shareAllocations: { userId: string; amountMinor: number }[]; itineraryItemId?: string }) => {
