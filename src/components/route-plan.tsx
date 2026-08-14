@@ -1,19 +1,50 @@
+import type { ReactNode } from 'react';
 import { Linking, Pressable, StyleSheet, View } from 'react-native';
 
 import { Chevron } from '@/components/chevron';
 import { ThemedText } from '@/components/themed-text';
+import type { RouteTravelMode } from '@/domain/models';
 import type { RouteEstimate } from '@/features/routes/route-estimate';
 import { useTheme } from '@/hooks/use-theme';
 
+export const routeTravelModes: RouteTravelMode[] = ['DRIVE', 'TRANSIT', 'WALK', 'BICYCLE'];
+
+export function routeTravelModeLabel(mode: RouteTravelMode, tx: (zh: string, en: string) => string) {
+  return {
+    DRIVE: tx('驾车', 'Drive'),
+    TRANSIT: tx('公共交通', 'Transit'),
+    WALK: tx('步行', 'Walk'),
+    BICYCLE: tx('骑行', 'Cycle'),
+  }[mode];
+}
+
 /** Compact travel summary: mode plus distance/duration, or why it is missing. */
-export function RouteEstimateChip({ modeLabel, detail }: { modeLabel: string; detail: string }) {
+export function RouteEstimateChip({ accessibilityLabel, detail, expanded, modeLabel, onPress }: {
+  accessibilityLabel?: string;
+  detail: string;
+  expanded?: boolean;
+  modeLabel: string;
+  onPress?: () => void;
+}) {
   const theme = useTheme();
-  return (
-    <View style={[styles.chip, { backgroundColor: theme.infoSoft }]}>
+  const content: ReactNode = (
+    <>
       <ThemedText type="smallBold" style={{ color: theme.info }}>{modeLabel}</ThemedText>
       <View style={[styles.separator, { backgroundColor: theme.info }]} />
       <ThemedText type="small" style={{ color: theme.info }}>{detail}</ThemedText>
-    </View>
+    </>
+  );
+  if (!onPress) return <View style={[styles.chip, { backgroundColor: theme.infoSoft }]}>{content}</View>;
+  return (
+    <Pressable
+      accessibilityLabel={accessibilityLabel}
+      accessibilityRole="button"
+      accessibilityState={{ expanded }}
+      hitSlop={5}
+      onPress={onPress}
+      style={({ pressed }) => [styles.chip, { backgroundColor: theme.infoSoft }, pressed && styles.pressed]}>
+      {content}
+    </Pressable>
   );
 }
 

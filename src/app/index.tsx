@@ -10,7 +10,7 @@ import { LocationField } from '@/components/location-field';
 import { MoveItineraryCard } from '@/components/move-itinerary-card';
 import { SelectionField } from '@/components/selection-field';
 import { StayCard } from '@/components/stay-card';
-import { MapsLink, RouteEstimateChip, TransitPlan } from '@/components/route-plan';
+import { MapsLink, RouteEstimateChip, routeTravelModeLabel, routeTravelModes, TransitPlan } from '@/components/route-plan';
 import { DaySeparator, RouteSegment, TimelineRow } from '@/components/timeline-rail';
 import { Screen } from '@/components/screen';
 import { SectionHeading } from '@/components/section-heading';
@@ -53,8 +53,6 @@ function formatDayLabel(date: string, locale: string) {
   return new Date(`${date}T12:00:00`).toLocaleDateString(locale, { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
-const routeTravelModes: RouteTravelMode[] = ['DRIVE', 'TRANSIT', 'WALK', 'BICYCLE'];
-
 export default function TodayScreen() {
   const { locale, languageTag, tx } = useI18n();
   const theme = useTheme();
@@ -74,6 +72,7 @@ export default function TodayScreen() {
   const [success, setSuccess] = useState<string>();
   const [busyRouteId, setBusyRouteId] = useState<string>();
   const [busyTravelModeId, setBusyTravelModeId] = useState<string>();
+  const [expandedRouteModeId, setExpandedRouteModeId] = useState<string>();
   const [currentTimestamp, setCurrentTimestamp] = useState(0);
   const [editingItemId, setEditingItemId] = useState<string>();
   const [composerOpen, setComposerOpen] = useState(false);
@@ -122,6 +121,7 @@ export default function TodayScreen() {
       setComposerOffset(undefined);
       setPendingTripRange(undefined);
       setConfirmDeleteItem(false);
+      setExpandedRouteModeId(undefined);
       setMovingItemId(undefined);
       setMoveTargetTripId('');
       setMoveOffset(undefined);
@@ -371,16 +371,6 @@ export default function TodayScreen() {
   const kindAccent = (itemKind: ItineraryKind) => theme[kindColorKeys[itemKind]];
   const kindSoftAccent = (itemKind: ItineraryKind) => theme[kindSoftColorKeys[itemKind]];
 
-  function routeModeLabel(mode: RouteTravelMode) {
-    const labels = {
-      DRIVE: tx('驾车', 'Drive'),
-      TRANSIT: tx('公共交通', 'Transit'),
-      WALK: tx('步行', 'Walk'),
-      BICYCLE: tx('骑行', 'Cycle'),
-    };
-    return labels[mode];
-  }
-
   function formatRouteEstimate(estimate?: RouteEstimate) {
     if (!estimate) return undefined;
     const distance = estimate.distanceMeters >= 1000 ? `${(estimate.distanceMeters / 1000).toFixed(1)} km` : `${estimate.distanceMeters} m`;
@@ -400,6 +390,7 @@ export default function TodayScreen() {
   }
 
   async function changeRouteMode(item: ItineraryItem, travelMode: RouteTravelMode) {
+    setExpandedRouteModeId(undefined);
     if (item.routeTravelMode === travelMode) return;
     setBusyTravelModeId(item.id);
     setFormError(undefined);
@@ -424,7 +415,7 @@ export default function TodayScreen() {
   }
 
   function routeModeControls(item: ItineraryItem) {
-    if (!canEdit) return null;
+    if (!canEdit || expandedRouteModeId !== item.id) return null;
     return (
       <View style={styles.routeModeRow}>
         {routeTravelModes.map((mode) => (
@@ -434,7 +425,7 @@ export default function TodayScreen() {
             selected={item.routeTravelMode === mode}
             disabled={Boolean(busyTravelModeId)}
             onPress={() => void changeRouteMode(item, mode)}>
-            {routeModeLabel(mode)}
+            {routeTravelModeLabel(mode, tx)}
           </ChoiceChip>
         ))}
       </View>
@@ -442,10 +433,15 @@ export default function TodayScreen() {
   }
 
   function routeSummary(item: ItineraryItem, estimate?: string) {
+    const detail = busyTravelModeId === item.id ? tx('正在重新计算…', 'Recalculating…') : estimate ?? tx('路线详情待生成', 'Route estimate pending');
+    const modeLabel = routeTravelModeLabel(item.routeTravelMode, tx);
     return (
       <RouteEstimateChip
-        modeLabel={routeModeLabel(item.routeTravelMode)}
-        detail={busyTravelModeId === item.id ? tx('正在重新计算…', 'Recalculating…') : estimate ?? tx('路线详情待生成', 'Route estimate pending')}
+        accessibilityLabel={tx(`当前为${modeLabel}，${detail}。点按切换出行方式`, `${modeLabel} selected. ${detail}. Choose travel mode`)}
+        expanded={expandedRouteModeId === item.id}
+        modeLabel={modeLabel}
+        onPress={canEdit ? () => setExpandedRouteModeId((current) => current === item.id ? undefined : item.id) : undefined}
+        detail={detail}
       />
     );
   }
@@ -462,8 +458,8 @@ export default function TodayScreen() {
     if (!context) return null;
     return (
       <View style={styles.routeDetails}>
-        {routeModeControls(item)}
         {routeSummary(item, context.estimate)}
+        {routeModeControls(item)}
         {transitPlan(item)}
         <MapsLink url={context.mapsUrl} label={tx('在 Google 地图中规划路线', 'Plan route in Google Maps')} />
       </View>
