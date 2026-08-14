@@ -478,20 +478,23 @@ export async function createCustomExpense(input: {
   });
   if (error) throw error;
 
+  let itineraryLinkError: unknown;
   if (input.itineraryItemId) {
     const { error: linkError } = await client.rpc('set_expense_itinerary_item', {
       requested_expense_id: expenseId,
       requested_itinerary_item_id: input.itineraryItemId,
     });
-    if (linkError) throw linkError;
+    // Linking is an optional follow-up to the atomic expense write. Keep the
+    // expense usable if a stale plan or a transient link failure is returned.
+    itineraryLinkError = linkError ?? undefined;
   }
 
-  if (!input.receipt) return { expenseId, receiptUploaded: false };
+  if (!input.receipt) return { expenseId, receiptUploaded: false, itineraryLinkError };
   try {
     await addExpenseReceipt(input.userId, expenseId, input.receipt);
-    return { expenseId, receiptUploaded: true };
+    return { expenseId, receiptUploaded: true, itineraryLinkError };
   } catch (receiptError) {
-    return { expenseId, receiptUploaded: false, receiptError };
+    return { expenseId, receiptUploaded: false, receiptError, itineraryLinkError };
   }
 }
 

@@ -50,6 +50,7 @@ export function Screen({ context, floatingAction, scrollToKey, scrollToOffset, s
     <View style={[styles.frame, { backgroundColor: theme.background }]}>
       <ScrollView
         ref={scrollRef}
+        keyboardShouldPersistTaps="handled"
         style={styles.scroll}
         contentContainerStyle={[
           styles.content,
