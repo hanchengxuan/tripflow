@@ -6,8 +6,10 @@ import QRCode from 'react-native-qrcode-svg';
 import { InlineNotice } from '@/components/form-controls';
 import { ThemedText } from '@/components/themed-text';
 import { parseInviteToken } from '@/features/invites/invite-link';
+import { useTheme } from '@/hooks/use-theme';
 
 export function InviteQrCode({ value }: { value: string }) {
+  // Scanners need a fixed dark-on-white code, so this pair never follows the theme.
   return (
     <View accessible accessibilityLabel="TripFlow invite QR code" style={styles.qrFrame}>
       <QRCode value={value} size={210} color="#102A43" backgroundColor="#FFFFFF" />
@@ -19,6 +21,7 @@ export function InviteQrScanner(props: {
   onToken: (token: string) => void;
   tx: (zh: string, en: string) => string;
 }) {
+  const theme = useTheme();
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
   const [error, setError] = useState<string>();
@@ -48,8 +51,8 @@ export function InviteQrScanner(props: {
     return (
       <View style={styles.permissionBlock}>
         <InlineNotice>{props.tx('扫码加入需要相机权限；也可以继续粘贴邀请码。', 'Camera access is needed to scan. You can still paste an invite code.')}</InlineNotice>
-        <Pressable accessibilityRole="button" onPress={() => void askForPermission()} style={({ pressed }) => [styles.scanAction, pressed && styles.pressed]}>
-          <ThemedText type="smallBold" style={styles.scanActionText}>{props.tx('允许使用相机', 'Allow camera')}</ThemedText>
+        <Pressable accessibilityRole="button" onPress={() => void askForPermission()} style={({ pressed }) => [styles.scanAction, { backgroundColor: theme.accent }, pressed && styles.pressed]}>
+          <ThemedText type="smallBold" style={{ color: theme.textOnAccent }}>{props.tx('允许使用相机', 'Allow camera')}</ThemedText>
         </Pressable>
         {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
       </View>
@@ -70,8 +73,8 @@ export function InviteQrScanner(props: {
       <ThemedText type="small" themeColor="textSecondary">{props.tx('将邀请二维码放入方框内。识别后仍需确认加入。', 'Place the invite QR code inside the frame. You will still confirm before joining.')}</ThemedText>
       {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
       {scanned ? (
-        <Pressable accessibilityRole="button" onPress={() => { setScanned(false); setError(undefined); }} style={({ pressed }) => [styles.scanAction, pressed && styles.pressed]}>
-          <ThemedText type="smallBold" style={styles.scanActionText}>{props.tx('重新扫描', 'Scan again')}</ThemedText>
+        <Pressable accessibilityRole="button" onPress={() => { setScanned(false); setError(undefined); }} style={({ pressed }) => [styles.scanAction, { backgroundColor: theme.accent }, pressed && styles.pressed]}>
+          <ThemedText type="smallBold" style={{ color: theme.textOnAccent }}>{props.tx('重新扫描', 'Scan again')}</ThemedText>
         </Pressable>
       ) : null}
     </View>
@@ -84,7 +87,6 @@ const styles = StyleSheet.create({
   scannerBlock: { gap: 10 },
   cameraFrame: { height: 300, overflow: 'hidden', borderRadius: 18, backgroundColor: '#102A43', alignItems: 'center', justifyContent: 'center' },
   finder: { width: 210, height: 210, borderRadius: 20, borderWidth: 3, borderColor: '#FFFFFF' },
-  scanAction: { minHeight: 46, borderRadius: 12, paddingHorizontal: 14, justifyContent: 'center', alignItems: 'center', backgroundColor: '#1B70A6' },
-  scanActionText: { color: '#FFFFFF' },
+  scanAction: { minHeight: 46, borderRadius: 12, paddingHorizontal: 14, justifyContent: 'center', alignItems: 'center' },
   pressed: { opacity: 0.7 },
 });

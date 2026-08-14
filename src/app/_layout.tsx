@@ -4,6 +4,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useColorScheme } from 'react-native';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
+import { Colors } from '@/constants/theme';
 import AppTabs from '@/components/app-tabs';
 import { AuthProvider, useAuth } from '@/features/auth/auth-provider';
 import { AuthScreen, OnboardingScreen, SessionLoadingScreen } from '@/features/auth/auth-screen';
@@ -35,7 +36,7 @@ function LocalizedHead() {
     <Head>
       <title>TripFlow 旅途流</title>
       <meta content={tx('TripFlow 让同行者共享行程、协作安排并清晰分摊旅行支出。', 'TripFlow keeps shared trips, places, and group expenses in one clear plan.')} name="description" />
-      <meta content="#0879c9" name="theme-color" />
+      <meta content={Colors.light.background} name="theme-color" />
     </Head>
   );
 }

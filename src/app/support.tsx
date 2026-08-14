@@ -8,6 +8,7 @@ import { PublicPageFooter } from '@/components/public-page-footer';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { useI18n } from '@/features/i18n/i18n-provider';
+import { useTheme } from '@/hooks/use-theme';
 
 const supportEmail = process.env.EXPO_PUBLIC_SUPPORT_EMAIL?.trim();
 
@@ -21,6 +22,7 @@ function HelpItem({ title, children }: { title: string; children: string }) {
 }
 
 export default function SupportScreen() {
+  const theme = useTheme();
   const { tx } = useI18n();
   function contactSupport() {
     if (!supportEmail) return;
@@ -49,7 +51,7 @@ export default function SupportScreen() {
           </View>
         </InfoCard>
 
-        <InfoCard label={tx('联系支持', 'Contact support')} title={supportEmail ?? tx('内测支持', 'Beta support')} accent="#1B70A6">
+        <InfoCard label={tx('联系支持', 'Contact support')} title={supportEmail ?? tx('内测支持', 'Beta support')} accent={theme.info}>
           <View style={styles.content}>
             {supportEmail ? (
               <>

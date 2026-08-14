@@ -181,11 +181,11 @@ export default function ProfileScreen() {
           {avatarSource ? (
             <Image source={{ uri: avatarSource }} style={styles.avatarImage} contentFit="cover" />
           ) : (
-            <ThemedText style={styles.initials}>{initials}</ThemedText>
+            <ThemedText style={[styles.initials, { color: theme.accentOnSoft }]}>{initials}</ThemedText>
           )}
           {editing ? (
-            <View style={styles.avatarEditBadge}>
-              <ThemedText type="smallBold" style={styles.avatarEditText}>{tx('更换', 'Edit')}</ThemedText>
+            <View style={[styles.avatarEditBadge, { backgroundColor: theme.scrim }]}>
+              <ThemedText type="smallBold" style={{ color: theme.textOnScrim }}>{tx('更换', 'Edit')}</ThemedText>
             </View>
           ) : null}
         </Pressable>
@@ -203,7 +203,7 @@ export default function ProfileScreen() {
       </View>
 
       {editing ? (
-        <View style={[styles.editor, { backgroundColor: theme.backgroundElement }] }>
+        <View style={[styles.editor, { backgroundColor: theme.backgroundElement, shadowColor: theme.shadow }] }>
           <FormField
             label={tx('显示名称', 'Display name')}
             value={draftName}
@@ -301,7 +301,7 @@ export default function ProfileScreen() {
           </View>
         ) : (
           <Pressable accessibilityRole="button" onPress={() => setConfirmingDeletion(true)}>
-            <ThemedText type="smallBold" style={styles.dangerText}>{tx('删除账号', 'Delete account')}</ThemedText>
+            <ThemedText type="smallBold" style={[styles.dangerText, { color: theme.danger }]}>{tx('删除账号', 'Delete account')}</ThemedText>
           </Pressable>
         )}
       </View>
@@ -323,13 +323,12 @@ const styles = StyleSheet.create({
   identityCompact: { flexWrap: 'wrap', alignItems: 'flex-start' },
   avatar: { width: 88, height: 88, borderRadius: 44, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   avatarImage: { width: '100%', height: '100%' },
-  initials: { fontSize: 28, lineHeight: 34, fontWeight: '700', color: '#087F6A' },
-  avatarEditBadge: { position: 'absolute', left: 0, right: 0, bottom: 0, minHeight: 28, backgroundColor: 'rgba(12,25,36,0.72)', alignItems: 'center', justifyContent: 'center' },
-  avatarEditText: { color: '#FFFFFF' },
+  initials: { fontSize: 28, lineHeight: 34, fontWeight: '700' },
+  avatarEditBadge: { position: 'absolute', left: 0, right: 0, bottom: 0, minHeight: 28, alignItems: 'center', justifyContent: 'center' },
   identityCopy: { flex: 1, minWidth: 0, gap: 2 },
   profileName: { fontSize: 28, lineHeight: 36 },
   editButton: { minHeight: 44, paddingHorizontal: 16, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  editor: { borderRadius: 16, padding: 18, gap: 12, shadowColor: '#17324D', shadowOpacity: 0.07, shadowRadius: 18, shadowOffset: { width: 0, height: 7 } },
+  editor: { borderRadius: 16, padding: 18, gap: 12, shadowOpacity: 0.07, shadowRadius: 18, shadowOffset: { width: 0, height: 7 } },
   editorActions: { flexDirection: 'row', gap: 10 },
   editorActionsCompact: { flexDirection: 'column' },
   actionGrow: { flex: 1 },
@@ -349,6 +348,6 @@ const styles = StyleSheet.create({
   linkRow: { minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 16 },
   dangerSection: { paddingTop: 10, paddingBottom: 16 },
   deleteConfirmation: { borderRadius: 16, padding: 18, gap: 12 },
-  dangerText: { color: '#B4413E', paddingVertical: 14 },
+  dangerText: { paddingVertical: 14 },
   pressed: { opacity: 0.68 },
 });
