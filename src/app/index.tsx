@@ -575,16 +575,16 @@ export default function TodayScreen() {
             {!editingItem ? <SelectionField label={tx('类型', 'Type')} value={kind} options={itineraryKinds.map((itemKind) => ({ value: itemKind, label: kindLabel(itemKind) }))} onChange={(value) => chooseKind(value as ItineraryKind)} /> : null}
             {editingItem?.linkedStayId ? <View style={[styles.lockedDestination, { backgroundColor: theme.backgroundSelected }]}><ThemedText type="smallBold">{tx('酒店交通', 'Hotel transfer')}</ThemedText><ThemedText type="small" themeColor="textSecondary">{tx(`${editingItem.locationLabel ?? '—'} · ${formatZonedDateTimeRange(editingItem.endsAt ?? editingItem.startsAt, undefined, languageTag, tripTimeZone)}`, `${editingItem.locationLabel ?? '—'} · ${formatZonedDateTimeRange(editingItem.endsAt ?? editingItem.startsAt, undefined, languageTag, tripTimeZone)}`)}</ThemedText></View> : <LocationField value={location} onChange={(value) => { setLocation(value); setGooglePlaceId(''); }} onSelect={(suggestion) => { setLocation(suggestion.text); setGooglePlaceId(suggestion.placeId); }} />}
             {editingItem?.linkedStayId ? (
-              <View style={[styles.row, compact && styles.rowCompact]}><View style={styles.grow}><DateTimeField label={tx('日期', 'Date')} value={date} mode="date" onChange={updatePlanDate} /></View><View style={styles.grow}><DateTimeField label={tx('时间', 'Time')} value={startTime} mode="time" onChange={setStartTime} /></View></View>
+              <View style={[styles.row, compact && styles.rowCompact]}><View style={[styles.grow, compact && styles.growStacked]}><DateTimeField label={tx('日期', 'Date')} value={date} mode="date" onChange={updatePlanDate} /></View><View style={[styles.grow, compact && styles.growStacked]}><DateTimeField label={tx('时间', 'Time')} value={startTime} mode="time" onChange={setStartTime} /></View></View>
             ) : kind === 'lodging' ? (
               <>
-                <View style={[styles.row, compact && styles.rowCompact]}><View style={styles.grow}><DateTimeField label={tx('入住日期', 'Check-in')} value={date} mode="date" onChange={updatePlanDate} /></View><View style={styles.grow}><DateTimeField label={tx('入住时间', 'Time')} value={startTime} mode="time" onChange={setStartTime} /></View></View>
-                <View style={[styles.row, compact && styles.rowCompact]}><View style={styles.grow}><DateTimeField label={tx('退房日期', 'Check-out')} value={endDate} mode="date" onChange={updatePlanEndDate} /></View><View style={styles.grow}><DateTimeField label={tx('退房时间', 'Time')} value={endTime} mode="time" onChange={setEndTime} /></View></View>
+                <View style={[styles.row, compact && styles.rowCompact]}><View style={[styles.grow, compact && styles.growStacked]}><DateTimeField label={tx('入住日期', 'Check-in')} value={date} mode="date" onChange={updatePlanDate} /></View><View style={[styles.grow, compact && styles.growStacked]}><DateTimeField label={tx('入住时间', 'Time')} value={startTime} mode="time" onChange={setStartTime} /></View></View>
+                <View style={[styles.row, compact && styles.rowCompact]}><View style={[styles.grow, compact && styles.growStacked]}><DateTimeField label={tx('退房日期', 'Check-out')} value={endDate} mode="date" onChange={updatePlanEndDate} /></View><View style={[styles.grow, compact && styles.growStacked]}><DateTimeField label={tx('退房时间', 'Time')} value={endTime} mode="time" onChange={setEndTime} /></View></View>
               </>
             ) : (
               <>
-                <View style={[styles.row, compact && styles.rowCompact]}><View style={styles.grow}><DateTimeField label={tx('开始日期', 'Start date')} value={date} mode="date" onChange={updatePlanDate} /></View><View style={styles.grow}><DateTimeField label={tx('开始时间', 'Starts')} value={startTime} mode="time" onChange={setStartTime} /></View></View>
-                <View style={[styles.row, compact && styles.rowCompact]}><View style={styles.grow}><DateTimeField label={tx('结束日期', 'End date')} value={endDate} mode="date" onChange={updatePlanEndDate} /></View><View style={styles.grow}><DateTimeField label={tx('结束时间', 'Ends')} value={endTime} mode="time" onChange={setEndTime} /></View></View>
+                <View style={[styles.row, compact && styles.rowCompact]}><View style={[styles.grow, compact && styles.growStacked]}><DateTimeField label={tx('开始日期', 'Start date')} value={date} mode="date" onChange={updatePlanDate} /></View><View style={[styles.grow, compact && styles.growStacked]}><DateTimeField label={tx('开始时间', 'Starts')} value={startTime} mode="time" onChange={setStartTime} /></View></View>
+                <View style={[styles.row, compact && styles.rowCompact]}><View style={[styles.grow, compact && styles.growStacked]}><DateTimeField label={tx('结束日期', 'End date')} value={endDate} mode="date" onChange={updatePlanEndDate} /></View><View style={[styles.grow, compact && styles.growStacked]}><DateTimeField label={tx('结束时间', 'Ends')} value={endTime} mode="time" onChange={setEndTime} /></View></View>
               </>
             )}
             {pendingTripRange ? (
@@ -759,6 +759,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   rowCompact: { flexDirection: 'column', gap: 12 },
   grow: { flexGrow: 1, flexBasis: 140 },
+  growStacked: { flexGrow: 0, flexBasis: 'auto' },
   formActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   actionGrow: { flexGrow: 1, flexBasis: 150 },
   floatingAdd: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', shadowOpacity: 0.2, shadowRadius: 14, shadowOffset: { width: 0, height: 6 } },
