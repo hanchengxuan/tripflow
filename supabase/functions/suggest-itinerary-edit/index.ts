@@ -127,27 +127,27 @@ function sanitizeProposal(value: unknown, item: ItineraryRow): EditProposal {
 
 async function generateProposal(apiKey: string, prompt: string) {
   const responseSchema = {
-    type: 'OBJECT',
+    type: 'object',
     properties: {
-      summary: { type: 'STRING' },
-      confidence: { type: 'NUMBER' },
+      summary: { type: 'string' },
+      confidence: { type: 'number' },
       changes: {
-        type: 'ARRAY',
+        type: 'array',
         maxItems: 1,
         items: {
-          type: 'OBJECT',
+          type: 'object',
           properties: {
-            itemId: { type: 'STRING' },
-            title: { type: 'STRING' },
-            startsAt: { type: 'STRING' },
-            endsAt: { type: 'STRING' },
-            reason: { type: 'STRING' },
+            itemId: { type: 'string' },
+            title: { type: 'string' },
+            startsAt: { type: 'string' },
+            endsAt: { type: 'string' },
+            reason: { type: 'string' },
           },
           required: ['itemId', 'reason'],
           propertyOrdering: ['itemId', 'title', 'startsAt', 'endsAt', 'reason'],
         },
       },
-      warnings: { type: 'ARRAY', items: { type: 'STRING' }, maxItems: 4 },
+      warnings: { type: 'array', items: { type: 'string' }, maxItems: 4 },
     },
     required: ['summary', 'confidence', 'changes', 'warnings'],
     propertyOrdering: ['summary', 'confidence', 'changes', 'warnings'],
