@@ -206,7 +206,7 @@ export default function TripsScreen() {
   }
 
   return (
-    <Screen title={tx('行程', 'Trips')} subtitle={tx('创建 · 加入 · 管理', 'Create · join · manage')}>
+    <Screen context={[tx('创建', 'Create'), tx('加入', 'Join'), tx('管理', 'Manage')]} title={tx('行程', 'Trips')}>
       {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
       {actionError ? <InlineNotice tone="error">{actionError}</InlineNotice> : null}
       {success ? <InlineNotice>{success}</InlineNotice> : null}

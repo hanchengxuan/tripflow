@@ -9,16 +9,15 @@ const WEB_NAV_CLEARANCE = 112;
 const WEB_ACTION_OFFSET = 92;
 
 interface ScreenProps extends PropsWithChildren {
+  context: readonly string[];
   floatingAction?: ReactNode;
-  meta?: string;
   scrollToKey?: string;
   scrollToOffset?: number;
   scrollToEndKey?: string;
   title: string;
-  subtitle: string;
 }
 
-export function Screen({ floatingAction, meta, scrollToKey, scrollToOffset, scrollToEndKey, title, subtitle, children }: ScreenProps) {
+export function Screen({ context, floatingAction, scrollToKey, scrollToOffset, scrollToEndKey, title, children }: ScreenProps) {
   const insets = useSafeAreaInsets();
   const theme = useTheme();
   const { width } = useWindowDimensions();
@@ -61,10 +60,7 @@ export function Screen({ floatingAction, meta, scrollToKey, scrollToOffset, scro
         ]}>
         <View style={[styles.header, compact && styles.headerCompact]}>
           <ThemedText type="subtitle" style={[styles.screenTitle, compact && styles.screenTitleCompact]}>{title}</ThemedText>
-          <View style={styles.contextRow}>
-            <ThemedText type="small" themeColor="textSecondary">{subtitle}</ThemedText>
-            {meta ? <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>{meta}</ThemedText> : null}
-          </View>
+          <ThemedText type="small" themeColor="textSecondary" style={styles.contextRow}>{context.join(' · ')}</ThemedText>
         </View>
         {children}
       </ScrollView>
@@ -81,6 +77,6 @@ const styles = StyleSheet.create({
   headerCompact: { marginBottom: 2 },
   screenTitle: { fontSize: 30, lineHeight: 38 },
   screenTitleCompact: { fontSize: 28, lineHeight: 34 },
-  contextRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 10, rowGap: 2 },
+  contextRow: { flexWrap: 'wrap' },
   floatingAction: { position: 'absolute', right: 20, zIndex: 10 },
 });

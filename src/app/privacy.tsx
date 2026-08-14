@@ -21,7 +21,7 @@ export default function PrivacyScreen() {
   return (
     <>
       <Head><title>{tx('隐私政策｜TripFlow 旅途流', 'Privacy | TripFlow')}</title></Head>
-      <Screen meta="TripFlow 旅途流" title={tx('隐私政策', 'Privacy policy')} subtitle={tx('生效日期：2026 年 8 月 12 日', 'Effective August 12, 2026')}>
+      <Screen context={[tx('生效日期：2026 年 8 月 12 日', 'Effective August 12, 2026'), 'TripFlow 旅途流']} title={tx('隐私政策', 'Privacy policy')}>
         <InfoCard label={tx('概要', 'Summary')} title={tx('我们只处理运行旅行协作功能所需的数据', 'We only process data needed to run shared trip features')}>
           <View style={styles.content}>
             <ThemedText themeColor="textSecondary">
