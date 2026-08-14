@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { Linking, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { DateTimeField } from '@/components/date-time-field';
@@ -8,6 +8,8 @@ import { InfoCard } from '@/components/info-card';
 import { LocationField } from '@/components/location-field';
 import { MoveItineraryCard } from '@/components/move-itinerary-card';
 import { SelectionField } from '@/components/selection-field';
+import { MapsLink, RouteEstimateChip, TransitPlan } from '@/components/route-plan';
+import { DaySeparator, RouteSegment, TimelineRow } from '@/components/timeline-rail';
 import { Screen } from '@/components/screen';
 import { SectionHeading } from '@/components/section-heading';
 import { ThemedText } from '@/components/themed-text';
@@ -35,6 +37,19 @@ const kindColorKeys: Record<ItineraryKind, ThemeColor> = {
   task: 'kindTask',
   note: 'kindNote',
 };
+
+const kindSoftColorKeys: Record<ItineraryKind, ThemeColor> = {
+  transport: 'kindTransportSoft',
+  lodging: 'kindLodgingSoft',
+  food: 'kindFoodSoft',
+  activity: 'kindActivitySoft',
+  task: 'kindTaskSoft',
+  note: 'kindNoteSoft',
+};
+
+function formatDayLabel(date: string, locale: string) {
+  return new Date(`${date}T12:00:00`).toLocaleDateString(locale, { weekday: 'short', month: 'short', day: 'numeric' });
+}
 
 const routeTravelModes: RouteTravelMode[] = ['DRIVE', 'TRANSIT', 'WALK', 'BICYCLE'];
 
@@ -76,6 +91,10 @@ export default function TodayScreen() {
   const stays = useMemo(() => itineraryItems.filter(({ kind }) => kind === 'lodging'), [itineraryItems]);
   const upcomingStays = useMemo(() => stays.filter((stay) => !currentTimestamp || new Date(stay.endsAt ?? stay.startsAt).getTime() >= currentTimestamp), [currentTimestamp, stays]);
   const visibleStays = useMemo(() => upcomingStays.slice(0, 3), [upcomingStays]);
+  const laterItems = useMemo(
+    () => upcomingItems.slice(1).filter((item) => item.kind !== 'lodging' || !visibleStays.some((stay) => stay.id === item.id)),
+    [upcomingItems, visibleStays],
+  );
   const tripRange = activeTrip ? formatTripDates(activeTrip.startsOn, activeTrip.endsOn, languageTag) : undefined;
   const tripTimeZone = activeTrip?.defaultTimeZone ?? 'UTC';
   const editingItem = itineraryItems.find(({ id }) => id === editingItemId);
@@ -348,6 +367,7 @@ export default function TodayScreen() {
 
   const kindLabel = (itemKind: ItineraryKind) => locale === 'zh-CN' ? itineraryKindLabels[itemKind] : itineraryKindLabelsEn[itemKind];
   const kindAccent = (itemKind: ItineraryKind) => theme[kindColorKeys[itemKind]];
+  const kindSoftAccent = (itemKind: ItineraryKind) => theme[kindSoftColorKeys[itemKind]];
 
   function routeModeLabel(mode: RouteTravelMode) {
     const labels = {
@@ -377,52 +397,6 @@ export default function TodayScreen() {
     }).format(value);
   }
 
-  function transitRouteDetails(estimate?: RouteEstimate) {
-    if (!estimate?.transit) return null;
-    const { steps, walking } = estimate.transit;
-    const walkingMinutes = Math.round(walking.durationSeconds / 60);
-    return (
-      <View style={[styles.transitPlan, compact && styles.transitPlanCompact, { backgroundColor: theme.backgroundSelected }]}>
-        <View style={[styles.transitPlanHeading, compact && styles.transitPlanHeadingCompact]}>
-          <ThemedText type="smallBold">{tx('公交路线', 'Transit route')}</ThemedText>
-          {walkingMinutes > 0 ? (
-            <ThemedText type="small" themeColor="textSecondary">
-              {tx(`含步行约 ${walkingMinutes} 分钟`, `Includes about ${walkingMinutes} min walking`)}
-            </ThemedText>
-          ) : null}
-        </View>
-        {steps.length > 0 ? steps.map((step, index) => {
-          const departureTime = formatTransitTime(step.departureTime, step.departureTimeText);
-          const arrivalTime = formatTransitTime(step.arrivalTime, step.arrivalTimeText);
-          const rideMinutes = Math.max(1, Math.round(step.durationSeconds / 60));
-          const line = step.lineName || step.vehicleName || tx('公共交通', 'Transit');
-          return (
-            <View key={`${step.departureStop}-${step.arrivalStop}-${index}`} style={styles.transitStep}>
-              <View style={[styles.transitStepMarker, { backgroundColor: theme.info }]}>
-                <ThemedText type="smallBold" style={{ color: theme.textOnAccent }}>{index + 1}</ThemedText>
-              </View>
-              <View style={styles.transitStepCopy}>
-                <ThemedText type="smallBold">
-                  {[departureTime, line].filter(Boolean).join(' · ')}
-                </ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  {step.departureStop || tx('上车站', 'Boarding stop')} → {step.arrivalStop || tx('下车站', 'Arrival stop')}
-                </ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  {tx(`${step.stopCount} 站 · 约 ${rideMinutes} 分钟`, `${step.stopCount} stops · about ${rideMinutes} min`)}
-                  {arrivalTime ? tx(` · ${arrivalTime} 到达`, ` · arrives ${arrivalTime}`) : ''}
-                </ThemedText>
-                {step.headsign ? <ThemedText type="small" themeColor="textSecondary">{tx(`开往 ${step.headsign}`, `Towards ${step.headsign}`)}</ThemedText> : null}
-              </View>
-            </View>
-          );
-        }) : (
-          <ThemedText type="small" themeColor="textSecondary">{tx('当前路线暂无具体班次信息。', 'Detailed service information is not available for this route.')}</ThemedText>
-        )}
-      </View>
-    );
-  }
-
   async function changeRouteMode(item: ItineraryItem, travelMode: RouteTravelMode) {
     if (item.routeTravelMode === travelMode) return;
     setBusyTravelModeId(item.id);
@@ -436,35 +410,75 @@ export default function TodayScreen() {
     }
   }
 
-  function routeDetails(item: ItineraryItem) {
+  function routeContext(item: ItineraryItem) {
     const itemIndex = itineraryItems.findIndex(({ id }) => id === item.id);
     const previous = itemIndex > 0 ? itineraryItems[itemIndex - 1] : undefined;
     if (!item.locationLabel || !previous?.locationLabel) return null;
-    const estimate = formatRouteEstimate(routeEstimates[item.id]);
-    const mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(previous.locationLabel)}${previous.googlePlaceId ? `&origin_place_id=${encodeURIComponent(previous.googlePlaceId)}` : ''}&destination=${encodeURIComponent(item.locationLabel)}${item.googlePlaceId ? `&destination_place_id=${encodeURIComponent(item.googlePlaceId)}` : ''}&travelmode=${item.routeTravelMode === 'TRANSIT' ? 'transit' : item.routeTravelMode === 'WALK' ? 'walking' : item.routeTravelMode === 'BICYCLE' ? 'bicycling' : 'driving'}`;
+    const travelMode = item.routeTravelMode === 'TRANSIT' ? 'transit' : item.routeTravelMode === 'WALK' ? 'walking' : item.routeTravelMode === 'BICYCLE' ? 'bicycling' : 'driving';
+    return {
+      estimate: formatRouteEstimate(routeEstimates[item.id]),
+      mapsUrl: `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(previous.locationLabel)}${previous.googlePlaceId ? `&origin_place_id=${encodeURIComponent(previous.googlePlaceId)}` : ''}&destination=${encodeURIComponent(item.locationLabel)}${item.googlePlaceId ? `&destination_place_id=${encodeURIComponent(item.googlePlaceId)}` : ''}&travelmode=${travelMode}`,
+    };
+  }
+
+  function routeModeControls(item: ItineraryItem) {
+    if (!canEdit) return null;
+    return (
+      <View style={styles.routeModeRow}>
+        {routeTravelModes.map((mode) => (
+          <ChoiceChip
+            key={mode}
+            role="radio"
+            selected={item.routeTravelMode === mode}
+            disabled={Boolean(busyTravelModeId)}
+            onPress={() => void changeRouteMode(item, mode)}>
+            {routeModeLabel(mode)}
+          </ChoiceChip>
+        ))}
+      </View>
+    );
+  }
+
+  function routeSummary(item: ItineraryItem, estimate?: string) {
+    return (
+      <RouteEstimateChip
+        modeLabel={routeModeLabel(item.routeTravelMode)}
+        detail={busyTravelModeId === item.id ? tx('正在重新计算…', 'Recalculating…') : estimate ?? tx('路线详情待生成', 'Route estimate pending')}
+      />
+    );
+  }
+
+  function transitPlan(item: ItineraryItem) {
+    const transit = routeEstimates[item.id]?.transit;
+    if (item.routeTravelMode !== 'TRANSIT' || busyTravelModeId === item.id || !transit) return null;
+    return <TransitPlan transit={transit} compact={compact} tx={tx} formatTime={formatTransitTime} />;
+  }
+
+  /** Route block shown inside the Up-next card, where there is no rail to sit in. */
+  function routeDetails(item: ItineraryItem) {
+    const context = routeContext(item);
+    if (!context) return null;
     return (
       <View style={styles.routeDetails}>
-        <View style={styles.routeModeRow}>
-          {canEdit ? routeTravelModes.map((mode) => (
-            <ChoiceChip
-              key={mode}
-              role="radio"
-              selected={item.routeTravelMode === mode}
-              disabled={Boolean(busyTravelModeId)}
-              onPress={() => void changeRouteMode(item, mode)}>
-              {routeModeLabel(mode)}
-            </ChoiceChip>
-          )) : <ThemedText type="smallBold">{routeModeLabel(item.routeTravelMode)}</ThemedText>}
-        </View>
-        <ThemedText type="smallBold" style={{ color: theme.accent }}>
-          {busyTravelModeId === item.id ? tx('正在重新计算…', 'Recalculating…') : estimate ?? tx('路线详情待生成', 'Route estimate pending')}
-        </ThemedText>
-        {item.routeTravelMode === 'TRANSIT' && busyTravelModeId !== item.id ? transitRouteDetails(routeEstimates[item.id]) : null}
-        <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(mapsUrl)} style={({ pressed }) => [styles.googleRouteLink, pressed && styles.pressed]}>
-          <ThemedText type="smallBold" style={{ color: theme.link }}>{tx('在 Google 地图中规划路线', 'Plan route in Google Maps')}</ThemedText>
-          <Chevron color={theme.textSecondary} />
-        </Pressable>
+        {routeModeControls(item)}
+        {routeSummary(item, context.estimate)}
+        {transitPlan(item)}
+        <MapsLink url={context.mapsUrl} label={tx('在 Google 地图中规划路线', 'Plan route in Google Maps')} />
       </View>
+    );
+  }
+
+  /** Travel between two rail rows: it occupies the gap instead of nesting in a row. */
+  function routeSegment(item: ItineraryItem) {
+    const context = routeContext(item);
+    if (!context) return null;
+    return (
+      <RouteSegment
+        summary={routeSummary(item, context.estimate)}
+        trailing={<MapsLink url={context.mapsUrl} label={tx('地图', 'Map')} />}>
+        {routeModeControls(item)}
+        {transitPlan(item)}
+      </RouteSegment>
     );
   }
 
@@ -696,30 +710,31 @@ export default function TodayScreen() {
             {itemActions(upcomingItems[0])}
           </View>
 
-          {upcomingItems.length > 1 ? (
+          {laterItems.length > 0 ? (
             <View style={styles.timelineSection}>
               <SectionHeading title={tx('后续安排', 'Later')} />
-              {upcomingItems.slice(1).filter((item) => item.kind !== 'lodging' || !visibleStays.some((stay) => stay.id === item.id)).map((item) => (
-                <View key={item.id} style={styles.timelineRow}>
-                  <View style={[styles.timelineRail, { borderRightColor: theme.backgroundSelected }]}>
-                    <View style={[styles.timelineDot, { backgroundColor: kindAccent(item.kind) }]} />
-                  </View>
-                  <View style={styles.timelineContent}>
-                    <View style={[styles.timelineHeader, compact && styles.timelineHeaderCompact]}>
-                      <View style={styles.timelineHeading}>
-                        <ThemedText type="small" themeColor="textSecondary">{formatZonedDateTimeRange(item.startsAt, item.endsAt, languageTag, tripTimeZone)}</ThemedText>
-                        <ThemedText type="smallBold">{item.title}</ThemedText>
-                      </View>
-                      <View style={[styles.kindOutline, compact && styles.kindOutlineCompact, { borderColor: kindAccent(item.kind) }]}>
-                        <ThemedText type="small" style={{ color: kindAccent(item.kind) }}>{kindLabel(item.kind)}</ThemedText>
-                      </View>
-                    </View>
-                    {item.locationLabel ? <ThemedText type="small" themeColor="textSecondary">{item.locationLabel}</ThemedText> : null}
-                    {routeDetails(item)}
-                    {itemActions(item)}
-                  </View>
-                </View>
-              ))}
+              {laterItems.map((item, index) => {
+                const start = isoToZonedDateTime(item.startsAt, tripTimeZone);
+                const end = item.endsAt ? isoToZonedDateTime(item.endsAt, tripTimeZone) : undefined;
+                const previousDate = isoToZonedDateTime((laterItems[index - 1] ?? upcomingItems[0]).startsAt, tripTimeZone).date;
+                return (
+                  <Fragment key={item.id}>
+                    {start.date !== previousDate ? <DaySeparator label={formatDayLabel(start.date, languageTag)} /> : null}
+                    {routeSegment(item)}
+                    <TimelineRow
+                      startLabel={start.time}
+                      endLabel={end && end.date === start.date ? end.time : undefined}
+                      title={item.title}
+                      place={item.locationLabel ?? undefined}
+                      kindColor={kindAccent(item.kind)}
+                      kindSoftColor={kindSoftAccent(item.kind)}
+                      kindLabel={kindLabel(item.kind)}
+                      last={index === laterItems.length - 1}>
+                      {itemActions(item)}
+                    </TimelineRow>
+                  </Fragment>
+                );
+              })}
             </View>
           ) : null}
         </>
@@ -771,28 +786,11 @@ const styles = StyleSheet.create({
   nextMetaGridCompact: { gap: 8 },
   metaChip: { flexGrow: 1, flexBasis: 136, minWidth: 0, gap: 2 },
   kindPill: { alignSelf: 'flex-start', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7 },
-  kindOutline: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6, alignSelf: 'center' },
-  kindOutlineCompact: { alignSelf: 'flex-start' },
   mapAction: { minHeight: 68, borderRadius: 16, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 },
   placeCopy: { flex: 1 },
   timelineSection: { gap: 6, paddingTop: 8 },
-  timelineRow: { minHeight: 76, flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
-  timelineRail: { width: 16, alignItems: 'center', height: '100%', borderRightWidth: 1 },
-  timelineDot: { width: 9, height: 9, borderRadius: 5, marginRight: -1, marginTop: 7 },
-  timelineContent: { flex: 1, minWidth: 0, gap: 2, paddingBottom: 16 },
-  timelineHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
-  timelineHeaderCompact: { flexDirection: 'column', gap: 6 },
-  timelineHeading: { flex: 1, minWidth: 0, gap: 2 },
   routeDetails: { gap: 7, paddingVertical: 4 },
   routeModeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
-  googleRouteLink: { minHeight: 42, flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 4, paddingVertical: 6 },
-  transitPlan: { borderRadius: 14, padding: 12, gap: 10 },
-  transitPlanCompact: { padding: 10, gap: 8 },
-  transitPlanHeading: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 8 },
-  transitPlanHeadingCompact: { flexDirection: 'column', alignItems: 'flex-start', gap: 2 },
-  transitStep: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  transitStepMarker: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  transitStepCopy: { flex: 1, minWidth: 0, gap: 2 },
   staySection: { gap: 10, paddingVertical: 8 },
   stayHeading: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 },
   sectionTitle: { fontSize: 20, lineHeight: 26 },
