@@ -454,17 +454,7 @@ export default function TodayScreen() {
 
       {activeTrip ? (
         <View style={styles.heroPanel}>
-          <View style={styles.heroTop}>
-            <View style={styles.heroCopy}>
-              <SectionHeading
-                title={tx('行程总览', 'Trip overview')}
-              />
-            </View>
-            <View style={[styles.heroBadge, { backgroundColor: theme.backgroundSelected }]}>
-              <ThemedText type="smallBold">{activeTrip.homeCurrency}</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">{tx('本位币', 'base')}</ThemedText>
-            </View>
-          </View>
+          <SectionHeading title={tx('行程总览', 'Trip overview')} />
 
           <View style={[styles.summaryStrip, compact && styles.summaryStripCompact]}>
             <View style={[styles.summaryItem, compact && styles.summaryItemCompact]}>
@@ -690,9 +680,6 @@ const styles = StyleSheet.create({
   dangerConfirm: { minHeight: 48, borderRadius: 12, paddingHorizontal: 14, justifyContent: 'center', alignItems: 'center', backgroundColor: '#B4413E' },
   dangerConfirmText: { color: '#FFFFFF' },
   heroPanel: { gap: 18, paddingVertical: 2 },
-  heroTop: { flexDirection: 'row', gap: 16, alignItems: 'flex-start' },
-  heroCopy: { flex: 1, gap: 6 },
-  heroBadge: { minWidth: 74, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 12, alignItems: 'center', gap: 2 },
   summaryStrip: { flexDirection: 'row', alignItems: 'stretch', paddingHorizontal: 4, gap: 12 },
   summaryStripCompact: { gap: 8 },
   summaryItem: { flex: 1, minWidth: 0, alignItems: 'center', gap: 2 },
