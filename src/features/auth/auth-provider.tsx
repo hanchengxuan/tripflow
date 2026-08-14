@@ -2,6 +2,7 @@ import type { Session } from '@supabase/supabase-js';
 import { createContext, type PropsWithChildren, useContext, useEffect, useMemo, useState } from 'react';
 
 import { getAuthCapabilities, getSupabaseClient, isSupabaseConfigured, type AuthCapabilities } from '@/lib/supabase';
+import { shouldResetOnboarding } from '@/features/auth/auth-session';
 
 interface AuthContextValue {
   session: Session | null;
@@ -25,17 +26,22 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
     let mounted = true;
     const client = getSupabaseClient();
+    const sessionRef = { current: null as Session | null };
     void getAuthCapabilities().then((next) => { if (mounted) setCapabilities(next); });
-    client.auth.getSession().then(({ data }) => {
+    const { data } = client.auth.onAuthStateChange((event, nextSession) => {
+      const previousUserId = sessionRef.current?.user.id ?? null;
+      const nextUserId = nextSession?.user.id ?? null;
+      sessionRef.current = nextSession;
+      setSession(nextSession);
+      if (shouldResetOnboarding(event, previousUserId, nextUserId)) setOnboardingComplete(undefined);
+      setLoading(false);
+    });
+    client.auth.getSession().then(({ data: sessionData }) => {
       if (mounted) {
-        setSession(data.session);
+        sessionRef.current = sessionData.session;
+        setSession(sessionData.session);
         setLoading(false);
       }
-    });
-    const { data } = client.auth.onAuthStateChange((event, nextSession) => {
-      setSession(nextSession);
-      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') setOnboardingComplete(undefined);
-      setLoading(false);
     });
 
     return () => {
