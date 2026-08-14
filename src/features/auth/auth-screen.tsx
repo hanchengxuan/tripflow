@@ -240,7 +240,7 @@ export function OnboardingScreen() {
   }
 
   return (
-    <Screen meta={tx('最后一步', 'Final step')} title={tx('设置你的 TripFlow 账号', 'Set up your TripFlow account')} subtitle={tx('设置密码和基本资料后即可创建行程，或确认加入收到的邀请。', 'Set a password and basic profile, then create a trip or confirm an invite.')}>
+    <Screen context={[tx('最后一步', 'Final step'), tx('密码', 'Password'), tx('基本资料', 'Profile')]} title={tx('设置你的 TripFlow 账号', 'Set up your TripFlow account')}>
       {inviteToken ? <InlineNotice>{tx('邀请仍然有效，完成资料后将回到加入确认。', 'Your invite is still available. You will return to its confirmation after setup.')}</InlineNotice> : null}
       <View style={[styles.onboardingCard, { backgroundColor: theme.backgroundElement }]}>
         <Pressable accessibilityRole="button" accessibilityLabel={tx('选择头像', 'Choose avatar')} onPress={() => void chooseAvatar()} style={[styles.avatar, { backgroundColor: theme.backgroundSelected }]}>
@@ -278,7 +278,7 @@ export function SessionLoadingScreen({ configured }: { configured: boolean }) {
     );
   }
   return (
-    <Screen title={tx('需要完成配置', 'Setup required')} subtitle={tx('应用还没有连接到 Supabase。', 'Supabase is not connected yet.')}>
+    <Screen context={[tx('应用还没有连接到 Supabase', 'Supabase is not connected yet')]} title={tx('需要完成配置', 'Setup required')}>
       <InlineNotice tone="error">{tx('请设置 Supabase 公共地址和发布密钥。', 'Set the Supabase public URL and publishable key.')}</InlineNotice>
     </Screen>
   );

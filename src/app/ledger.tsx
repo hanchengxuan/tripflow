@@ -547,10 +547,12 @@ export default function LedgerScreen() {
 
   return (
     <Screen
+      context={activeTrip
+        ? [activeTrip.name, tx(`本位币 ${activeTrip.homeCurrency}`, `Home currency ${activeTrip.homeCurrency}`), tx(`${expenses.length} 笔支出`, `${expenses.length} expenses`)]
+        : [tx('还没有进行中的行程', 'No active trip yet')]}
       scrollToKey={composerOpen ? 'expense-composer' : undefined}
       scrollToOffset={composerOffset}
-      title={activeTrip ? tx(`${activeTrip.name} · 账本`, `${activeTrip.name} · ledger`) : tx('共享账本', 'Shared ledger')}
-      subtitle={tx('结算 · 明细', 'Settle · activity')}
+      title={tx('账本', 'Ledger')}
       floatingAction={activeTrip ? (
         <Pressable
           accessibilityRole="button"

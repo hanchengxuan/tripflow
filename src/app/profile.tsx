@@ -168,7 +168,7 @@ export default function ProfileScreen() {
   }
 
   return (
-    <Screen title={tx('我的', 'Me')} subtitle={tx('资料 · 偏好 · 安全', 'Profile · preferences · security')}>
+    <Screen context={[tx('资料', 'Profile'), tx('偏好', 'Preferences'), tx('安全', 'Security')]} title={tx('我的', 'Me')}>
       {notice ? <InlineNotice tone={notice.tone}>{notice.text}</InlineNotice> : null}
 
       <View style={[styles.identity, compact && styles.identityCompact]}>

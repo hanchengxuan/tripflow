@@ -135,6 +135,7 @@ See `planning.md` for the complete P0/P1 scope, non-goals, architecture, milesto
 
 - `InlineNotice` now carries the design's 3px tone bar, stretched to the notice height so wrapped bilingual copy keeps it full-height; it is the first consumer of the `Spacing`/`Radius` scales.
 - Today stays now use the UI 2.0 Stay card: a 4pt lodging bar, stacked name/date/place copy, and a lodging-tint nights tile. The visual lives in `src/components/stay-card.tsx`; nights still come from `stayNightsInZone`, and `index.tsx` shrank from 816 to 814 lines. Three UI 2.0 gaps remain in `.design/tripflow-ui-2.0/README.md`: the single-row screen header, compact travel modes, and sheet composers.
+- `Screen` now accepts one ordered `context` fact list instead of separate `subtitle` and `meta` prose. It renders one wrapping context line with dot separators; every caller was rewritten deliberately. Today now matches the design with trip dates, traveller count, and home currency; Ledger uses trip, home currency, and expense count; empty, auth, legal, Trips, and Me states keep only short facts. Two UI 2.0 gaps remain: compact travel modes and sheet composers.
 
 ## Applied Supabase migrations
 

@@ -499,11 +499,12 @@ export default function TodayScreen() {
 
   return (
     <Screen
+      context={activeTrip
+        ? [tripRange ?? '', tx(`${members.length} 人同行`, `${members.length} travellers`), tx(`${activeTrip.homeCurrency} 本位币`, `Home currency ${activeTrip.homeCurrency}`)]
+        : [tx('还没有进行中的行程', 'No active trip yet')]}
       scrollToKey={movingItemId ? 'move-plan' : composerOpen ? (editingItemId ?? 'new-plan') : undefined}
       scrollToOffset={movingItemId ? moveOffset : composerOffset}
-      meta={activeTrip ? tripRange : tx('今天', 'Today')}
-      title={activeTrip?.name ?? tx('把旅程安排成一条可执行的流', 'Turn the trip into one shared flow')}
-      subtitle={activeTrip ? tx('下一项安排', 'Next up') : tx('从“行程”创建或加入一个行程。', 'Create or join a trip from Trips.')}
+      title={activeTrip?.name ?? tx('今天', 'Today')}
       floatingAction={activeTrip && canEdit ? (
         <Pressable
           accessibilityRole="button"
