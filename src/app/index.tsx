@@ -566,7 +566,7 @@ export default function TodayScreen() {
         </View>
       ) : null}
 
-      {activeTrip ? <ItineraryHealthCard items={upcomingItems.slice(0, 30)} /> : null}
+      {activeTrip ? <ItineraryHealthCard items={upcomingItems.slice(0, 30)} onEditItem={canEdit ? beginEdit : undefined} /> : null}
 
       {activeTrip && canEdit && composerOpen ? (
         <View onLayout={({ nativeEvent }) => setComposerOffset(nativeEvent.layout.y)}>

@@ -19,6 +19,10 @@ export interface ItineraryHealthReport {
   issues: ItineraryHealthIssue[];
 }
 
+export function hasItineraryHealthIssues(report: ItineraryHealthReport | undefined) {
+  return Boolean(report?.issues.length);
+}
+
 const issueTypes = new Set<ItineraryHealthIssueType>(['CONFLICT', 'BUFFER', 'DENSE_DAY', 'MISSING_LOCATION']);
 const severities = new Set<ItineraryHealthSeverity>(['info', 'warning', 'critical']);
 
@@ -141,8 +145,8 @@ function localHealthReport(items: ItineraryItem[]): ItineraryHealthReport {
   const uniqueIssues = [...new Map(issues.map((issue) => [issue.id, issue])).values()].slice(0, 8);
   return {
     summary: uniqueIssues.length === 0
-      ? '行程看起来没有明显问题。'
-      : `发现 ${uniqueIssues.length} 个值得查看的地方。`,
+      ? '行程目前没有需要处理的问题。'
+      : `发现 ${uniqueIssues.length} 个需要处理的行程问题。`,
     issues: uniqueIssues,
   };
 }

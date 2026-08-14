@@ -1,5 +1,5 @@
 import type { ItineraryItem } from '@/domain/models';
-import { analyzeItineraryHealth, validateItineraryHealthReport } from '@/features/ai/itinerary-health';
+import { analyzeItineraryHealth, hasItineraryHealthIssues, validateItineraryHealthReport } from '@/features/ai/itinerary-health';
 
 function item(overrides: Partial<ItineraryItem>): ItineraryItem {
   return {
@@ -15,6 +15,23 @@ function item(overrides: Partial<ItineraryItem>): ItineraryItem {
 }
 
 describe('itinerary health checks', () => {
+  it('only exposes the issue surface when the report has issues', () => {
+    expect(hasItineraryHealthIssues(undefined)).toBe(false);
+    expect(hasItineraryHealthIssues({ summary: 'ok', issues: [] })).toBe(false);
+    expect(hasItineraryHealthIssues({
+      summary: 'needs review',
+      issues: [{
+        id: 'conflict',
+        type: 'CONFLICT',
+        severity: 'critical',
+        itemIds: ['item-a', 'item-b'],
+        title: '时间安排重叠',
+        reason: '两个安排发生重叠。',
+        confidence: 1,
+      }],
+    })).toBe(true);
+  });
+
   it('finds overlap and a missing location locally', async () => {
     const report = await analyzeItineraryHealth({
       items: [
