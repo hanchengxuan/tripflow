@@ -775,12 +775,12 @@ function ExpenseComposer(props: {
           style={styles.multiline}
         />
         <View style={[styles.smartEntryActions, compact && styles.smartEntryActionsCompact]}>
-          <View style={styles.smartEntryButton}>
+          <View style={[styles.smartEntryButton, compact && styles.smartEntryStacked]}>
             <ActionButton busy={props.busyAction === 'parse'} disabled={!props.aiText.trim() || Boolean(props.busyAction)} onPress={() => void props.parseWithAi()}>
               {tx('解析并填入', 'Parse & fill')}
             </ActionButton>
           </View>
-          <View style={styles.smartEntryVoice}>
+          <View style={[styles.smartEntryVoice, compact && styles.smartEntryStacked]}>
             <VoiceExpenseInput disabled={Boolean(props.busyAction)} tx={tx} onAudioReady={props.parseVoiceExpense} />
           </View>
         </View>
@@ -1502,6 +1502,7 @@ const styles = StyleSheet.create({
   smartEntryActions: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 10 },
   smartEntryActionsCompact: { flexDirection: 'column', alignItems: 'stretch' },
   smartEntryButton: { flexGrow: 1, flexBasis: 160 },
+  smartEntryStacked: { flexGrow: 0, flexBasis: 'auto' },
   smartEntryVoice: { flexGrow: 1, flexBasis: 150 },
   formGroup: { gap: 16 },
   amountRow: { flexDirection: 'row', gap: 12, alignItems: 'flex-end' },

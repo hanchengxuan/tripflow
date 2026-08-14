@@ -263,10 +263,10 @@ export default function TripsScreen() {
             </View>
           ) : (
             <View style={[styles.detailsBlock, compact && styles.detailsBlockCompact]}>
-              <Detail label={tx('日期', 'Dates')} value={`${activeTrip.startsOn} — ${activeTrip.endsOn}`} />
-              <Detail label={tx('记账币种', 'Home currency')} value={activeTrip.homeCurrency} />
-              <Detail label={tx('时区', 'Time zone')} value={activeTrip.defaultTimeZone} />
-              <Detail label={tx('我的权限', 'My access')} value={currentMember ? (locale === 'zh-CN' ? tripRoleLabels[currentMember.role] : tripRoleLabelsEn[currentMember.role]) : '—'} />
+              <Detail compact={compact} label={tx('日期', 'Dates')} value={`${activeTrip.startsOn} — ${activeTrip.endsOn}`} />
+              <Detail compact={compact} label={tx('记账币种', 'Home currency')} value={activeTrip.homeCurrency} />
+              <Detail compact={compact} label={tx('时区', 'Time zone')} value={activeTrip.defaultTimeZone} />
+              <Detail compact={compact} label={tx('我的权限', 'My access')} value={currentMember ? (locale === 'zh-CN' ? tripRoleLabels[currentMember.role] : tripRoleLabelsEn[currentMember.role]) : '—'} />
               {canEditTrip ? <View style={styles.editorActions}><View style={styles.actionGrow}><ActionButton tone="secondary" onPress={() => { prepareEdit(activeTrip); setEditingTrip(true); setConfirmDeleteTrip(false); }}>{tx('编辑行程资料', 'Edit trip details')}</ActionButton></View>{activeTrip.createdBy === currentUserId ? <View style={styles.actionGrow}><Pressable accessibilityRole="button" onPress={() => setConfirmDeleteTrip(true)} style={({ pressed }) => [styles.dangerAction, { borderColor: theme.backgroundSelected }, pressed && styles.pressed]}><ThemedText type="smallBold" style={{ color: theme.danger }}>{tx('删除行程', 'Delete trip')}</ThemedText></Pressable></View> : null}</View> : null}
             </View>
           )}
@@ -352,7 +352,7 @@ export default function TripsScreen() {
 }
 
 function PanelHeading({ title, caption }: { title: string; caption?: string }) { return <View style={styles.panelHeader}><ThemedText type="smallBold" style={styles.panelTitle}>{title}</ThemedText>{caption ? <ThemedText type="small" themeColor="textSecondary">{caption}</ThemedText> : null}</View>; }
-function Detail({ label, value }: { label: string; value: string }) { return <View style={styles.detail}><ThemedText type="small" themeColor="textSecondary">{label}</ThemedText><ThemedText type="smallBold">{value}</ThemedText></View>; }
+function Detail({ label, value, compact }: { label: string; value: string; compact: boolean }) { return <View style={[styles.detail, compact && styles.detailStacked]}><ThemedText type="small" themeColor="textSecondary">{label}</ThemedText><ThemedText type="smallBold">{value}</ThemedText></View>; }
 
 function TripForm(props: { name: string; setName: (value: string) => void; startsOn: string; setStartsOn: (value: string) => void; endsOn: string; setEndsOn: (value: string) => void; currency: string; setCurrency: (value: string) => void; timeZone: string; setTimeZone: (value: string) => void; currencyOptions: { label: string; value: string }[]; timeZoneOptions: { label: string; value: string }[]; tx: (zh: string, en: string) => string }) {
   const { width } = useWindowDimensions();
@@ -370,7 +370,7 @@ const styles = StyleSheet.create({
   formStack: { gap: 14 }, formRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 }, formRowCompact: { flexDirection: 'column' }, fieldGrow: { flexGrow: 1, flexBasis: 220 }, fieldGrowCompact: { flexBasis: 'auto' },
   section: { paddingTop: 20, gap: 12 }, sectionHeading: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 }, sectionHeadingCopy: { flex: 1, gap: 2 }, sectionTitle: { fontSize: 20, lineHeight: 26 },
   tripRow: { minHeight: 68, flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 8 }, tripRowCopy: { flex: 1, gap: 2 }, divider: { height: StyleSheet.hairlineWidth },
-  detailsBlock: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 }, detailsBlockCompact: { flexDirection: 'column' }, detail: { flexGrow: 1, flexBasis: 150, gap: 2 },
+  detailsBlock: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 }, detailsBlockCompact: { flexDirection: 'column' }, detail: { flexGrow: 1, flexBasis: 150, gap: 2 }, detailStacked: { flexGrow: 0, flexBasis: 'auto' },
   editorBlock: { gap: 14 }, editorActions: { flexDirection: 'row', gap: 10 },
   dangerAction: { minHeight: 48, borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, justifyContent: 'center', alignItems: 'center' },
   dangerZone: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 18, gap: 14 },
