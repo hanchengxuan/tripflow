@@ -8,7 +8,6 @@ const translations: [RegExp, string][] = [
   [/currency/i, '请选择有效币种。'],
   [/time.?zone/i, '请选择有效时区。'],
   [/settle.*outstanding balance.*before removing/i, '该同行者还有未结清款项，请先完成结算再移出行程。'],
-  [/unlink related expenses before moving/i, '这项安排已关联记账，请先解除关联后再移动。'],
   [/target trip.*not found|item is already in this trip/i, '请选择另一个有效的目标行程。'],
   [/only.*owner|permission denied|not permitted|row-level security/i, '你没有执行此操作的权限。'],
   [/membership required|not.*member/i, '你还不是该行程的成员。'],

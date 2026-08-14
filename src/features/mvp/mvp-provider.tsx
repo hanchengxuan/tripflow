@@ -240,7 +240,12 @@ export function MvpProvider({ children }: PropsWithChildren) {
     if (!activeTrip) throw new Error('请先选择一个行程。');
     if (!trips.some(({ id }) => id === targetTripId)) throw new Error('目标行程不存在。');
     await moveItineraryItemRepository(itemId, targetTripId);
-    setItineraryItems(await listItineraryItems(activeTrip.id));
+    const [nextItems, nextExpenses] = await Promise.all([
+      listItineraryItems(activeTrip.id),
+      listExpenses(activeTrip.id),
+    ]);
+    setItineraryItems(nextItems);
+    setExpenses(nextExpenses);
   }, [activeTrip, trips]);
 
   const removeItineraryItem = useCallback(async (itemId: string) => {
