@@ -27,6 +27,8 @@ import {
 import { assertAllocationsTotal, minimizeSettlementTransfers, splitByExactAmounts, splitByPercentages, splitByWeights, splitEqually, type SettlementTransfer } from '@/domain/money';
 import type { Expense, ItineraryItem, Settlement, TripMember } from '@/domain/models';
 import { type AiExpenseDraft, parseExpenseAudio, parseExpenseText } from '@/features/ai/expense-parser';
+import { formatExchangeRate } from '@/features/currency/exchange-rate';
+import { useExchangeRate, type ExchangeRateLoadState } from '@/features/currency/use-exchange-rate';
 import { useI18n } from '@/features/i18n/i18n-provider';
 import { useMvp } from '@/features/mvp/mvp-provider';
 import { useTheme } from '@/hooks/use-theme';
@@ -86,6 +88,7 @@ export default function LedgerScreen() {
   const [amount, setAmount] = useState('');
   const [currencyOverride, setCurrencyOverride] = useState('');
   const [exchangeRate, setExchangeRate] = useState('1');
+  const [exchangeRateSource, setExchangeRateSource] = useState('same-currency-default');
   const [payerOverride, setPayerOverride] = useState('');
   const [payerIds, setPayerIds] = useState<string[]>([]);
   const [payerAmounts, setPayerAmounts] = useState<Record<string, string>>({});
@@ -106,6 +109,12 @@ export default function LedgerScreen() {
 
   const currency = currencyOverride || activeTrip?.homeCurrency || 'HKD';
   const baseCurrency = activeTrip?.homeCurrency || 'HKD';
+  const automaticExchangeRate = useExchangeRate({
+    sourceCurrency: currency,
+    targetCurrency: baseCurrency,
+    enabled: composerOpen && !editingExpenseId,
+  });
+  const exchangeRatePairKey = `${currency.toUpperCase()}/${baseCurrency.toUpperCase()}`;
   const payerUserId = members.some(({ userId }) => userId === payerOverride) ? payerOverride : currentUserId;
   const selectedPayerIds = payerIds.length > 0 ? payerIds : [payerUserId];
   const participantIds = useMemo(
@@ -133,6 +142,14 @@ export default function LedgerScreen() {
   const dangerColor = theme.danger;
   const linkColor = theme.link;
 
+  const exchangeRateState: ExchangeRateLoadState = automaticExchangeRate.pairKey === exchangeRatePairKey
+    ? automaticExchangeRate
+    : { pairKey: exchangeRatePairKey, status: 'loading' };
+  const automaticRateValue = exchangeRateState.status === 'success' && exchangeRateState.rate !== undefined
+    ? formatExchangeRate(exchangeRateState.rate)
+    : undefined;
+  const effectiveExchangeRate = exchangeRateSource === 'frankfurter' ? automaticRateValue ?? exchangeRate : exchangeRate;
+
   const allocationPreview = useMemo(() => {
     if (!amount.trim() || participantIds.length === 0) return [];
     try {
@@ -148,7 +165,14 @@ export default function LedgerScreen() {
 
   function chooseCurrency(nextCurrency: string) {
     setCurrencyOverride(nextCurrency);
-    setExchangeRate(nextCurrency.toUpperCase() === baseCurrency.toUpperCase() ? '1' : '');
+    const nextSource = nextCurrency.toUpperCase() === baseCurrency.toUpperCase() ? 'same-currency-default' : 'frankfurter';
+    setExchangeRate(nextSource === 'same-currency-default' ? '1' : '');
+    setExchangeRateSource(nextSource);
+  }
+
+  function changeExchangeRate(nextRate: string) {
+    setExchangeRate(nextRate);
+    if (currency.toUpperCase() !== baseCurrency.toUpperCase()) setExchangeRateSource('manual');
   }
 
   const balanceSnapshots = useMemo<BalanceSnapshot[]>(() => {
@@ -204,6 +228,7 @@ export default function LedgerScreen() {
     setAmount('');
     setCurrencyOverride('');
     setExchangeRate('1');
+    setExchangeRateSource('same-currency-default');
     setPayerOverride('');
     setPayerIds([]);
     setPayerAmounts({});
@@ -247,6 +272,7 @@ export default function LedgerScreen() {
     setAmount(amountInputFromMinor(expense.totalMinor, expense.currency));
     setCurrencyOverride(expense.currency);
     setExchangeRate(expense.exchangeRate ? String(expense.exchangeRate) : expense.currency.toUpperCase() === baseCurrency.toUpperCase() ? '1' : '');
+    setExchangeRateSource(expense.exchangeRateSource ?? (expense.currency.toUpperCase() === baseCurrency.toUpperCase() ? 'same-currency-default' : 'manual'));
     setPayerIds(expense.payers.map(({ userId }) => userId));
     setPayerOverride(expense.payers[0]?.userId ?? currentUserId);
     setPayerAmounts(Object.fromEntries(expense.payers.map(({ userId, amountMinor }) => [userId, amountInputFromMinor(amountMinor, expense.currency)])));
@@ -364,7 +390,7 @@ export default function LedgerScreen() {
     if (!activeTrip) return;
     setTitle(draft.title);
     setAmount(draft.amount);
-    setCurrencyOverride(draft.currency);
+    chooseCurrency(draft.currency);
     setPayerOverride(draft.payerUserId);
     setPayerIds([draft.payerUserId]);
     setPayerAmounts({});
@@ -405,7 +431,7 @@ export default function LedgerScreen() {
       if (participantIds.length === 0) throw new Error(tx('请至少选择一位分摊人。', 'Choose at least one person to share the expense.'));
       if (selectedPayerIds.length === 0) throw new Error(tx('请至少选择一位付款人。', 'Choose at least one payer.'));
       totalMinor = parseAmountToMinor(amount, currency);
-      rate = currency.toUpperCase() === baseCurrency.toUpperCase() ? 1 : parseExchangeRate(exchangeRate);
+      rate = currency.toUpperCase() === baseCurrency.toUpperCase() ? 1 : parseExchangeRate(effectiveExchangeRate);
       baseAmountMinor = convertMinorAmount(totalMinor, currency, baseCurrency, rate);
       if (allocationPreview.length !== participantIds.length) throw new Error(tx('请完成分摊设置，并确保总额一致。', 'Complete the split and make sure it adds up to the total.'));
       payerAllocations = selectedPayerIds.length === 1
@@ -431,7 +457,7 @@ export default function LedgerScreen() {
           baseCurrency: baseCurrency.toUpperCase(),
           baseAmountMinor,
           exchangeRate: rate,
-          exchangeRateSource: 'manual',
+          exchangeRateSource: currency.toUpperCase() === baseCurrency.toUpperCase() ? 'same-currency-default' : exchangeRateSource,
           payerAllocations: payerAllocationsInput,
           shareAllocations: shareAllocationsInput,
           itineraryItemId: itineraryItemId || undefined,
@@ -443,7 +469,7 @@ export default function LedgerScreen() {
           baseCurrency: baseCurrency.toUpperCase(),
           baseAmountMinor,
           exchangeRate: rate,
-          exchangeRateSource: 'manual',
+          exchangeRateSource: currency.toUpperCase() === baseCurrency.toUpperCase() ? 'same-currency-default' : exchangeRateSource,
           payerAllocations: payerAllocationsInput,
           shareAllocations: shareAllocationsInput,
           itineraryItemId: itineraryItemId || undefined,
@@ -461,6 +487,7 @@ export default function LedgerScreen() {
       setTitle('');
       setAmount('');
       setExchangeRate('1');
+      setExchangeRateSource('same-currency-default');
       setAiText('');
       setReceipt(undefined);
       setPayerIds([]);
@@ -616,10 +643,12 @@ export default function LedgerScreen() {
           setAmount={setAmount}
           currency={currency}
           baseCurrency={baseCurrency}
-          exchangeRate={exchangeRate}
+          exchangeRate={effectiveExchangeRate}
+          exchangeRateSource={exchangeRateSource}
+          exchangeRateState={exchangeRateState}
           currencyOptions={currencyOptions}
           setCurrencyOverride={chooseCurrency}
-          setExchangeRate={setExchangeRate}
+          setExchangeRate={changeExchangeRate}
           members={members}
           selectedPayerIds={selectedPayerIds}
           payerAmounts={payerAmounts}
@@ -733,6 +762,8 @@ function ExpenseComposer(props: {
   currency: string;
   baseCurrency: string;
   exchangeRate: string;
+  exchangeRateSource: string;
+  exchangeRateState: ExchangeRateLoadState;
   currencyOptions: { label: string; value: string }[];
   setCurrencyOverride: (value: string) => void;
   setExchangeRate: (value: string) => void;
@@ -826,6 +857,22 @@ function ExpenseComposer(props: {
                   keyboardType="decimal-pad"
                   placeholder="0.92"
                 />
+                {!props.editing ? (
+                  <ThemedText
+                    type="small"
+                    themeColor={props.exchangeRateState.status === 'error' ? undefined : 'textSecondary'}
+                    style={props.exchangeRateState.status === 'error' ? { color: props.dangerColor } : styles.exchangeRateMeta}>
+                    {props.exchangeRateSource === 'manual'
+                      ? tx('已手动调整', 'Adjusted manually')
+                      : props.exchangeRateState.status === 'loading'
+                        ? tx('正在获取最新工作日汇率…', 'Fetching the latest working-day rate…')
+                        : props.exchangeRateState.status === 'success'
+                          ? props.exchangeRateState.cached
+                            ? tx(`使用缓存汇率 · ${props.exchangeRateState.date ?? ''}`, `Using cached rate · ${props.exchangeRateState.date ?? ''}`)
+                            : tx(`已自动填入 · ${props.exchangeRateState.date ?? ''}`, `Filled automatically · ${props.exchangeRateState.date ?? ''}`)
+                          : tx('自动获取失败，请手动填写。', 'Could not fetch a rate. Enter it manually.')}
+                  </ThemedText>
+                ) : null}
               </View>
               <View style={styles.conversionPreview}>
                 <ThemedText type="smallBold">{tx('记入本位币', 'Bookkeeping amount')}</ThemedText>
@@ -1524,6 +1571,7 @@ const styles = StyleSheet.create({
   currencyField: { width: 116 },
   currencyFieldCompact: { width: '100%' },
   conversionRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', gap: 12, borderRadius: 12, padding: 12 },
+  exchangeRateMeta: { marginTop: 4 },
   conversionPreview: { flexGrow: 1, flexBasis: 150, gap: 2, paddingBottom: 10 },
   multiline: { minHeight: 96, textAlignVertical: 'top' },
   voiceGroup: { gap: 8 },
