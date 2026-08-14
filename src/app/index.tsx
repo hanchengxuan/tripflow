@@ -6,6 +6,7 @@ import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/
 import { Chevron } from '@/components/chevron';
 import { InfoCard } from '@/components/info-card';
 import { ItineraryHealthCard } from '@/components/itinerary-health-card';
+import { ItineraryEditAssistant } from '@/components/itinerary-edit-assistant';
 import { LocationField } from '@/components/location-field';
 import { MoveItineraryCard } from '@/components/move-itinerary-card';
 import { SelectionField } from '@/components/selection-field';
@@ -567,6 +568,23 @@ export default function TodayScreen() {
       ) : null}
 
       {activeTrip ? <ItineraryHealthCard items={upcomingItems.slice(0, 30)} onEditItem={canEdit ? beginEdit : undefined} /> : null}
+
+      {activeTrip && canEdit && upcomingItems.length > 0 ? (
+        <ItineraryEditAssistant
+          trip={activeTrip}
+          items={upcomingItems.slice(0, 30)}
+          onApply={async (candidate) => {
+            await saveItineraryItem({
+              itemId: candidate.id,
+              title: candidate.title,
+              locationLabel: candidate.locationLabel,
+              googlePlaceId: candidate.googlePlaceId,
+              startsAt: candidate.startsAt,
+              endsAt: candidate.endsAt,
+            });
+          }}
+        />
+      ) : null}
 
       {activeTrip && canEdit && composerOpen ? (
         <View onLayout={({ nativeEvent }) => setComposerOffset(nativeEvent.layout.y)}>

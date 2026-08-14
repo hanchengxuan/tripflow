@@ -198,6 +198,20 @@ Acceptance criteria:
 
 Non-goals for P1.1: remote itinerary disclosure without opt-in, route-time invention by Gemini, weather/closure lookup, background checks, notifications, and autonomous itinerary mutation.
 
+#### Selected second vertical slice: natural-language reviewable edit (P1.2)
+
+The next slice adds an explicit “智能调整 / Smart edit” action to Today. A traveller first chooses one existing itinerary item, describes one change in Chinese or English, then Gemini returns a structured proposal tied to that item. Only the selected item's minimum title/time context is sent; the app shows the exact diff, validates it locally, and writes only after the traveller presses “应用修改”. The first version deliberately supports one item and title/time fields only; location and Google Place changes remain manual so the model cannot invent a destination.
+
+Acceptance criteria:
+
+1. The assistant is closed by default. After the traveller explicitly selects one item and requests a preview, it sends only that item's title, time, kind, and location context; there is no background processing or automatic save.
+2. The proposal contains at most one known itinerary ID, changed fields only, a bounded reason/confidence, and bilingual recoverable error states when the provider is unavailable or the request is ambiguous.
+3. Local validation checks ISO timestamps, start-before-end, trip-date bounds, and overlap with other items. A blocking conflict disables “应用修改” while keeping the proposal visible for review.
+4. Applying a proposal calls the existing itinerary update RPC only after confirmation; cancelling or closing the assistant performs no write.
+5. Existing locations, Place IDs, route modes, participants, and linked ledger records are preserved. Multi-item reorder, destination guessing, route-time invention, disruption lookup, and autonomous mutation are out of scope.
+
+The payload sent to Gemini is an explicit, user-triggered disclosure of one selected itinerary item. It must be limited to the fields needed for the requested edit, must not include other itinerary items, profile data, or ledger data, and must be treated as untrusted prompt data on the server.
+
 ### Explicitly out of MVP
 
 - A general-purpose group chat; TripFlow links back to existing chat apps instead.

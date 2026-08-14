@@ -58,7 +58,7 @@ You can start developing by editing the files inside the **app** directory. This
 
 The MVP screens read and write live Supabase data. Never commit Supabase secrets; local environment files are ignored.
 
-The natural-language expense parser runs only in a Supabase Edge Function. Configure `GEMINI_API_KEY` in Supabase Edge Function Secrets; never expose it through an `EXPO_PUBLIC_*` variable or commit it to Git.
+The natural-language expense parser and the opt-in itinerary smart-edit preview run only in Supabase Edge Functions. Configure `GEMINI_API_KEY` in Supabase Edge Function Secrets; never expose it through an `EXPO_PUBLIC_*` variable or commit it to Git. Smart edit sends only the one itinerary item the traveller explicitly selects, returns a reviewable proposal, and never writes without confirmation.
 
 ## Deploy the web MVP
 
