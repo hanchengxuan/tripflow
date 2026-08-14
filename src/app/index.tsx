@@ -5,6 +5,7 @@ import { DateTimeField } from '@/components/date-time-field';
 import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/form-controls';
 import { Chevron } from '@/components/chevron';
 import { InfoCard } from '@/components/info-card';
+import { ItineraryHealthCard } from '@/components/itinerary-health-card';
 import { LocationField } from '@/components/location-field';
 import { MoveItineraryCard } from '@/components/move-itinerary-card';
 import { SelectionField } from '@/components/selection-field';
@@ -566,6 +567,8 @@ export default function TodayScreen() {
           </View>
         </View>
       ) : null}
+
+      {activeTrip ? <ItineraryHealthCard items={upcomingItems.slice(0, 30)} /> : null}
 
       {activeTrip && canEdit && composerOpen ? (
         <View onLayout={({ nativeEvent }) => setComposerOffset(nativeEvent.layout.y)}>
