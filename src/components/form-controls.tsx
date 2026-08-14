@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 export function FormField({ label, ...props }: TextInputProps & { label: string }) {
@@ -96,7 +97,8 @@ export function InlineNotice({ children, tone = 'info' }: PropsWithChildren<{ to
       accessibilityRole={tone === 'error' ? 'alert' : 'text'}
       style={[styles.notice, { backgroundColor: tone === 'error' ? theme.dangerSoft : theme.accentSoft }]}
     >
-      <ThemedText type="small" style={tone === 'error' ? { color: theme.danger } : undefined}>{children}</ThemedText>
+      <View style={[styles.noticeAccent, { backgroundColor: tone === 'error' ? theme.danger : theme.accent }]} />
+      <ThemedText type="small" style={[styles.noticeCopy, tone === 'error' ? { color: theme.danger } : null]}>{children}</ThemedText>
     </View>
   );
 }
@@ -107,5 +109,14 @@ const styles = StyleSheet.create({
   button: { minHeight: 48, borderRadius: 14, paddingHorizontal: 18, paddingVertical: 12, alignItems: 'center', justifyContent: 'center' },
   dimmed: { opacity: 0.58 },
   chip: { minHeight: 44, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 10, justifyContent: 'center' },
-  notice: { borderRadius: 12, padding: 12 },
+  notice: {
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  noticeAccent: { width: 3, alignSelf: 'stretch', borderRadius: 2 },
+  noticeCopy: { flex: 1, minWidth: 0 },
 });
