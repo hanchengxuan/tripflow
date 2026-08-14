@@ -23,6 +23,18 @@ export function validatePassword(password: string) {
   return password;
 }
 
+/**
+ * Guards a password change before any network call: an empty current password,
+ * a new password identical to the current one, or one that fails policy.
+ * Ordering matters — policy is checked before re-authentication so a rejected
+ * new password never reveals whether the current one was right.
+ */
+export function assertPasswordChange(currentPassword: string, nextPassword: string) {
+  if (!currentPassword) throw new Error('请输入当前密码。');
+  if (currentPassword === nextPassword) throw new Error('新密码不能与当前密码相同。');
+  return validatePassword(nextPassword);
+}
+
 export function normalizeEmailOtp(token: string): string {
   const normalized = token.replace(/\s/g, '');
   if (!/^\d{8}$/.test(normalized)) {
@@ -204,4 +216,39 @@ export async function deleteAccount() {
 
   const { error: signOutError } = await client.auth.signOut({ scope: 'local' });
   if (signOutError) throw signOutError;
+}
+
+/**
+ * Supabase accepts a new password on the strength of the session alone, so a
+ * borrowed or hijacked session could otherwise take the account over.
+ * Re-authenticate with the current password first.
+ *
+ * The re-authentication issues a fresh session for the same user; the auth
+ * provider treats a repeat SIGNED_IN for an unchanged identity as a no-op, so
+ * the mounted product survives it.
+ */
+export async function changePassword(currentPassword: string, nextPassword: string) {
+  const password = assertPasswordChange(currentPassword, nextPassword);
+  const client = getSupabaseClient();
+  const { data, error: userError } = await client.auth.getUser();
+  if (userError) throw userError;
+  const email = data.user?.email;
+  if (!email) throw new Error('当前账号没有邮箱，无法验证身份。');
+
+  const { error: reauthError } = await client.auth.signInWithPassword({ email, password: currentPassword });
+  if (reauthError) throw new Error('当前密码不正确。');
+
+  const { error } = await client.auth.updateUser({ password });
+  if (error) throw error;
+}
+
+/**
+ * For accounts created through a provider, which have no password to
+ * re-authenticate against. Possession of the signed-in session is the only
+ * proof available, and it is the same proof the provider already accepted.
+ */
+export async function setInitialPassword(nextPassword: string) {
+  const password = validatePassword(nextPassword);
+  const { error } = await getSupabaseClient().auth.updateUser({ password });
+  if (error) throw error;
 }

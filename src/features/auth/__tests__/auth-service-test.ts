@@ -1,4 +1,4 @@
-import { completeRegistration, deleteAccount, normalizeEmail, normalizeEmailOtp, normalizePhone, sendEmailOtp, validatePassword } from '@/features/auth/auth-service';
+import { assertPasswordChange, completeRegistration, deleteAccount, normalizeEmail, normalizeEmailOtp, normalizePhone, sendEmailOtp, validatePassword } from '@/features/auth/auth-service';
 import { updateProfile } from '@/data/trip-repository';
 
 const mockRpc = jest.fn();
@@ -84,5 +84,31 @@ describe('normalizeEmail', () => {
     expect(mockSignOut).toHaveBeenCalledWith({ scope: 'local' });
     expect(mockRemove.mock.invocationCallOrder[0]).toBeLessThan(mockRpc.mock.invocationCallOrder[0]);
     expect(mockRpc.mock.invocationCallOrder[0]).toBeLessThan(mockSignOut.mock.invocationCallOrder[0]);
+  });
+});
+
+describe('assertPasswordChange', () => {
+  it('requires the current password', () => {
+    expect(() => assertPasswordChange('', 'newpass123')).toThrow('请输入当前密码。');
+  });
+
+  it('rejects a new password identical to the current one', () => {
+    expect(() => assertPasswordChange('samepass1', 'samepass1')).toThrow('新密码不能与当前密码相同。');
+  });
+
+  it('applies the password policy to the new password', () => {
+    expect(() => assertPasswordChange('current123', 'short1')).toThrow();
+    expect(() => assertPasswordChange('current123', 'alllettersonly')).toThrow();
+    expect(() => assertPasswordChange('current123', '12345678')).toThrow();
+  });
+
+  it('checks policy before anything that would need the current password', () => {
+    // A bad new password must fail on its own terms, so a rejection never
+    // signals whether the current password was right.
+    expect(() => assertPasswordChange('wrong', 'short1')).toThrow('密码至少 8 位，并同时包含字母和数字。');
+  });
+
+  it('returns the accepted new password', () => {
+    expect(assertPasswordChange('current123', 'brandnew123')).toBe('brandnew123');
   });
 });
