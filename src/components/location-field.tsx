@@ -37,7 +37,7 @@ export function LocationField({ value, onChange, onSelect }: { value: string; on
   return (
     <View style={styles.field}>
       <ThemedText type="smallBold">{tx('在哪里？', 'Where?')}</ThemedText>
-      <View style={[styles.inputWrap, { backgroundColor: theme.background, borderColor: theme.backgroundSelected }]}>
+      <View style={[styles.inputWrap, { backgroundColor: theme.backgroundElement, borderColor: theme.borderField }]}>
         <TextInput
           value={value}
           onChangeText={(next) => {
@@ -46,13 +46,13 @@ export function LocationField({ value, onChange, onSelect }: { value: string; on
           }}
           autoCorrect={false}
           placeholder={tx('搜索地点、酒店、车站或地址', 'Search places, hotels, stations, or addresses')}
-          placeholderTextColor={theme.textSecondary}
+          placeholderTextColor={theme.textMuted}
           style={[styles.input, { color: theme.text }]}
         />
-        {loading ? <ActivityIndicator color="#087F6A" /> : null}
+        {loading ? <ActivityIndicator color={theme.accent} /> : null}
       </View>
       {value.trim().length >= 3 && suggestions.length > 0 ? (
-        <View style={[styles.suggestions, { backgroundColor: theme.backgroundElement, borderColor: theme.backgroundSelected }]}>
+        <View style={[styles.suggestions, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
           {suggestions.map((suggestion) => (
             <Pressable
               key={suggestion.placeId}
@@ -63,7 +63,7 @@ export function LocationField({ value, onChange, onSelect }: { value: string; on
                 sessionToken.current = newSessionToken();
               }}
               style={({ pressed }) => [styles.suggestion, pressed && styles.pressed]}>
-              <View style={[styles.dot, { backgroundColor: '#1B70A6' }]} />
+              <View style={[styles.dot, { backgroundColor: theme.info }]} />
               <View style={styles.copy}>
                 <ThemedText type="smallBold">{suggestion.mainText}</ThemedText>
                 {suggestion.secondaryText ? <ThemedText type="small" themeColor="textSecondary">{suggestion.secondaryText}</ThemedText> : null}
@@ -84,6 +84,6 @@ const styles = StyleSheet.create({
   suggestions: { borderWidth: 1, borderRadius: 14, overflow: 'hidden' },
   suggestion: { minHeight: 54, paddingHorizontal: 14, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 12 },
   pressed: { opacity: 0.65 },
-  dot: { width: 9, height: 9, borderRadius: 5, backgroundColor: '#087F6A' },
+  dot: { width: 9, height: 9, borderRadius: 5 },
   copy: { flex: 1 },
 });

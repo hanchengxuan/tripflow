@@ -37,13 +37,13 @@ export function SelectionField<T extends string>({
         accessibilityRole="button"
         accessibilityLabel={`${label}：${selectedLabel}`}
         onPress={() => setOpen(true)}
-        style={[styles.control, { backgroundColor: theme.background, borderColor: theme.backgroundSelected }]}
+        style={[styles.control, { backgroundColor: theme.backgroundElement, borderColor: theme.borderField }]}
       >
         <ThemedText>{selectedLabel}</ThemedText>
         <Chevron color={theme.textSecondary} />
       </Pressable>
       <Modal transparent visible={open} animationType="slide" onRequestClose={() => setOpen(false)}>
-        <Pressable style={styles.backdrop} onPress={() => setOpen(false)}>
+        <Pressable style={[styles.backdrop, { backgroundColor: theme.scrim }]} onPress={() => setOpen(false)}>
           <Pressable
             style={[styles.sheet, { backgroundColor: theme.backgroundElement }]}
             onPress={(event) => event.stopPropagation()}>
@@ -67,11 +67,11 @@ export function SelectionField<T extends string>({
                     }}
                     style={[
                       styles.option,
-                      { borderColor: theme.backgroundSelected },
-                      selected && styles.optionSelected,
+                      { borderColor: theme.borderField },
+                      selected && { borderColor: theme.accent, backgroundColor: theme.accentSoft },
                     ]}>
                     <ThemedText type={selected ? 'smallBold' : 'default'}>{option.label}</ThemedText>
-                    {selected ? <ThemedText style={styles.check}>✓</ThemedText> : null}
+                    {selected ? <ThemedText style={{ color: theme.accentOnSoft }}>✓</ThemedText> : null}
                   </Pressable>
                 );
               })}
@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
-  backdrop: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.42)', justifyContent: 'flex-end' },
+  backdrop: { flex: 1, justifyContent: 'flex-end' },
   sheet: { maxHeight: '72%', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, gap: 12 },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   optionList: { gap: 8, paddingBottom: 24 },
@@ -110,6 +110,4 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  optionSelected: { borderColor: '#0F9D7A', backgroundColor: '#DDEBE5' },
-  check: { color: '#0F9D7A' },
 });

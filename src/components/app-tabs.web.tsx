@@ -42,18 +42,15 @@ export default function AppTabs() {
 
 export function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps) {
   const theme = useTheme();
-  const dark = theme.background === '#0C1924';
 
   return (
     <Pressable {...props} style={({ pressed }) => pressed && styles.pressed}>
       <View
         style={[
           styles.tabButtonView,
-          isFocused && {
-            backgroundColor: dark ? 'rgba(105,212,188,0.22)' : 'rgba(8,127,106,0.14)',
-          },
+          isFocused && { backgroundColor: theme.backgroundSelected },
         ]}>
-        <ThemedText type="small" themeColor={isFocused ? 'text' : 'textSecondary'}>
+        <ThemedText type="small" themeColor={isFocused ? 'accentOnSoft' : 'textSecondary'}>
           {children}
         </ThemedText>
       </View>
@@ -65,7 +62,6 @@ export function CustomTabList(props: TabListProps) {
   const { width } = useWindowDimensions();
   const theme = useTheme();
   const compact = width < 440;
-  const dark = theme.background === '#0C1924';
 
   return (
     <View {...props} style={[styles.tabListContainer, compact && styles.tabListContainerCompact]}>
@@ -73,10 +69,7 @@ export function CustomTabList(props: TabListProps) {
         style={[
           styles.innerContainer,
           compact && styles.innerContainerCompact,
-          {
-            backgroundColor: dark ? 'rgba(20,39,56,0.68)' : 'rgba(255,255,255,0.72)',
-            boxShadow: dark ? '0 8px 18px rgba(0,0,0,0.20)' : '0 8px 18px rgba(21,52,74,0.16)',
-          },
+          { backgroundColor: theme.navSurface, boxShadow: theme.navShadow },
           styles.glassEffect,
         ]}>
         {!compact ? (

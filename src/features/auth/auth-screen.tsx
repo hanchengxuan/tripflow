@@ -143,15 +143,15 @@ export function AuthScreen() {
       <ScrollView contentContainerStyle={[styles.authContent, compact && styles.authContentCompact, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 28 }]} keyboardShouldPersistTaps="handled">
         <View style={[styles.authLayout, !compact && styles.authLayoutWide]}>
           <View style={[styles.authIntro, !compact && styles.authIntroWide]}>
-            <ThemedText type="smallBold" style={styles.authBrand}>TripFlow</ThemedText>
+            <ThemedText type="smallBold" style={[styles.authBrand, { color: theme.accent }]}>TripFlow</ThemedText>
             <ThemedText type="subtitle" style={[styles.authTitle, compact && styles.authTitleCompact]}>{screenTitle}</ThemedText>
             <ThemedText themeColor="textSecondary" style={styles.authSubtitle}>{screenSubtitle}</ThemedText>
-            <View style={styles.authRule} />
+            <View style={[styles.authRule, { backgroundColor: theme.plan }]} />
             <ThemedText type="small" themeColor="textSecondary">{inviteToken ? tx('邀请已保留。登录后仍需确认。', 'Your invite is saved. You will still confirm before joining.') : tx('先进入行程，再决定下一步。', 'Start with the trip, then choose the next step.')}</ThemedText>
           </View>
-          <View style={[styles.authPanel, { backgroundColor: theme.backgroundElement }]}>
+          <View style={[styles.authPanel, { backgroundColor: theme.backgroundElement, shadowColor: theme.shadow }]}>
             <View style={styles.authPanelHeader}>
-              <ThemedText type="smallBold" style={styles.authPanelLabel}>{cardLabel}</ThemedText>
+              <ThemedText type="smallBold" style={{ color: theme.accent }}>{cardLabel}</ThemedText>
               <ThemedText type="smallBold" style={styles.authPanelTitle}>{verifying ? (method === 'email' ? email : phone) : method === 'phone' ? tx('短信验证码', 'SMS code') : flow === 'register' ? tx('创建账号', 'Create account') : tx('欢迎回来', 'Welcome back')}</ThemedText>
             </View>
             {capabilities.google ? <ActionButton tone="secondary" busy={busy} onPress={() => void googleLogin()}>{tx('使用 Google 继续', 'Continue with Google')}</ActionButton> : null}
@@ -273,7 +273,7 @@ export function SessionLoadingScreen({ configured }: { configured: boolean }) {
         accessibilityState={{ busy: true }}
         style={[styles.loadingScreen, { backgroundColor: theme.background }]}
       >
-        <ActivityIndicator color="#087F6A" />
+        <ActivityIndicator color={theme.accent} />
       </View>
     );
   }
@@ -292,14 +292,13 @@ const styles = StyleSheet.create({
   authLayoutWide: { flexDirection: 'row', alignItems: 'center', gap: 56, minHeight: 520 },
   authIntro: { gap: 12 },
   authIntroWide: { flex: 1, paddingRight: 12 },
-  authBrand: { color: '#087F6A', letterSpacing: 0.5 },
+  authBrand: { letterSpacing: 0.5 },
   authTitle: { fontSize: 38, lineHeight: 44, maxWidth: 520 },
   authTitleCompact: { fontSize: 30, lineHeight: 36 },
   authSubtitle: { fontSize: 18, lineHeight: 26, maxWidth: 440 },
-  authRule: { width: 56, height: 3, borderRadius: 2, backgroundColor: '#D86E35', marginTop: 8 },
-  authPanel: { flex: 1, maxWidth: 500, borderRadius: 24, padding: 22, gap: 16, shadowColor: '#17324D', shadowOpacity: 0.09, shadowRadius: 28, shadowOffset: { width: 0, height: 12 } },
+  authRule: { width: 56, height: 3, borderRadius: 2, marginTop: 8 },
+  authPanel: { flex: 1, maxWidth: 500, borderRadius: 24, padding: 22, gap: 16, shadowOpacity: 0.09, shadowRadius: 28, shadowOffset: { width: 0, height: 12 } },
   authPanelHeader: { gap: 5 },
-  authPanelLabel: { color: '#087F6A' },
   authPanelTitle: { fontSize: 26, lineHeight: 32 },
   loadingScreen: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   form: { gap: 12 },

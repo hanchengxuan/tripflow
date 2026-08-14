@@ -15,7 +15,6 @@ export function MemberAvatar({
 }) {
   const theme = useTheme();
   const initials = displayName.trim().slice(0, 2).toUpperCase() || 'TF';
-  const initialsColor = theme.background === '#0C1924' ? '#69D4BC' : '#087F6A';
 
   return (
     <View
@@ -38,7 +37,7 @@ export function MemberAvatar({
           transition={160}
         />
       ) : (
-        <ThemedText type="smallBold" style={[styles.initials, { color: initialsColor }]}>{initials}</ThemedText>
+        <ThemedText type="smallBold" style={{ color: theme.accentOnSoft }}>{initials}</ThemedText>
       )}
     </View>
   );
@@ -46,5 +45,4 @@ export function MemberAvatar({
 
 const styles = StyleSheet.create({
   avatar: { alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  initials: {},
 });

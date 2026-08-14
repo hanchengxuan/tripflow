@@ -276,7 +276,7 @@ export default function TripsScreen() {
               <PanelHeading title={tx('永久删除这个行程？', 'Permanently delete this trip?')} caption={tx('所有安排、分账、转账记录和收据都会删除，且无法恢复。只有创建者可以执行。', 'All plans, expenses, transfers, and receipts will be deleted and cannot be recovered. Only the creator can do this.')} />
               <View style={styles.editorActions}>
                 <View style={styles.actionGrow}><ActionButton tone="secondary" onPress={() => setConfirmDeleteTrip(false)}>{tx('保留行程', 'Keep trip')}</ActionButton></View>
-                <View style={styles.actionGrow}><Pressable accessibilityRole="button" disabled={busyAction === 'delete-trip'} onPress={() => void permanentlyDeleteTrip()} style={({ pressed }) => [styles.dangerConfirm, pressed && styles.pressed, busyAction === 'delete-trip' && styles.disabled]}><ThemedText type="smallBold" style={styles.dangerConfirmText}>{busyAction === 'delete-trip' ? tx('删除中…', 'Deleting…') : tx('确认永久删除', 'Delete permanently')}</ThemedText></Pressable></View>
+                <View style={styles.actionGrow}><Pressable accessibilityRole="button" disabled={busyAction === 'delete-trip'} onPress={() => void permanentlyDeleteTrip()} style={({ pressed }) => [styles.dangerConfirm, { backgroundColor: theme.danger }, pressed && styles.pressed, busyAction === 'delete-trip' && styles.disabled]}><ThemedText type="smallBold" style={{ color: theme.textOnAccent }}>{busyAction === 'delete-trip' ? tx('删除中…', 'Deleting…') : tx('确认永久删除', 'Delete permanently')}</ThemedText></Pressable></View>
               </View>
             </View>
           ) : null}
@@ -365,7 +365,7 @@ const styles = StyleSheet.create({
   heroTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 16 }, heroCopy: { flex: 1, gap: 4 },
   memberCount: { minHeight: 36, borderRadius: 999, paddingHorizontal: 12, justifyContent: 'center' },
   quickActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 }, quickActionsCompact: { flexDirection: 'column', gap: 10 }, actionGrow: { flexGrow: 1, flexBasis: 150 }, actionGrowCompact: { flexGrow: 0, flexBasis: 'auto' },
-  focusPanel: { borderRadius: 16, padding: 18, gap: 18, shadowColor: '#17324D', shadowOpacity: 0.07, shadowRadius: 18, shadowOffset: { width: 0, height: 7 } },
+  focusPanel: { borderRadius: 16, padding: 18, gap: 18, shadowOpacity: 0.07, shadowRadius: 18, shadowOffset: { width: 0, height: 7 } },
   panelHeader: { flex: 1, gap: 3 }, panelTitle: { fontSize: 20, lineHeight: 26 }, manageHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 16 },
   formStack: { gap: 14 }, formRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 }, formRowCompact: { flexDirection: 'column' }, fieldGrow: { flexGrow: 1, flexBasis: 220 }, fieldGrowCompact: { flexBasis: 'auto' },
   section: { paddingTop: 20, gap: 12 }, sectionHeading: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 }, sectionHeadingCopy: { flex: 1, gap: 2 }, sectionTitle: { fontSize: 20, lineHeight: 26 },
@@ -374,8 +374,7 @@ const styles = StyleSheet.create({
   editorBlock: { gap: 14 }, editorActions: { flexDirection: 'row', gap: 10 },
   dangerAction: { minHeight: 48, borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, justifyContent: 'center', alignItems: 'center' },
   dangerZone: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 18, gap: 14 },
-  dangerConfirm: { minHeight: 48, borderRadius: 12, paddingHorizontal: 14, justifyContent: 'center', alignItems: 'center', backgroundColor: '#B4413E' },
-  dangerConfirmText: { color: '#FFFFFF' },
+  dangerConfirm: { minHeight: 48, borderRadius: 12, paddingHorizontal: 14, justifyContent: 'center', alignItems: 'center' },
   travellersBlock: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 18, gap: 12 },
   memberRow: { minHeight: 62, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 6 }, memberCopy: { flex: 1, gap: 2 },
   memberEditor: { borderRadius: 12, marginBottom: 10, padding: 14, gap: 12 }, roleRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },

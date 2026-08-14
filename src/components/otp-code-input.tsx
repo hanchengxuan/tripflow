@@ -24,7 +24,7 @@ export function OtpCodeInput({ value, onChangeText, disabled = false }: { value:
             key={index}
             style={[
               styles.cell,
-              { backgroundColor: theme.background, borderColor: index === digits.length ? '#087F6A' : theme.backgroundSelected },
+              { backgroundColor: theme.backgroundElement, borderColor: index === digits.length ? theme.borderFocus : theme.borderField },
             ]}>
             <ThemedText style={styles.digit}>{digits[index] ?? ''}</ThemedText>
           </View>

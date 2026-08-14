@@ -12,6 +12,7 @@ import { Screen } from '@/components/screen';
 import { SectionHeading } from '@/components/section-heading';
 import { ThemedText } from '@/components/themed-text';
 import { itineraryKindLabels, itineraryKindLabelsEn, itineraryKinds } from '@/constants/options';
+import type { ThemeColor } from '@/constants/theme';
 import type { ItineraryItem, ItineraryKind, RouteTravelMode } from '@/domain/models';
 import { useI18n } from '@/features/i18n/i18n-provider';
 import { useMvp } from '@/features/mvp/mvp-provider';
@@ -26,23 +27,14 @@ function formatTripDates(startsOn: string, endsOn: string, locale: string) {
   return `${start.toLocaleDateString(locale, { month: 'short', day: 'numeric' })} — ${end.toLocaleDateString(locale, { month: 'short', day: 'numeric' })}`;
 }
 
-function getKindAccent(kind: ItineraryKind) {
-  switch (kind) {
-    case 'transport':
-      return '#1B70A6';
-    case 'lodging':
-      return '#087F6A';
-    case 'food':
-      return '#D86E35';
-    case 'activity':
-      return '#0F8A6E';
-    case 'task':
-      return '#6E5AE6';
-    case 'note':
-    default:
-      return '#526F7E';
-  }
-}
+const kindColorKeys: Record<ItineraryKind, ThemeColor> = {
+  transport: 'kindTransport',
+  lodging: 'kindLodging',
+  food: 'kindFood',
+  activity: 'kindActivity',
+  task: 'kindTask',
+  note: 'kindNote',
+};
 
 const routeTravelModes: RouteTravelMode[] = ['DRIVE', 'TRANSIT', 'WALK', 'BICYCLE'];
 
@@ -355,6 +347,7 @@ export default function TodayScreen() {
   }
 
   const kindLabel = (itemKind: ItineraryKind) => locale === 'zh-CN' ? itineraryKindLabels[itemKind] : itineraryKindLabelsEn[itemKind];
+  const kindAccent = (itemKind: ItineraryKind) => theme[kindColorKeys[itemKind]];
 
   function routeModeLabel(mode: RouteTravelMode) {
     const labels = {
@@ -405,8 +398,8 @@ export default function TodayScreen() {
           const line = step.lineName || step.vehicleName || tx('公共交通', 'Transit');
           return (
             <View key={`${step.departureStop}-${step.arrivalStop}-${index}`} style={styles.transitStep}>
-              <View style={styles.transitStepMarker}>
-                <ThemedText type="smallBold" style={styles.transitStepNumber}>{index + 1}</ThemedText>
+              <View style={[styles.transitStepMarker, { backgroundColor: theme.info }]}>
+                <ThemedText type="smallBold" style={{ color: theme.textOnAccent }}>{index + 1}</ThemedText>
               </View>
               <View style={styles.transitStepCopy}>
                 <ThemedText type="smallBold">
@@ -463,12 +456,12 @@ export default function TodayScreen() {
             </ChoiceChip>
           )) : <ThemedText type="smallBold">{routeModeLabel(item.routeTravelMode)}</ThemedText>}
         </View>
-        <ThemedText type="smallBold" style={styles.routeEstimate}>
+        <ThemedText type="smallBold" style={{ color: theme.accent }}>
           {busyTravelModeId === item.id ? tx('正在重新计算…', 'Recalculating…') : estimate ?? tx('路线详情待生成', 'Route estimate pending')}
         </ThemedText>
         {item.routeTravelMode === 'TRANSIT' && busyTravelModeId !== item.id ? transitRouteDetails(routeEstimates[item.id]) : null}
         <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(mapsUrl)} style={({ pressed }) => [styles.googleRouteLink, pressed && styles.pressed]}>
-          <ThemedText type="smallBold" style={styles.linkText}>{tx('在 Google 地图中规划路线', 'Plan route in Google Maps')}</ThemedText>
+          <ThemedText type="smallBold" style={{ color: theme.link }}>{tx('在 Google 地图中规划路线', 'Plan route in Google Maps')}</ThemedText>
           <Chevron color={theme.textSecondary} />
         </Pressable>
       </View>
@@ -479,8 +472,8 @@ export default function TodayScreen() {
     if (!canEdit) return null;
     return (
       <View style={styles.itemActions}>
-        <Pressable accessibilityRole="button" onPress={() => beginEdit(item)} style={({ pressed }) => [styles.itemTextAction, pressed && styles.pressed]}><ThemedText type="smallBold" style={styles.linkText}>{tx('编辑', 'Edit')}</ThemedText></Pressable>
-        {trips.length > 1 ? <Pressable accessibilityRole="button" onPress={() => beginMove(item)} style={({ pressed }) => [styles.itemTextAction, pressed && styles.pressed]}><ThemedText type="smallBold" style={styles.linkText}>{tx('移动', 'Move')}</ThemedText></Pressable> : null}
+        <Pressable accessibilityRole="button" onPress={() => beginEdit(item)} style={({ pressed }) => [styles.itemTextAction, pressed && styles.pressed]}><ThemedText type="smallBold" style={{ color: theme.link }}>{tx('编辑', 'Edit')}</ThemedText></Pressable>
+        {trips.length > 1 ? <Pressable accessibilityRole="button" onPress={() => beginMove(item)} style={({ pressed }) => [styles.itemTextAction, pressed && styles.pressed]}><ThemedText type="smallBold" style={{ color: theme.link }}>{tx('移动', 'Move')}</ThemedText></Pressable> : null}
         <Pressable accessibilityRole="button" onPress={() => beginEdit(item, true)} style={({ pressed }) => [styles.itemTextAction, pressed && styles.pressed]}><ThemedText type="smallBold" style={{ color: theme.danger }}>{tx('删除', 'Delete')}</ThemedText></Pressable>
       </View>
     );
@@ -511,10 +504,10 @@ export default function TodayScreen() {
             }
             openNewComposer();
           }}
-          style={({ pressed }) => [styles.floatingAdd, pressed && styles.pressed]}>
+          style={({ pressed }) => [styles.floatingAdd, { backgroundColor: theme.accent, shadowColor: theme.shadow }, pressed && styles.pressed]}>
           <View style={interactionOpen ? styles.closeIcon : styles.plusIcon}>
-            <View style={interactionOpen ? styles.closeDiagonalOne : styles.plusHorizontal} />
-            <View style={interactionOpen ? styles.closeDiagonalTwo : styles.plusVertical} />
+            <View style={[interactionOpen ? styles.closeDiagonalOne : styles.plusHorizontal, { backgroundColor: theme.textOnAccent }]} />
+            <View style={[interactionOpen ? styles.closeDiagonalTwo : styles.plusVertical, { backgroundColor: theme.textOnAccent }]} />
           </View>
         </Pressable>
       ) : null}
@@ -562,7 +555,7 @@ export default function TodayScreen() {
 
       {activeTrip && canEdit && composerOpen ? (
         <View onLayout={({ nativeEvent }) => setComposerOffset(nativeEvent.layout.y)}>
-          <InfoCard label={editingItem ? tx('编辑', 'Edit') : tx('新安排', 'New plan')} title={editingItem ? editingItem.title : tx('添加安排', 'Add plan')} accent={editingItem ? getKindAccent(editingItem.kind) : '#D86E35'}>
+          <InfoCard label={editingItem ? tx('编辑', 'Edit') : tx('新安排', 'New plan')} title={editingItem ? editingItem.title : tx('添加安排', 'Add plan')} accent={editingItem ? kindAccent(editingItem.kind) : theme.plan}>
           <View style={styles.form}>
             <FormField label={tx('安排', 'Plan')} value={title} onChangeText={setTitle} placeholder={tx('例如：机场快线 → 中环', 'For example: Airport Express → Central')} />
             {!editingItem ? <SelectionField label={tx('类型', 'Type')} value={kind} options={itineraryKinds.map((itemKind) => ({ value: itemKind, label: kindLabel(itemKind) }))} onChange={(value) => chooseKind(value as ItineraryKind)} /> : null}
@@ -596,7 +589,7 @@ export default function TodayScreen() {
                 <ThemedText type="small" themeColor="textSecondary">{tx('此操作无法恢复。', 'This cannot be undone.')}</ThemedText>
                 <View style={styles.formActions}>
                   <View style={styles.actionGrow}><ActionButton tone="secondary" onPress={() => setConfirmDeleteItem(false)}>{tx('保留', 'Keep')}</ActionButton></View>
-                  <View style={styles.actionGrow}><Pressable accessibilityRole="button" disabled={busy} onPress={() => void deleteSelectedItem()} style={({ pressed }) => [styles.dangerConfirm, pressed && styles.pressed, busy && styles.disabled]}><ThemedText type="smallBold" style={styles.dangerConfirmText}>{busy ? tx('删除中…', 'Deleting…') : tx('删除', 'Delete')}</ThemedText></Pressable></View>
+                  <View style={styles.actionGrow}><Pressable accessibilityRole="button" disabled={busy} onPress={() => void deleteSelectedItem()} style={({ pressed }) => [styles.dangerConfirm, { backgroundColor: theme.danger }, pressed && styles.pressed, busy && styles.disabled]}><ThemedText type="smallBold" style={{ color: theme.textOnAccent }}>{busy ? tx('删除中…', 'Deleting…') : tx('删除', 'Delete')}</ThemedText></Pressable></View>
                 </View>
               </View>
             ) : !pendingTripRange ? (
@@ -640,7 +633,7 @@ export default function TodayScreen() {
                     <View style={[styles.stayActions, compact && styles.stayActionsCompact]}>
                         {stay.locationLabel ? (
                           <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(stay.locationLabel ?? '')}`)} style={({ pressed }) => [styles.stayTextAction, pressed && styles.pressed]}>
-                            <ThemedText type="smallBold" style={styles.linkText}>{tx('查看地图', 'Map')}</ThemedText>
+                            <ThemedText type="smallBold" style={{ color: theme.link }}>{tx('查看地图', 'Map')}</ThemedText>
                           </Pressable>
                         ) : null}
                         {itemActions(stay)}
@@ -663,10 +656,10 @@ export default function TodayScreen() {
               {upcomingStays.length > visibleStays.length ? <ThemedText type="small" themeColor="textSecondary">{tx(`另有 ${upcomingStays.length - visibleStays.length} 段住宿显示在后续时间线中`, `${upcomingStays.length - visibleStays.length} more stays appear later in the timeline`)}</ThemedText> : null}
             </View>
           ) : null}
-          <View style={[styles.nextRail, compact && styles.nextRailCompact, { backgroundColor: theme.backgroundElement }]}>
+          <View style={[styles.nextRail, compact && styles.nextRailCompact, { backgroundColor: theme.backgroundElement, shadowColor: theme.shadow }]}>
             <View style={styles.nextHeading}>
-              <View style={[styles.kindPill, { backgroundColor: getKindAccent(upcomingItems[0].kind) }]}>
-                <ThemedText type="smallBold" style={styles.kindPillText}>{kindLabel(upcomingItems[0].kind)}</ThemedText>
+              <View style={[styles.kindPill, { backgroundColor: kindAccent(upcomingItems[0].kind) }]}>
+                <ThemedText type="smallBold" style={{ color: theme.textOnAccent }}>{kindLabel(upcomingItems[0].kind)}</ThemedText>
               </View>
               <ThemedText type="small" themeColor="textSecondary">{tx('下一步', 'Up next')}</ThemedText>
             </View>
@@ -709,7 +702,7 @@ export default function TodayScreen() {
               {upcomingItems.slice(1).filter((item) => item.kind !== 'lodging' || !visibleStays.some((stay) => stay.id === item.id)).map((item) => (
                 <View key={item.id} style={styles.timelineRow}>
                   <View style={[styles.timelineRail, { borderRightColor: theme.backgroundSelected }]}>
-                    <View style={styles.timelineDot} />
+                    <View style={[styles.timelineDot, { backgroundColor: kindAccent(item.kind) }]} />
                   </View>
                   <View style={styles.timelineContent}>
                     <View style={[styles.timelineHeader, compact && styles.timelineHeaderCompact]}>
@@ -717,8 +710,8 @@ export default function TodayScreen() {
                         <ThemedText type="small" themeColor="textSecondary">{formatZonedDateTimeRange(item.startsAt, item.endsAt, languageTag, tripTimeZone)}</ThemedText>
                         <ThemedText type="smallBold">{item.title}</ThemedText>
                       </View>
-                      <View style={[styles.kindOutline, compact && styles.kindOutlineCompact, { borderColor: getKindAccent(item.kind) }]}>
-                        <ThemedText type="small" style={{ color: getKindAccent(item.kind) }}>{kindLabel(item.kind)}</ThemedText>
+                      <View style={[styles.kindOutline, compact && styles.kindOutlineCompact, { borderColor: kindAccent(item.kind) }]}>
+                        <ThemedText type="small" style={{ color: kindAccent(item.kind) }}>{kindLabel(item.kind)}</ThemedText>
                       </View>
                     </View>
                     {item.locationLabel ? <ThemedText type="small" themeColor="textSecondary">{item.locationLabel}</ThemedText> : null}
@@ -753,24 +746,23 @@ const styles = StyleSheet.create({
   grow: { flexGrow: 1, flexBasis: 140 },
   formActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   actionGrow: { flexGrow: 1, flexBasis: 150 },
-  floatingAdd: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#087F6A', alignItems: 'center', justifyContent: 'center', shadowColor: '#17324D', shadowOpacity: 0.2, shadowRadius: 14, shadowOffset: { width: 0, height: 6 } },
+  floatingAdd: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', shadowOpacity: 0.2, shadowRadius: 14, shadowOffset: { width: 0, height: 6 } },
   plusIcon: { width: 20, height: 20, alignItems: 'center', justifyContent: 'center' },
   closeIcon: { width: 20, height: 20, alignItems: 'center', justifyContent: 'center' },
-  plusHorizontal: { position: 'absolute', width: 18, height: 2, borderRadius: 1, backgroundColor: '#FFFFFF' },
-  plusVertical: { position: 'absolute', width: 2, height: 18, borderRadius: 1, backgroundColor: '#FFFFFF' },
-  closeDiagonalOne: { position: 'absolute', width: 18, height: 2, borderRadius: 1, backgroundColor: '#FFFFFF', transform: [{ rotate: '45deg' }] },
-  closeDiagonalTwo: { position: 'absolute', width: 18, height: 2, borderRadius: 1, backgroundColor: '#FFFFFF', transform: [{ rotate: '-45deg' }] },
+  plusHorizontal: { position: 'absolute', width: 18, height: 2, borderRadius: 1 },
+  plusVertical: { position: 'absolute', width: 2, height: 18, borderRadius: 1 },
+  closeDiagonalOne: { position: 'absolute', width: 18, height: 2, borderRadius: 1, transform: [{ rotate: '45deg' }] },
+  closeDiagonalTwo: { position: 'absolute', width: 18, height: 2, borderRadius: 1, transform: [{ rotate: '-45deg' }] },
   lockedDestination: { borderRadius: 12, padding: 14, gap: 3 },
   deleteConfirm: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 14, gap: 10 },
-  dangerConfirm: { minHeight: 48, borderRadius: 12, paddingHorizontal: 14, justifyContent: 'center', alignItems: 'center', backgroundColor: '#B4413E' },
-  dangerConfirmText: { color: '#FFFFFF' },
+  dangerConfirm: { minHeight: 48, borderRadius: 12, paddingHorizontal: 14, justifyContent: 'center', alignItems: 'center' },
   heroPanel: { gap: 18, paddingVertical: 2 },
   summaryStrip: { flexDirection: 'row', alignItems: 'stretch', paddingHorizontal: 4, gap: 12 },
   summaryStripCompact: { gap: 8 },
   summaryItem: { flex: 1, minWidth: 0, alignItems: 'center', gap: 2 },
   summaryItemCompact: { flexBasis: 0 },
   summaryDivider: { width: StyleSheet.hairlineWidth, alignSelf: 'stretch' },
-  nextRail: { borderRadius: 26, padding: 22, gap: 16, shadowColor: '#17324D', shadowOpacity: 0.08, shadowRadius: 28, shadowOffset: { width: 0, height: 10 } },
+  nextRail: { borderRadius: 26, padding: 22, gap: 16, shadowOpacity: 0.08, shadowRadius: 28, shadowOffset: { width: 0, height: 10 } },
   nextRailCompact: { borderRadius: 20, padding: 18, gap: 14 },
   nextHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   nextTitle: { fontSize: 34, lineHeight: 40 },
@@ -779,7 +771,6 @@ const styles = StyleSheet.create({
   nextMetaGridCompact: { gap: 8 },
   metaChip: { flexGrow: 1, flexBasis: 136, minWidth: 0, gap: 2 },
   kindPill: { alignSelf: 'flex-start', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7 },
-  kindPillText: { color: '#FFFFFF' },
   kindOutline: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6, alignSelf: 'center' },
   kindOutlineCompact: { alignSelf: 'flex-start' },
   mapAction: { minHeight: 68, borderRadius: 16, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 },
@@ -787,12 +778,11 @@ const styles = StyleSheet.create({
   timelineSection: { gap: 6, paddingTop: 8 },
   timelineRow: { minHeight: 76, flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
   timelineRail: { width: 16, alignItems: 'center', height: '100%', borderRightWidth: 1 },
-  timelineDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: '#1B70A6', marginRight: -1, marginTop: 7 },
+  timelineDot: { width: 9, height: 9, borderRadius: 5, marginRight: -1, marginTop: 7 },
   timelineContent: { flex: 1, minWidth: 0, gap: 2, paddingBottom: 16 },
   timelineHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   timelineHeaderCompact: { flexDirection: 'column', gap: 6 },
   timelineHeading: { flex: 1, minWidth: 0, gap: 2 },
-  routeEstimate: { color: '#087F6A' },
   routeDetails: { gap: 7, paddingVertical: 4 },
   routeModeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
   googleRouteLink: { minHeight: 42, flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 4, paddingVertical: 6 },
@@ -801,8 +791,7 @@ const styles = StyleSheet.create({
   transitPlanHeading: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 8 },
   transitPlanHeadingCompact: { flexDirection: 'column', alignItems: 'flex-start', gap: 2 },
   transitStep: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  transitStepMarker: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1B70A6' },
-  transitStepNumber: { color: '#FFFFFF' },
+  transitStepMarker: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   transitStepCopy: { flex: 1, minWidth: 0, gap: 2 },
   staySection: { gap: 10, paddingVertical: 8 },
   stayHeading: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 },
@@ -820,7 +809,6 @@ const styles = StyleSheet.create({
   stayDivider: { height: StyleSheet.hairlineWidth },
   stayFormGroup: { gap: 8 },
   readOnlyBadge: { alignSelf: 'flex-start', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 },
-  linkText: { color: '#1B70A6' },
   pressed: { opacity: 0.68 },
   disabled: { opacity: 0.5 },
 });

@@ -127,10 +127,10 @@ export default function LedgerScreen() {
     ],
     [formatDateTime, itineraryItems, tx],
   );
-  const darkMode = theme.background === '#0C1924';
-  const positiveColor = darkMode ? '#69D4BC' : '#087F6A';
-  const dangerColor = darkMode ? '#FF9B96' : '#B4413E';
-  const linkColor = darkMode ? '#8DD8FF' : '#1B70A6';
+  const positiveColor = theme.moneyIn;
+  const moneyOutColor = theme.moneyOut;
+  const dangerColor = theme.danger;
+  const linkColor = theme.link;
 
   const allocationPreview = useMemo(() => {
     if (!amount.trim() || participantIds.length === 0) return [];
@@ -186,7 +186,7 @@ export default function LedgerScreen() {
       const completedOutgoing = settlements.find(({ fromUserId }) => fromUserId === member.userId);
       const completedIncoming = settlements.find(({ toUserId }) => toUserId === member.userId);
       statuses.set(member.userId, outgoing
-        ? { label: tx(`待转给 ${names.get(outgoing.toParticipantId) ?? '同行者'}`, `Pending to ${names.get(outgoing.toParticipantId) ?? 'traveller'}`), color: dangerColor }
+        ? { label: tx(`待转给 ${names.get(outgoing.toParticipantId) ?? '同行者'}`, `Pending to ${names.get(outgoing.toParticipantId) ?? 'traveller'}`), color: moneyOutColor }
         : completedOutgoing
           ? { label: tx('已转账', 'Sent') }
           : completedIncoming
@@ -194,7 +194,7 @@ export default function LedgerScreen() {
             : { label: tx('待结算', 'Pending') });
     }
     return statuses;
-  }, [dangerColor, ledgerMembers, names, pendingTransfers, positiveColor, settlements, tx]);
+  }, [ledgerMembers, moneyOutColor, names, pendingTransfers, positiveColor, settlements, tx]);
 
   function resetExpenseForm() {
     setEditingExpenseId(undefined);
@@ -556,10 +556,10 @@ export default function LedgerScreen() {
           accessibilityLabel={composerOpen ? tx('关闭记账', 'Close expense entry') : tx('记一笔', 'Add expense')}
           accessibilityState={{ expanded: composerOpen }}
           onPress={toggleComposer}
-          style={({ pressed }) => [styles.floatingAdd, pressed && styles.pressed]}>
+          style={({ pressed }) => [styles.floatingAdd, { backgroundColor: theme.accent, shadowColor: theme.shadow }, pressed && styles.pressed]}>
           <View style={styles.plusIcon}>
-            <View style={styles.plusHorizontal} />
-            <View style={styles.plusVertical} />
+            <View style={[styles.plusHorizontal, { backgroundColor: theme.textOnAccent }]} />
+            <View style={[styles.plusVertical, { backgroundColor: theme.textOnAccent }]} />
           </View>
         </Pressable>
       ) : null}>
@@ -654,7 +654,7 @@ export default function LedgerScreen() {
           toggleGroupSettlement={() => setShowGroupSettlement((current) => !current)}
           themeSelected={theme.backgroundSelected}
           positiveColor={positiveColor}
-          dangerColor={dangerColor}
+          moneyOutColor={moneyOutColor}
           linkColor={linkColor}
           completeTransfer={completeTransfer}
           undoTransfer={undoTransfer}
@@ -685,13 +685,14 @@ export default function LedgerScreen() {
 }
 
 function ViewSwitchButton({ selected, onPress, children }: { selected: boolean; onPress: () => void; children: string }) {
+  const theme = useTheme();
   return (
     <Pressable
       accessibilityRole="tab"
       accessibilityState={{ selected }}
       onPress={onPress}
-      style={({ pressed }) => [styles.viewSwitchButton, selected && styles.viewSwitchButtonActive, pressed && styles.pressed]}>
-      <ThemedText type="smallBold" style={selected ? styles.viewSwitchTextActive : undefined}>{children}</ThemedText>
+      style={({ pressed }) => [styles.viewSwitchButton, selected && { backgroundColor: theme.backgroundElement }, pressed && styles.pressed]}>
+      <ThemedText type="smallBold" style={{ color: selected ? theme.text : theme.textSecondary }}>{children}</ThemedText>
     </Pressable>
   );
 }
@@ -741,10 +742,11 @@ function ExpenseComposer(props: {
   submitExpense: () => Promise<void>;
 }) {
   const { tx } = props;
+  const theme = useTheme();
   const { width } = useWindowDimensions();
   const compact = width < 520;
   return (
-    <View style={[styles.composer, compact && styles.composerCompact, { backgroundColor: props.themeSurface }]}>
+    <View style={[styles.composer, compact && styles.composerCompact, { backgroundColor: props.themeSurface, shadowColor: theme.shadow }]}>
       <View style={styles.composerHeading}>
         <View style={styles.composerTitleRow}>
           <SectionHeading title={props.editing ? tx('编辑支出', 'Edit expense') : tx('记一笔', 'Add expense')} />
@@ -894,7 +896,7 @@ function ExpenseComposer(props: {
             </View>
             {props.receipt ? (
               <View style={styles.receiptPreviewRow}>
-                <Image accessible accessibilityLabel={tx('待上传的小票预览', 'Receipt preview awaiting upload')} source={props.receipt.uri} style={styles.receiptPreview} contentFit="contain" />
+                <Image accessible accessibilityLabel={tx('待上传的小票预览', 'Receipt preview awaiting upload')} source={props.receipt.uri} style={[styles.receiptPreview, { backgroundColor: theme.backgroundSelected }]} contentFit="contain" />
                 <Pressable accessibilityRole="button" onPress={() => props.setReceipt(undefined)} style={({ pressed }) => [styles.textButton, pressed && styles.pressed]}>
                   <ThemedText type="smallBold" style={{ color: props.dangerColor }}>{tx('移除', 'Remove')}</ThemedText>
                 </Pressable>
@@ -937,6 +939,7 @@ function VoiceExpenseInput(props: {
   tx: (zh: string, en: string) => string;
   onAudioReady: (audioBase64: string, audioMimeType: string) => Promise<void>;
 }) {
+  const theme = useTheme();
   const recorder = useAudioRecorder(RecordingPresets.LOW_QUALITY);
   const state = useAudioRecorderState(recorder);
   const [voiceError, setVoiceError] = useState<string>();
@@ -984,8 +987,8 @@ function VoiceExpenseInput(props: {
           accessibilityState={{ disabled: props.disabled || processing, busy: processing }}
           disabled={props.disabled || processing}
           onPress={() => void (state.isRecording ? stopAndParse() : startRecording())}
-          style={({ pressed }) => [styles.voiceButton, state.isRecording && styles.voiceButtonRecording, pressed && styles.pressed, (props.disabled || processing) && styles.disabled]}>
-          <MicrophoneGlyph active={state.isRecording || processing} />
+          style={({ pressed }) => [styles.voiceButton, { backgroundColor: state.isRecording ? theme.danger : theme.info }, pressed && styles.pressed, (props.disabled || processing) && styles.disabled]}>
+          <MicrophoneGlyph />
         </Pressable>
         {processing ? <ThemedText type="small" themeColor="textSecondary">{props.tx('解析中…', 'Processing…')}</ThemedText> : state.isRecording ? <ThemedText type="smallBold">{Math.round(state.durationMillis / 1000)}s</ThemedText> : <ThemedText type="smallBold" themeColor="textSecondary">{props.tx('语音填入', 'Voice fill')}</ThemedText>}
       </View>
@@ -994,13 +997,14 @@ function VoiceExpenseInput(props: {
   );
 }
 
-function MicrophoneGlyph({ active }: { active: boolean }) {
+function MicrophoneGlyph() {
+  const theme = useTheme();
   return (
     <View style={styles.micGlyph} accessibilityElementsHidden>
-      <View style={[styles.micBody, active && styles.micBodyActive]} />
-      <View style={[styles.micArc, active && styles.micArcActive]} />
-      <View style={[styles.micStem, active && styles.micStemActive]} />
-      <View style={[styles.micBase, active && styles.micBaseActive]} />
+      <View style={[styles.micBody, { backgroundColor: theme.textOnAccent }]} />
+      <View style={[styles.micArc, { borderLeftColor: theme.textOnAccent, borderRightColor: theme.textOnAccent, borderBottomColor: theme.textOnAccent }]} />
+      <View style={[styles.micStem, { backgroundColor: theme.textOnAccent }]} />
+      <View style={[styles.micBase, { backgroundColor: theme.textOnAccent }]} />
     </View>
   );
 }
@@ -1022,9 +1026,9 @@ function MemberChoice({ member, selected, role = 'checkbox', onPress }: { member
       accessibilityState={{ checked: selected }}
       accessibilityLabel={member.displayName}
       onPress={onPress}
-      style={({ pressed }) => [styles.memberChoice, { backgroundColor: selected ? '#087F6A' : theme.backgroundSelected }, pressed && styles.pressed]}>
+      style={({ pressed }) => [styles.memberChoice, { backgroundColor: selected ? theme.accent : theme.backgroundSubtle }, pressed && styles.pressed]}>
       <MemberAvatar avatarUrl={member.avatarUrl} displayName={member.displayName} size={30} />
-      <ThemedText type="smallBold" style={selected ? styles.memberChoiceTextSelected : undefined}>{member.displayName}</ThemedText>
+      <ThemedText type="smallBold" style={{ color: selected ? theme.textOnAccent : theme.text }}>{member.displayName}</ThemedText>
     </Pressable>
   );
 }
@@ -1109,12 +1113,13 @@ function SettlementWorkspace(props: {
   toggleGroupSettlement: () => void;
   themeSelected: string;
   positiveColor: string;
-  dangerColor: string;
+  moneyOutColor: string;
   linkColor: string;
   completeTransfer: (transfer: SettlementTransfer & { currency: string }) => Promise<void>;
   undoTransfer: (settlement: Settlement) => Promise<void>;
 }) {
   const { tx } = props;
+  const theme = useTheme();
   const [showCompleted, setShowCompleted] = useState(false);
   const mySettlements = props.settlements.filter((settlement) =>
     settlement.fromUserId === props.currentUserId || settlement.toUserId === props.currentUserId,
@@ -1137,13 +1142,13 @@ function SettlementWorkspace(props: {
           const sent = sumSettlements(props.settlements, snapshot.currency, 'from', props.currentUserId);
           const received = sumSettlements(props.settlements, snapshot.currency, 'to', props.currentUserId);
           return (
-            <View key={snapshot.currency} style={[styles.personalCurrencyRow, props.compact && styles.personalCurrencyRowCompact]}>
+            <View key={snapshot.currency} style={[styles.personalCurrencyRow, { borderTopColor: theme.border }, props.compact && styles.personalCurrencyRowCompact]}>
               <View style={[styles.currencyIdentity, props.compact && styles.currencyIdentityCompact]}>
                 <ThemedText type="smallBold" style={[styles.currencyCode, { color: props.positiveColor }]}>{snapshot.currency}</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">{snapshot.currency.toUpperCase() === props.baseCurrency.toUpperCase() ? tx('行程本位币', 'Trip base') : tx('实际支付币种', 'Payment currency')}</ThemedText>
               </View>
               <View style={[styles.metricGrid, props.compact && styles.metricGridCompact]}>
-                <Metric compact={props.compact} label={tx('待转出', 'To send')} value={formatMinorAmount(pendingOut, snapshot.currency)} color={props.dangerColor} />
+                <Metric compact={props.compact} label={tx('待转出', 'To send')} value={formatMinorAmount(pendingOut, snapshot.currency)} color={props.moneyOutColor} />
                 <Metric compact={props.compact} label={tx('已转出', 'Sent')} value={formatMinorAmount(sent, snapshot.currency)} />
                 <Metric compact={props.compact} label={tx('待收款', 'To receive')} value={formatMinorAmount(pendingIn, snapshot.currency)} />
                 <Metric compact={props.compact} label={tx('已收款', 'Received')} value={formatMinorAmount(received, snapshot.currency)} color={props.positiveColor} />
@@ -1168,7 +1173,7 @@ function SettlementWorkspace(props: {
           const draft = props.settlementDrafts[key] ?? { currency: props.baseCurrency, amount: amountInputFromMinor(transfer.amountMinor, props.baseCurrency), rate: '1' };
           const expanded = props.expandedSettlementKey === key;
           return (
-            <View key={key} style={[styles.transferRow, props.compact && styles.transferRowCompact]}>
+            <View key={key} style={[styles.transferRow, { borderTopColor: theme.border }, props.compact && styles.transferRowCompact]}>
               <MemberAvatar avatarUrl={recipient?.avatarUrl} displayName={recipient?.displayName ?? tx('同行者', 'Traveller')} size={42} />
               <View style={styles.transferCopy}>
                 <ThemedText type="smallBold">{tx(`转给 ${props.names.get(transfer.toParticipantId) ?? '同行者'}`, `Pay ${props.names.get(transfer.toParticipantId) ?? 'Traveller'}`)}</ThemedText>
@@ -1182,8 +1187,8 @@ function SettlementWorkspace(props: {
                 accessibilityState={{ checked: false, busy: props.busySettlementId === key }}
                 disabled={Boolean(props.busySettlementId)}
                 onPress={() => void props.completeTransfer(transfer)}
-                style={({ pressed }) => [styles.markPaidButton, props.compact && styles.markPaidButtonCompact, pressed && styles.pressed, Boolean(props.busySettlementId) && styles.disabled]}>
-                <ThemedText type="smallBold" style={styles.quickAddText}>{tx('标记已转账', 'Mark sent')}</ThemedText>
+                style={({ pressed }) => [styles.markPaidButton, { backgroundColor: theme.accent }, props.compact && styles.markPaidButtonCompact, pressed && styles.pressed, Boolean(props.busySettlementId) && styles.disabled]}>
+                <ThemedText type="smallBold" style={{ color: theme.textOnAccent }}>{tx('标记已转账', 'Mark sent')}</ThemedText>
               </Pressable>
               {expanded ? (
                 <SettlementPaymentEditor
@@ -1206,7 +1211,7 @@ function SettlementWorkspace(props: {
             accessibilityRole="button"
             accessibilityState={{ expanded: showCompleted }}
             onPress={() => setShowCompleted((current) => !current)}
-            style={({ pressed }) => [styles.settlementDisclosure, pressed && styles.pressed]}>
+            style={({ pressed }) => [styles.settlementDisclosure, { borderTopColor: theme.border }, pressed && styles.pressed]}>
             <View style={styles.grow}>
               <ThemedText type="smallBold">{tx('已完成', 'Completed')}</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">{tx(`${mySettlements.length} 笔`, `${mySettlements.length} payment${mySettlements.length === 1 ? '' : 's'}`)}</ThemedText>
@@ -1217,7 +1222,7 @@ function SettlementWorkspace(props: {
             const sentByMe = settlement.fromUserId === props.currentUserId;
             const otherMember = props.memberById.get(sentByMe ? settlement.toUserId : settlement.fromUserId);
             return (
-              <View key={settlement.id} style={styles.completedRow}>
+              <View key={settlement.id} style={[styles.completedRow, { borderTopColor: theme.border }]}>
                 <MemberAvatar avatarUrl={otherMember?.avatarUrl} displayName={otherMember?.displayName ?? tx('同行者', 'Traveller')} size={38} />
                 <View style={styles.grow}>
                   <ThemedText type="smallBold">
@@ -1248,7 +1253,7 @@ function SettlementWorkspace(props: {
         accessibilityRole="button"
         accessibilityState={{ expanded: props.showGroupSettlement }}
         onPress={props.toggleGroupSettlement}
-        style={({ pressed }) => [styles.settlementDisclosure, pressed && styles.pressed]}>
+        style={({ pressed }) => [styles.settlementDisclosure, { borderTopColor: theme.border }, pressed && styles.pressed]}>
         <View style={styles.grow}>
           <ThemedText type="smallBold">{tx('全员结算', 'Group settlement')}</ThemedText>
           <ThemedText type="small" themeColor="textSecondary">{tx('查看全员状态', 'View group status')}</ThemedText>
@@ -1267,7 +1272,7 @@ function SettlementWorkspace(props: {
               const sent = sumSettlements(props.settlements, snapshot.currency, 'from', userId);
               const received = sumSettlements(props.settlements, snapshot.currency, 'to', userId);
               return (
-                <View key={userId} style={styles.memberSettlementRow}>
+                <View key={userId} style={[styles.memberSettlementRow, { borderTopColor: theme.border }]}>
                   <View style={styles.memberIdentity}>
                     <MemberAvatar avatarUrl={member?.avatarUrl} displayName={displayName} size={36} />
                     <View style={styles.grow}><ThemedText type="smallBold">{displayName}</ThemedText>{member?.archived ? <ThemedText type="small" themeColor="textSecondary">{tx('已离开行程', 'Left trip')}</ThemedText> : null}</View>
@@ -1284,7 +1289,7 @@ function SettlementWorkspace(props: {
           </View>
         ))}
         {props.pendingTransfers.length > 0 ? (
-          <View style={styles.groupRouteList}>
+          <View style={[styles.groupRouteList, { borderTopColor: theme.border }]}>
             <ThemedText type="smallBold">{tx('剩余转账路径', 'Remaining transfers')}</ThemedText>
             {props.pendingTransfers.map((transfer) => {
               const from = props.memberById.get(transfer.fromParticipantId);
@@ -1320,9 +1325,10 @@ function ExpenseActivity(props: {
   positiveColor: string;
 }) {
   const { tx } = props;
+  const theme = useTheme();
   if (props.expenses.length === 0) {
     return (
-      <View style={styles.quietEmpty}>
+      <View style={[styles.quietEmpty, { borderTopColor: theme.border }]}>
         <ThemedText style={styles.sectionTitle}>{tx('还没有支出', 'No expenses yet')}</ThemedText>
       </View>
     );
@@ -1340,7 +1346,7 @@ function ExpenseActivity(props: {
           .map((share) => `${props.names.get(share.userId) ?? tx('同行者', 'Traveller')} ${formatMinorAmount(share.amountMinor, expense.currency)}`)
           .join(tx(' · ', ' · '));
         return (
-          <View key={expense.id} style={styles.expenseItem}>
+          <View key={expense.id} style={[styles.expenseItem, { borderTopColor: theme.border }]}>
             <Pressable
               accessibilityRole="button"
               accessibilityState={{ expanded }}
@@ -1407,7 +1413,7 @@ function ExpenseActivity(props: {
                         accessibilityLabel={tx(`查看 ${expense.title} 的第 ${index + 1} 张小票`, `View receipt ${index + 1} for ${expense.title}`)}
                         onPress={() => void Linking.openURL(item.signedUrl!)}
                         style={({ pressed }) => pressed && styles.pressed}>
-                        <Image source={item.signedUrl} style={styles.receiptLarge} contentFit="contain" />
+                        <Image source={item.signedUrl} style={[styles.receiptLarge, { backgroundColor: theme.backgroundSelected }]} contentFit="contain" />
                       </Pressable>
                     ) : null)}
                   </View>
@@ -1423,7 +1429,7 @@ function ExpenseActivity(props: {
                   </Pressable>
                 </View>
                 {props.canEditExpense(expense) ? (
-                  <Pressable accessibilityRole="button" onPress={() => props.onEditExpense(expense)} style={({ pressed }) => [styles.editExpenseButton, pressed && styles.pressed]}>
+                  <Pressable accessibilityRole="button" onPress={() => props.onEditExpense(expense)} style={({ pressed }) => [styles.editExpenseButton, { backgroundColor: theme.accentSoft }, pressed && styles.pressed]}>
                     <ThemedText type="smallBold">{tx('编辑这笔支出', 'Edit expense')}</ThemedText>
                   </Pressable>
                 ) : null}
@@ -1484,14 +1490,12 @@ const styles = StyleSheet.create({
   viewSwitch: { flexDirection: 'row', padding: 4, borderRadius: 14, flex: 1, maxWidth: 320 },
   viewSwitchCompact: { maxWidth: '100%' },
   viewSwitchButton: { flex: 1, minHeight: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 10, paddingHorizontal: 14 },
-  viewSwitchButtonActive: { backgroundColor: '#087F6A' },
-  viewSwitchTextActive: { color: '#FFFFFF' },
-  quickAddText: { color: '#FFFFFF' },
-  floatingAdd: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#087F6A', alignItems: 'center', justifyContent: 'center', shadowColor: '#15344A', shadowOpacity: 0.2, shadowRadius: 14, shadowOffset: { width: 0, height: 6 } },
+  quickAddText: {},
+  floatingAdd: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', shadowOpacity: 0.2, shadowRadius: 14, shadowOffset: { width: 0, height: 6 } },
   plusIcon: { width: 20, height: 20, alignItems: 'center', justifyContent: 'center' },
-  plusHorizontal: { position: 'absolute', width: 18, height: 2, borderRadius: 1, backgroundColor: '#FFFFFF' },
-  plusVertical: { position: 'absolute', width: 2, height: 18, borderRadius: 1, backgroundColor: '#FFFFFF' },
-  composer: { gap: 20, borderRadius: 16, padding: 20, shadowColor: '#15344A', shadowOpacity: 0.1, shadowRadius: 20, shadowOffset: { width: 0, height: 8 }, elevation: 3 },
+  plusHorizontal: { position: 'absolute', width: 18, height: 2, borderRadius: 1 },
+  plusVertical: { position: 'absolute', width: 2, height: 18, borderRadius: 1 },
+  composer: { gap: 20, borderRadius: 16, padding: 20, shadowOpacity: 0.1, shadowRadius: 20, shadowOffset: { width: 0, height: 8 }, elevation: 3 },
   composerCompact: { padding: 16, gap: 16 },
   composerHeading: { gap: 12 },
   composerTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
@@ -1511,33 +1515,27 @@ const styles = StyleSheet.create({
   multiline: { minHeight: 96, textAlignVertical: 'top' },
   voiceGroup: { gap: 8 },
   voiceControlRow: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 48 },
-  voiceButton: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1B70A6' },
-  voiceButtonRecording: { backgroundColor: '#B4413E' },
+  voiceButton: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
   micGlyph: { width: 24, height: 28, alignItems: 'center', justifyContent: 'flex-start' },
-  micBody: { width: 10, height: 16, borderRadius: 6, backgroundColor: '#FFFFFF' },
-  micBodyActive: { backgroundColor: '#FFF5F3' },
-  micArc: { position: 'absolute', top: 8, width: 20, height: 14, borderWidth: 2, borderTopColor: 'transparent', borderLeftColor: '#FFFFFF', borderRightColor: '#FFFFFF', borderBottomColor: '#FFFFFF', borderRadius: 12 },
-  micArcActive: { borderLeftColor: '#FFF5F3', borderRightColor: '#FFF5F3', borderBottomColor: '#FFF5F3' },
-  micStem: { position: 'absolute', bottom: 2, width: 2, height: 6, borderRadius: 1, backgroundColor: '#FFFFFF' },
-  micStemActive: { backgroundColor: '#FFF5F3' },
-  micBase: { position: 'absolute', bottom: 0, width: 14, height: 2, borderRadius: 1, backgroundColor: '#FFFFFF' },
-  micBaseActive: { backgroundColor: '#FFF5F3' },
+  micBody: { width: 10, height: 16, borderRadius: 6 },
+  micArc: { position: 'absolute', top: 8, width: 20, height: 14, borderWidth: 2, borderTopColor: undefined, borderRadius: 12 },
+  micStem: { position: 'absolute', bottom: 2, width: 2, height: 6, borderRadius: 1 },
+  micBase: { position: 'absolute', bottom: 0, width: 14, height: 2, borderRadius: 1 },
   fieldGroup: { gap: 8 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   splitFields: { gap: 10, padding: 12, borderRadius: 12 },
   splitPreview: { gap: 4, padding: 12, borderRadius: 12 },
   memberChoice: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 9, paddingVertical: 6, borderRadius: 999 },
-  memberChoiceTextSelected: { color: '#FFFFFF' },
   receiptGroup: { gap: 10, paddingTop: 4 },
   receiptCopy: { gap: 2 },
   receiptActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   secondaryAction: { minHeight: 44, flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14, borderRadius: 12 },
   receiptPreviewRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  receiptPreview: { width: 80, height: 80, borderRadius: 12, backgroundColor: '#D9EEEA' },
+  receiptPreview: { width: 80, height: 80, borderRadius: 12 },
   personalSummary: { gap: 18, paddingVertical: 6 },
   summaryHeading: { gap: 4 },
   sectionTitle: { fontSize: 22, lineHeight: 28, fontWeight: '700' },
-  personalCurrencyRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 14, paddingVertical: 14, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#AFCACA' },
+  personalCurrencyRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 14, paddingVertical: 14, borderTopWidth: StyleSheet.hairlineWidth },
   personalCurrencyRowCompact: { flexDirection: 'column', alignItems: 'stretch', gap: 12 },
   currencyIdentity: { minWidth: 90, gap: 2, paddingBottom: 2 }, currencyIdentityCompact: { minWidth: 0 },
   currencyCode: { minWidth: 42, paddingBottom: 2 },
@@ -1545,11 +1543,11 @@ const styles = StyleSheet.create({
   metric: { minWidth: 94, flexGrow: 1, gap: 2 }, metricCompact: { minWidth: 0, flexBasis: 0 },
   sectionBlock: { gap: 0 },
   sectionHeading: { gap: 4, paddingBottom: 10 },
-  transferRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingVertical: 16, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#AFCACA' },
+  transferRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingVertical: 16, borderTopWidth: StyleSheet.hairlineWidth },
   transferRowCompact: { flexDirection: 'column', alignItems: 'stretch', gap: 10 },
   transferCopy: { gap: 2, flex: 1 },
   transferAmount: { fontSize: 22, lineHeight: 28, fontWeight: '700' },
-  markPaidButton: { minHeight: 44, minWidth: 112, alignItems: 'center', justifyContent: 'center', borderRadius: 12, paddingHorizontal: 14, backgroundColor: '#087F6A' },
+  markPaidButton: { minHeight: 44, minWidth: 112, alignItems: 'center', justifyContent: 'center', borderRadius: 12, paddingHorizontal: 14 },
   markPaidButtonCompact: { width: '100%' },
   paymentEditor: { flexBasis: '100%', gap: 10, paddingTop: 8, paddingLeft: 54 },
   paymentEditorCompact: { paddingLeft: 0 },
@@ -1557,28 +1555,28 @@ const styles = StyleSheet.create({
   paymentEditorFieldsCompact: { flexDirection: 'column', alignItems: 'stretch' },
   paymentCurrencyField: { width: 150 },
   paymentCurrencyFieldCompact: { width: '100%' },
-  completedRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#AFCACA' },
+  completedRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, borderTopWidth: StyleSheet.hairlineWidth },
   textButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 4 },
-  quietEmpty: { gap: 4, paddingVertical: 22, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#AFCACA' },
-  settlementDisclosure: { minHeight: 60, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#AFCACA' },
+  quietEmpty: { gap: 4, paddingVertical: 22, borderTopWidth: StyleSheet.hairlineWidth },
+  settlementDisclosure: { minHeight: 60, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, borderTopWidth: StyleSheet.hairlineWidth },
   groupCurrency: { gap: 0, paddingBottom: 18 },
   currencyDivider: { paddingVertical: 10 },
-  memberSettlementRow: { gap: 8, paddingVertical: 13, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#AFCACA' },
+  memberSettlementRow: { gap: 8, paddingVertical: 13, borderTopWidth: StyleSheet.hairlineWidth },
   memberIdentity: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   memberName: { flex: 1 },
   memberMetrics: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   miniMetric: { minWidth: '45%', flexGrow: 1, gap: 1 },
-  groupRouteList: { gap: 5, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#AFCACA' },
+  groupRouteList: { gap: 5, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth },
   routeRow: { minHeight: 44, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 }, routeText: { flexGrow: 1, flexShrink: 1 },
-  expenseItem: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#AFCACA' },
+  expenseItem: { borderTopWidth: StyleSheet.hairlineWidth },
   expenseSummary: { minHeight: 68, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14 },
   expenseAmountBlock: { alignItems: 'flex-end', gap: 2 },
   expenseDetails: { gap: 14, paddingBottom: 18 },
-  editExpenseButton: { minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 12, paddingHorizontal: 14, backgroundColor: '#D9EEEA' },
+  editExpenseButton: { minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 12, paddingHorizontal: 14 },
   detailLine: { flexDirection: 'row', alignItems: 'flex-start', gap: 16 },
   sharePeople: { gap: 6 }, sharePerson: { minHeight: 38, flexDirection: 'row', alignItems: 'center', gap: 10 }, shareAmount: { alignItems: 'flex-end', gap: 1 },
   receiptGallery: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  receiptLarge: { width: 160, height: 190, borderRadius: 12, backgroundColor: '#D9EEEA' },
+  receiptLarge: { width: 160, height: 190, borderRadius: 12 },
   grow: { flex: 1 },
   pressed: { opacity: 0.72 },
   disabled: { opacity: 0.5 },
