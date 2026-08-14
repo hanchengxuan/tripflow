@@ -31,7 +31,8 @@ node .design/tripflow-ui-2.0/build.mjs
 | `components-patterns.html` | Composed patterns with anatomy + rules — Next up rail, Section heading, Metric, Timeline item, Route segment, Stay card, Settlement task, Expense row, list rows |
 | `screens-today.html` | Today · with trip / add-plan sheet / empty state |
 | `screens-ledger.html` | Ledger · settle / activity / add-expense sheet |
-| `screens-trips-account.html` | Trips · trip management · Me · Auth |
+| `screens-trips-account.html` | Trips · trip management · Me |
+| `screens-auth.html` | Auth · sign in / verify code / register profile / invite entry |
 | `screens-dark.html` | Today and Ledger in dark |
 
 The pages above are the complete system — every token, component, pattern, and screen lives here.
@@ -115,6 +116,20 @@ Kept current. Update a row when you close a gap.
 | Travel modes compact until expanded | ✅ shipped | `RouteEstimateChip` toggles `src/app/index.tsx` `routeModeControls` |
 
 The travel-mode product decision preserves explicit control without keeping four controls open: the current mode and estimate always remain visible, and pressing that chip reveals all four modes in place. Selecting one collapses the choices while the estimate refreshes.
+
+### 0. Auth screens — designed, not yet built
+
+`src/features/auth/auth-screen.tsx`. Design: `screens-auth.html`.
+
+The shipped login screen was redesigned after review. What changes:
+
+- **Google gets its official four-colour G mark** on a white ground with a hairline border, per Google's own guidance. The shipped button is an unmarked secondary block.
+- **One headline, one subline.** The screen carried two sublines saying the same thing, plus a decorative orange rule the system's own rules forbid.
+- **The lone `邮箱` chip goes.** With phone sign-in disabled it is a chooser with one option.
+- **Flow selection stops being upfront.** `密码登录 / 注册 / 验证码` were three chips the user had to understand before typing anything; they become bottom text links, with the email-code path as the default.
+- **`或用邮箱` divider** separates the provider path from the email path.
+- **Registration profile setup gets a design at all** — it previously had none. Three-segment progress, an explicitly optional avatar, name and password.
+- **Invite entry names the trip in the headline** rather than burying it in body copy.
 
 ## Next slice: pick up here
 
