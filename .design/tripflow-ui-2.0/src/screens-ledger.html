@@ -1,0 +1,182 @@
+<!-- @dsCard group="Screens" -->
+<title>TripFlow · Ledger</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="kit.css">
+
+<div class="gallery">
+
+  <!-- ============ 1. SETTLE ============ -->
+  <figure class="frame">
+    <div class="phone">
+      <div class="status"><span>9:41</span><span class="dots"><i></i><i></i><b></b></span></div>
+
+      <div class="scr">
+        <div class="hdr">
+          <h1>账本</h1>
+          <div class="ctx"><span>香港五日</span><span class="sep"></span><span>本位币 HK$</span><span class="sep"></span><span>12 笔支出</span></div>
+        </div>
+
+        <div class="segmented"><div class="on">结算 Settle</div><div>明细 Activity</div></div>
+
+        <div class="balance">
+          <div class="legend">
+            <div class="out"><span>你要付 To send</span><strong>HK$ 412.50</strong></div>
+            <div class="in"><span>该收 To receive</span><strong>HK$ 268.00</strong></div>
+          </div>
+          <div class="track">
+            <span class="fill out" style="left:52px;width:118px"></span>
+            <span class="fill in" style="left:170px;width:77px"></span>
+            <span class="zero" style="left:169px"></span>
+          </div>
+          <div class="net">净额 Net <b>−HK$ 144.50</b> · 2 笔待转出 · 1 笔待收</div>
+        </div>
+
+        <div class="sect"><h2>我的待办</h2><span>2</span></div>
+
+        <div class="stack">
+          <div class="task">
+            <span class="avatar">小王</span>
+            <div class="copy"><strong>转给 小王</strong><small>用其他币种付款</small></div>
+            <div class="right">
+              <span class="amt">HK$ 286.50</span>
+              <button class="btn btn-sm btn-primary">标记已转账</button>
+            </div>
+          </div>
+
+          <div class="task">
+            <span class="avatar">Ana</span>
+            <div class="copy"><strong>转给 Ana</strong><small>用其他币种付款</small></div>
+            <div class="right">
+              <span class="amt">HK$ 126.00</span>
+              <button class="btn btn-sm btn-primary">标记已转账</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="rowlist">
+          <div class="listrow">
+            <div class="copy"><strong>已完成</strong><span>3 笔 · 含 1 笔已收入</span></div>
+            <span class="chev"></span>
+          </div>
+          <div class="hr"></div>
+          <div class="listrow">
+            <div class="copy"><strong>全员结算</strong><span>查看 4 人的待转 / 已转状态</span></div>
+            <span class="chev"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="fab"></div>
+      <nav class="nav"><a>今天</a><a>行程</a><a class="on">账本</a><a>我的</a></nav>
+    </div>
+    <figcaption>Ledger — 结算
+      <span>一条双向余额条取代四块等重指标；待办优先于历史</span>
+    </figcaption>
+  </figure>
+
+  <!-- ============ 2. ACTIVITY ============ -->
+  <figure class="frame">
+    <div class="phone">
+      <div class="status"><span>9:41</span><span class="dots"><i></i><i></i><b></b></span></div>
+
+      <div class="scr">
+        <div class="hdr">
+          <h1>账本</h1>
+          <div class="ctx"><span>香港五日</span><span class="sep"></span><span>合计 HK$ 4,820.00</span></div>
+        </div>
+
+        <div class="segmented"><div>结算 Settle</div><div class="on">明细 Activity</div></div>
+
+        <div class="rowlist">
+          <div class="exp">
+            <span class="avatar sm">小王</span>
+            <div class="copy"><strong>添好运 点心晚餐</strong><span>3月12 19:40 · 小王付款</span></div>
+            <div class="right"><b>HK$ 860.00</b><span>均分 4 人</span></div>
+          </div>
+          <div class="hr"></div>
+
+          <div class="exp">
+            <span class="avatar sm">你</span>
+            <div class="copy"><strong>机场快线 ×4</strong><span>3月12 09:10 · 你付款 · 有小票</span></div>
+            <div class="right"><b>HK$ 460.00</b><span class="paid">你垫付</span></div>
+          </div>
+          <div class="hr"></div>
+
+          <div class="exp">
+            <span class="avatar sm">Ana</span>
+            <div class="copy"><strong>半岛酒店 3 晚</strong><span>3月12 15:20 · Ana 付款</span></div>
+            <div class="right"><b>HK$ 3,180.00</b><span>均分 4 人</span></div>
+          </div>
+          <div class="hr"></div>
+
+          <div class="exp">
+            <span class="avatar sm">Kai</span>
+            <div class="copy"><strong>八达通充值</strong><span>3月12 10:05 · Kai 付款 · CNY 320</span></div>
+            <div class="right"><b>HK$ 352.00</b><span>汇率 1.10</span></div>
+          </div>
+        </div>
+
+        <div class="dim">展开任意一笔可以看到每人的分摊金额和小票。</div>
+      </div>
+
+      <div class="fab"></div>
+      <nav class="nav"><a>今天</a><a>行程</a><a class="on">账本</a><a>我的</a></nav>
+    </div>
+    <figcaption>Ledger — 明细
+      <span>行内保留币种与汇率，外币不被本位币吞掉</span>
+    </figcaption>
+  </figure>
+
+  <!-- ============ 3. EXPENSE COMPOSER ============ -->
+  <figure class="frame">
+    <div class="phone">
+      <div class="status"><span>9:41</span><span class="dots"><i></i><i></i><b></b></span></div>
+      <div class="scr">
+        <div class="hdr"><h1>账本</h1><div class="ctx"><span>香港五日</span></div></div>
+        <div class="segmented" style="opacity:.5"><div class="on">结算 Settle</div><div>明细 Activity</div></div>
+      </div>
+      <div class="scrim"></div>
+
+      <div class="sheet">
+        <div class="grab"></div>
+        <div class="sheethead"><h2>记一笔</h2><span class="close">取消</span></div>
+
+        <div class="segmented"><div>手动</div><div class="on">AI 一句话</div></div>
+
+        <div class="field">
+          <label>描述这笔支出</label>
+          <div class="box">晚餐 860 港币，小王付款，三人均分</div>
+        </div>
+
+        <div class="notice ok"><i></i>AI 已生成草稿（置信度 92%），核对后保存。</div>
+
+        <div class="field-row">
+          <div class="field"><label>金额</label><div class="box">860.00</div></div>
+          <div class="field"><label>币种</label><div class="box">HKD</div></div>
+        </div>
+
+        <div class="field">
+          <label>谁付款？</label>
+          <div class="row" style="flex-wrap:wrap;gap:8px">
+            <span class="chip on">小王</span><span class="chip">你</span><span class="chip">Ana</span><span class="chip">Kai</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>怎么分？</label>
+          <div class="row" style="flex-wrap:wrap;gap:8px">
+            <span class="chip on">均分</span><span class="chip">指定金额</span><span class="chip">按比例</span><span class="chip">按份数</span>
+          </div>
+        </div>
+
+        <div class="dim">分摊预览 · 小王 HK$ 286.67 · 你 HK$ 286.67 · Ana HK$ 286.66</div>
+
+        <button class="btn btn-primary btn-block">保存支出</button>
+      </div>
+    </div>
+    <figcaption>Ledger — 记一笔
+      <span>AI 草稿必须经人确认才落账；分摊预览常驻在保存按钮之上</span>
+    </figcaption>
+  </figure>
+
+</div>

@@ -1,0 +1,171 @@
+<!-- @dsCard group="Components" -->
+<title>TripFlow · Components</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="kit.css">
+<style>
+  .sheetpanel { background: var(--bg-canvas); border-radius: 24px; padding: 28px 32px 32px; width: 460px; display: flex; flex-direction: column; gap: 18px; }
+  .sheetpanel > h2 { margin: 0; font-size: 20px; letter-spacing: -0.2px; }
+  .sheetpanel > .note { margin: -8px 0 0; font-size: 13px; line-height: 19px; color: var(--text-secondary); }
+  .specimen { background: var(--bg-canvas); border-radius: var(--radius-lg); padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+  .wide { width: 620px; }
+</style>
+
+<div class="gallery">
+
+  <!-- ACTIONS -->
+  <section class="sheetpanel">
+    <h2>Actions</h2>
+    <p class="note">One primary action per surface. 48px minimum height, 14px radius. Ghost is for inline actions only — never a form's main commit.</p>
+    <div class="row" style="flex-wrap:wrap"><button class="btn btn-primary">加入行程 Add</button><button class="btn btn-secondary">取消 Cancel</button></div>
+    <div class="row" style="flex-wrap:wrap"><button class="btn btn-danger">删除 Delete</button><button class="btn btn-ghost">在地图中打开</button></div>
+    <div class="row" style="flex-wrap:wrap"><button class="btn btn-sm btn-primary">标记已转账</button><button class="btn btn-sm btn-secondary">编辑</button></div>
+    <div class="hr"></div>
+    <div class="row" style="align-items:center;gap:20px">
+      <div style="position:relative;width:56px;height:56px"><div class="fab" style="position:static"></div></div>
+      <span class="dim">FAB · 持续可达的创建入口（Today = 添加安排，Ledger = 记一笔）</span>
+    </div>
+  </section>
+
+  <!-- SELECTION -->
+  <section class="sheetpanel">
+    <h2>Selection</h2>
+    <p class="note">Chips express a finite choice: travel mode, split mode, role, language. Never use one as a generic container.</p>
+    <div class="row" style="flex-wrap:wrap;gap:8px">
+      <span class="chip on">公共交通</span><span class="chip">驾车</span><span class="chip">步行</span><span class="chip off">骑行</span>
+    </div>
+    <div class="segmented"><div class="on">结算 Settle</div><div>明细 Activity</div></div>
+    <div class="hr"></div>
+    <div class="row" style="flex-wrap:wrap;gap:8px">
+      <span class="pill solid k-transport">交通 Transport</span>
+      <span class="pill solid k-lodging">住宿 Lodging</span>
+      <span class="pill solid k-food">餐饮 Food</span>
+    </div>
+    <div class="row" style="flex-wrap:wrap;gap:8px">
+      <span class="pill k-transport"><i></i>交通</span>
+      <span class="pill k-lodging"><i></i>住宿</span>
+      <span class="pill k-food"><i></i>餐饮</span>
+      <span class="pill k-activity"><i></i>活动</span>
+      <span class="pill k-task"><i></i>待办</span>
+      <span class="pill k-note"><i></i>备注</span>
+    </div>
+    <p class="note">Solid marks the Up-next item. Soft marks rows on the rail. Food and Task use darkened hues so a 12px label clears AA.</p>
+  </section>
+
+  <!-- INPUT -->
+  <section class="sheetpanel">
+    <h2>Input</h2>
+    <p class="note">Label above, 48px box, 12px radius. Error copy names the recovery, not the failure.</p>
+    <div class="field"><label>安排 Plan</label><div class="box ph">例如：机场快线 → 中环</div></div>
+    <div class="field"><label>安排 Plan</label><div class="box focus">维多利亚港夜景</div></div>
+    <div class="field"><label>金额 Amount</label><div class="box err">0</div><span class="err-msg">输入大于 0 的金额后即可保存。</span></div>
+    <div class="field-row">
+      <div class="field"><label>开始</label><div class="box">3月13 · 10:00</div></div>
+      <div class="field"><label>结束</label><div class="box">3月13 · 12:00</div></div>
+    </div>
+  </section>
+
+  <!-- FEEDBACK -->
+  <section class="sheetpanel">
+    <h2>Feedback</h2>
+    <p class="note">One feedback region per surface. Success is local and short; anything destructive, financial, or date-changing gets an explicit confirm instead.</p>
+    <div class="notice ok"><i></i>安排已加入共享时间线。</div>
+    <div class="notice info"><i></i>这项安排超出当前行程日期。</div>
+    <div class="notice err"><i></i>验证码已过期，请重新获取。</div>
+    <div class="hr"></div>
+    <div class="row" style="gap:14px;align-items:center">
+      <span class="avatar sm">Ka</span><span class="avatar">小王</span><span class="avatar lg">Li</span>
+      <span class="dim">Avatar 32 / 40 / 56 — 无头像时用姓名首字</span>
+    </div>
+  </section>
+
+  <!-- RAIL -->
+  <section class="sheetpanel wide">
+    <h2>The time rail</h2>
+    <p class="note">The signature pattern. Times live in a fixed 46px gutter so every title starts on the same axis; a 2px spine runs the whole day; travel occupies the gap <em>between</em> two plans instead of hiding inside a card.</p>
+    <div class="specimen">
+      <div class="rail">
+        <div class="railrow">
+          <div class="gutter"><b>09:20</b><span>09:44</span></div>
+          <div class="spine"><span class="dot" style="background:var(--kind-transport)"></span><span class="line"></span></div>
+          <div class="body">
+            <div class="head"><h3>机场快线 → 中环</h3><span class="pill k-transport"><i></i>交通</span></div>
+            <div class="place">香港国际机场 T1</div>
+          </div>
+        </div>
+        <div class="railseg">
+          <div class="gutter"></div><div class="spine"><span class="line"></span></div>
+          <div class="body">
+            <span class="estimate"><b>公共交通</b><i></i>3.2 km · 约 18 分钟</span>
+            <span class="maplink">地图 Map</span>
+          </div>
+        </div>
+        <div class="railrow">
+          <div class="gutter"><b>15:00</b><span>16:00</span></div>
+          <div class="spine"><span class="dot" style="background:var(--kind-lodging)"></span><span class="line"></span></div>
+          <div class="body">
+            <div class="head"><h3>入住半岛酒店</h3><span class="pill k-lodging"><i></i>住宿</span></div>
+            <div class="place">尖沙咀梳士巴利道</div>
+          </div>
+        </div>
+      </div>
+      <div class="stay">
+        <span class="bar"></span>
+        <div class="copy"><strong>半岛酒店 The Peninsula</strong><span>3月12日 15:00 — 3月15日 11:00</span><small>尖沙咀梳士巴利道</small></div>
+        <div class="nights"><b>3</b><span>晚 nights</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MONEY -->
+  <section class="sheetpanel wide">
+    <h2>The balance bar</h2>
+    <p class="note">Money has a direction, not a severity — so it never borrows the danger red. Left of the zero tick is what you owe, right is what is owed to you. This one object replaces four equal-weight metric tiles.</p>
+    <div class="specimen">
+      <div class="balance">
+        <div class="legend">
+          <div class="out"><span>你要付 To send</span><strong>HK$ 412.50</strong></div>
+          <div class="in"><span>该收 To receive</span><strong>HK$ 268.00</strong></div>
+        </div>
+        <div class="track">
+          <span class="fill out" style="left:150px;width:145px"></span>
+          <span class="fill in" style="left:295px;width:94px"></span>
+          <span class="zero" style="left:294px"></span>
+        </div>
+        <div class="net">净额 Net <b>−HK$ 144.50</b> · 2 笔待转出 · 1 笔待收</div>
+      </div>
+      <div class="task">
+        <span class="avatar">小王</span>
+        <div class="copy"><strong>转给 小王</strong><small>用其他币种付款</small></div>
+        <div class="right"><span class="amt">HK$ 286.50</span><button class="btn btn-sm btn-primary">标记已转账</button></div>
+      </div>
+      <div class="rowlist">
+        <div class="exp">
+          <span class="avatar sm">小王</span>
+          <div class="copy"><strong>添好运 点心晚餐</strong><span>3月12 19:40 · 小王付款</span></div>
+          <div class="right"><b>HK$ 860.00</b><span>均分 4 人</span></div>
+        </div>
+        <div class="hr"></div>
+        <div class="exp">
+          <span class="avatar sm">你</span>
+          <div class="copy"><strong>机场快线 ×4</strong><span>3月12 09:10 · 你付款 · 有小票</span></div>
+          <div class="right"><b>HK$ 460.00</b><span class="paid">你垫付</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- NAV -->
+  <section class="sheetpanel">
+    <h2>Navigation</h2>
+    <p class="note">Four destinations, floating glass surface, 16px above the safe area, labels bilingual at all times. The FAB sits 86px up so it never covers the active tab.</p>
+    <div class="specimen" style="position:relative;height:120px;padding:0">
+      <nav class="nav" style="position:absolute"><a class="on">今天</a><a>行程</a><a>账本</a><a>我的</a></nav>
+    </div>
+    <div class="rowlist">
+      <div class="listrow"><div class="copy"><strong>当前行程</strong></div><span class="val">香港五日</span></div>
+      <div class="hr"></div>
+      <div class="listrow"><div class="copy"><strong>邀请同行者</strong><span>二维码或链接</span></div><span class="chev"></span></div>
+    </div>
+  </section>
+
+</div>

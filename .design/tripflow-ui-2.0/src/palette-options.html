@@ -1,0 +1,425 @@
+<!-- @dsCard group="Foundations" -->
+<title>TripFlow · Palette options</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="kit.css">
+<style>
+/* ============================================================
+   Each option overrides only the colour tokens. Structure,
+   spacing, type and elevation are untouched — so the comparison
+   is honestly about colour and nothing else.
+   ============================================================ */
+
+/* ---------- A · Slate & Indigo (Linear / Revolut lineage) ---------- */
+.p-a {
+  --bg-canvas: #F6F7F9;  --bg-surface: #FFFFFF;  --bg-raised: #FFFFFF;
+  --bg-subtle: #F0F2F5;  --bg-selected: #E7E9F6; --bg-inverse: #171A20;
+  --text-primary: #171A20; --text-secondary: #5B6472; --text-muted: #8B93A1;
+  --text-on-accent: #FFFFFF; --text-link: #3F4AB8;
+  --accent-primary: #4C5AD4; --accent-pressed: #3C48B4; --accent-soft: #ECEEFC;
+  --accent-info: #37618E; --accent-info-soft: #E7EDF4;
+  --accent-plan: #A65A2E; --accent-plan-soft: #F5EBE4;
+  --danger-base: #B3261E; --danger-soft: #FAE9E7;
+  --money-in: #0F7A5F; --money-out: #B45309; --money-settled: #8B93A1;
+  --border-hairline: #E3E6EB; --border-field: #D5D9E0; --border-focus: #4C5AD4;
+  --avatar-fg: #3C48B4;
+  --kind-transport: #37618E; --kind-lodging: #6B5CA5; --kind-food: #A65A2E;
+  --kind-activity: #2F7A62; --kind-task: #8A6A1F; --kind-note: #5B6472;
+  --kind-soft-transport: #E7EDF4; --kind-soft-lodging: #EEEBF6; --kind-soft-food: #F5EBE4;
+  --kind-soft-activity: #E6F0EC; --kind-soft-task: #F3EEE1; --kind-soft-note: #EDEFF2;
+}
+
+/* ---------- B · Warm Sand & Clay (Airbnb / hospitality lineage) ---------- */
+.p-b {
+  --bg-canvas: #FAF8F5;  --bg-surface: #FFFFFF;  --bg-raised: #FFFFFF;
+  --bg-subtle: #F3EFE9;  --bg-selected: #F6E7E2; --bg-inverse: #1E1B18;
+  --text-primary: #1E1B18; --text-secondary: #6B635A; --text-muted: #9C948A;
+  --text-on-accent: #FFFFFF; --text-link: #9C4A3C;
+  --accent-primary: #C24A38; --accent-pressed: #A33C2D; --accent-soft: #F6E7E2;
+  --accent-info: #3E6B8C; --accent-info-soft: #E8EEF3;
+  --accent-plan: #9A6B2E; --accent-plan-soft: #F4EDE1;
+  --danger-base: #A3312A; --danger-soft: #F7E6E4;
+  --money-in: #2E7D5B; --money-out: #9A6B2E; --money-settled: #9C948A;
+  --border-hairline: #EAE4DB; --border-field: #DCD4C8; --border-focus: #3E6B8C;
+  --avatar-fg: #A33C2D;
+  --kind-transport: #3E6B8C; --kind-lodging: #6E5C93; --kind-food: #A9552A;
+  --kind-activity: #2E7D5B; --kind-task: #8A6A1F; --kind-note: #6B635A;
+  --kind-soft-transport: #E8EEF3; --kind-soft-lodging: #EDEAF3; --kind-soft-food: #F5E9E1;
+  --kind-soft-activity: #E5F0EA; --kind-soft-task: #F3EEE1; --kind-soft-note: #EFECE7;
+}
+
+/* ---------- C · Neutral Ink & Pine (disciplined version of today's teal) ---------- */
+.p-c {
+  --bg-canvas: #F7F8F8;  --bg-surface: #FFFFFF;  --bg-raised: #FFFFFF;
+  --bg-subtle: #EFF1F1;  --bg-selected: #E1EDE7; --bg-inverse: #16211F;
+  --text-primary: #16211F; --text-secondary: #5A6663; --text-muted: #8A9491;
+  --text-on-accent: #FFFFFF; --text-link: #2E6A96;
+  --accent-primary: #0E6E57; --accent-pressed: #0A5744; --accent-soft: #E1EDE7;
+  --accent-info: #2E6A96; --accent-info-soft: #E7EEF4;
+  --accent-plan: #A65A2E; --accent-plan-soft: #F5EBE4;
+  --danger-base: #AF3128; --danger-soft: #F8E7E5;
+  --money-in: #0E6E57; --money-out: #A85A22; --money-settled: #8A9491;
+  --border-hairline: #E2E5E5; --border-field: #CFD6D4; --border-focus: #2E6A96;
+  --avatar-fg: #0A5744;
+  --kind-transport: #2E6A96; --kind-lodging: #63569B; --kind-food: #A05329;
+  --kind-activity: #2F7A62; --kind-task: #856520; --kind-note: #5A6663;
+  --kind-soft-transport: #E7EEF4; --kind-soft-lodging: #ECEAF4; --kind-soft-food: #F4EAE3;
+  --kind-soft-activity: #E6F0EC; --kind-soft-task: #F2EDE0; --kind-soft-note: #ECEEEE;
+}
+
+/* ---------- Reference: the original Coastal Teal palette ----------
+   Pinned explicitly. Option C shipped into tokens.css, so without this the
+   "current" column would silently re-render in the new palette and the
+   comparison would stop being a comparison. */
+.p-old {
+  --bg-canvas: #F4FAFA;  --bg-surface: #FFFFFF;  --bg-raised: #FFFFFF;
+  --bg-subtle: #EAF3F3;  --bg-selected: #D9EEEA; --bg-inverse: #15344A;
+  --text-primary: #15344A; --text-secondary: #526F7E; --text-muted: #7B96A5;
+  --text-on-accent: #FFFFFF; --text-link: #1B70A6;
+  --accent-primary: #087F6A; --accent-pressed: #06705E; --accent-soft: #D9EEEA;
+  --accent-info: #1B70A6; --accent-info-soft: #DDEBF5;
+  --accent-plan: #D86E35; --accent-plan-soft: #FBE7DB;
+  --danger-base: #B4413E; --danger-soft: #F9E1E0;
+  --money-in: #087F6A; --money-out: #C15C27; --money-settled: #7B96A5;
+  --border-hairline: #DCE8E8; --border-field: #A8DACF; --border-focus: #1B70A6;
+  --avatar-fg: #06705E;
+  --kind-transport: #1B70A6; --kind-lodging: #6E5AE6; --kind-food: #A64C1F;
+  --kind-activity: #087F6A; --kind-task: #8A600C; --kind-note: #526F7E;
+  --kind-soft-transport: #E3EEF4; --kind-soft-lodging: #EDEBFC; --kind-soft-food: #FAEEE7;
+  --kind-soft-activity: #E1F0ED; --kind-soft-task: #F9F1E3; --kind-soft-note: #EAEEF0;
+}
+
+/* ---------- page chrome ---------- */
+.opts { display: flex; flex-wrap: wrap; gap: 40px; align-items: flex-start; }
+.opt { width: 390px; display: flex; flex-direction: column; gap: 16px; }
+.opt > header h2 { margin: 0 0 4px; font-size: 20px; letter-spacing: -0.2px; color: #171A20; }
+.opt > header .tag { font-size: 11px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: #8B93A1; display: block; margin-bottom: 6px; }
+.opt > header p { margin: 0; font-size: 13px; line-height: 19px; color: #5B6472; }
+.opt > header .rec { display: inline-block; margin-top: 8px; font-size: 11px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; background: #171A20; color: #fff; border-radius: 999px; padding: 4px 10px; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chips i { width: 26px; height: 26px; border-radius: 7px; display: block; border: 1px solid rgba(0,0,0,.06); }
+.strip { background: var(--bg-surface); border-radius: 20px; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+.brief { width: 1180px; background: #fff; border-radius: 24px; padding: 34px 40px 36px; margin-bottom: 8px; }
+.brief h1 { margin: 0 0 8px; font-size: 30px; letter-spacing: -0.5px; color: #171A20; }
+.brief .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 1.6px; text-transform: uppercase; color: #8B93A1; margin-bottom: 10px; }
+.brief p { margin: 0 0 14px; font-size: 14px; line-height: 21px; color: #5B6472; max-width: 860px; }
+.brief ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 21px; color: #5B6472; max-width: 860px; }
+.brief li + li { margin-top: 4px; }
+</style>
+
+<div class="gallery" style="background:#EDEFF2">
+  <div class="brief">
+    <div class="eyebrow">Palette study</div>
+    <h1>三个更克制的配色方向</h1>
+    <p>三个选项只替换颜色 token —— 结构、间距、字阶、阴影完全不动，所以对比是诚实的：你看到的差异全部来自配色。</p>
+    <ul>
+      <li><b>现有配色的问题</b>：6 个类型色和主色饱和度在同一档，加上薄荷绿画布和选中态，整个界面被染成一片绿。</li>
+      <li><b>三个选项的共同修正</b>：画布和表面改为真中性灰，选中态几乎不带色相，类型色统一降饱和到同一族（同明度、同彩度），主色只出现在唯一的主动作上。</li>
+      <li><b>钱的语义保持不变</b>：进项用绿、出项用琥珀/赭，红色只留给错误与删除。三套都通过 WCAG AA。</li>
+    </ul>
+  </div>
+
+  <div class="opts">
+
+    <!-- ============ A ============ -->
+    <div class="opt p-a">
+      <header>
+        <span class="tag">Option A</span>
+        <h2>Slate &amp; Indigo</h2>
+        <p>冷中性灰 + 单一靛蓝。Linear、Revolut 的路子——最像“成熟软件”，颜色几乎只在主动作和状态上出现。靛蓝与钱的绿/琥珀互不干扰。</p>
+      </header>
+      <div class="chips">
+        <i style="background:#F6F7F9"></i><i style="background:#F0F2F5"></i><i style="background:#E7E9F6"></i>
+        <i style="background:#4C5AD4"></i><i style="background:#171A20"></i><i style="background:#0F7A5F"></i><i style="background:#B45309"></i><i style="background:#B3261E"></i>
+      </div>
+
+      <div class="phone">
+        <div class="status"><span>9:41</span><span class="dots"><i></i><i></i><b></b></span></div>
+        <div class="scr">
+          <div class="hdr">
+            <h1>香港五日</h1>
+            <div class="ctx"><span>3月12 — 3月16</span><span class="sep"></span><span><b>4</b> 人同行</span><span class="sep"></span><span>HK$</span></div>
+          </div>
+          <div class="hero">
+            <div class="eyebrow"><span class="pill solid k-transport">交通 Transport</span><em>下一步 Up next</em></div>
+            <h2>机场快线 → 中环</h2>
+            <div class="meta">
+              <div><span>时间 When</span><strong>09:20 — 09:44</strong></div>
+              <div><span>同行 Who</span><strong>4 人可见</strong></div>
+            </div>
+            <div class="placebtn"><div><strong>香港国际机场 T1</strong><small>打开地图 Open map</small></div><span class="chev"></span></div>
+          </div>
+          <div class="stay">
+            <span class="bar"></span>
+            <div class="copy"><strong>半岛酒店 The Peninsula</strong><span>3月12 15:00 — 3月15 11:00</span></div>
+            <div class="nights"><b>3</b><span>晚</span></div>
+          </div>
+          <div class="sect"><h2>后续安排 Later</h2><span>5</span></div>
+          <div class="rail">
+            <div class="railseg">
+              <div class="gutter"></div><div class="spine"><span class="line"></span></div>
+              <div class="body"><span class="estimate"><b>公共交通</b><i></i>3.2 km · 约 18 分钟</span><span class="maplink">地图</span></div>
+            </div>
+            <div class="railrow">
+              <div class="gutter"><b>18:30</b><span>20:00</span></div>
+              <div class="spine"><span class="dot" style="background:var(--kind-food)"></span><span class="line"></span></div>
+              <div class="body"><div class="head"><h3>添好运 点心晚餐</h3><span class="pill k-food"><i></i>餐饮</span></div><div class="place">深水埗福荣街</div></div>
+            </div>
+            <div class="railrow">
+              <div class="gutter"><b>21:00</b><span>22:00</span></div>
+              <div class="spine"><span class="dot" style="background:var(--kind-activity)"></span><span class="line"></span></div>
+              <div class="body"><div class="head"><h3>维多利亚港夜景</h3><span class="pill k-activity"><i></i>活动</span></div><div class="place">尖沙咀海滨长廊</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="fab"></div>
+        <nav class="nav"><a class="on">今天</a><a>行程</a><a>账本</a><a>我的</a></nav>
+      </div>
+
+      <div class="strip">
+        <div class="balance">
+          <div class="legend">
+            <div class="out"><span>你要付</span><strong>HK$ 412.50</strong></div>
+            <div class="in"><span>该收</span><strong>HK$ 268.00</strong></div>
+          </div>
+          <div class="track">
+            <span class="fill out" style="left:36%;width:34%"></span>
+            <span class="fill in" style="left:70%;width:22%"></span>
+            <span class="zero" style="left:70%"></span>
+          </div>
+        </div>
+        <div class="row" style="flex-wrap:wrap;gap:6px">
+          <span class="pill k-transport"><i></i>交通</span><span class="pill k-lodging"><i></i>住宿</span><span class="pill k-food"><i></i>餐饮</span>
+          <span class="pill k-activity"><i></i>活动</span><span class="pill k-task"><i></i>待办</span><span class="pill k-note"><i></i>备注</span>
+        </div>
+        <div class="row"><button class="btn btn-primary grow">保存支出</button><button class="btn btn-secondary">取消</button></div>
+      </div>
+    </div>
+
+    <!-- ============ B ============ -->
+    <div class="opt p-b">
+      <header>
+        <span class="tag">Option B</span>
+        <h2>Warm Sand &amp; Clay</h2>
+        <p>暖中性 + 一个陶土红。Airbnb 的路子——旅行/住宿类产品的温度感，也最不像 fintech。代价是暖红主色与“餐饮”类型色同族，需要靠明度拉开。</p>
+      </header>
+      <div class="chips">
+        <i style="background:#FAF8F5"></i><i style="background:#F3EFE9"></i><i style="background:#F6E7E2"></i>
+        <i style="background:#C24A38"></i><i style="background:#1E1B18"></i><i style="background:#2E7D5B"></i><i style="background:#9A6B2E"></i><i style="background:#A3312A"></i>
+      </div>
+
+      <div class="phone">
+        <div class="status"><span>9:41</span><span class="dots"><i></i><i></i><b></b></span></div>
+        <div class="scr">
+          <div class="hdr">
+            <h1>香港五日</h1>
+            <div class="ctx"><span>3月12 — 3月16</span><span class="sep"></span><span><b>4</b> 人同行</span><span class="sep"></span><span>HK$</span></div>
+          </div>
+          <div class="hero">
+            <div class="eyebrow"><span class="pill solid k-transport">交通 Transport</span><em>下一步 Up next</em></div>
+            <h2>机场快线 → 中环</h2>
+            <div class="meta">
+              <div><span>时间 When</span><strong>09:20 — 09:44</strong></div>
+              <div><span>同行 Who</span><strong>4 人可见</strong></div>
+            </div>
+            <div class="placebtn"><div><strong>香港国际机场 T1</strong><small>打开地图 Open map</small></div><span class="chev"></span></div>
+          </div>
+          <div class="stay">
+            <span class="bar"></span>
+            <div class="copy"><strong>半岛酒店 The Peninsula</strong><span>3月12 15:00 — 3月15 11:00</span></div>
+            <div class="nights"><b>3</b><span>晚</span></div>
+          </div>
+          <div class="sect"><h2>后续安排 Later</h2><span>5</span></div>
+          <div class="rail">
+            <div class="railseg">
+              <div class="gutter"></div><div class="spine"><span class="line"></span></div>
+              <div class="body"><span class="estimate"><b>公共交通</b><i></i>3.2 km · 约 18 分钟</span><span class="maplink">地图</span></div>
+            </div>
+            <div class="railrow">
+              <div class="gutter"><b>18:30</b><span>20:00</span></div>
+              <div class="spine"><span class="dot" style="background:var(--kind-food)"></span><span class="line"></span></div>
+              <div class="body"><div class="head"><h3>添好运 点心晚餐</h3><span class="pill k-food"><i></i>餐饮</span></div><div class="place">深水埗福荣街</div></div>
+            </div>
+            <div class="railrow">
+              <div class="gutter"><b>21:00</b><span>22:00</span></div>
+              <div class="spine"><span class="dot" style="background:var(--kind-activity)"></span><span class="line"></span></div>
+              <div class="body"><div class="head"><h3>维多利亚港夜景</h3><span class="pill k-activity"><i></i>活动</span></div><div class="place">尖沙咀海滨长廊</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="fab"></div>
+        <nav class="nav"><a class="on">今天</a><a>行程</a><a>账本</a><a>我的</a></nav>
+      </div>
+
+      <div class="strip">
+        <div class="balance">
+          <div class="legend">
+            <div class="out"><span>你要付</span><strong>HK$ 412.50</strong></div>
+            <div class="in"><span>该收</span><strong>HK$ 268.00</strong></div>
+          </div>
+          <div class="track">
+            <span class="fill out" style="left:36%;width:34%"></span>
+            <span class="fill in" style="left:70%;width:22%"></span>
+            <span class="zero" style="left:70%"></span>
+          </div>
+        </div>
+        <div class="row" style="flex-wrap:wrap;gap:6px">
+          <span class="pill k-transport"><i></i>交通</span><span class="pill k-lodging"><i></i>住宿</span><span class="pill k-food"><i></i>餐饮</span>
+          <span class="pill k-activity"><i></i>活动</span><span class="pill k-task"><i></i>待办</span><span class="pill k-note"><i></i>备注</span>
+        </div>
+        <div class="row"><button class="btn btn-primary grow">保存支出</button><button class="btn btn-secondary">取消</button></div>
+      </div>
+    </div>
+
+    <!-- ============ C ============ -->
+    <div class="opt p-c">
+      <header>
+        <span class="tag">Option C</span>
+        <h2>Neutral Ink &amp; Pine</h2>
+        <p>保留青绿血统，但把它压深、把中性色彻底去绿。改动最小、迁移成本最低；如果你不想放弃现有品牌资产，选这个。</p>
+        <span class="rec">已采用</span>
+      </header>
+      <div class="chips">
+        <i style="background:#F7F8F8"></i><i style="background:#EFF1F1"></i><i style="background:#E1EDE7"></i>
+        <i style="background:#0E6E57"></i><i style="background:#16211F"></i><i style="background:#0E6E57"></i><i style="background:#A85A22"></i><i style="background:#AF3128"></i>
+      </div>
+
+      <div class="phone">
+        <div class="status"><span>9:41</span><span class="dots"><i></i><i></i><b></b></span></div>
+        <div class="scr">
+          <div class="hdr">
+            <h1>香港五日</h1>
+            <div class="ctx"><span>3月12 — 3月16</span><span class="sep"></span><span><b>4</b> 人同行</span><span class="sep"></span><span>HK$</span></div>
+          </div>
+          <div class="hero">
+            <div class="eyebrow"><span class="pill solid k-transport">交通 Transport</span><em>下一步 Up next</em></div>
+            <h2>机场快线 → 中环</h2>
+            <div class="meta">
+              <div><span>时间 When</span><strong>09:20 — 09:44</strong></div>
+              <div><span>同行 Who</span><strong>4 人可见</strong></div>
+            </div>
+            <div class="placebtn"><div><strong>香港国际机场 T1</strong><small>打开地图 Open map</small></div><span class="chev"></span></div>
+          </div>
+          <div class="stay">
+            <span class="bar"></span>
+            <div class="copy"><strong>半岛酒店 The Peninsula</strong><span>3月12 15:00 — 3月15 11:00</span></div>
+            <div class="nights"><b>3</b><span>晚</span></div>
+          </div>
+          <div class="sect"><h2>后续安排 Later</h2><span>5</span></div>
+          <div class="rail">
+            <div class="railseg">
+              <div class="gutter"></div><div class="spine"><span class="line"></span></div>
+              <div class="body"><span class="estimate"><b>公共交通</b><i></i>3.2 km · 约 18 分钟</span><span class="maplink">地图</span></div>
+            </div>
+            <div class="railrow">
+              <div class="gutter"><b>18:30</b><span>20:00</span></div>
+              <div class="spine"><span class="dot" style="background:var(--kind-food)"></span><span class="line"></span></div>
+              <div class="body"><div class="head"><h3>添好运 点心晚餐</h3><span class="pill k-food"><i></i>餐饮</span></div><div class="place">深水埗福荣街</div></div>
+            </div>
+            <div class="railrow">
+              <div class="gutter"><b>21:00</b><span>22:00</span></div>
+              <div class="spine"><span class="dot" style="background:var(--kind-activity)"></span><span class="line"></span></div>
+              <div class="body"><div class="head"><h3>维多利亚港夜景</h3><span class="pill k-activity"><i></i>活动</span></div><div class="place">尖沙咀海滨长廊</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="fab"></div>
+        <nav class="nav"><a class="on">今天</a><a>行程</a><a>账本</a><a>我的</a></nav>
+      </div>
+
+      <div class="strip">
+        <div class="balance">
+          <div class="legend">
+            <div class="out"><span>你要付</span><strong>HK$ 412.50</strong></div>
+            <div class="in"><span>该收</span><strong>HK$ 268.00</strong></div>
+          </div>
+          <div class="track">
+            <span class="fill out" style="left:36%;width:34%"></span>
+            <span class="fill in" style="left:70%;width:22%"></span>
+            <span class="zero" style="left:70%"></span>
+          </div>
+        </div>
+        <div class="row" style="flex-wrap:wrap;gap:6px">
+          <span class="pill k-transport"><i></i>交通</span><span class="pill k-lodging"><i></i>住宿</span><span class="pill k-food"><i></i>餐饮</span>
+          <span class="pill k-activity"><i></i>活动</span><span class="pill k-task"><i></i>待办</span><span class="pill k-note"><i></i>备注</span>
+        </div>
+        <div class="row"><button class="btn btn-primary grow">保存支出</button><button class="btn btn-secondary">取消</button></div>
+      </div>
+    </div>
+
+    <!-- ============ CURRENT (reference) ============ -->
+    <div class="opt p-old">
+      <header>
+        <span class="tag">现有</span>
+        <h2>Coastal Teal（对照）</h2>
+        <p>作为对照放在这里：注意画布、选中态、住宿紫、待办琥珀都在抢注意力，主色青绿反而没有突出出来。</p>
+      </header>
+      <div class="chips">
+        <i style="background:#F4FAFA"></i><i style="background:#EAF3F3"></i><i style="background:#D9EEEA"></i>
+        <i style="background:#087F6A"></i><i style="background:#15344A"></i><i style="background:#087F6A"></i><i style="background:#C15C27"></i><i style="background:#B4413E"></i>
+      </div>
+
+      <div class="phone">
+        <div class="status"><span>9:41</span><span class="dots"><i></i><i></i><b></b></span></div>
+        <div class="scr">
+          <div class="hdr">
+            <h1>香港五日</h1>
+            <div class="ctx"><span>3月12 — 3月16</span><span class="sep"></span><span><b>4</b> 人同行</span><span class="sep"></span><span>HK$</span></div>
+          </div>
+          <div class="hero">
+            <div class="eyebrow"><span class="pill solid k-transport">交通 Transport</span><em>下一步 Up next</em></div>
+            <h2>机场快线 → 中环</h2>
+            <div class="meta">
+              <div><span>时间 When</span><strong>09:20 — 09:44</strong></div>
+              <div><span>同行 Who</span><strong>4 人可见</strong></div>
+            </div>
+            <div class="placebtn"><div><strong>香港国际机场 T1</strong><small>打开地图 Open map</small></div><span class="chev"></span></div>
+          </div>
+          <div class="stay">
+            <span class="bar"></span>
+            <div class="copy"><strong>半岛酒店 The Peninsula</strong><span>3月12 15:00 — 3月15 11:00</span></div>
+            <div class="nights"><b>3</b><span>晚</span></div>
+          </div>
+          <div class="sect"><h2>后续安排 Later</h2><span>5</span></div>
+          <div class="rail">
+            <div class="railseg">
+              <div class="gutter"></div><div class="spine"><span class="line"></span></div>
+              <div class="body"><span class="estimate"><b>公共交通</b><i></i>3.2 km · 约 18 分钟</span><span class="maplink">地图</span></div>
+            </div>
+            <div class="railrow">
+              <div class="gutter"><b>18:30</b><span>20:00</span></div>
+              <div class="spine"><span class="dot" style="background:var(--kind-food)"></span><span class="line"></span></div>
+              <div class="body"><div class="head"><h3>添好运 点心晚餐</h3><span class="pill k-food"><i></i>餐饮</span></div><div class="place">深水埗福荣街</div></div>
+            </div>
+            <div class="railrow">
+              <div class="gutter"><b>21:00</b><span>22:00</span></div>
+              <div class="spine"><span class="dot" style="background:var(--kind-activity)"></span><span class="line"></span></div>
+              <div class="body"><div class="head"><h3>维多利亚港夜景</h3><span class="pill k-activity"><i></i>活动</span></div><div class="place">尖沙咀海滨长廊</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="fab"></div>
+        <nav class="nav"><a class="on">今天</a><a>行程</a><a>账本</a><a>我的</a></nav>
+      </div>
+
+      <div class="strip">
+        <div class="balance">
+          <div class="legend">
+            <div class="out"><span>你要付</span><strong>HK$ 412.50</strong></div>
+            <div class="in"><span>该收</span><strong>HK$ 268.00</strong></div>
+          </div>
+          <div class="track">
+            <span class="fill out" style="left:36%;width:34%"></span>
+            <span class="fill in" style="left:70%;width:22%"></span>
+            <span class="zero" style="left:70%"></span>
+          </div>
+        </div>
+        <div class="row" style="flex-wrap:wrap;gap:6px">
+          <span class="pill k-transport"><i></i>交通</span><span class="pill k-lodging"><i></i>住宿</span><span class="pill k-food"><i></i>餐饮</span>
+          <span class="pill k-activity"><i></i>活动</span><span class="pill k-task"><i></i>待办</span><span class="pill k-note"><i></i>备注</span>
+        </div>
+        <div class="row"><button class="btn btn-primary grow">保存支出</button><button class="btn btn-secondary">取消</button></div>
+      </div>
+    </div>
+
+  </div>
+</div>
