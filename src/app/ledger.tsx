@@ -10,6 +10,7 @@ import { Chevron } from '@/components/chevron';
 import { MemberAvatar } from '@/components/member-avatar';
 import { Screen } from '@/components/screen';
 import { SelectionField } from '@/components/selection-field';
+import { BalanceBar } from '@/components/balance-bar';
 import { SectionHeading } from '@/components/section-heading';
 import { ThemedText } from '@/components/themed-text';
 import { getCurrencyOptions } from '@/constants/options';
@@ -1142,17 +1143,23 @@ function SettlementWorkspace(props: {
           const sent = sumSettlements(props.settlements, snapshot.currency, 'from', props.currentUserId);
           const received = sumSettlements(props.settlements, snapshot.currency, 'to', props.currentUserId);
           return (
-            <View key={snapshot.currency} style={[styles.personalCurrencyRow, { borderTopColor: theme.border }, props.compact && styles.personalCurrencyRowCompact]}>
-              <View style={[styles.currencyIdentity, props.compact && styles.currencyIdentityCompact]}>
+            <View key={snapshot.currency} style={[styles.personalCurrencyRow, { borderTopColor: theme.border }]}>
+              <View style={styles.currencyIdentity}>
                 <ThemedText type="smallBold" style={[styles.currencyCode, { color: props.positiveColor }]}>{snapshot.currency}</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">{snapshot.currency.toUpperCase() === props.baseCurrency.toUpperCase() ? tx('行程本位币', 'Trip base') : tx('实际支付币种', 'Payment currency')}</ThemedText>
               </View>
-              <View style={[styles.metricGrid, props.compact && styles.metricGridCompact]}>
-                <Metric compact={props.compact} label={tx('待转出', 'To send')} value={formatMinorAmount(pendingOut, snapshot.currency)} color={props.moneyOutColor} />
-                <Metric compact={props.compact} label={tx('已转出', 'Sent')} value={formatMinorAmount(sent, snapshot.currency)} />
-                <Metric compact={props.compact} label={tx('待收款', 'To receive')} value={formatMinorAmount(pendingIn, snapshot.currency)} />
-                <Metric compact={props.compact} label={tx('已收款', 'Received')} value={formatMinorAmount(received, snapshot.currency)} color={props.positiveColor} />
-              </View>
+              <BalanceBar
+                outLabel={tx('你要付', 'To send')}
+                outAmount={formatMinorAmount(pendingOut, snapshot.currency)}
+                outValue={pendingOut}
+                inLabel={tx('该收', 'To receive')}
+                inAmount={formatMinorAmount(pendingIn, snapshot.currency)}
+                inValue={pendingIn}
+                footnote={tx(
+                  `净额 ${formatMinorAmount(pendingIn - pendingOut, snapshot.currency)} · 已转出 ${formatMinorAmount(sent, snapshot.currency)} · 已收款 ${formatMinorAmount(received, snapshot.currency)}`,
+                  `Net ${formatMinorAmount(pendingIn - pendingOut, snapshot.currency)} · sent ${formatMinorAmount(sent, snapshot.currency)} · received ${formatMinorAmount(received, snapshot.currency)}`,
+                )}
+              />
             </View>
           );
         })}
@@ -1442,15 +1449,6 @@ function ExpenseActivity(props: {
   );
 }
 
-function Metric({ compact = false, label, value, color }: { compact?: boolean; label: string; value: string; color?: string }) {
-  return (
-    <View style={[styles.metric, compact && styles.metricCompact]}>
-      <ThemedText type="small" themeColor="textSecondary">{label}</ThemedText>
-      <ThemedText type="smallBold" style={color ? { color } : undefined}>{value}</ThemedText>
-    </View>
-  );
-}
-
 function MiniMetric({ label, value, currency, color }: { label: string; value: number; currency: string; color?: string }) {
   return (
     <View style={styles.miniMetric}>
@@ -1535,12 +1533,9 @@ const styles = StyleSheet.create({
   personalSummary: { gap: 18, paddingVertical: 6 },
   summaryHeading: { gap: 4 },
   sectionTitle: { fontSize: 22, lineHeight: 28, fontWeight: '700' },
-  personalCurrencyRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 14, paddingVertical: 14, borderTopWidth: StyleSheet.hairlineWidth },
-  personalCurrencyRowCompact: { flexDirection: 'column', alignItems: 'stretch', gap: 12 },
-  currencyIdentity: { minWidth: 90, gap: 2, paddingBottom: 2 }, currencyIdentityCompact: { minWidth: 0 },
+  personalCurrencyRow: { gap: 10, paddingVertical: 14, borderTopWidth: StyleSheet.hairlineWidth },
+  currencyIdentity: { gap: 2 },
   currencyCode: { minWidth: 42, paddingBottom: 2 },
-  metricGrid: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', gap: 14 }, metricGridCompact: { gap: 10, alignItems: 'flex-start' },
-  metric: { minWidth: 94, flexGrow: 1, gap: 2 }, metricCompact: { minWidth: 0, flexBasis: 0 },
   sectionBlock: { gap: 0 },
   sectionHeading: { gap: 4, paddingBottom: 10 },
   transferRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingVertical: 16, borderTopWidth: StyleSheet.hairlineWidth },
