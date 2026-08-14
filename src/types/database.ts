@@ -1065,6 +1065,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      move_itinerary_item: {
+        Args: { requested_item_id: string; requested_target_trip_id: string }
+        Returns: string
+      }
       record_settlement: {
         Args: {
           settlement_base_amount_minor?: number

@@ -120,6 +120,7 @@ See `planning.md` for the complete P0/P1 scope, non-goals, architecture, milesto
 - Ledger settlement follow-up is implemented on `codex/ledger-settlement`: expense edits now preserve save/link state, each expense has an explicit manual or automatic settled marker with a reversible RPC, settlement inserts/deletes refresh automatic flags when normalized balances reach zero, and expenses can link to a specific itinerary item for review. The live migration `expense_settlement_and_itinerary_links` is applied; new Supabase advisor output contains only the existing auth/performance baseline plus the expected new foreign-key/index notices. Local Expo shell QA reaches the configured-Supabase notice without runtime console errors because this isolated worktree has no public Supabase variables.
 - The first-trip recovery gate was removed after its transient full-screen loading state caused unreliable return behavior; session authentication loading remains protected, while product data refreshes in the mounted shell. Lint, TypeScript, 32 Jest tests, Expo Doctor 20/20, web/iOS exports, and six mobile/desktop Chromium checks passed on 2026-08-13.
 - Today’s trip overview no longer shows the home-currency badge beside the section heading; currency remains available in the trip and ledger contexts where it supports a decision. Lint, TypeScript, web export, and six mobile/desktop Chromium checks passed on 2026-08-14.
+- Cross-trip itinerary moves are now atomic on `codex/move-itinerary`: owners/editors can move a plan from Today into another trip without recreating it, with lodging and its generated transfer moved together, source-trip segment references cleared, compatible participants preserved, and linked ledger expenses intentionally blocked until unlinked. The live `move_itinerary_between_trips` migration is applied as remote version `20260814045150`; function privilege introspection and security advisors show no new findings beyond the existing baseline. Lint, TypeScript, Jest, Expo Doctor, web/iOS exports, and public-route smoke checks pass; authenticated move acceptance still needs a configured fixture account.
 
 ## Applied Supabase migrations
 
@@ -148,8 +149,9 @@ See `planning.md` for the complete P0/P1 scope, non-goals, architecture, milesto
 - `custom_expense_splits`
 - `update_custom_expense`
 - `expense_settlement_and_itinerary_links`
+- `move_itinerary_between_trips`
 
-The live migration list was rechecked after applying `expense_settlement_and_itinerary_links`; no pending TripFlow migration remains.
+The live migration list was rechecked after applying `move_itinerary_between_trips`; no pending TripFlow migration remains.
 
 Temporary acceptance fixtures are removed after each test; production may contain real user-created rows.
 
