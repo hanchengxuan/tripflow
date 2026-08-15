@@ -10,8 +10,8 @@ Last verified: 2026-08-11 UTC
 - SKU：`tripflow-ios-001`
 - 主要语言：简体中文
 - 类别建议：主类别 `Travel`，副类别 `Finance`
-- 隐私政策 URL：`https://tripflow-liart.vercel.app/privacy`
-- 支持 URL：`https://tripflow-liart.vercel.app/support`
+- 隐私政策 URL：`https://tripflow.fun/privacy`
+- 支持 URL：`https://tripflow.fun/support`
 
 ## 宣传文本
 

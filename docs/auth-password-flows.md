@@ -51,7 +51,7 @@ supabase.auth.resetPasswordForEmail(normalizeEmail(email), { redirectTo })
 `redirectTo` must be on Supabase Auth's allowed redirect list, or the link silently drops the user on the Site URL with no session.
 
 Register both:
-- production: `https://tripflow-liart.vercel.app/reset-password`
+- production: `https://tripflow.fun/reset-password`
 - local development: the dev server origin
 
 This is the same class of problem that already bit this project: an emailed link obeys the Supabase **Site URL**, not wherever the user started. A tester on a dev server who clicks the emailed link lands on production. Say so in the QA notes.

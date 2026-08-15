@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  PRODUCTION_URL: https://tripflow-liart.vercel.app
+  PRODUCTION_URL: https://tripflow.fun
 
 jobs:
   quality:
