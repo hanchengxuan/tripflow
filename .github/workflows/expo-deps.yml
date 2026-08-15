@@ -59,24 +59,11 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -b "$branch"
           git add package.json package-lock.json app.json
-          git commit -m "fix(deps): realign Expo packages with the installed SDK
-
-Generated on Linux so the lockfile keeps the platform-specific optional
-bindings that \`npm ci\` needs on the runners.
-
-Expo Doctor and a clean \`npm ci\` both passed in the job that produced this."
+          git commit \
+            -m "fix(deps): realign Expo packages with the installed SDK" \
+            -m "Generated on Linux so the lockfile keeps the platform-specific optional bindings that npm ci needs on the runners. Expo Doctor and a clean npm ci both passed in the job that produced this."
           git push origin "$branch"
 
           gh pr create --base main --head "$branch" \
             --title "fix(deps): realign Expo packages with the installed SDK" \
-            --body "Opened by the \`Expo dependency realignment\` workflow.
-
-\`npx expo install --fix\` run on Linux, so the lockfile keeps the platform-specific
-optional bindings that \`npm ci\` needs on the runners — a lockfile regenerated on
-macOS drops them and every job fails at install.
-
-The job verified Expo Doctor is clean and that \`npm ci\` succeeds from scratch.
-The normal CI gates still apply to this PR.
-
-Check the diff for \`app.json\`: \`expo install --fix\` registers config plugins for
-packages that newly ship one, which is a native change."
+            --body "Opened by the Expo dependency realignment workflow. \`npx expo install --fix\` ran on Linux, so the lockfile keeps the platform-specific optional bindings that \`npm ci\` needs on the runners; a lockfile regenerated on macOS drops them and every job fails at install. The job verified Expo Doctor is clean and that \`npm ci\` succeeds from scratch. Normal CI gates still apply. Check the \`app.json\` diff: \`expo install --fix\` registers config plugins for packages that newly ship one, which is a native change."
