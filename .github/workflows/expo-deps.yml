@@ -12,6 +12,10 @@ name: Expo dependency realignment
 
 on:
   workflow_dispatch:
+  # Pushing a branch with this prefix runs the realignment, so it works even
+  # before GitHub registers the manual trigger for a newly added workflow.
+  push:
+    branches: ['codex/expo-deps-run**']
 
 permissions:
   contents: write
