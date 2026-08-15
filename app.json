@@ -11,7 +11,11 @@
       "bundleIdentifier": "com.hanchengxuan.tripflow",
       "buildNumber": "1",
       "supportsTablet": false,
-      "icon": "./assets/images/tripflow-icon.png",
+      "icon": {
+        "light": "./assets/images/tripflow-icon.png",
+        "dark": "./assets/images/tripflow-icon-dark.png",
+        "tinted": "./assets/images/tripflow-icon-tinted.png"
+      },
       "config": {
         "usesNonExemptEncryption": false
       },
@@ -23,7 +27,7 @@
     "android": {
       "package": "com.hanchengxuan.tripflow",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#F1F2EF",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -60,9 +64,14 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
-          "image": "./assets/images/tripflow-icon.png",
-          "imageWidth": 96
+          "backgroundColor": "#F1F2EF",
+          "image": "./assets/images/splash-mark.png",
+          "imageWidth": 128,
+          "dark": {
+            "backgroundColor": "#0E1F1B",
+            "image": "./assets/images/splash-mark-dark.png",
+            "imageWidth": 128
+          }
         }
       ],
       [
