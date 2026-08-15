@@ -183,7 +183,7 @@ export default function TodayScreen() {
       const startsAt = zonedDateTimeToIso(date, startTime, effectiveItemTimeZone);
       const endsAt = editingItem?.linkedStayId && editingItem.endsAt
         ? editingItem.endsAt
-        : zonedDateTimeToIso(kind === 'lodging' ? endDate : date, endTime, effectiveItemTimeZone);
+        : zonedDateTimeToIso(endDate, endTime, effectiveItemTimeZone);
       if (new Date(endsAt) <= new Date(startsAt)) throw new Error(tx('结束时间需要晚于开始时间。', 'End time must be later than start time.'));
       const nextTripRange = activeTrip ? {
         startsOn: date < activeTrip.startsOn ? date : activeTrip.startsOn,
@@ -842,10 +842,10 @@ function DestinationSettings({
 }
 
 const styles = StyleSheet.create({
-  form: { gap: 14 },
+  form: { width: '100%', gap: 14 },
   kindChoices: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   rangeConfirm: { gap: 10 },
-  dateTimeRow: { width: '100%', flexDirection: 'row', gap: Spacing.sm },
+  dateTimeRow: { alignSelf: 'stretch', flexDirection: 'row', alignItems: 'stretch', gap: Spacing.sm },
   formActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   actionGrow: { flexGrow: 1, flexBasis: 150 },
   editingActions: { gap: Spacing.sm },

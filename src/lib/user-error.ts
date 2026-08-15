@@ -13,10 +13,20 @@ const translations: [RegExp, string][] = [
   [/membership required|not.*member/i, '你还不是该行程的成员。'],
   [/invite/i, '邀请码无效或已过期。'],
   [/network|fetch failed/i, '网络连接失败，请检查网络后重试。'],
+  [/end time must be later than start time/i, '结束时间需要晚于开始时间。'],
+  [/hotel transfer arrival follows check-in time/i, '酒店交通的到达时间必须与入住时间一致。'],
+  [/hotel transfer destination follows the saved hotel|hotel transfer place follows the saved hotel/i, '酒店交通目的地应与住宿地点一致。'],
+  [/itinerary item not found/i, '这项安排已不存在，请刷新后重试。'],
+  [/could not find the function .*update_itinerary_item|schema cache/i, '行程安排服务尚未就绪，请刷新应用后重试。'],
 ];
 
 export function toUserMessage(caught: unknown, fallback = '操作失败，请稍后重试。') {
-  if (!(caught instanceof Error)) return fallback;
-  if (/[㐀-鿿]/u.test(caught.message)) return caught.message;
-  return translations.find(([pattern]) => pattern.test(caught.message))?.[1] ?? fallback;
+  const message = caught instanceof Error
+    ? caught.message
+    : caught && typeof caught === 'object' && 'message' in caught && typeof caught.message === 'string'
+      ? caught.message
+      : undefined;
+  if (!message) return fallback;
+  if (/[㐀-鿿]/u.test(message)) return message;
+  return translations.find(([pattern]) => pattern.test(message))?.[1] ?? fallback;
 }

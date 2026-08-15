@@ -24,4 +24,14 @@ describe('toUserMessage', () => {
     expect(toUserMessage(new Error('Item is already in this trip')))
       .toBe('请选择另一个有效的目标行程。');
   });
+
+  it('handles Supabase error objects returned by RPC calls', () => {
+    expect(toUserMessage({ message: 'End time must be later than start time' }))
+      .toBe('结束时间需要晚于开始时间。');
+  });
+
+  it('explains a stale update RPC without exposing PostgREST internals', () => {
+    expect(toUserMessage({ message: 'Could not find the function public.update_itinerary_item in the schema cache' }))
+      .toBe('行程安排服务尚未就绪，请刷新应用后重试。');
+  });
 });

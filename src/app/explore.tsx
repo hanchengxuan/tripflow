@@ -31,8 +31,13 @@ function dateOffset(days: number) {
 }
 
 function formatTripRange(trip: Trip, locale: string) {
-  const start = new Date(`${trip.startsOn}T12:00:00`).toLocaleDateString(locale, { month: 'short', day: 'numeric' });
-  const end = new Date(`${trip.endsOn}T12:00:00`).toLocaleDateString(locale, { month: 'short', day: 'numeric' });
+  const format = (value: string) => {
+    const date = new Date(`${value}T12:00:00`);
+    if (locale === 'zh-CN') return `${date.getMonth() + 1}月${date.getDate()}`;
+    return date.toLocaleDateString(locale, { month: 'short', day: 'numeric' });
+  };
+  const start = format(trip.startsOn);
+  const end = format(trip.endsOn);
   return `${start} — ${end}`;
 }
 

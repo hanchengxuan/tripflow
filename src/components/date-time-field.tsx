@@ -159,7 +159,10 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   copy: { flex: 1, gap: 2 },
-  pairField: { flex: 1, minWidth: 0, gap: Spacing.xs },
+  // Explicit basis/width keeps the two combined controls measurable on iOS.
+  // Without it, a native ScrollView can resolve the percentage parent width as
+  // zero and each picker collapses to the width of its digits.
+  pairField: { flexGrow: 1, flexShrink: 1, flexBasis: 0, width: 0, minWidth: 0, gap: Spacing.xs },
   pairControl: {
     minHeight: Size.control,
     borderWidth: 1,
