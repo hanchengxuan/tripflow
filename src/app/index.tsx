@@ -6,6 +6,7 @@ import { DateTimePairField } from '@/components/date-time-field';
 import { DestinationAtlas } from '@/components/destination-atlas';
 import { DestinationField } from '@/components/destination-field';
 import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/form-controls';
+import { Chevron } from '@/components/chevron';
 import { InfoCard } from '@/components/info-card';
 import { ItineraryHealthCard } from '@/components/itinerary-health-card';
 import { ItineraryEditAssistant } from '@/components/itinerary-edit-assistant';
@@ -17,6 +18,7 @@ import { MapsLink, RouteEstimateChip, routeTravelModeLabel, routeTravelModes, Tr
 import { DaySeparator, RouteSegment, TimelineRow } from '@/components/timeline-rail';
 import { Screen } from '@/components/screen';
 import { SectionHeading } from '@/components/section-heading';
+import { SelectionField } from '@/components/selection-field';
 import { ThemedText } from '@/components/themed-text';
 import { getCurrencyOptions, getTimeZoneOptions, itineraryKindLabels, itineraryKindLabelsEn, itineraryKinds } from '@/constants/options';
 import { Spacing, type ThemeColor } from '@/constants/theme';
@@ -664,6 +666,7 @@ export default function TodayScreen() {
       {activeTrip && canEdit && upcomingItems.length > 0 ? (
         <ItineraryEditAssistant
           trip={activeTrip}
+          item={upcomingItems[0]}
           items={upcomingItems.slice(0, 30)}
           onApply={async (candidate) => {
             await saveItineraryItem({
@@ -671,6 +674,7 @@ export default function TodayScreen() {
               title: candidate.title,
               locationLabel: candidate.locationLabel,
               googlePlaceId: candidate.googlePlaceId,
+              destination: candidate.destination,
               startsAt: candidate.startsAt,
               endsAt: candidate.endsAt,
             });
@@ -719,7 +723,31 @@ export default function TodayScreen() {
             </View>
           ) : null}
           <FormField label={tx('安排', 'Plan')} value={title} onChangeText={setTitle} placeholder={tx('例如：机场快线 → 中环', 'For example: Airport Express → Central')} />
-          {editingItem?.linkedStayId ? <View style={[styles.lockedDestination, { backgroundColor: theme.backgroundSelected }]}><ThemedText type="smallBold">{tx('酒店交通', 'Hotel transfer')}</ThemedText><ThemedText type="small" themeColor="textSecondary">{tx(`${editingItem.locationLabel ?? '—'} · ${formatZonedDateTimeRange(editingItem.endsAt ?? editingItem.startsAt, undefined, languageTag, tripTimeZone)}`, `${editingItem.locationLabel ?? '—'} · ${formatZonedDateTimeRange(editingItem.endsAt ?? editingItem.startsAt, undefined, languageTag, tripTimeZone)}`)}</ThemedText></View> : <LocationField value={location} onChange={(value) => { setLocation(value); setGooglePlaceId(''); }} onSelect={(suggestion) => { setLocation(suggestion.text); setGooglePlaceId(suggestion.placeId); }} />}
+          {editingItem?.linkedStayId ? (
+            <View style={[styles.lockedDestination, { backgroundColor: theme.backgroundSelected }]}>
+              <ThemedText type="smallBold">{tx('酒店交通', 'Hotel transfer')}</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">{tx(`${editingItem.locationLabel ?? '—'} · ${formatZonedDateTimeRange(editingItem.endsAt ?? editingItem.startsAt, undefined, languageTag, tripTimeZone)}`, `${editingItem.locationLabel ?? '—'} · ${formatZonedDateTimeRange(editingItem.endsAt ?? editingItem.startsAt, undefined, languageTag, tripTimeZone)}`)}</ThemedText>
+            </View>
+          ) : (
+            <>
+              <DestinationField value={destinationText} onChange={changeDestinationText} onSelect={chooseDestination} />
+              {destination ? (
+                <DestinationSettings
+                  currency={itemCurrency}
+                  currencyOptions={destinationCurrencyOptions}
+                  destination={destination}
+                  open={destinationSettingsOpen}
+                  timeZone={itemTimeZone}
+                  timeZoneOptions={destinationTimeZoneOptions}
+                  onCurrencyChange={setItemCurrency}
+                  onTimeZoneChange={setItemTimeZone}
+                  onToggle={() => setDestinationSettingsOpen((current) => !current)}
+                  tx={tx}
+                />
+              ) : null}
+              <LocationField value={location} onChange={(value) => { setLocation(value); setGooglePlaceId(''); }} onSelect={(suggestion) => { setLocation(suggestion.text); setGooglePlaceId(suggestion.placeId); }} />
+            </>
+          )}
           {editingItem?.linkedStayId ? (
             <DateTimePairField
               label={tx('时间', 'When')}

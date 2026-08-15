@@ -710,7 +710,7 @@ export default function LedgerScreen() {
           setAmount={setAmount}
           setCurrencyOverride={chooseCurrency}
           setExchangeRate={changeExchangeRate}
-          setItineraryItemId={setItineraryItemId}
+          setItineraryItemId={chooseItineraryItem}
           setPayerAmount={(userId, value) => setPayerAmounts((current) => ({ ...current, [userId]: value }))}
           setReceipt={setReceipt}
           setTitle={setTitle}
