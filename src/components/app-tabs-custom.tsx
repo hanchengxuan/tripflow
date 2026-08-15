@@ -26,6 +26,12 @@ export default function AppTabsCustom() {
           <TabTrigger name="home" href="/" asChild>
             <TabButton>{tx('今天', 'Today')}</TabButton>
           </TabTrigger>
+          <TabTrigger name="itinerary" href={'/itinerary' as Href} asChild>
+            <TabButton>{tx('安排', 'Plans')}</TabButton>
+          </TabTrigger>
+          <TabTrigger name="atlas" href={'/atlas' as Href} asChild>
+            <TabButton>{tx('地图', 'Map')}</TabButton>
+          </TabTrigger>
           <TabTrigger name="explore" href="/explore" asChild>
             <TabButton>{tx('行程', 'Trips')}</TabButton>
           </TabTrigger>

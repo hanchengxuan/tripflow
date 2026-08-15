@@ -3,16 +3,22 @@ import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react
 
 import { Chevron } from '@/components/chevron';
 import { ThemedText } from '@/components/themed-text';
-import { destinationLabel, searchDestinations, type DestinationSuggestion } from '@/features/destinations/destination-search';
+import { destinationLabel, searchDestinations, type DestinationSearchContext, type DestinationSuggestion } from '@/features/destinations/destination-search';
 import { useI18n } from '@/features/i18n/i18n-provider';
 import { useTheme } from '@/hooks/use-theme';
 
 export function DestinationField({
   value,
+  tripName,
+  planTitle,
+  locationName,
   onChange,
   onSelect,
 }: {
   value: string;
+  tripName?: string;
+  planTitle?: string;
+  locationName?: string;
   onChange: (value: string) => void;
   onSelect: (suggestion: DestinationSuggestion) => void;
 }) {
@@ -22,6 +28,7 @@ export function DestinationField({
   const [loading, setLoading] = useState(false);
   const [available, setAvailable] = useState(true);
   const requestId = useRef(0);
+  const searchContext = tripName?.trim() || planTitle?.trim() || locationName?.trim();
 
   useEffect(() => {
     const query = value.trim();
@@ -33,7 +40,8 @@ export function DestinationField({
     requestId.current = id;
     const timer = setTimeout(() => {
       setLoading(true);
-      void searchDestinations(query, locale)
+      const context: DestinationSearchContext = { tripName, planTitle, locationName };
+      void searchDestinations(query, locale, context)
         .then((next) => {
           if (requestId.current === id) setSuggestions(next);
         })
@@ -48,7 +56,7 @@ export function DestinationField({
         });
     }, 300);
     return () => clearTimeout(timer);
-  }, [available, locale, value]);
+  }, [available, locale, locationName, planTitle, tripName, value]);
 
   return (
     <View style={styles.field}>
@@ -70,6 +78,11 @@ export function DestinationField({
         />
         {loading ? <ActivityIndicator color={theme.accent} /> : null}
       </View>
+      {value.trim().length >= 2 && searchContext ? (
+        <ThemedText type="small" themeColor="textMuted">
+          {tx(`会结合“${searchContext}”智能排序`, `Results are ranked with “${searchContext}” in mind`)}
+        </ThemedText>
+      ) : null}
       {value.trim().length >= 2 && suggestions.length > 0 ? (
         <View style={[styles.suggestions, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
           {suggestions.map((suggestion) => (

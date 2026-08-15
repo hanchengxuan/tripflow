@@ -1,4 +1,11 @@
-import { currencyForCountryCode, destinationLabel, projectDestination } from '@/features/destinations/destination-search';
+import {
+  currencyForCountryCode,
+  destinationLabel,
+  destinationQueryVariants,
+  projectDestination,
+  rankDestinationSuggestions,
+  type DestinationSuggestion,
+} from '@/features/destinations/destination-search';
 
 describe('destination metadata', () => {
   it('maps common travel countries to local currencies', () => {
@@ -17,5 +24,34 @@ describe('destination metadata', () => {
     expect(point.x).toBeLessThan(1010);
     expect(point.y).toBeGreaterThan(0);
     expect(point.y).toBeLessThan(666);
+  });
+
+  it('adds an English geocoder query for a Chinese city alias', () => {
+    expect(destinationQueryVariants('东京')).toEqual(['东京', 'Tokyo']);
+  });
+
+  it('uses trip context to disambiguate the intended country', () => {
+    const suggestions: DestinationSuggestion[] = [
+      {
+        id: 'us-tokyo',
+        cityName: 'Tokyo',
+        countryName: 'United States',
+        countryCode: 'US',
+        timeZone: 'America/Los_Angeles',
+        latitude: 35.8,
+        longitude: -96.4,
+      },
+      {
+        id: 'jp-tokyo',
+        cityName: 'Tokyo',
+        countryName: 'Japan',
+        countryCode: 'JP',
+        timeZone: 'Asia/Tokyo',
+        latitude: 35.7,
+        longitude: 139.7,
+      },
+    ];
+
+    expect(rankDestinationSuggestions('东京', suggestions, { tripName: '日本之旅' })[0].countryCode).toBe('JP');
   });
 });
