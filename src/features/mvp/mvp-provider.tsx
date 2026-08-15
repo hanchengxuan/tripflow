@@ -30,7 +30,7 @@ import {
   updateTrip,
   updateTripMember,
 } from '@/data/trip-repository';
-import type { Expense, ItineraryItem, Profile, RouteTravelMode, Settlement, Trip, TripMember } from '@/domain/models';
+import type { Expense, ItineraryDestination, ItineraryItem, Profile, RouteTravelMode, Settlement, Trip, TripMember } from '@/domain/models';
 import { useAuth } from '@/features/auth/auth-provider';
 import { toUserMessage } from '@/lib/user-error';
 import type { Database } from '@/types/database';
@@ -57,9 +57,9 @@ interface MvpContextValue {
   setMemberRole: (userId: string, role: 'owner' | 'editor' | 'viewer') => Promise<void>;
   removeMember: (userId: string) => Promise<void>;
   saveProfile: (input: { displayName: string; avatar?: { uri: string; mimeType?: string | null } }) => Promise<void>;
-  addItineraryItem: (input: { title: string; kind: Database['public']['Enums']['itinerary_kind']; startsAt: string; endsAt?: string; locationLabel?: string; googlePlaceId?: string }) => Promise<void>;
+  addItineraryItem: (input: { title: string; kind: Database['public']['Enums']['itinerary_kind']; startsAt: string; endsAt?: string; locationLabel?: string; googlePlaceId?: string; destination?: ItineraryDestination }) => Promise<void>;
   addStayTransfer: (input: { stayId: string; sourceItemId: string; title: string }) => Promise<void>;
-  saveItineraryItem: (input: { itemId: string; title: string; startsAt: string; endsAt: string; locationLabel?: string; googlePlaceId?: string }) => Promise<void>;
+  saveItineraryItem: (input: { itemId: string; title: string; startsAt: string; endsAt: string; locationLabel?: string; googlePlaceId?: string; destination?: ItineraryDestination }) => Promise<void>;
   setItineraryRouteMode: (itemId: string, travelMode: RouteTravelMode) => Promise<void>;
   moveItineraryItem: (itemId: string, targetTripId: string) => Promise<void>;
   removeItineraryItem: (itemId: string) => Promise<void>;
@@ -212,7 +212,7 @@ export function MvpProvider({ children }: PropsWithChildren) {
     }
   }, [activeTrip, currentUserId, profile?.avatarPath]);
 
-  const addItineraryItem = useCallback(async (input: { title: string; kind: Database['public']['Enums']['itinerary_kind']; startsAt: string; endsAt?: string; locationLabel?: string; googlePlaceId?: string }) => {
+  const addItineraryItem = useCallback(async (input: { title: string; kind: Database['public']['Enums']['itinerary_kind']; startsAt: string; endsAt?: string; locationLabel?: string; googlePlaceId?: string; destination?: ItineraryDestination }) => {
     if (!activeTrip) throw new Error('请先创建或加入一个行程。');
     await createItineraryItem(currentUserId, { ...input, tripId: activeTrip.id });
     setItineraryItems(await listItineraryItems(activeTrip.id));
@@ -224,7 +224,7 @@ export function MvpProvider({ children }: PropsWithChildren) {
     setItineraryItems(await listItineraryItems(activeTrip.id));
   }, [activeTrip]);
 
-  const saveItineraryItem = useCallback(async (input: { itemId: string; title: string; startsAt: string; endsAt: string; locationLabel?: string; googlePlaceId?: string }) => {
+  const saveItineraryItem = useCallback(async (input: { itemId: string; title: string; startsAt: string; endsAt: string; locationLabel?: string; googlePlaceId?: string; destination?: ItineraryDestination }) => {
     if (!activeTrip) throw new Error('请先创建或加入一个行程。');
     await updateItineraryItem(input);
     setItineraryItems(await listItineraryItems(activeTrip.id));

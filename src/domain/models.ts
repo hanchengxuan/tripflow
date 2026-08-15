@@ -62,10 +62,21 @@ export interface ItineraryItem {
   endsAt?: string;
   locationLabel?: string;
   googlePlaceId?: string;
+  destination?: ItineraryDestination;
   routeTravelMode: RouteTravelMode;
   localScriptAddress?: string;
   responsibleUserId?: UserId;
   linkedStayId?: string;
+}
+
+export interface ItineraryDestination {
+  cityName: string;
+  countryName: string;
+  countryCode: string;
+  timeZone: string;
+  currency?: string;
+  latitude: number;
+  longitude: number;
 }
 
 export interface ExpensePayer {

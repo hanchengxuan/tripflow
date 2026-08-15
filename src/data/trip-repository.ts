@@ -1,4 +1,4 @@
-import type { Expense, ItineraryItem, Profile, RouteTravelMode, Settlement, Trip, TripMember } from '@/domain/models';
+import type { Expense, ItineraryDestination, ItineraryItem, Profile, RouteTravelMode, Settlement, Trip, TripMember } from '@/domain/models';
 import { getSupabaseClient } from '@/lib/supabase';
 import type { Database, Tables } from '@/types/database';
 
@@ -18,6 +18,14 @@ function mapTrip(row: TripRow): Trip {
 }
 
 function mapItineraryItem(row: ItineraryRow): ItineraryItem {
+  const hasDestination = Boolean(
+    row.destination_city_name
+      && row.destination_country_name
+      && row.destination_country_code
+      && row.destination_time_zone
+      && typeof row.destination_latitude === 'number'
+      && typeof row.destination_longitude === 'number',
+  );
   return {
     id: row.id,
     tripId: row.trip_id,
@@ -28,6 +36,15 @@ function mapItineraryItem(row: ItineraryRow): ItineraryItem {
     endsAt: row.ends_at ?? undefined,
     locationLabel: row.location_label ?? undefined,
     googlePlaceId: row.google_place_id ?? undefined,
+    destination: hasDestination ? {
+      cityName: row.destination_city_name!,
+      countryName: row.destination_country_name!,
+      countryCode: row.destination_country_code!,
+      timeZone: row.destination_time_zone!,
+      currency: row.destination_currency ?? undefined,
+      latitude: row.destination_latitude!,
+      longitude: row.destination_longitude!,
+    } : undefined,
     routeTravelMode: row.route_travel_mode as RouteTravelMode,
     localScriptAddress: row.local_script_address ?? undefined,
     responsibleUserId: row.responsible_user_id ?? undefined,
@@ -274,6 +291,7 @@ export async function createItineraryItem(
     endsAt?: string;
     locationLabel?: string;
     googlePlaceId?: string;
+    destination?: ItineraryDestination;
   },
 ) {
   const { error } = await getSupabaseClient().from('itinerary_items').insert({
@@ -285,6 +303,13 @@ export async function createItineraryItem(
     ends_at: input.endsAt ?? null,
     location_label: input.locationLabel?.trim() || null,
     google_place_id: input.googlePlaceId?.trim() || null,
+    destination_country_code: input.destination?.countryCode ?? null,
+    destination_country_name: input.destination?.countryName ?? null,
+    destination_city_name: input.destination?.cityName ?? null,
+    destination_time_zone: input.destination?.timeZone ?? null,
+    destination_currency: input.destination?.currency ?? null,
+    destination_latitude: input.destination?.latitude ?? null,
+    destination_longitude: input.destination?.longitude ?? null,
   });
   if (error) throw error;
 }
@@ -305,6 +330,7 @@ export async function updateItineraryItem(input: {
   endsAt: string;
   locationLabel?: string;
   googlePlaceId?: string;
+  destination?: ItineraryDestination;
 }) {
   const { error } = await getSupabaseClient().rpc('update_itinerary_item', {
     requested_item_id: input.itemId,
@@ -313,6 +339,13 @@ export async function updateItineraryItem(input: {
     item_ends_at: input.endsAt,
     item_location_label: input.locationLabel?.trim() ?? '',
     item_google_place_id: input.googlePlaceId?.trim() ?? '',
+    item_destination_country_code: input.destination?.countryCode ?? null,
+    item_destination_country_name: input.destination?.countryName ?? null,
+    item_destination_city_name: input.destination?.cityName ?? null,
+    item_destination_time_zone: input.destination?.timeZone ?? null,
+    item_destination_currency: input.destination?.currency ?? null,
+    item_destination_latitude: input.destination?.latitude ?? null,
+    item_destination_longitude: input.destination?.longitude ?? null,
   });
   if (error) throw error;
 }

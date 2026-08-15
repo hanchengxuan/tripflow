@@ -70,6 +70,14 @@ export const Colors = {
     kindActivitySoft: '#E6F0EC',
     kindTaskSoft: '#F2EDE0',
     kindNoteSoft: '#ECEEEE',
+
+    // destination atlas
+    mapBackground: '#17383A',
+    mapLand: '#285657',
+    mapLandSelected: '#3E8C79',
+    mapGrid: '#3B6B6B',
+    mapRoute: '#FFB16B',
+    mapMarker: '#FFFFFF',
   },
   dark: {
     background: '#0F1413',
@@ -119,6 +127,14 @@ export const Colors = {
     kindActivitySoft: '#24322D',
     kindTaskSoft: '#24322D',
     kindNoteSoft: '#24322D',
+
+    // destination atlas
+    mapBackground: '#081F24',
+    mapLand: '#143A40',
+    mapLandSelected: '#267A69',
+    mapGrid: '#20505A',
+    mapRoute: '#FFC078',
+    mapMarker: '#F5FFFA',
   },
 } as const;
 
