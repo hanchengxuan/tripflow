@@ -107,7 +107,7 @@ Kept current. Update a row when you close a gap.
 | --- | --- | --- |
 | Neutral Ink & Pine palette | ✅ shipped | `src/constants/theme.ts` |
 | Spacing / radius / size scales | ✅ tokens exist | `Spacing`, `Radius`, `Size` in `theme.ts` — new code should use them; existing files still hold literals |
-| Time rail, day separator, route in the gap | ✅ shipped | `src/components/timeline-rail.tsx`, `route-plan.tsx` |
+| Time rail, day separator, route in the gap | ✅ shipped | `src/components/timeline-rail.tsx`, `route-plan.tsx`; route spines use the designed 4pt/5pt dashed cadence without adding layout height |
 | Bipolar balance bar | ✅ shipped | `src/components/balance-bar.tsx`, `src/lib/balance-bar.ts` |
 | Add-plan and add-expense as bottom **sheets** | ❌ still inline blocks reached by scroll anchoring | `src/app/index.tsx`, `src/app/ledger.tsx`, `src/components/screen.tsx` |
 | Stay card with kind bar + nights tile | ✅ shipped | `src/components/stay-card.tsx`, `src/app/index.tsx` stays section |

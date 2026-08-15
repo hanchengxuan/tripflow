@@ -2,6 +2,7 @@ import type { PropsWithChildren, ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { Size, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 /**
@@ -12,8 +13,18 @@ import { useTheme } from '@/hooks/use-theme';
  * `RouteSegment`, which occupies the gap rather than nesting inside a row.
  */
 
-const GUTTER_WIDTH = 46;
 const SPINE_WIDTH = 12;
+const ROUTE_DASHES = Array.from({ length: 40 }, (_, index) => index);
+
+function DashedSpine({ color }: { color: string }) {
+  return (
+    <View style={styles.dashedSpine}>
+      {ROUTE_DASHES.map((index) => (
+        <View key={index} style={[styles.routeDash, { backgroundColor: color, top: index * 9 }]} />
+      ))}
+    </View>
+  );
+}
 
 export function DaySeparator({ label }: { label: string }) {
   const theme = useTheme();
@@ -85,7 +96,7 @@ export function RouteSegment({ summary, trailing, children }: PropsWithChildren<
     <View style={styles.segment}>
       <View style={styles.gutter} />
       <View style={styles.spine}>
-        <View style={[styles.spineLine, styles.spineLineRoute, { backgroundColor: theme.borderField }]} />
+        <DashedSpine color={theme.borderField} />
       </View>
       <View style={styles.segmentContent}>
         <View style={styles.segmentSummary}>
@@ -99,11 +110,11 @@ export function RouteSegment({ summary, trailing, children }: PropsWithChildren<
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', gap: 12, alignItems: 'stretch' },
-  segment: { flexDirection: 'row', gap: 12, alignItems: 'stretch' },
-  daySeparator: { flexDirection: 'row', gap: 12, alignItems: 'stretch' },
+  row: { flexDirection: 'row', gap: Spacing.sm, alignItems: 'stretch' },
+  segment: { flexDirection: 'row', gap: Spacing.sm, alignItems: 'stretch' },
+  daySeparator: { flexDirection: 'row', gap: Spacing.sm, alignItems: 'stretch' },
 
-  gutter: { width: GUTTER_WIDTH, alignItems: 'flex-end', paddingTop: 1, alignSelf: 'flex-start' },
+  gutter: { width: Size.railGutter, alignItems: 'flex-end', paddingTop: 1, alignSelf: 'flex-start' },
   startTime: { fontVariant: ['tabular-nums'] },
   endTime: { fontSize: 12, lineHeight: 16, fontVariant: ['tabular-nums'] },
 
@@ -111,7 +122,8 @@ const styles = StyleSheet.create({
   spineStub: { width: 2, height: 4 },
   dot: { width: 10, height: 10, borderRadius: 5 },
   spineLine: { width: 2, flex: 1, minHeight: 12, borderRadius: 1 },
-  spineLineRoute: { opacity: 0.7 },
+  dashedSpine: { flex: 1, minHeight: Spacing.sm, overflow: 'hidden', alignItems: 'center' },
+  routeDash: { position: 'absolute', width: 2, height: Spacing['2xs'] },
 
   content: { flex: 1, minWidth: 0, gap: 3, paddingBottom: 18 },
   head: { flexDirection: 'row', alignItems: 'center', gap: 10 },
