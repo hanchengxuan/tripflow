@@ -169,6 +169,8 @@ The MVP deliberately does not include group chat, in-app booking, proprietary tu
 - Completed: add persistent Chinese/English switching across navigation, forms, validation fallbacks, privacy, and support pages.
 - Completed: Google Places autocomplete routes through an authenticated Supabase Edge proxy, selected Place IDs persist, and consecutive placed stops show a protected Routes API driving estimate.
 - Completed foundation: an airy coastal palette, stronger spacing, fewer elevated surfaces, and a durable product/design contract.
+- Completed: move the large destination atlas out of Today into a dedicated Map tab, add a complete Plans tab for all itinerary arrangements, and make the map navigable with pan/pinch gestures plus explicit zoom/reset controls.
+- Completed: make destination search resolve common Chinese/English city aliases and use the trip name or plan title to rank ambiguous geocoder matches; this remains a client-side, no-migration enhancement.
 - Next: add Place details, participant status, booking/document essentials, and reviewable photo/file/link itinerary import.
 
 ### Gemini itinerary intelligence

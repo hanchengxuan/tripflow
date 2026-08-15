@@ -3,7 +3,6 @@ import { Linking, Pressable, StyleSheet, useWindowDimensions, View } from 'react
 
 import { BottomSheet } from '@/components/bottom-sheet';
 import { DateTimePairField } from '@/components/date-time-field';
-import { DestinationAtlas } from '@/components/destination-atlas';
 import { DestinationField } from '@/components/destination-field';
 import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/form-controls';
 import { Chevron } from '@/components/chevron';
@@ -576,7 +575,6 @@ export default function TodayScreen() {
       {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
       {success ? <InlineNotice>{success}</InlineNotice> : null}
 
-      {activeTrip ? <DestinationAtlas items={itineraryItems} languageTag={languageTag} onViewItem={canEdit ? beginEdit : undefined} tx={tx} /> : null}
       {!activeTrip ? (
         <InfoCard label={tx('暂无行程', 'No trip yet')} title={tx('创建或加入共享行程', 'Create or join a shared trip')}>
           <ThemedText themeColor="textSecondary">{tx('加入后，所有成员都可以在这里查看下一项已确认的安排。', 'Once joined, everyone can see the next confirmed plan here.')}</ThemedText>
@@ -730,7 +728,14 @@ export default function TodayScreen() {
             </View>
           ) : (
             <>
-              <DestinationField value={destinationText} onChange={changeDestinationText} onSelect={chooseDestination} />
+              <DestinationField
+                value={destinationText}
+                tripName={activeTrip?.name}
+                planTitle={title}
+                locationName={location}
+                onChange={changeDestinationText}
+                onSelect={chooseDestination}
+              />
               {destination ? (
                 <DestinationSettings
                   currency={itemCurrency}
