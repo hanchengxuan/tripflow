@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <style>
+    .g { fill: #F1F2EF } .a { fill: #123B32 } .b { fill: #17B98A } .c { fill: #2C6D5C }
+    .a { stroke: #123B32 } .b { stroke: #17B98A } .c { stroke: #2C6D5C }
+    @media (prefers-color-scheme: dark) {
+      .g { fill: #0E1F1B }
+      .a { fill: #E8EFEC; stroke: #E8EFEC }
+      .b { fill: #2ED39B; stroke: #2ED39B }
+      .c { fill: #52907C; stroke: #52907C }
+    }
+  </style>
+  <rect class="g" width="1024" height="1024"/>
+
+  <g transform="translate(512,512) scale(1.22) rotate(-3.5) translate(-516,-512)"
+     stroke-linejoin="round" stroke-width="7">
+    <path class="a" d="M226 324 L394 272 V700 L226 752 Z"/>
+    <path class="b" d="M394 272 L630 324 V752 L394 700 Z"/>
+    <path class="c" d="M630 324 L806 272 V700 L630 752 Z"/>
+  </g>
+</svg>
