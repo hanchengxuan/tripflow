@@ -10,7 +10,7 @@ import { OtpCodeInput } from '@/components/otp-code-input';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { tripRoleLabels, tripRoleLabelsEn } from '@/constants/options';
-import { beginEmailLink, beginPhoneLink, deleteAccount, linkGoogleIdentity, signOut, verifyEmailLink, verifyPhoneLink } from '@/features/auth/auth-service';
+import { beginEmailLink, beginPhoneLink, changePassword, deleteAccount, linkGoogleIdentity, setInitialPassword, signOut, verifyEmailLink, verifyPhoneLink } from '@/features/auth/auth-service';
 import { useAuth } from '@/features/auth/auth-provider';
 import { useI18n } from '@/features/i18n/i18n-provider';
 import { useMvp } from '@/features/mvp/mvp-provider';
@@ -45,6 +45,12 @@ export default function ProfileScreen() {
     avatarDraft || (draftName.trim() && draftName.trim() !== profile?.displayName),
   );
   const googleLinked = session?.user.identities?.some(({ provider }) => provider === 'google');
+  // A provider-only account has no password to re-authenticate against.
+  const hasPassword = session?.user.identities?.some(({ provider }) => provider === 'email') ?? false;
+  const [passwordOpen, setPasswordOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [nextPassword, setNextPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
   async function startLink() {
     if (!linkMode) return;
@@ -140,6 +146,31 @@ export default function ProfileScreen() {
         tone: 'error',
         text: toUserMessage(caught, tx('无法保存个人资料，请稍后重试。', 'Could not save your profile. Please try again.')),
       });
+    } finally {
+      setBusyAction(undefined);
+    }
+  }
+
+  function resetPasswordForm() {
+    setCurrentPassword('');
+    setNextPassword('');
+    setConfirmPassword('');
+  }
+
+  async function submitPassword() {
+    setBusyAction('save');
+    setNotice(undefined);
+    try {
+      if (nextPassword !== confirmPassword) {
+        throw new Error(tx('两次输入的新密码不一致。', 'The new passwords do not match.'));
+      }
+      if (hasPassword) await changePassword(currentPassword, nextPassword);
+      else await setInitialPassword(nextPassword);
+      resetPasswordForm();
+      setPasswordOpen(false);
+      setNotice({ tone: 'info', text: tx('密码已更新，下次登录请使用新密码。', 'Password updated. Use the new one next time you sign in.') });
+    } catch (caught) {
+      setNotice({ tone: 'error', text: toUserMessage(caught, tx('无法更新密码，请稍后重试。', 'Could not update the password. Please try again.')) });
     } finally {
       setBusyAction(undefined);
     }
@@ -279,6 +310,34 @@ export default function ProfileScreen() {
       <View style={styles.section}>
         <ThemedText type="smallBold" themeColor="textSecondary">{tx('账号与安全', 'Account and security')}</ThemedText>
         <View style={styles.linkList}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ expanded: passwordOpen }}
+            onPress={() => { setPasswordOpen((open) => !open); resetPasswordForm(); }}
+            style={styles.linkRow}>
+            <ThemedText>{hasPassword ? tx('修改密码', 'Change password') : tx('设置密码', 'Set a password')}</ThemedText>
+            <ThemedText type="smallBold" themeColor="textSecondary">{passwordOpen ? tx('收起', 'Close') : tx('管理', 'Manage')}</ThemedText>
+          </Pressable>
+          {passwordOpen ? (
+            <View style={styles.linkForm}>
+              {!hasPassword ? (
+                <ThemedText type="small" themeColor="textSecondary">
+                  {tx('这个账号通过 Google 创建，还没有密码。设置后即可用邮箱和密码登录。', 'This account was created with Google and has no password yet. Set one to also sign in with email.')}
+                </ThemedText>
+              ) : (
+                <FormField label={tx('当前密码', 'Current password')} value={currentPassword} onChangeText={setCurrentPassword} autoCapitalize="none" autoComplete="current-password" secureTextEntry placeholder={tx('输入当前密码', 'Enter current password')} />
+              )}
+              <FormField label={tx('新密码', 'New password')} value={nextPassword} onChangeText={setNextPassword} autoCapitalize="none" autoComplete="new-password" secureTextEntry placeholder={tx('至少 8 位，包含字母和数字', '8+ characters with letters and numbers')} />
+              <FormField label={tx('确认新密码', 'Confirm new password')} value={confirmPassword} onChangeText={setConfirmPassword} autoCapitalize="none" autoComplete="new-password" secureTextEntry placeholder={tx('再次输入新密码', 'Enter the new password again')} />
+              <ActionButton
+                busy={busyAction === 'save'}
+                disabled={(hasPassword && !currentPassword) || !nextPassword || !confirmPassword}
+                onPress={() => void submitPassword()}>
+                {hasPassword ? tx('更新密码', 'Update password') : tx('设置密码', 'Set password')}
+              </ActionButton>
+            </View>
+          ) : null}
+          <View style={[styles.divider, { backgroundColor: theme.backgroundSelected }]} />
           <Link href={'/privacy' as Href} asChild><Pressable style={styles.linkRow}><ThemedText>{tx('隐私政策', 'Privacy policy')}</ThemedText><ThemedText type="smallBold" themeColor="textSecondary">{tx('查看', 'Open')}</ThemedText></Pressable></Link>
           <View style={[styles.divider, { backgroundColor: theme.backgroundSelected }]} />
           <Link href={'/support' as Href} asChild><Pressable style={styles.linkRow}><ThemedText>{tx('支持与帮助', 'Support and help')}</ThemedText><ThemedText type="smallBold" themeColor="textSecondary">{tx('查看', 'Open')}</ThemedText></Pressable></Link>
@@ -346,6 +405,7 @@ const styles = StyleSheet.create({
   loginActions: { gap: 8 },
   linkEditor: { borderRadius: 16, padding: 16, gap: 12 },
   linkRow: { minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 16 },
+  linkForm: { gap: 12, paddingTop: 4, paddingBottom: 14 },
   dangerSection: { paddingTop: 10, paddingBottom: 16 },
   deleteConfirmation: { borderRadius: 16, padding: 18, gap: 12 },
   dangerText: { paddingVertical: 14 },
