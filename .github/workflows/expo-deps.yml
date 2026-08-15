@@ -1,0 +1,78 @@
+name: Expo dependency realignment
+
+# Expo publishes patch releases inside an SDK, and Expo Doctor then reports the
+# pinned packages as out of date, which hard-fails `validate` and blocks every
+# deploy. The fix is `npx expo install --fix`, but the resulting lockfile is
+# platform-sensitive: `@unrs/resolver-binding-wasm32-wasi` pins an exact
+# `@emnapi/core`, and that binding is only resolved on Linux. A lockfile
+# regenerated on macOS omits it and `npm ci` fails on the runners.
+#
+# So the realignment runs here, on the same Linux the CI installs on, and opens
+# a PR with the result for normal review.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  realign:
+    name: Realign Expo packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+
+      - name: Realign packages with the installed SDK
+        run: npx expo install --fix
+
+      - name: Verify Expo Doctor is clean
+        run: npx expo-doctor
+
+      - name: Verify the lockfile installs from scratch
+        run: |
+          rm -rf node_modules
+          npm ci
+
+      - name: Open a pull request when anything changed
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if git diff --quiet -- package.json package-lock.json app.json; then
+            echo "Already aligned with the installed SDK; nothing to do."
+            exit 0
+          fi
+
+          branch="codex/expo-deps-$(date -u +%Y%m%d%H%M)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add package.json package-lock.json app.json
+          git commit -m "fix(deps): realign Expo packages with the installed SDK
+
+Generated on Linux so the lockfile keeps the platform-specific optional
+bindings that \`npm ci\` needs on the runners.
+
+Expo Doctor and a clean \`npm ci\` both passed in the job that produced this."
+          git push origin "$branch"
+
+          gh pr create --base main --head "$branch" \
+            --title "fix(deps): realign Expo packages with the installed SDK" \
+            --body "Opened by the \`Expo dependency realignment\` workflow.
+
+\`npx expo install --fix\` run on Linux, so the lockfile keeps the platform-specific
+optional bindings that \`npm ci\` needs on the runners — a lockfile regenerated on
+macOS drops them and every job fails at install.
+
+The job verified Expo Doctor is clean and that \`npm ci\` succeeds from scratch.
+The normal CI gates still apply to this PR.
+
+Check the diff for \`app.json\`: \`expo install --fix\` registers config plugins for
+packages that newly ship one, which is a native change."
