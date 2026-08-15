@@ -445,6 +445,13 @@ export type Database = {
           confirmation_number: string | null
           created_at: string
           created_by: string
+          destination_city_name: string | null
+          destination_country_code: string | null
+          destination_country_name: string | null
+          destination_currency: string | null
+          destination_latitude: number | null
+          destination_longitude: number | null
+          destination_time_zone: string | null
           ends_at: string | null
           google_place_id: string | null
           id: string
@@ -467,6 +474,13 @@ export type Database = {
           confirmation_number?: string | null
           created_at?: string
           created_by: string
+          destination_city_name?: string | null
+          destination_country_code?: string | null
+          destination_country_name?: string | null
+          destination_currency?: string | null
+          destination_latitude?: number | null
+          destination_longitude?: number | null
+          destination_time_zone?: string | null
           ends_at?: string | null
           google_place_id?: string | null
           id?: string
@@ -489,6 +503,13 @@ export type Database = {
           confirmation_number?: string | null
           created_at?: string
           created_by?: string
+          destination_city_name?: string | null
+          destination_country_code?: string | null
+          destination_country_name?: string | null
+          destination_currency?: string | null
+          destination_latitude?: number | null
+          destination_longitude?: number | null
+          destination_time_zone?: string | null
           ends_at?: string | null
           google_place_id?: string | null
           id?: string
@@ -1143,6 +1164,13 @@ export type Database = {
       }
       update_itinerary_item: {
         Args: {
+          item_destination_city_name: string | null
+          item_destination_country_code: string | null
+          item_destination_country_name: string | null
+          item_destination_currency: string | null
+          item_destination_latitude: number | null
+          item_destination_longitude: number | null
+          item_destination_time_zone: string | null
           item_ends_at: string
           item_google_place_id: string
           item_location_label: string

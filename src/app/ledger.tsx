@@ -170,6 +170,13 @@ export default function LedgerScreen() {
     setExchangeRateSource(nextSource);
   }
 
+  function chooseItineraryItem(nextItemId: string) {
+    setItineraryItemId(nextItemId);
+    if (editingExpenseId) return;
+    const item = itineraryItems.find(({ id }) => id === nextItemId);
+    if (item?.destination?.currency) chooseCurrency(item.destination.currency);
+  }
+
   function changeExchangeRate(nextRate: string) {
     setExchangeRate(nextRate);
     if (currency.toUpperCase() !== baseCurrency.toUpperCase()) setExchangeRateSource('manual');
@@ -629,7 +636,7 @@ export default function LedgerScreen() {
           editing={Boolean(editingExpenseId)}
           itineraryItemId={itineraryItemId}
           itineraryOptions={itineraryOptions}
-          setItineraryItemId={setItineraryItemId}
+          setItineraryItemId={chooseItineraryItem}
           aiText={aiText}
           setAiText={setAiText}
           parseWithAi={parseWithAi}

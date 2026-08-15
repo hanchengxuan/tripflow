@@ -139,6 +139,7 @@ See `planning.md` for the complete P0/P1 scope, non-goals, architecture, milesto
 - `Screen` now accepts one ordered `context` fact list instead of separate `subtitle` and `meta` prose. It renders one wrapping context line with dot separators; every caller was rewritten deliberately. Today now matches the design with trip dates, traveller count, and home currency; Ledger uses trip, home currency, and expense count; empty, auth, legal, Trips, and Me states keep only short facts. Two UI 2.0 gaps remain: compact travel modes and sheet composers.
 - Travel modes now use progressive disclosure by product decision: the selected mode and route estimate stay visible as an accessible chip, pressing it reveals Drive, Transit, Walk, and Cycle in place, and selecting a mode collapses the choices while the estimate refreshes. This preserves the deliberate user-controlled mode selection while preventing four permanent controls from making a 375px route gap taller than its plan row. `index.tsx` shrank from 814 to 811 lines by moving route-mode constants and labels into `route-plan.tsx`. Sheet composers are the final UI 2.0 gap.
 - The Gemini smart-edit slice is implemented and deployed: Today no longer shows a page-level AI card; while editing an existing itinerary item, an editor can open a compact smart-suggestion button, request a structured title/time preview, review local trip-range and overlap validation, and explicitly apply the existing itinerary update RPC. The `suggest-itinerary-edit` Edge Function is ACTIVE in production with manual authenticated membership checks and sends Gemini only the selected item's minimum context; it never receives profile, ledger, or other itinerary rows, and it cannot write data. PR #59 merged as `96868b3`; its exact production CD run passed Vercel smoke tests, and an unauthenticated function smoke returned 401 as expected. Focused proposal/merge/validation tests, lint, TypeScript, Expo Doctor, web/iOS exports, and six public-route browser checks pass locally. Authenticated fixture acceptance remains pending a configured editor account.
+- Destination-aware itinerary work is implemented on `codex/destination-atlas`: every itinerary item can store a city/country, ISO country code, coordinates, timezone, and optional currency, so one trip can trace multiple countries and cities. Today uses the free no-key Open-Meteo geocoder for city search; selection quietly supplies timezone/currency defaults, exposes both as low-emphasis user-editable settings, persists overrides, and uses the selected timezone for local plan times. A new animated atlas uses `@svg-maps/world` country outlines, a route trace, visited/current/planned pins, and a selected-place plan list; pins remain useful to view-only members while editors can open the linked plan. The destination metadata migration and extended itinerary update/stay-transfer RPCs are applied remotely as `itinerary_destinations`; Supabase security advisors show no new security finding. Authenticated destination creation/editing still needs a configured fixture account, but lint, TypeScript, Jest, Expo Doctor 20/20, web/iOS exports, and the Open-Meteo Tokyo lookup pass locally.
 
 ## Applied Supabase migrations
 
@@ -169,8 +170,10 @@ See `planning.md` for the complete P0/P1 scope, non-goals, architecture, milesto
 - `expense_settlement_and_itinerary_links`
 - `move_itinerary_between_trips`
 - `move_linked_expenses_with_itinerary`
+- `itinerary_destinations`
+- `remove_legacy_destination_update`
 
-The live migration list was rechecked after applying `move_linked_expenses_with_itinerary`; no pending TripFlow migration remains.
+The live migration list was rechecked after applying `itinerary_destinations`; no pending TripFlow migration remains.
 
 Temporary acceptance fixtures are removed after each test; production may contain real user-created rows.
 

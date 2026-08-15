@@ -2,6 +2,8 @@ import { Fragment, useEffect, useMemo, useState } from 'react';
 import { Linking, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { DateTimeField } from '@/components/date-time-field';
+import { DestinationAtlas } from '@/components/destination-atlas';
+import { DestinationField } from '@/components/destination-field';
 import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/form-controls';
 import { Chevron } from '@/components/chevron';
 import { InfoCard } from '@/components/info-card';
@@ -16,9 +18,10 @@ import { DaySeparator, RouteSegment, TimelineRow } from '@/components/timeline-r
 import { Screen } from '@/components/screen';
 import { SectionHeading } from '@/components/section-heading';
 import { ThemedText } from '@/components/themed-text';
-import { itineraryKindLabels, itineraryKindLabelsEn, itineraryKinds } from '@/constants/options';
+import { getCurrencyOptions, getTimeZoneOptions, itineraryKindLabels, itineraryKindLabelsEn, itineraryKinds } from '@/constants/options';
 import type { ThemeColor } from '@/constants/theme';
-import type { ItineraryItem, ItineraryKind, RouteTravelMode } from '@/domain/models';
+import type { ItineraryDestination, ItineraryItem, ItineraryKind, RouteTravelMode } from '@/domain/models';
+import { destinationLabel, type DestinationSuggestion } from '@/features/destinations/destination-search';
 import { useI18n } from '@/features/i18n/i18n-provider';
 import { useMvp } from '@/features/mvp/mvp-provider';
 import { getRouteEstimate, type RouteEstimate } from '@/features/routes/route-estimate';
@@ -63,6 +66,11 @@ export default function TodayScreen() {
   const [title, setTitle] = useState('');
   const [location, setLocation] = useState('');
   const [googlePlaceId, setGooglePlaceId] = useState('');
+  const [destinationText, setDestinationText] = useState('');
+  const [destination, setDestination] = useState<ItineraryDestination>();
+  const [itemTimeZone, setItemTimeZone] = useState(activeTrip?.defaultTimeZone ?? 'UTC');
+  const [itemCurrency, setItemCurrency] = useState(activeTrip?.homeCurrency ?? 'HKD');
+  const [destinationSettingsOpen, setDestinationSettingsOpen] = useState(false);
   const [date, setDate] = useState(activeTrip?.startsOn ?? new Date().toISOString().slice(0, 10));
   const [endDate, setEndDate] = useState(activeTrip?.startsOn ?? new Date().toISOString().slice(0, 10));
   const [startTime, setStartTime] = useState('09:00');
@@ -99,6 +107,9 @@ export default function TodayScreen() {
   );
   const tripRange = activeTrip ? formatTripDates(activeTrip.startsOn, activeTrip.endsOn, languageTag) : undefined;
   const tripTimeZone = activeTrip?.defaultTimeZone ?? 'UTC';
+  const effectiveItemTimeZone = destination?.timeZone ? itemTimeZone : tripTimeZone;
+  const destinationCurrencyOptions = getCurrencyOptions(locale === 'en');
+  const destinationTimeZoneOptions = getTimeZoneOptions(locale === 'en');
   const editingItem = itineraryItems.find(({ id }) => id === editingItemId);
   const movingItem = itineraryItems.find(({ id }) => id === movingItemId);
   const moveTripOptions = useMemo(
@@ -116,6 +127,11 @@ export default function TodayScreen() {
     const timeout = setTimeout(() => {
       setDate(activeTrip.startsOn);
       setEndDate(activeTrip.startsOn);
+      setDestinationText('');
+      setDestination(undefined);
+      setItemTimeZone(activeTrip.defaultTimeZone);
+      setItemCurrency(activeTrip.homeCurrency);
+      setDestinationSettingsOpen(false);
       setCurrentTimestamp(Date.now());
       setEditingItemId(undefined);
       setComposerOpen(false);
@@ -168,10 +184,10 @@ export default function TodayScreen() {
     setSuccess(undefined);
     try {
       if (kind === 'lodging' && !location.trim()) throw new Error(tx('请先选择酒店或住宿地点。', 'Choose the hotel or stay location first.'));
-      const startsAt = zonedDateTimeToIso(date, startTime, tripTimeZone);
+      const startsAt = zonedDateTimeToIso(date, startTime, effectiveItemTimeZone);
       const endsAt = editingItem?.linkedStayId && editingItem.endsAt
         ? editingItem.endsAt
-        : zonedDateTimeToIso(kind === 'lodging' ? endDate : date, endTime, tripTimeZone);
+        : zonedDateTimeToIso(kind === 'lodging' ? endDate : date, endTime, effectiveItemTimeZone);
       if (new Date(endsAt) <= new Date(startsAt)) throw new Error(tx('结束时间需要晚于开始时间。', 'End time must be later than start time.'));
       const nextTripRange = activeTrip ? {
         startsOn: date < activeTrip.startsOn ? date : activeTrip.startsOn,
@@ -191,14 +207,30 @@ export default function TodayScreen() {
           defaultTimeZone: activeTrip.defaultTimeZone,
         });
       }
+      const destinationForSave = destination
+        ? { ...destination, timeZone: itemTimeZone, currency: itemCurrency || destination.currency }
+        : undefined;
       if (editingItem) {
-        await saveItineraryItem({ itemId: editingItem.id, title, locationLabel: editingItem.linkedStayId ? editingItem.locationLabel : location, googlePlaceId: editingItem.linkedStayId ? editingItem.googlePlaceId : googlePlaceId, startsAt, endsAt });
+        await saveItineraryItem({
+          itemId: editingItem.id,
+          title,
+          locationLabel: editingItem.linkedStayId ? editingItem.locationLabel : location,
+          googlePlaceId: editingItem.linkedStayId ? editingItem.googlePlaceId : googlePlaceId,
+          destination: editingItem.linkedStayId ? editingItem.destination : destinationForSave,
+          startsAt,
+          endsAt,
+        });
       } else {
-        await addItineraryItem({ title, locationLabel: location, googlePlaceId, kind, startsAt, endsAt });
+        await addItineraryItem({ title, locationLabel: location, googlePlaceId, destination: destinationForSave, kind, startsAt, endsAt });
       }
       setTitle('');
       setLocation('');
       setGooglePlaceId('');
+      setDestinationText('');
+      setDestination(undefined);
+      setItemTimeZone(activeTrip?.defaultTimeZone ?? 'UTC');
+      setItemCurrency(activeTrip?.homeCurrency ?? 'HKD');
+      setDestinationSettingsOpen(false);
       setEditingItemId(undefined);
       setComposerOpen(false);
       setComposerOffset(undefined);
@@ -252,8 +284,9 @@ export default function TodayScreen() {
 
   function beginEdit(item: ItineraryItem, deleteFirst = false) {
     cancelMove();
-    const start = isoToZonedDateTime(item.startsAt, tripTimeZone);
-    const end = isoToZonedDateTime(item.endsAt ?? item.startsAt, tripTimeZone);
+    const nextTimeZone = item.destination?.timeZone ?? tripTimeZone;
+    const start = isoToZonedDateTime(item.startsAt, nextTimeZone);
+    const end = isoToZonedDateTime(item.endsAt ?? item.startsAt, nextTimeZone);
     setEditingItemId(item.id);
     setComposerOffset(undefined);
     setComposerOpen(true);
@@ -261,6 +294,11 @@ export default function TodayScreen() {
     setTitle(item.title);
     setLocation(item.locationLabel ?? '');
     setGooglePlaceId(item.googlePlaceId ?? '');
+    setDestination(item.destination);
+    setDestinationText(item.destination ? destinationLabel(item.destination) : '');
+    setItemTimeZone(nextTimeZone);
+    setItemCurrency(item.destination?.currency ?? activeTrip?.homeCurrency ?? 'HKD');
+    setDestinationSettingsOpen(false);
     setKind(item.kind);
     setDate(start.date);
     setStartTime(start.time);
@@ -279,6 +317,11 @@ export default function TodayScreen() {
     setTitle('');
     setLocation('');
     setGooglePlaceId('');
+    setDestinationText('');
+    setDestination(undefined);
+    setItemTimeZone(activeTrip?.defaultTimeZone ?? 'UTC');
+    setItemCurrency(activeTrip?.homeCurrency ?? 'HKD');
+    setDestinationSettingsOpen(false);
     setKind('activity');
   }
 
@@ -291,6 +334,11 @@ export default function TodayScreen() {
     setTitle('');
     setLocation('');
     setGooglePlaceId('');
+    setDestinationText('');
+    setDestination(undefined);
+    setItemTimeZone(activeTrip?.defaultTimeZone ?? 'UTC');
+    setItemCurrency(activeTrip?.homeCurrency ?? 'HKD');
+    setDestinationSettingsOpen(false);
     setDate(activeTrip?.startsOn ?? new Date().toISOString().slice(0, 10));
     setEndDate(activeTrip?.startsOn ?? new Date().toISOString().slice(0, 10));
     setStartTime('09:00');
@@ -339,6 +387,39 @@ export default function TodayScreen() {
     setEndDate(nextDay.toISOString().slice(0, 10));
   }
 
+  function chooseDestination(next: DestinationSuggestion) {
+    const nextDestination: ItineraryDestination = {
+      cityName: next.cityName,
+      countryName: next.countryName,
+      countryCode: next.countryCode,
+      timeZone: next.timeZone,
+      currency: next.currency,
+      latitude: next.latitude,
+      longitude: next.longitude,
+    };
+    setDestination(nextDestination);
+    setDestinationText(destinationLabel(next));
+    setItemTimeZone(next.timeZone);
+    setItemCurrency(next.currency ?? activeTrip?.homeCurrency ?? 'HKD');
+    setDestinationSettingsOpen(false);
+    if (!location.trim()) setLocation(next.cityName);
+  }
+
+  function changeDestinationText(value: string) {
+    setDestinationText(value);
+    if (destination && value !== destinationLabel(destination)) setDestination(undefined);
+  }
+
+  function itemTimeZoneFor(item: ItineraryItem) {
+    return item.destination?.timeZone ?? tripTimeZone;
+  }
+
+  function itemPlace(item: ItineraryItem) {
+    if (!item.destination) return item.locationLabel;
+    if (!item.locationLabel || item.locationLabel === item.destination.cityName) return destinationLabel(item.destination);
+    return `${item.destination.cityName} · ${item.locationLabel}`;
+  }
+
   function previousPlaceFor(stay: (typeof itineraryItems)[number]) {
     return itineraryItems
       .filter((item) => item.id !== stay.id
@@ -379,14 +460,14 @@ export default function TodayScreen() {
     return tx(`${distance} · 约 ${minutes} 分钟`, `${distance} · about ${minutes} min`);
   }
 
-  function formatTransitTime(isoTime?: string, localizedTime?: string) {
+  function formatTransitTime(isoTime?: string, localizedTime?: string, timeZone = tripTimeZone) {
     if (!isoTime) return localizedTime;
     const value = new Date(isoTime);
     if (Number.isNaN(value.getTime())) return localizedTime;
     return new Intl.DateTimeFormat(languageTag, {
       hour: '2-digit',
       minute: '2-digit',
-      timeZone: tripTimeZone,
+      timeZone,
     }).format(value);
   }
 
@@ -450,7 +531,7 @@ export default function TodayScreen() {
   function transitPlan(item: ItineraryItem) {
     const transit = routeEstimates[item.id]?.transit;
     if (item.routeTravelMode !== 'TRANSIT' || busyTravelModeId === item.id || !transit) return null;
-    return <TransitPlan transit={transit} compact={compact} tx={tx} formatTime={formatTransitTime} />;
+    return <TransitPlan transit={transit} compact={compact} tx={tx} formatTime={(isoTime, localizedTime) => formatTransitTime(isoTime, localizedTime, itemTimeZoneFor(item))} />;
   }
 
   /** Route block shown inside the Up-next card, where there is no rail to sit in. */
@@ -569,6 +650,8 @@ export default function TodayScreen() {
 
       {activeTrip ? <ItineraryHealthCard items={upcomingItems.slice(0, 30)} onEditItem={canEdit ? beginEdit : undefined} /> : null}
 
+      {activeTrip ? <DestinationAtlas items={itineraryItems} languageTag={languageTag} onViewItem={canEdit ? beginEdit : undefined} tx={tx} /> : null}
+
       {activeTrip && canEdit && composerOpen ? (
         <View onLayout={({ nativeEvent }) => setComposerOffset(nativeEvent.layout.y)}>
           <InfoCard label={editingItem ? tx('编辑', 'Edit') : tx('新安排', 'New plan')} title={editingItem ? editingItem.title : tx('添加安排', 'Add plan')} accent={editingItem ? kindAccent(editingItem.kind) : theme.plan}>
@@ -584,6 +667,7 @@ export default function TodayScreen() {
                   title: candidate.title,
                   locationLabel: candidate.locationLabel,
                   googlePlaceId: candidate.googlePlaceId,
+                  destination: candidate.destination,
                   startsAt: candidate.startsAt,
                   endsAt: candidate.endsAt,
                 });
@@ -594,7 +678,33 @@ export default function TodayScreen() {
           <View style={styles.form}>
             <FormField label={tx('安排', 'Plan')} value={title} onChangeText={setTitle} placeholder={tx('例如：机场快线 → 中环', 'For example: Airport Express → Central')} />
             {!editingItem ? <SelectionField label={tx('类型', 'Type')} value={kind} options={itineraryKinds.map((itemKind) => ({ value: itemKind, label: kindLabel(itemKind) }))} onChange={(value) => chooseKind(value as ItineraryKind)} /> : null}
-            {editingItem?.linkedStayId ? <View style={[styles.lockedDestination, { backgroundColor: theme.backgroundSelected }]}><ThemedText type="smallBold">{tx('酒店交通', 'Hotel transfer')}</ThemedText><ThemedText type="small" themeColor="textSecondary">{tx(`${editingItem.locationLabel ?? '—'} · ${formatZonedDateTimeRange(editingItem.endsAt ?? editingItem.startsAt, undefined, languageTag, tripTimeZone)}`, `${editingItem.locationLabel ?? '—'} · ${formatZonedDateTimeRange(editingItem.endsAt ?? editingItem.startsAt, undefined, languageTag, tripTimeZone)}`)}</ThemedText></View> : <LocationField value={location} onChange={(value) => { setLocation(value); setGooglePlaceId(''); }} onSelect={(suggestion) => { setLocation(suggestion.text); setGooglePlaceId(suggestion.placeId); }} />}
+            {editingItem?.linkedStayId ? (
+              <View style={[styles.lockedDestination, { backgroundColor: theme.backgroundSelected }]}>
+                <ThemedText type="smallBold">{tx('酒店交通', 'Hotel transfer')}</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  {tx(`${editingItem.destination?.cityName ?? editingItem.locationLabel ?? '—'} · ${formatZonedDateTimeRange(editingItem.endsAt ?? editingItem.startsAt, undefined, languageTag, itemTimeZoneFor(editingItem))}`, `${editingItem.destination?.cityName ?? editingItem.locationLabel ?? '—'} · ${formatZonedDateTimeRange(editingItem.endsAt ?? editingItem.startsAt, undefined, languageTag, itemTimeZoneFor(editingItem))}`)}
+                </ThemedText>
+              </View>
+            ) : (
+              <>
+                <DestinationField value={destinationText} onChange={changeDestinationText} onSelect={chooseDestination} />
+                {destination ? (
+                  <DestinationSettings
+                    currency={itemCurrency}
+                    currencyOptions={destinationCurrencyOptions}
+                    destination={destination}
+                    open={destinationSettingsOpen}
+                    timeZone={itemTimeZone}
+                    timeZoneOptions={destinationTimeZoneOptions}
+                    onCurrencyChange={setItemCurrency}
+                    onTimeZoneChange={setItemTimeZone}
+                    onToggle={() => setDestinationSettingsOpen((current) => !current)}
+                    tx={tx}
+                  />
+                ) : null}
+                <LocationField value={location} onChange={(value) => { setLocation(value); setGooglePlaceId(''); }} onSelect={(suggestion) => { setLocation(suggestion.text); setGooglePlaceId(suggestion.placeId); }} />
+              </>
+            )}
             {editingItem?.linkedStayId ? (
               <View style={[styles.row, compact && styles.rowCompact]}><View style={[styles.grow, compact && styles.growStacked]}><DateTimeField label={tx('日期', 'Date')} value={date} mode="date" onChange={updatePlanDate} /></View><View style={[styles.grow, compact && styles.growStacked]}><DateTimeField label={tx('时间', 'Time')} value={startTime} mode="time" onChange={setStartTime} /></View></View>
             ) : kind === 'lodging' ? (
@@ -654,12 +764,12 @@ export default function TodayScreen() {
               {visibleStays.map((stay) => {
                 const previous = previousPlaceFor(stay);
                 const transferExists = itineraryItems.some((item) => item.linkedStayId === stay.id);
-                const nights = stayNightsInZone(stay.startsAt, stay.endsAt, tripTimeZone);
+                const nights = stayNightsInZone(stay.startsAt, stay.endsAt, itemTimeZoneFor(stay));
                 return (
                   <View key={stay.id} style={[styles.stayRow, compact && styles.stayRowCompact]}>
                     <StayCard
-                      dateRange={formatZonedDateTimeRange(stay.startsAt, stay.endsAt, languageTag, tripTimeZone)}
-                      location={stay.locationLabel ?? tx('还没设置地点', 'No place yet')}
+                      dateRange={formatZonedDateTimeRange(stay.startsAt, stay.endsAt, languageTag, itemTimeZoneFor(stay))}
+                      location={itemPlace(stay) ?? tx('还没设置地点', 'No place yet')}
                       nights={nights}
                       style={styles.stayCard}
                       title={stay.title}
@@ -700,7 +810,7 @@ export default function TodayScreen() {
             <View style={[styles.nextMetaGrid, compact && styles.nextMetaGridCompact]}>
               <View style={styles.metaChip}>
                 <ThemedText type="smallBold">{tx('时间', 'When')}</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">{formatZonedDateTimeRange(upcomingItems[0].startsAt, upcomingItems[0].endsAt, languageTag, tripTimeZone)}</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">{formatZonedDateTimeRange(upcomingItems[0].startsAt, upcomingItems[0].endsAt, languageTag, itemTimeZoneFor(upcomingItems[0]))}</ThemedText>
               </View>
               <View style={styles.metaChip}>
                 <ThemedText type="smallBold">{tx('同行者', 'Who')}</ThemedText>
@@ -714,7 +824,7 @@ export default function TodayScreen() {
                 onPress={() => void Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(upcomingItems[0].locationLabel ?? '')}`)}
                 style={[styles.mapAction, { backgroundColor: theme.backgroundSelected }]}>
                 <View style={styles.placeCopy}>
-                  <ThemedText type="smallBold">{upcomingItems[0].locationLabel}</ThemedText>
+                  <ThemedText type="smallBold">{itemPlace(upcomingItems[0])}</ThemedText>
                   <ThemedText type="small" themeColor="textSecondary">{tx('打开地图', 'Open map')}</ThemedText>
                 </View>
                 <Chevron color={theme.textSecondary} />
@@ -733,9 +843,11 @@ export default function TodayScreen() {
             <View style={styles.timelineSection}>
               <SectionHeading title={tx('后续安排', 'Later')} />
               {laterItems.map((item, index) => {
-                const start = isoToZonedDateTime(item.startsAt, tripTimeZone);
-                const end = item.endsAt ? isoToZonedDateTime(item.endsAt, tripTimeZone) : undefined;
-                const previousDate = isoToZonedDateTime((laterItems[index - 1] ?? upcomingItems[0]).startsAt, tripTimeZone).date;
+                const itemTimeZone = itemTimeZoneFor(item);
+                const previousItem = laterItems[index - 1] ?? upcomingItems[0];
+                const start = isoToZonedDateTime(item.startsAt, itemTimeZone);
+                const end = item.endsAt ? isoToZonedDateTime(item.endsAt, itemTimeZone) : undefined;
+                const previousDate = isoToZonedDateTime(previousItem.startsAt, itemTimeZoneFor(previousItem)).date;
                 return (
                   <Fragment key={item.id}>
                     {start.date !== previousDate ? <DaySeparator label={formatDayLabel(start.date, languageTag)} /> : null}
@@ -744,7 +856,7 @@ export default function TodayScreen() {
                       startLabel={start.time}
                       endLabel={end && end.date === start.date ? end.time : undefined}
                       title={item.title}
-                      place={item.locationLabel ?? undefined}
+                      place={itemPlace(item)}
                       kindColor={kindAccent(item.kind)}
                       kindSoftColor={kindSoftAccent(item.kind)}
                       kindLabel={kindLabel(item.kind)}
@@ -772,6 +884,61 @@ export default function TodayScreen() {
   );
 }
 
+function DestinationSettings({
+  currency,
+  currencyOptions,
+  destination,
+  open,
+  timeZone,
+  timeZoneOptions,
+  onCurrencyChange,
+  onTimeZoneChange,
+  onToggle,
+  tx,
+}: {
+  currency: string;
+  currencyOptions: { label: string; value: string }[];
+  destination: ItineraryDestination;
+  open: boolean;
+  timeZone: string;
+  timeZoneOptions: { label: string; value: string }[];
+  onCurrencyChange: (value: string) => void;
+  onTimeZoneChange: (value: string) => void;
+  onToggle: () => void;
+  tx: (zh: string, en: string) => string;
+}) {
+  const theme = useTheme();
+  const resolvedCurrencyOptions = currencyOptions.some((option) => option.value === currency)
+    ? currencyOptions
+    : [{ value: currency, label: currency }, ...currencyOptions];
+  const resolvedTimeZoneOptions = timeZoneOptions.some((option) => option.value === timeZone)
+    ? timeZoneOptions
+    : [{ value: timeZone, label: timeZone }, ...timeZoneOptions];
+  return (
+    <View style={styles.destinationSettings}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        onPress={onToggle}
+        style={({ pressed }) => [styles.destinationSummary, pressed && styles.pressed]}>
+        <View style={styles.destinationSummaryCopy}>
+          <ThemedText type="smallBold">{tx('已自动设置', 'Smart defaults')}</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            {destination.cityName} · {timeZone} · {currency} · {tx('点按调整', 'tap to adjust')}
+          </ThemedText>
+        </View>
+        <Chevron color={theme.textSecondary} direction={open ? 'down' : 'right'} />
+      </Pressable>
+      {open ? (
+        <View style={styles.destinationSettingsRow}>
+          <View style={styles.destinationSettingGrow}><SelectionField label={tx('安排时区', 'Plan time zone')} value={timeZone} options={resolvedTimeZoneOptions} onChange={onTimeZoneChange} /></View>
+          <View style={styles.destinationSettingGrow}><SelectionField label={tx('当地币种', 'Local currency')} value={currency} options={resolvedCurrencyOptions} onChange={onCurrencyChange} /></View>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   form: { gap: 14 },
   rangeConfirm: { gap: 10 },
@@ -789,6 +956,11 @@ const styles = StyleSheet.create({
   closeDiagonalOne: { position: 'absolute', width: 18, height: 2, borderRadius: 1, transform: [{ rotate: '45deg' }] },
   closeDiagonalTwo: { position: 'absolute', width: 18, height: 2, borderRadius: 1, transform: [{ rotate: '-45deg' }] },
   lockedDestination: { borderRadius: 12, padding: 14, gap: 3 },
+  destinationSettings: { gap: 8 },
+  destinationSummary: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 4 },
+  destinationSummaryCopy: { flex: 1, gap: 1 },
+  destinationSettingsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, padding: 12, borderRadius: 14 },
+  destinationSettingGrow: { flexGrow: 1, flexBasis: 180 },
   deleteConfirm: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 14, gap: 10 },
   dangerConfirm: { minHeight: 48, borderRadius: 12, paddingHorizontal: 14, justifyContent: 'center', alignItems: 'center' },
   heroPanel: { gap: 18, paddingVertical: 2 },
