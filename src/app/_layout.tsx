@@ -18,6 +18,9 @@ function SessionRouter() {
   const pathname = usePathname();
 
   if (pathname === '/privacy' || pathname === '/support') return <Slot />;
+  // Recovery arrives with a real but limited session; let it set a password
+  // before the onboarding gate can claim it.
+  if (pathname === '/reset-password' && !loading) return <Slot />;
 
   if (!configured || loading) return <SessionLoadingScreen configured={configured} />;
   if (!session) return <AuthScreen />;

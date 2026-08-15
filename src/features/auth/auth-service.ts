@@ -99,6 +99,21 @@ export async function linkGoogleIdentity() {
   if (Platform.OS !== 'web' && data.url) await finishNativeOAuth(data.url, redirectTo);
 }
 
+/**
+ * Sends a recovery link. Always resolves, even for an address with no account:
+ * confirming which emails are registered would leak account enumeration.
+ *
+ * The redirect target must be on Supabase Auth's allowed redirect list, or the
+ * link drops the traveller on the Site URL with no session.
+ */
+export async function requestPasswordReset(email: string) {
+  const normalizedEmail = normalizeEmail(email);
+  const redirectTo = authRedirectUrl('/reset-password');
+  const { error } = await getSupabaseClient().auth.resetPasswordForEmail(normalizedEmail, { redirectTo });
+  if (error && error.status !== 400) throw error;
+  return normalizedEmail;
+}
+
 export async function signInWithPassword(email: string, password: string) {
   const normalizedEmail = normalizeEmail(email);
   const { data, error } = await getSupabaseClient().auth.signInWithPassword({ email: normalizedEmail, password });

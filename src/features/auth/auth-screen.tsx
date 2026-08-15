@@ -11,7 +11,7 @@ import { Screen } from '@/components/screen';
 import { GoogleMark } from '@/components/google-mark';
 import { Radius, Size, Spacing } from '@/constants/theme';
 import { ThemedText } from '@/components/themed-text';
-import { completeRegistration, sendEmailOtp, sendPhoneOtp, signInWithGoogle, signInWithPassword, signOut, verifyEmailOtp, verifyPhoneOtp } from '@/features/auth/auth-service';
+import { completeRegistration, requestPasswordReset, sendEmailOtp, sendPhoneOtp, signInWithGoogle, signInWithPassword, signOut, verifyEmailOtp, verifyPhoneOtp } from '@/features/auth/auth-service';
 import { useAuth } from '@/features/auth/auth-provider';
 import { useI18n } from '@/features/i18n/i18n-provider';
 import { parseInviteToken } from '@/features/invites/invite-link';
@@ -45,6 +45,7 @@ export function AuthScreen() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [resetSent, setResetSent] = useState(false);
   const [token, setToken] = useState('');
   const [flow, setFlow] = useState<AuthFlow>('login');
   const [method, setMethod] = useState<AuthMethod>('email');
@@ -71,6 +72,21 @@ export function AuthScreen() {
     setCodeSentAt(undefined);
     setToken('');
     setError(undefined);
+  }
+
+  async function requestReset() {
+    setBusy(true);
+    setError(undefined);
+    try {
+      await requestPasswordReset(email);
+      // Reported identically for a registered and an unregistered address:
+      // confirming which emails exist would leak account enumeration.
+      setResetSent(true);
+    } catch (caught) {
+      setError(toUserMessage(caught, tx('无法发送重置邮件，请稍后重试。', 'Could not send the reset email. Please try again.')));
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function login() {
@@ -194,7 +210,16 @@ export function AuthScreen() {
               {method === 'email' ? <FormField label={tx('邮箱', 'Email')} value={email} onChangeText={setEmail} autoCapitalize="none" autoComplete="email" keyboardType="email-address" placeholder="you@example.com" /> : <FormField label={tx('手机号（含国家区号）', 'Phone with country code')} value={phone} onChangeText={setPhone} autoComplete="tel" keyboardType="phone-pad" placeholder="+61412345678" />}
               {method === 'email' && flow === 'login' ? <FormField label={tx('密码', 'Password')} value={password} onChangeText={setPassword} autoCapitalize="none" autoComplete="current-password" secureTextEntry placeholder={tx('输入密码', 'Enter password')} /> : null}
               {method === 'email' && flow === 'login'
-                ? <ActionButton busy={busy} disabled={!email.trim() || !password} onPress={() => void login()}>{tx('登录', 'Sign in')}</ActionButton>
+                ? <>
+                    <ActionButton busy={busy} disabled={!email.trim() || !password} onPress={() => void login()}>{tx('登录', 'Sign in')}</ActionButton>
+                    {resetSent ? (
+                      <InlineNotice>{tx('如果这个邮箱有账号，重置链接已发送。请查收邮件。', 'If that email has an account, a reset link is on its way.')}</InlineNotice>
+                    ) : (
+                      <Pressable accessibilityRole="button" disabled={busy || !email.trim()} onPress={() => void requestReset()} style={styles.forgotRow}>
+                        <ThemedText type="smallBold" style={{ color: theme.link }}>{tx('忘记密码？', 'Forgot password?')}</ThemedText>
+                      </Pressable>
+                    )}
+                  </>
                 : <ActionButton busy={busy} disabled={method === 'email' ? !email.trim() : !phone.trim()} onPress={() => void sendCode()}>{method === 'phone' ? tx('发送短信验证码', 'Send SMS code') : flow === 'register' ? tx('发送注册验证码', 'Send registration code') : tx('发送登录验证码', 'Send login code')}</ActionButton>}
               {method === 'email' && flow === 'register' ? <ThemedText type="small" themeColor="textSecondary">{tx('验证邮箱后，你将设置密码、显示名称和可选头像。', 'After verifying your email, you will set a password, display name, and optional avatar.')}</ThemedText> : null}
             </>
@@ -329,6 +354,7 @@ const styles = StyleSheet.create({
   form: { gap: 12 },
   methodChoices: { flexDirection: 'row', gap: 8 },
   flowChoices: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  forgotRow: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' },
   onboardingCard: { borderRadius: 16, padding: 18, gap: 14 },
   avatar: { alignSelf: 'center', width: 116, height: 116, borderRadius: 58, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: 12 },
   avatarImage: { width: '100%', height: '100%' },
