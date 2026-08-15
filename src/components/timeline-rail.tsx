@@ -1,6 +1,7 @@
 import type { PropsWithChildren, ReactNode } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
+import { KindPill } from '@/components/kind-pill';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -40,6 +41,7 @@ export function TimelineRow({
   kindLabel,
   kindSoftColor,
   last = false,
+  onPress,
   children,
 }: PropsWithChildren<{
   startLabel: string;
@@ -50,8 +52,19 @@ export function TimelineRow({
   kindSoftColor: string;
   kindLabel: string;
   last?: boolean;
+  onPress?: () => void;
 }>) {
   const theme = useTheme();
+  const body = (
+    <>
+      <View style={styles.head}>
+        <ThemedText type="smallBold" style={styles.title}>{title}</ThemedText>
+        <KindPill color={kindColor} softColor={kindSoftColor} label={kindLabel} />
+      </View>
+      {place ? <ThemedText type="small" themeColor="textSecondary">{place}</ThemedText> : null}
+      {children}
+    </>
+  );
   return (
     <View style={styles.row}>
       <View style={styles.gutter}>
@@ -63,17 +76,9 @@ export function TimelineRow({
         <View style={[styles.dot, { backgroundColor: kindColor }]} />
         {last ? null : <View style={[styles.spineLine, { backgroundColor: theme.border }]} />}
       </View>
-      <View style={styles.content}>
-        <View style={styles.head}>
-          <ThemedText type="smallBold" style={styles.title}>{title}</ThemedText>
-          <View style={[styles.pill, { backgroundColor: kindSoftColor }]}>
-            <View style={[styles.pillDot, { backgroundColor: kindColor }]} />
-            <ThemedText type="small" style={{ color: kindColor }}>{kindLabel}</ThemedText>
-          </View>
-        </View>
-        {place ? <ThemedText type="small" themeColor="textSecondary">{place}</ThemedText> : null}
-        {children}
-      </View>
+      {onPress ? (
+        <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.content, pressed && styles.pressed]}>{body}</Pressable>
+      ) : <View style={styles.content}>{body}</View>}
     </View>
   );
 }
@@ -116,8 +121,7 @@ const styles = StyleSheet.create({
   content: { flex: 1, minWidth: 0, gap: 3, paddingBottom: 18 },
   head: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   title: { flex: 1, minWidth: 0, fontSize: 16, lineHeight: 22 },
-  pill: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
-  pillDot: { width: 7, height: 7, borderRadius: 4 },
+  pressed: { opacity: 0.68 },
 
   segmentContent: { flex: 1, minWidth: 0, gap: 8, paddingTop: 2, paddingBottom: 14 },
   segmentSummary: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8 },

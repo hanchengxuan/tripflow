@@ -1,5 +1,5 @@
 import type { StyleProp, ViewStyle } from 'react-native';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
@@ -9,15 +9,15 @@ interface StayCardProps {
   dateRange: string;
   location: string;
   nights: number;
+  onPress?: () => void;
   style?: StyleProp<ViewStyle>;
   title: string;
 }
 
-export function StayCard({ dateRange, location, nights, style, title }: StayCardProps) {
+export function StayCard({ dateRange, location, nights, onPress, style, title }: StayCardProps) {
   const theme = useTheme();
-
-  return (
-    <View style={[styles.card, { backgroundColor: theme.backgroundElement }, style]}>
+  const content = (
+    <>
       <View style={[styles.kindBar, { backgroundColor: theme.kindLodging }]} />
       <View style={styles.copy}>
         <ThemedText style={styles.title}>{title}</ThemedText>
@@ -28,6 +28,20 @@ export function StayCard({ dateRange, location, nights, style, title }: StayCard
         <ThemedText style={[styles.nightsValue, { color: theme.kindLodging }]}>{nights}</ThemedText>
         <ThemedText style={[styles.nightsLabel, { color: theme.kindLodging }]}>晚 nights</ThemedText>
       </View>
+    </>
+  );
+
+  return onPress ? (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${title}, ${dateRange}, ${nights} nights`}
+      onPress={onPress}
+      style={({ pressed }) => [styles.card, { backgroundColor: theme.backgroundElement }, style, pressed && styles.pressed]}>
+      {content}
+    </Pressable>
+  ) : (
+    <View style={[styles.card, { backgroundColor: theme.backgroundElement }, style]}>
+      {content}
     </View>
   );
 }
@@ -55,4 +69,5 @@ const styles = StyleSheet.create({
   },
   nightsValue: { fontSize: 18, lineHeight: 22, fontWeight: '600' },
   nightsLabel: { fontSize: 10, lineHeight: 14, fontWeight: '500' },
+  pressed: { opacity: 0.72 },
 });

@@ -93,11 +93,9 @@ To adopt in `src/constants/theme.ts`, the semantic names map directly:
 | `text/secondary` | `textSecondary` |
 | `danger/base` | `danger` |
 
-New keys the current theme does not have yet: `bg/subtle`, `text/muted`, `text/link`,
-`accent/primary`, `accent/pressed`, `accent/soft`, `accent/info`, `accent/plan`,
-`money/in`, `money/out`, `money/settled`, `border/hairline`, `border/field`, `border/focus`,
-`kind/*` and `kind-soft/*`, `avatar-fg`. These are currently hardcoded hexes scattered across
-`index.tsx`, `ledger.tsx`, and `app-tabs.web.tsx` — the redesign assumes they become theme keys.
+The full semantic set is adopted in `theme.ts`, including subtle/selected surfaces, text hierarchy,
+accent states, money direction, borders, all itinerary kind pairs, navigation glass, and the sheet
+scrim. Components consume these through `useTheme()`; no screen re-derives palette values.
 
 ## Design vs. shipped app
 
@@ -109,11 +107,15 @@ Kept current. Update a row when you close a gap.
 | Spacing / radius / size scales | ✅ tokens exist | `Spacing`, `Radius`, `Size` in `theme.ts` — new code should use them; existing files still hold literals |
 | Time rail, day separator, route in the gap | ✅ shipped | `src/components/timeline-rail.tsx`, `route-plan.tsx` |
 | Bipolar balance bar | ✅ shipped | `src/components/balance-bar.tsx`, `src/lib/balance-bar.ts` |
-| Add-plan and add-expense as bottom **sheets** | ❌ still inline blocks reached by scroll anchoring | `src/app/index.tsx`, `src/app/ledger.tsx`, `src/components/screen.tsx` |
+| Add-plan and add-expense as bottom **sheets** | 🟡 implemented; real-device gate pending | `src/components/bottom-sheet.tsx`, `src/app/index.tsx`, `src/app/ledger.tsx`, `src/components/screen.tsx` |
+| 54pt text-only floating navigation on every platform | ✅ implemented; native recheck pending | `src/components/app-tabs-custom.tsx` |
 | Stay card with kind bar + nights tile | ✅ shipped | `src/components/stay-card.tsx`, `src/app/index.tsx` stays section |
 | Notice with a 3px accent bar | ✅ shipped | `src/components/form-controls.tsx` `InlineNotice` |
 | Screen header = title + one context row | ✅ shipped | `src/components/screen.tsx` and every `Screen` caller |
 | Travel modes compact until expanded | ✅ shipped | `RouteEstimateChip` toggles `src/app/index.tsx` `routeModeControls` |
+| Today raised next-up card with compact edit affordance | ✅ shipped | `src/components/next-up-card.tsx`; edit opens by pressing the card instead of permanent action links |
+| Trips current-trip hero and row-list | ✅ shipped | `src/components/trip-overview-card.tsx`, `src/components/list-surface.tsx`, `src/app/explore.tsx` |
+| Ledger segmented views, row-list activity, compact AI/manual composer | ✅ implemented; physical-phone gate pending | `src/components/segmented-control.tsx`, `src/components/list-surface.tsx`, `src/app/ledger.tsx` |
 
 The travel-mode product decision preserves explicit control without keeping four controls open: the current mode and estimate always remain visible, and pressing that chip reveals all four modes in place. Selecting one collapses the choices while the estimate refreshes.
 
@@ -135,11 +137,13 @@ The shipped login screen was redesigned after review. What changes:
 
 Remaining gaps in the order they should be done. Each is its own `codex/*` branch and PR.
 
-### 1. Sheet composers — largest, do last
+### Sheet composers — implementation and Simulator acceptance complete; physical-device acceptance pending
 
 `src/app/index.tsx`, `src/app/ledger.tsx`, `src/components/screen.tsx`. Design: `screens-today.html` and `screens-ledger.html` bottom sheets with a scrim.
 
-Both composers are inline blocks reached by scroll anchoring. `Screen` carries `scrollToKey` / `scrollToOffset` and a two-frame target scroll that exists only to bring those blocks into view; a sheet removes the need for all of it. Highest risk in the set — it touches shared shell behaviour that has already been fixed twice for scroll bugs. Verify on a real device, not only the browser pane.
+Both composers and the cross-trip move form now use the shared bottom sheet. `Screen` no longer carries `scrollToKey` / `scrollToOffset`, and the old offset measurement plus two-frame target scroll are gone. iOS Simulator acceptance exposed native-only flex shrink: the four date/time fields collapsed to their minimum content width, compact Ledger columns retained wrapping, and a 100% row flex basis became height after stacking. The composer now uses two full-width combined start/end controls matching the HTML, the shared scroll content has an explicit width, and compact Ledger styles reset wrap/basis/width. The fidelity pass also made Today's raised hero, Trips' current-trip overview, Ledger's segmented views, expense row-list, and manual/AI composer consume shared UI 2.0 components. Permanent edit/move/delete links left the itinerary surface and moved into the edit sheet. Simulator screenshots now cover Today, Trips, Ledger settlement/activity, and the Ledger composer. Lint, TypeScript, 58 Jest tests, Expo Doctor 20/20, web/iOS exports, and six public-route Chromium checks pass. Before shipping, verify on a physical phone: open Today and Ledger from a scrolled position, focus the lowest fields with the keyboard open, scroll to both primary actions, dismiss from the header/scrim/Android back where applicable, and reopen without stale form or scroll state.
+
+The follow-up native regression pass also keeps the selected end date when saving non-linked plans, prevents paired controls from collapsing to digit width on iOS, and translates PostgREST RPC errors into actionable Chinese feedback. The Trips range formatter follows the HTML reference in Chinese (`3月12 — 3月16`).
 
 ## Handing this to another agent
 

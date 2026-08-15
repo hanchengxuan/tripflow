@@ -4,6 +4,7 @@ import { Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Chevron } from '@/components/chevron';
+import { Radius, Size, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useI18n } from '@/features/i18n/i18n-provider';
 
@@ -44,6 +45,7 @@ export function DateTimeField({
   onChange,
   minimumDate,
   maximumDate,
+  embedded = false,
 }: {
   label: string;
   value: string;
@@ -51,6 +53,7 @@ export function DateTimeField({
   onChange: (value: string) => void;
   minimumDate?: Date;
   maximumDate?: Date;
+  embedded?: boolean;
 }) {
   const theme = useTheme();
   const { locale, tx } = useI18n();
@@ -76,26 +79,68 @@ export function DateTimeField({
   ) : null;
 
   return (
-    <View style={styles.field}>
-      <ThemedText type="smallBold">{label}</ThemedText>
+    <View style={[styles.field, embedded && styles.embeddedField]}>
+      {!embedded ? <ThemedText type="smallBold">{label}</ThemedText> : null}
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`${label}：${displayValue}`}
         onPress={() => setOpen(true)}
-        style={[styles.control, { backgroundColor: theme.background, borderColor: theme.backgroundSelected }]}
+        style={[
+          styles.control,
+          embedded && styles.embeddedControl,
+          { backgroundColor: embedded ? theme.backgroundElement : theme.background, borderColor: theme.borderField },
+        ]}
       >
         <View style={styles.copy}>
-          <ThemedText type="smallBold">{displayValue}</ThemedText>
+          <ThemedText type="smallBold" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.82}>
+            {displayValue}
+          </ThemedText>
         </View>
-        <Chevron color={theme.textSecondary} />
+        {!embedded ? <Chevron color={theme.textSecondary} /> : null}
       </Pressable>
       {picker}
     </View>
   );
 }
 
+export function DateTimePairField({
+  label,
+  dateLabel,
+  dateValue,
+  timeLabel,
+  timeValue,
+  onDateChange,
+  onTimeChange,
+}: {
+  label: string;
+  dateLabel: string;
+  dateValue: string;
+  timeLabel: string;
+  timeValue: string;
+  onDateChange: (value: string) => void;
+  onTimeChange: (value: string) => void;
+}) {
+  const theme = useTheme();
+
+  return (
+    <View style={styles.pairField}>
+      <ThemedText type="smallBold" themeColor="textSecondary">{label}</ThemedText>
+      <View style={[styles.pairControl, { backgroundColor: theme.backgroundElement, borderColor: theme.borderField }]}>
+        <View style={styles.datePart}>
+          <DateTimeField embedded label={dateLabel} mode="date" onChange={onDateChange} value={dateValue} />
+        </View>
+        <View style={[styles.divider, { backgroundColor: theme.border }]} />
+        <View style={styles.timePart}>
+          <DateTimeField embedded label={timeLabel} mode="time" onChange={onTimeChange} value={timeValue} />
+        </View>
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   field: { gap: 6 },
+  embeddedField: { flex: 1, minWidth: 0, gap: 0 },
   control: {
     minHeight: 58,
     borderWidth: 1,
@@ -106,5 +151,27 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  embeddedControl: {
+    minHeight: 46,
+    borderWidth: 0,
+    borderRadius: 0,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
   copy: { flex: 1, gap: 2 },
+  // Explicit basis/width keeps the two combined controls measurable on iOS.
+  // Without it, a native ScrollView can resolve the percentage parent width as
+  // zero and each picker collapses to the width of its digits.
+  pairField: { flexGrow: 1, flexShrink: 1, flexBasis: 0, width: 0, minWidth: 0, gap: Spacing.xs },
+  pairControl: {
+    minHeight: Size.control,
+    borderWidth: 1,
+    borderRadius: Radius.sm,
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    overflow: 'hidden',
+  },
+  datePart: { flex: 1.35, minWidth: 0 },
+  timePart: { flex: 0.85, minWidth: 0 },
+  divider: { width: StyleSheet.hairlineWidth, marginVertical: Spacing.sm },
 });

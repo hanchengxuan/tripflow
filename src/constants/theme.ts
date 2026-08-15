@@ -50,6 +50,7 @@ export const Colors = {
     navSurface: 'rgba(255,255,255,0.82)',
     navShadow: '0 8px 24px rgba(22,33,31,0.12)',
     scrim: 'rgba(22,33,31,0.72)',
+    sheetScrim: 'rgba(12,25,36,0.32)',
     /** Always light: it sits on an opaque dark scrim in both themes. */
     textOnScrim: '#FFFFFF',
     /** Accessible label/initials color on accentSoft and backgroundSelected grounds. */
@@ -112,6 +113,7 @@ export const Colors = {
     navSurface: 'rgba(23,29,28,0.82)',
     navShadow: '0 8px 24px rgba(0,0,0,0.44)',
     scrim: 'rgba(6,10,9,0.76)',
+    sheetScrim: 'rgba(6,10,9,0.56)',
     textOnScrim: '#FFFFFF',
     accentOnSoft: '#9FD3C1',
 
@@ -206,6 +208,8 @@ export const Size = {
   touchMin: 44,
   control: 48,
   fab: 56,
+  nav: 54,
+  fabClearance: 86,
   railGutter: 46,
   screenGutter: 20,
 } as const;
