@@ -1,3 +1,5 @@
+import { useRouter } from 'expo-router';
+
 import { DestinationAtlas } from '@/components/destination-atlas';
 import { InfoCard } from '@/components/info-card';
 import { Screen } from '@/components/screen';
@@ -6,6 +8,7 @@ import { useI18n } from '@/features/i18n/i18n-provider';
 import { useMvp } from '@/features/mvp/mvp-provider';
 
 export default function AtlasScreen() {
+  const router = useRouter();
   const { languageTag, tx } = useI18n();
   const { activeTrip, itineraryItems } = useMvp();
   const context = activeTrip
@@ -18,7 +21,12 @@ export default function AtlasScreen() {
   return (
     <Screen title={tx('地图', 'Map')} context={context}>
       {activeTrip ? (
-        <DestinationAtlas items={itineraryItems} languageTag={languageTag} tx={tx} />
+        <DestinationAtlas
+          items={itineraryItems}
+          languageTag={languageTag}
+          tx={tx}
+          onViewItem={(item) => router.push({ pathname: '/itinerary', params: { itemId: item.id } })}
+        />
       ) : (
         <InfoCard title={tx('地图等待行程', 'Map is waiting for a trip')}>
           <ThemedText themeColor="textSecondary">

@@ -5,6 +5,7 @@ import { BottomSheet } from '@/components/bottom-sheet';
 import { DateTimePairField } from '@/components/date-time-field';
 import { DestinationField } from '@/components/destination-field';
 import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/form-controls';
+import { ItineraryEditAssistant } from '@/components/itinerary-edit-assistant';
 import { LocationField } from '@/components/location-field';
 import { Chevron } from '@/components/chevron';
 import { SelectionField } from '@/components/selection-field';
@@ -21,6 +22,7 @@ import { useTheme } from '@/hooks/use-theme';
 export interface ItineraryComposerSheetProps {
   activeTrip: Trip;
   editingItem?: ItineraryItem;
+  itineraryItems: ItineraryItem[];
   onAdd: (input: {
     title: string;
     kind: ItineraryKind;
@@ -49,6 +51,7 @@ export interface ItineraryComposerSheetProps {
 export function ItineraryComposerSheet({
   activeTrip,
   editingItem,
+  itineraryItems,
   onAdd,
   onDelete,
   onDismiss,
@@ -318,6 +321,39 @@ export function ItineraryComposerSheet({
             <DateTimePairField label={tx('结束', 'End')} dateLabel={tx('结束日期', 'End date')} dateValue={endDate} timeLabel={tx('结束时间', 'End time')} timeValue={endTime} onDateChange={updatePlanEndDate} onTimeChange={setEndTime} />
           </View>
         )}
+        {editingItem ? (
+          <ItineraryEditAssistant
+            key={editingItem.id}
+            trip={activeTrip}
+            item={editingItem}
+            items={itineraryItems}
+            onApply={async (candidate) => {
+              await onSave({
+                itemId: candidate.id,
+                title: candidate.title,
+                locationLabel: candidate.locationLabel,
+                googlePlaceId: candidate.googlePlaceId,
+                destination: candidate.destination,
+                startsAt: candidate.startsAt,
+                endsAt: candidate.endsAt,
+              });
+              const nextTimeZone = candidate.destination?.timeZone ?? activeTrip.defaultTimeZone;
+              const start = isoToZonedDateTime(candidate.startsAt, nextTimeZone);
+              const end = isoToZonedDateTime(candidate.endsAt, nextTimeZone);
+              setTitle(candidate.title);
+              setLocation(candidate.locationLabel ?? '');
+              setGooglePlaceId(candidate.googlePlaceId ?? '');
+              setDestination(candidate.destination);
+              setDestinationText(candidate.destination ? destinationLabel(candidate.destination) : '');
+              setItemTimeZone(nextTimeZone);
+              setItemCurrency(candidate.destination?.currency ?? activeTrip.homeCurrency);
+              setDate(start.date);
+              setStartTime(start.time);
+              setEndDate(end.date);
+              setEndTime(end.time);
+            }}
+          />
+        ) : null}
         {editingItem && !confirmDeleteItem ? (
           <Pressable accessibilityRole="button" onPress={() => setConfirmDeleteItem(true)} style={({ pressed }) => [styles.deleteTrigger, pressed && styles.pressed]}>
             <ThemedText type="smallBold" style={{ color: theme.danger }}>{tx('删除这项安排', 'Delete this plan')}</ThemedText>

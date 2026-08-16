@@ -1,4 +1,5 @@
-import { Fragment, useMemo, useState } from 'react';
+import { useLocalSearchParams } from 'expo-router';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ItineraryComposerSheet } from '@/components/itinerary-composer-sheet';
@@ -53,6 +54,7 @@ function searchableText(item: ItineraryItem) {
 }
 
 export default function ItineraryScreen() {
+  const params = useLocalSearchParams<{ itemId?: string | string[] }>();
   const { languageTag, locale, tx } = useI18n();
   const theme = useTheme();
   const {
@@ -70,6 +72,7 @@ export default function ItineraryScreen() {
   const [composerOpen, setComposerOpen] = useState(false);
   const [editingItemId, setEditingItemId] = useState<string>();
   const [success, setSuccess] = useState<string>();
+  const handledItemParam = useRef<string | undefined>(undefined);
   const kindLabel = (kind: ItineraryKind) => locale === 'zh-CN' ? itineraryKindLabels[kind] : itineraryKindLabelsEn[kind];
   const itemPlace = (item: ItineraryItem) => {
     if (!item.destination) return item.locationLabel;
@@ -92,6 +95,26 @@ export default function ItineraryScreen() {
   const currentMember = members.find(({ userId }) => userId === currentUserId);
   const canEdit = currentMember?.role === 'owner' || currentMember?.role === 'editor';
   const editingItem = itineraryItems.find(({ id }) => id === editingItemId);
+
+  const activeTripId = activeTrip?.id;
+  const itemIdParam = Array.isArray(params.itemId) ? params.itemId[0] : params.itemId;
+
+  useEffect(() => {
+    if (!activeTripId || !currentMember || !itemIdParam || handledItemParam.current === itemIdParam) return;
+    const item = itineraryItems.find(({ id }) => id === itemIdParam);
+    if (!item) return;
+    handledItemParam.current = itemIdParam;
+    const timeout = setTimeout(() => {
+      if (canEdit) {
+        setSuccess(undefined);
+        setEditingItemId(item.id);
+        setComposerOpen(true);
+      } else {
+        setQuery(item.title);
+      }
+    }, 0);
+    return () => clearTimeout(timeout);
+  }, [activeTripId, canEdit, currentMember, itemIdParam, itineraryItems]);
 
   function openNewComposer() {
     setSuccess(undefined);
@@ -213,6 +236,7 @@ export default function ItineraryScreen() {
         <ItineraryComposerSheet
           activeTrip={activeTrip}
           editingItem={editingItem}
+          itineraryItems={itineraryItems}
           onAdd={addItineraryItem}
           onDelete={removeItineraryItem}
           onDismiss={closeComposer}
