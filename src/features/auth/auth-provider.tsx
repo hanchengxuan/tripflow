@@ -2,7 +2,7 @@ import type { Session } from '@supabase/supabase-js';
 import { createContext, type PropsWithChildren, useContext, useEffect, useMemo, useState } from 'react';
 
 import { getAuthCapabilities, getSupabaseClient, isSupabaseConfigured, type AuthCapabilities } from '@/lib/supabase';
-import { shouldResetOnboarding } from '@/features/auth/auth-session';
+import { nextRecoveryState, shouldResetOnboarding } from '@/features/auth/auth-session';
 
 interface AuthContextValue {
   session: Session | null;
@@ -10,6 +10,8 @@ interface AuthContextValue {
   configured: boolean;
   onboardingComplete: boolean;
   capabilities: AuthCapabilities;
+  /** A recovery link was exchanged; the traveller must set a password first. */
+  recovering: boolean;
   finishOnboarding: () => void;
 }
 
@@ -20,6 +22,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [loading, setLoading] = useState(isSupabaseConfigured);
   const [onboardingComplete, setOnboardingComplete] = useState<boolean | undefined>(undefined);
   const [capabilities, setCapabilities] = useState<AuthCapabilities>({ google: false, phone: false });
+  const [recovering, setRecovering] = useState(false);
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
@@ -34,6 +37,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       sessionRef.current = nextSession;
       setSession(nextSession);
       if (shouldResetOnboarding(event, previousUserId, nextUserId)) setOnboardingComplete(undefined);
+      setRecovering((current) => nextRecoveryState(event, current));
       setLoading(false);
     });
     client.auth.getSession().then(({ data: sessionData }) => {
@@ -68,9 +72,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
       configured: isSupabaseConfigured,
       onboardingComplete: onboardingComplete ?? false,
       capabilities,
+      recovering,
       finishOnboarding: () => setOnboardingComplete(true),
     }),
-    [session, loading, onboardingComplete, capabilities],
+    [session, loading, onboardingComplete, capabilities, recovering],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
