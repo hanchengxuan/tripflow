@@ -661,25 +661,6 @@ export default function TodayScreen() {
 
       {activeTrip ? <ItineraryHealthCard items={upcomingItems.slice(0, 30)} onEditItem={canEdit ? beginEdit : undefined} /> : null}
 
-      {activeTrip && canEdit && upcomingItems.length > 0 ? (
-        <ItineraryEditAssistant
-          trip={activeTrip}
-          item={upcomingItems[0]}
-          items={upcomingItems.slice(0, 30)}
-          onApply={async (candidate) => {
-            await saveItineraryItem({
-              itemId: candidate.id,
-              title: candidate.title,
-              locationLabel: candidate.locationLabel,
-              googlePlaceId: candidate.googlePlaceId,
-              destination: candidate.destination,
-              startsAt: candidate.startsAt,
-              endsAt: candidate.endsAt,
-            });
-          }}
-        />
-      ) : null}
-
       {activeTrip && !canEdit ? (
         <View style={[styles.readOnlyBadge, { backgroundColor: theme.backgroundSelected }]}>
           <ThemedText type="smallBold">{tx('仅查看', 'View only')}</ThemedText>
@@ -774,6 +755,26 @@ export default function TodayScreen() {
               <DateTimePairField label={tx('结束', 'End')} dateLabel={tx('结束日期', 'End date')} dateValue={endDate} timeLabel={tx('结束时间', 'End time')} timeValue={endTime} onDateChange={updatePlanEndDate} onTimeChange={setEndTime} />
             </View>
           )}
+          {activeTrip && editingItem ? (
+            <ItineraryEditAssistant
+              key={editingItem.id}
+              trip={activeTrip}
+              item={editingItem}
+              items={itineraryItems}
+              onApply={async (candidate) => {
+                await saveItineraryItem({
+                  itemId: candidate.id,
+                  title: candidate.title,
+                  locationLabel: candidate.locationLabel,
+                  googlePlaceId: candidate.googlePlaceId,
+                  destination: candidate.destination,
+                  startsAt: candidate.startsAt,
+                  endsAt: candidate.endsAt,
+                });
+                beginEdit(candidate);
+              }}
+            />
+          ) : null}
           {editingItem && !confirmDeleteItem ? (
             <View style={styles.editingActions}>
               {editingItem.locationLabel ? (

@@ -243,7 +243,10 @@ export function DestinationAtlas({
                     accessibilityRole="button"
                     accessibilityLabel={tx(`${destination.cityName}，${statusLabel(destination.status, tx)}`, `${destination.cityName}, ${statusLabel(destination.status, tx)}`)}
                     accessibilityState={{ selected: selectedMarker }}
-                    onPress={() => setSelectedKey(destination.key)}
+                    onPress={() => {
+                      setSelectedKey(destination.key);
+                      if (destination.items.length === 1) onViewItem?.(destination.items[0]);
+                    }}
                     style={[styles.markerHit, { left: `${(destination.x / MAP_WIDTH) * 100}%`, top: `${(destination.y / MAP_HEIGHT) * 100}%` }]}
                     testID={`destination-marker-${index}`}>
                     <Animated.View style={[styles.markerGlow, { backgroundColor: pinColor, transform: [{ scale: selectedMarker || destination.status === 'current' ? pulse : 1 }] }]} />

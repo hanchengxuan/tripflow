@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
 
 import { ActionButton, FormField, InlineNotice } from '@/components/form-controls';
 import { ThemedText } from '@/components/themed-text';
@@ -85,25 +84,30 @@ export function ItineraryEditAssistant({ trip, item, items, onApply }: Itinerary
 
   return (
     <View style={styles.root}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={tx('为当前安排获取智能建议', 'Get a smart suggestion for this plan')}
-        accessibilityState={{ expanded: open }}
-        onPress={() => {
-          setOpen((current) => !current);
-          setError(undefined);
-        }}
-        style={({ pressed }) => [styles.trigger, { borderColor: theme.borderField }, pressed && styles.pressed]}
-      >
-        <SparklesIcon color={theme.accent} />
-        <ThemedText type="smallBold" themeColor="link">{tx('智能建议', 'Smart suggestion')}</ThemedText>
-      </Pressable>
+      {!open ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={tx('为当前安排获取智能建议', 'Get a smart suggestion for this plan')}
+          accessibilityState={{ expanded: open }}
+          onPress={() => {
+            setOpen(true);
+            setError(undefined);
+          }}
+          style={({ pressed }) => [styles.hint, { backgroundColor: theme.backgroundSubtle }, pressed && styles.pressed]}
+        >
+          <View style={[styles.hintAccent, { backgroundColor: theme.accent }]} />
+          <View style={styles.hintCopy}>
+            <ThemedText type="small" themeColor="textSecondary">{tx('想调整这项安排？', 'Need to adjust this plan?')}</ThemedText>
+            <ThemedText type="smallBold" style={{ color: theme.link }}>{tx('用一句话描述，先看看修改预览', 'Describe it in a sentence and review the preview first')}</ThemedText>
+          </View>
+        </Pressable>
+      ) : null}
 
       {open ? (
-        <View style={[styles.panel, { backgroundColor: theme.backgroundSubtle, borderColor: theme.border }]}>
+        <View style={[styles.panel, { backgroundColor: theme.backgroundSubtle, borderLeftColor: theme.accent }]}>
           <View style={styles.panelHeader}>
             <View style={styles.panelTitle}>
-              <ThemedText type="smallBold">{tx('调整这项安排', 'Adjust this plan')}</ThemedText>
+              <ThemedText type="smallBold">{tx('描述要怎么调整', 'Describe the change')}</ThemedText>
               <ThemedText type="small" themeColor="textSecondary" numberOfLines={2}>{selectedItem.title}</ThemedText>
             </View>
             <Pressable accessibilityRole="button" accessibilityLabel={tx('关闭智能建议', 'Close smart suggestion')} onPress={() => setOpen(false)} style={({ pressed }) => [styles.closeAction, pressed && styles.pressed]}>
@@ -120,6 +124,7 @@ export function ItineraryEditAssistant({ trip, item, items, onApply }: Itinerary
             textAlignVertical="top"
             style={styles.input}
           />
+          <ThemedText type="small" themeColor="textSecondary">{tx('只会生成预览，确认后才会保存。', 'A preview is generated first; nothing is saved until you confirm.')}</ThemedText>
           <ActionButton tone="primary" busy={busy} disabled={!selectedItem || !instruction.trim()} onPress={() => void generatePreview()}>
             {tx('生成预览', 'Generate preview')}
           </ActionButton>
@@ -127,7 +132,7 @@ export function ItineraryEditAssistant({ trip, item, items, onApply }: Itinerary
           {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
           {success ? <InlineNotice>{tx('修改已保存。', 'Edit saved.')}</InlineNotice> : null}
           {proposal ? (
-            <View style={[styles.preview, { backgroundColor: theme.backgroundSubtle, borderColor: theme.border }]}>
+            <View style={[styles.preview, { borderTopColor: theme.border }]}>
               <ThemedText type="smallBold">{tx('修改预览', 'Edit preview')}</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">{proposal.summary}</ThemedText>
               {change && selectedItem ? (
@@ -153,16 +158,6 @@ export function ItineraryEditAssistant({ trip, item, items, onApply }: Itinerary
   );
 }
 
-function SparklesIcon({ color }: { color: string }) {
-  return (
-    <Svg width={18} height={18} viewBox="0 0 24 24" accessibilityElementsHidden>
-      <Path d="M4 20 15.5 8.5" fill="none" stroke={color} strokeLinecap="round" strokeWidth={2} />
-      <Path d="m15.5 3 .8 2.2L18.5 6l-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2Z" fill={color} />
-      <Path d="m6 10 .5 1.5L8 12l-1.5.5L6 14l-.5-1.5L4 12l1.5-.5L6 10Z" fill={color} />
-    </Svg>
-  );
-}
-
 function DiffRow({ label, before, after }: { label: string; before: string; after: string }) {
   const theme = useTheme();
   return (
@@ -177,14 +172,16 @@ function DiffRow({ label, before, after }: { label: string; before: string; afte
 }
 
 const styles = StyleSheet.create({
-  root: { alignSelf: 'flex-start', gap: Spacing.sm },
-  trigger: { minHeight: 44, borderWidth: 1, borderRadius: Radius.pill, paddingHorizontal: Spacing.sm, paddingVertical: Spacing.xs, flexDirection: 'row', alignItems: 'center', gap: Spacing.xs },
-  panel: { borderWidth: 1, borderRadius: Radius.md, padding: Spacing.md, gap: Spacing.md },
+  root: { width: '100%', gap: Spacing.sm },
+  hint: { minHeight: 64, borderRadius: Radius.md, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, flexDirection: 'row', alignItems: 'stretch', gap: Spacing.sm },
+  hintAccent: { width: 3, borderRadius: 2 },
+  hintCopy: { flex: 1, justifyContent: 'center', gap: 2 },
+  panel: { borderLeftWidth: 3, borderRadius: Radius.md, padding: Spacing.md, gap: Spacing.md },
   panelHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: Spacing.md },
   panelTitle: { flex: 1, gap: 2 },
   closeAction: { minHeight: 44, justifyContent: 'center', paddingHorizontal: Spacing.xs },
   input: { minHeight: 86 },
-  preview: { borderWidth: 1, borderRadius: Radius.sm, padding: Spacing.md, gap: Spacing.sm },
+  preview: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: Spacing.md, gap: Spacing.sm },
   diffList: { gap: Spacing.sm },
   diffRow: { flexDirection: 'row', gap: Spacing.sm },
   diffCopy: { flex: 1, gap: 2 },
