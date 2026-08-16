@@ -182,7 +182,7 @@ export function AuthScreen() {
                   onPress={() => void googleLogin()}
                   style={({ pressed }) => [styles.provider, { backgroundColor: theme.backgroundElement, borderColor: theme.border }, (pressed || busy) && styles.providerPressed]}>
                   <GoogleMark />
-                  <ThemedText type="smallBold">{tx('使用 Google 继续', 'Continue with Google')}</ThemedText>
+                  <ThemedText style={styles.providerLabel}>{tx('使用 Google 继续', 'Continue with Google')}</ThemedText>
                 </Pressable>
                 <View style={styles.divider}>
                   <View style={[styles.dividerRule, { backgroundColor: theme.border }]} />
@@ -216,7 +216,7 @@ export function AuthScreen() {
                       <InlineNotice>{tx('如果这个邮箱有账号，重置链接已发送。请查收邮件。', 'If that email has an account, a reset link is on its way.')}</InlineNotice>
                     ) : (
                       <Pressable accessibilityRole="button" disabled={busy || !email.trim()} onPress={() => void requestReset()} style={styles.forgotRow}>
-                        <ThemedText type="smallBold" style={{ color: theme.link }}>{tx('忘记密码？', 'Forgot password?')}</ThemedText>
+                        <ThemedText style={[styles.switchLink, { color: theme.link }]}>{tx('忘记密码？', 'Forgot password?')}</ThemedText>
                       </Pressable>
                     )}
                   </>
@@ -344,6 +344,8 @@ const styles = StyleSheet.create({
   authTitleCompact: { fontSize: 30, lineHeight: 36 },
   authSubtitle: { fontSize: 18, lineHeight: 26, maxWidth: 440 },
   provider: { minHeight: Size.control, borderRadius: Radius.md, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
+  providerLabel: { fontSize: 16, lineHeight: 22, fontWeight: '500' },
+  switchLink: { fontSize: 14, lineHeight: 20, fontWeight: '600' },
   providerPressed: { opacity: 0.68 },
   divider: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   dividerRule: { flex: 1, height: 1 },
