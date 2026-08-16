@@ -164,7 +164,7 @@ export function AuthScreen() {
         <View style={[styles.authLayout, !compact && styles.authLayoutWide]}>
           <View style={[styles.authIntro, !compact && styles.authIntroWide]}>
             <ThemedText type="smallBold" style={[styles.authBrand, { color: theme.accent }]}>TripFlow</ThemedText>
-            <ThemedText type="subtitle" style={[styles.authTitle, compact && styles.authTitleCompact]}>{screenTitle}</ThemedText>
+            <ThemedText type="subtitle" style={styles.authTitle}>{screenTitle}</ThemedText>
             <ThemedText themeColor="textSecondary" style={styles.authSubtitle}>{screenSubtitle}</ThemedText>
             {inviteToken ? <ThemedText type="small" themeColor="textSecondary">{tx('邀请已保留。登录后仍需确认。', 'Your invite is saved. You will still confirm before joining.')}</ThemedText> : null}
           </View>
@@ -340,9 +340,8 @@ const styles = StyleSheet.create({
   authIntro: { gap: 12 },
   authIntroWide: { flex: 1, paddingRight: 12 },
   authBrand: { letterSpacing: 0.5 },
-  authTitle: { fontSize: 38, lineHeight: 44, maxWidth: 520 },
-  authTitleCompact: { fontSize: 30, lineHeight: 36 },
-  authSubtitle: { fontSize: 18, lineHeight: 26, maxWidth: 440 },
+  authTitle: { fontSize: 34, lineHeight: 42, letterSpacing: -0.8, maxWidth: 520 },
+  authSubtitle: { fontSize: 15, lineHeight: 22, maxWidth: 440 },
   provider: { minHeight: Size.control, borderRadius: Radius.md, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
   providerLabel: { fontSize: 16, lineHeight: 22, fontWeight: '500' },
   switchLink: { fontSize: 14, lineHeight: 20, fontWeight: '600' },

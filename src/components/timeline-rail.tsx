@@ -61,7 +61,7 @@ export function TimelineRow({
         <ThemedText type="smallBold" style={styles.title}>{title}</ThemedText>
         <KindPill color={kindColor} softColor={kindSoftColor} label={kindLabel} />
       </View>
-      {place ? <ThemedText type="small" themeColor="textSecondary">{place}</ThemedText> : null}
+      {place ? <ThemedText type="small" themeColor="textSecondary" style={styles.place}>{place}</ThemedText> : null}
       {children}
     </>
   );
@@ -109,7 +109,7 @@ const styles = StyleSheet.create({
   daySeparator: { flexDirection: 'row', gap: 12, alignItems: 'stretch' },
 
   gutter: { width: GUTTER_WIDTH, alignItems: 'flex-end', paddingTop: 1, alignSelf: 'flex-start' },
-  startTime: { fontVariant: ['tabular-nums'] },
+  startTime: { fontSize: 13, lineHeight: 18, fontWeight: '600', fontVariant: ['tabular-nums'] },
   endTime: { fontSize: 12, lineHeight: 16, fontVariant: ['tabular-nums'] },
 
   spine: { width: SPINE_WIDTH, alignItems: 'center' },
@@ -120,7 +120,8 @@ const styles = StyleSheet.create({
 
   content: { flex: 1, minWidth: 0, gap: 3, paddingBottom: 18 },
   head: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  title: { flex: 1, minWidth: 0, fontSize: 16, lineHeight: 22 },
+  title: { flex: 1, minWidth: 0, fontSize: 17, lineHeight: 24, fontWeight: '600' },
+  place: { fontSize: 13, lineHeight: 18 },
   pressed: { opacity: 0.68 },
 
   segmentContent: { flex: 1, minWidth: 0, gap: 8, paddingTop: 2, paddingBottom: 14 },

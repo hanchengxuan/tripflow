@@ -33,7 +33,7 @@ export function Screen({ context, floatingAction, title, children }: ScreenProps
           },
         ]}>
         <View style={[styles.header, compact && styles.headerCompact]}>
-          <ThemedText type="subtitle" style={[styles.screenTitle, compact && styles.screenTitleCompact]}>{title}</ThemedText>
+          <ThemedText type="subtitle" style={styles.screenTitle}>{title}</ThemedText>
           <ThemedText type="small" themeColor="textSecondary" style={styles.contextRow}>{context.join(' · ')}</ThemedText>
         </View>
         {children}
@@ -49,8 +49,7 @@ const styles = StyleSheet.create({
   content: { width: '100%', maxWidth: 760, alignSelf: 'center', paddingHorizontal: 20, gap: 18 },
   header: { gap: 4, marginBottom: 4 },
   headerCompact: { marginBottom: 2 },
-  screenTitle: { fontSize: 30, lineHeight: 38 },
-  screenTitleCompact: { fontSize: 28, lineHeight: 34 },
+  screenTitle: { fontSize: 28, lineHeight: 34, letterSpacing: -0.4 },
   contextRow: { flexWrap: 'wrap' },
   floatingAction: { position: 'absolute', right: 20, zIndex: 10 },
 });

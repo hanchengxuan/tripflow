@@ -29,9 +29,9 @@ export function RouteEstimateChip({ accessibilityLabel, detail, expanded, modeLa
   const theme = useTheme();
   const content: ReactNode = (
     <>
-      <ThemedText type="smallBold" style={{ color: theme.info }}>{modeLabel}</ThemedText>
+      <ThemedText style={[styles.chipMode, { color: theme.info }]}>{modeLabel}</ThemedText>
       <View style={[styles.separator, { backgroundColor: theme.info }]} />
-      <ThemedText type="small" style={{ color: theme.info }}>{detail}</ThemedText>
+      <ThemedText style={[styles.chipDetail, { color: theme.info }]}>{detail}</ThemedText>
     </>
   );
   if (!onPress) return <View style={[styles.chip, { backgroundColor: theme.infoSoft }]}>{content}</View>;
@@ -55,7 +55,7 @@ export function MapsLink({ url, label }: { url: string; label: string }) {
       accessibilityRole="link"
       onPress={() => void Linking.openURL(url)}
       style={({ pressed }) => [styles.link, pressed && styles.pressed]}>
-      <ThemedText type="smallBold" style={{ color: theme.link }}>{label}</ThemedText>
+      <ThemedText style={[styles.linkLabel, { color: theme.link }]}>{label}</ThemedText>
       <Chevron color={theme.textSecondary} />
     </Pressable>
   );
@@ -122,6 +122,9 @@ export function TransitPlan({
 const styles = StyleSheet.create({
   chip: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 7, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7 },
   separator: { width: 3, height: 3, borderRadius: 2 },
+  chipMode: { fontSize: 12, lineHeight: 16, fontWeight: '600' },
+  chipDetail: { fontSize: 12, lineHeight: 16, fontWeight: '500' },
+  linkLabel: { fontSize: 12, lineHeight: 16, fontWeight: '600' },
   link: { minHeight: 42, flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 4, paddingVertical: 6 },
   pressed: { opacity: 0.68 },
   plan: { borderRadius: 14, padding: 12, gap: 10 },

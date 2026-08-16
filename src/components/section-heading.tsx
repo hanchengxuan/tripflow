@@ -29,5 +29,5 @@ export function SectionHeading({ title, detail, eyebrow, trailing }: SectionHead
 const styles = StyleSheet.create({
   wrap: { gap: 3 },
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  title: { fontSize: 21, lineHeight: 28 },
+  title: { fontSize: 20, lineHeight: 26, letterSpacing: -0.2 },
 });
