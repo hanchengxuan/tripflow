@@ -94,8 +94,8 @@ const styles = StyleSheet.create({
   title: { fontSize: 30, lineHeight: 36, fontWeight: '600' },
   metaGrid: { flexDirection: 'row', gap: Spacing.sm },
   metaTile: { flex: 1, minWidth: 0, gap: 4, borderRadius: Radius.sm, padding: Spacing.sm },
-  metaLabel: { fontSize: 10, lineHeight: 14, fontWeight: '700', letterSpacing: 0.5 },
-  metaValue: { fontSize: 13, lineHeight: 18 },
+  metaLabel: { fontSize: 10, lineHeight: 14, fontWeight: '600', letterSpacing: 0.8 },
+  metaValue: { fontSize: 14, lineHeight: 18, fontWeight: '600' },
   place: {
     minHeight: 64,
     borderRadius: Radius.md,

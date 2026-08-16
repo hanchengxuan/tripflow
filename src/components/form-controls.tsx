@@ -9,14 +9,14 @@ import {
 } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Radius, Spacing } from '@/constants/theme';
+import { Radius, Size, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 export function FormField({ label, ...props }: TextInputProps & { label: string }) {
   const theme = useTheme();
   return (
     <View style={styles.field}>
-      <ThemedText type="smallBold">{label}</ThemedText>
+      <ThemedText style={[styles.fieldLabel, { color: theme.textSecondary }]}>{label}</ThemedText>
       <TextInput
         placeholderTextColor={theme.textMuted}
         {...props}
@@ -60,7 +60,7 @@ export function ActionButton({
       {busy ? (
         <ActivityIndicator color={tone === 'secondary' ? theme.text : theme.textOnAccent} />
       ) : (
-        <ThemedText type="smallBold" style={{ color: tone === 'secondary' ? theme.text : theme.textOnAccent }}>
+        <ThemedText style={[styles.buttonLabel, { color: tone === 'secondary' ? theme.text : theme.textOnAccent }]}>
           {children}
         </ThemedText>
       )}
@@ -84,7 +84,7 @@ export function ChoiceChip({
       hitSlop={4}
       onPress={onPress}
       style={[styles.chip, { backgroundColor: selected ? theme.accent : theme.backgroundSubtle }, disabled && styles.dimmed]}>
-      <ThemedText type="smallBold" style={{ color: selected ? theme.textOnAccent : theme.text }}>
+      <ThemedText style={[styles.chipLabel, selected && styles.chipLabelSelected, { color: selected ? theme.textOnAccent : theme.text }]}>
         {children}
       </ThemedText>
     </Pressable>
@@ -106,10 +106,28 @@ export function InlineNotice({ children, tone = 'info' }: PropsWithChildren<{ to
 
 const styles = StyleSheet.create({
   field: { gap: 6 },
-  input: { borderWidth: 1, borderRadius: 12, minHeight: 48, paddingHorizontal: 14, paddingVertical: 10 },
-  button: { minHeight: 48, borderRadius: 14, paddingHorizontal: 18, paddingVertical: 12, alignItems: 'center', justifyContent: 'center' },
+  fieldLabel: { fontSize: 13, lineHeight: 18, fontWeight: '500' },
+  input: {
+    borderWidth: 1,
+    borderRadius: Radius.sm,
+    minHeight: Size.control,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 16,
+  },
+  button: {
+    minHeight: Size.control,
+    borderRadius: Radius.md,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonLabel: { fontSize: 16, lineHeight: 22, fontWeight: '500' },
   dimmed: { opacity: 0.58 },
-  chip: { height: 36, borderRadius: 999, paddingHorizontal: 14, justifyContent: 'center' },
+  chip: { height: 36, borderRadius: Radius.pill, paddingHorizontal: 14, justifyContent: 'center' },
+  chipLabel: { fontSize: 14, lineHeight: 18, fontWeight: '500' },
+  chipLabelSelected: { fontWeight: '600' },
   notice: {
     borderRadius: Radius.md,
     paddingHorizontal: Spacing.md,
