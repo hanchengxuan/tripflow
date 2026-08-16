@@ -1,5 +1,13 @@
 const inviteTokenPattern = /^[a-f0-9]{48}$/i;
-const defaultAppUrl = 'https://tripflow-liart.vercel.app';
+const defaultAppUrl = 'https://tripflow.fun';
+
+/**
+ * Hosts an invite link may legitimately carry. The canonical domain is the
+ * default, but the Vercel alias still serves the app and older invites were
+ * issued against it, so both stay trusted — a traveller must not be told a
+ * genuine invite is invalid because it names the other host.
+ */
+const trustedInviteHosts = new Set(['tripflow.fun', 'www.tripflow.fun', 'tripflow-liart.vercel.app']);
 
 function appUrl() {
   const configured = process.env.EXPO_PUBLIC_APP_URL?.trim();
@@ -22,9 +30,9 @@ export function parseInviteToken(value: string) {
 
   try {
     const url = new URL(normalized);
-    const trustedWebUrl = new URL(appUrl());
+    const configuredHost = new URL(appUrl()).host;
     const isTrustedWebInvite = url.protocol === 'https:'
-      && url.host === trustedWebUrl.host
+      && (url.host === configuredHost || trustedInviteHosts.has(url.host))
       && url.pathname.replace(/\/$/, '') === '/explore';
     const isAppInvite = url.protocol === 'tripflow:'
       && (url.hostname === 'explore' || url.pathname.replace(/^\//, '') === 'explore');
