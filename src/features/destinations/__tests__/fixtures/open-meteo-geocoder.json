@@ -1,0 +1,460 @@
+{
+  "Hong Kong": {
+    "en": [
+      {
+        "id": 1819729,
+        "name": "Hong Kong",
+        "country": null,
+        "country_code": "HK",
+        "timezone": "Asia/Hong_Kong",
+        "latitude": 22.27832,
+        "longitude": 114.17469,
+        "admin1": null,
+        "population": 7396076,
+        "feature_code": "PPLC"
+      },
+      {
+        "id": 1819727,
+        "name": "Hong Kong",
+        "country": null,
+        "country_code": "HK",
+        "timezone": "Asia/Hong_Kong",
+        "latitude": 22.26686,
+        "longitude": 114.17885,
+        "admin1": null,
+        "population": 1195529,
+        "feature_code": "ISL"
+      },
+      {
+        "id": 1819730,
+        "name": "Hong Kong",
+        "country": null,
+        "country_code": "HK",
+        "timezone": "Asia/Hong_Kong",
+        "latitude": 22.25,
+        "longitude": 114.16667,
+        "admin1": null,
+        "population": 7396076,
+        "feature_code": "PCLS"
+      },
+      {
+        "id": 8938815,
+        "name": "Hong Kong",
+        "country": "Mexico",
+        "country_code": "MX",
+        "timezone": "America/Mazatlan",
+        "latitude": 22.95805,
+        "longitude": -109.93898,
+        "admin1": "Baja California Sur",
+        "population": 5,
+        "feature_code": "PPL"
+      },
+      {
+        "id": 12747064,
+        "name": "Hong Kong Island",
+        "country": null,
+        "country_code": "HK",
+        "timezone": "Asia/Hong_Kong",
+        "latitude": 22.26302,
+        "longitude": 114.18419,
+        "admin1": null,
+        "population": 1195529,
+        "feature_code": "PPLX"
+      },
+      {
+        "id": 1880649,
+        "name": "Hong Kong Park",
+        "country": "Singapore",
+        "country_code": "SG",
+        "timezone": "Asia/Singapore",
+        "latitude": 1.33972,
+        "longitude": 103.78556,
+        "admin1": null,
+        "population": null,
+        "feature_code": "PPLX"
+      },
+      {
+        "id": 7733353,
+        "name": "Hong Kong Park",
+        "country": null,
+        "country_code": "HK",
+        "timezone": "Asia/Hong_Kong",
+        "latitude": 22.27685,
+        "longitude": 114.16111,
+        "admin1": "Central and Western",
+        "population": null,
+        "feature_code": "PRK"
+      },
+      {
+        "id": 6697394,
+        "name": "Hong Kong Disneyland",
+        "country": null,
+        "country_code": null,
+        "timezone": "Asia/Hong_Kong",
+        "latitude": 22.31598,
+        "longitude": 114.04517,
+        "admin1": null,
+        "population": null,
+        "feature_code": "AMUS"
+      }
+    ],
+    "zh": [
+      {
+        "id": 1819729,
+        "name": "香港",
+        "country": null,
+        "country_code": "HK",
+        "timezone": "Asia/Hong_Kong",
+        "latitude": 22.27832,
+        "longitude": 114.17469,
+        "admin1": null,
+        "population": 7396076,
+        "feature_code": "PPLC"
+      },
+      {
+        "id": 1819727,
+        "name": "香港島",
+        "country": null,
+        "country_code": "HK",
+        "timezone": "Asia/Hong_Kong",
+        "latitude": 22.26686,
+        "longitude": 114.17885,
+        "admin1": null,
+        "population": 1195529,
+        "feature_code": "ISL"
+      },
+      {
+        "id": 8938815,
+        "name": "Hong Kong",
+        "country": "墨西哥",
+        "country_code": "MX",
+        "timezone": "America/Mazatlan",
+        "latitude": 22.95805,
+        "longitude": -109.93898,
+        "admin1": "南下加利福尼亞州",
+        "population": 5,
+        "feature_code": "PPL"
+      },
+      {
+        "id": 12747064,
+        "name": "Hong Kong Island",
+        "country": null,
+        "country_code": "HK",
+        "timezone": "Asia/Hong_Kong",
+        "latitude": 22.26302,
+        "longitude": 114.18419,
+        "admin1": null,
+        "population": 1195529,
+        "feature_code": "PPLX"
+      },
+      {
+        "id": 1819730,
+        "name": "香港",
+        "country": null,
+        "country_code": "HK",
+        "timezone": "Asia/Hong_Kong",
+        "latitude": 22.25,
+        "longitude": 114.16667,
+        "admin1": null,
+        "population": 7396076,
+        "feature_code": "PCLS"
+      },
+      {
+        "id": 1880649,
+        "name": "Hong Kong Park",
+        "country": "新加坡",
+        "country_code": "SG",
+        "timezone": "Asia/Singapore",
+        "latitude": 1.33972,
+        "longitude": 103.78556,
+        "admin1": null,
+        "population": null,
+        "feature_code": "PPLX"
+      },
+      {
+        "id": 7733353,
+        "name": "香港公园",
+        "country": null,
+        "country_code": "HK",
+        "timezone": "Asia/Hong_Kong",
+        "latitude": 22.27685,
+        "longitude": 114.16111,
+        "admin1": "中西區",
+        "population": null,
+        "feature_code": "PRK"
+      },
+      {
+        "id": 6697394,
+        "name": "Hong Kong Disneyland",
+        "country": null,
+        "country_code": null,
+        "timezone": "Asia/Hong_Kong",
+        "latitude": 22.31598,
+        "longitude": 114.04517,
+        "admin1": null,
+        "population": null,
+        "feature_code": "AMUS"
+      }
+    ]
+  },
+  "Tokyo": {
+    "en": [
+      {
+        "id": 1850147,
+        "name": "Tokyo",
+        "country": "Japan",
+        "country_code": "JP",
+        "timezone": "Asia/Tokyo",
+        "latitude": 35.6895,
+        "longitude": 139.69171,
+        "admin1": "Tokyo",
+        "population": 9733276,
+        "feature_code": "PPLC"
+      },
+      {
+        "id": 2085290,
+        "name": "Tokyo",
+        "country": "Papua New Guinea",
+        "country_code": "PG",
+        "timezone": "Pacific/Port_Moresby",
+        "latitude": -8.4,
+        "longitude": 147.15,
+        "admin1": "Central Province",
+        "population": null,
+        "feature_code": "PPL"
+      },
+      {
+        "id": 7945384,
+        "name": "Tokyo",
+        "country": "Nepal",
+        "country_code": "NP",
+        "timezone": "Asia/Kathmandu",
+        "latitude": 29.16998,
+        "longitude": 83.16319,
+        "admin1": "Karnali Pradesh",
+        "population": null,
+        "feature_code": "PPLL"
+      },
+      {
+        "id": 1834300,
+        "name": "Tonggŏch’ado-ri",
+        "country": "South Korea",
+        "country_code": "KR",
+        "timezone": "Asia/Seoul",
+        "latitude": 34.23806,
+        "longitude": 125.93944,
+        "admin1": "Jeollanam-do",
+        "population": null,
+        "feature_code": "PPL"
+      },
+      {
+        "id": 1850142,
+        "name": "Tōkyō Zan",
+        "country": "Japan",
+        "country_code": "JP",
+        "timezone": "Asia/Tokyo",
+        "latitude": 37.94393,
+        "longitude": 138.47507,
+        "admin1": "Niigata",
+        "population": null,
+        "feature_code": "MT"
+      },
+      {
+        "id": 4737031,
+        "name": "Tokyo Hill",
+        "country": "United States",
+        "country_code": "US",
+        "timezone": "America/Chicago",
+        "latitude": 26.92061,
+        "longitude": -97.86361,
+        "admin1": "Texas",
+        "population": null,
+        "feature_code": "MT"
+      },
+      {
+        "id": 6301828,
+        "name": "Tokyo Heliport",
+        "country": "Japan",
+        "country_code": "JP",
+        "timezone": "Asia/Tokyo",
+        "latitude": 35.63333,
+        "longitude": 139.85,
+        "admin1": "Chiba",
+        "population": null,
+        "feature_code": "AIRH"
+      },
+      {
+        "id": 10904583,
+        "name": "Tokyo Disney Land",
+        "country": "Japan",
+        "country_code": "JP",
+        "timezone": "Asia/Tokyo",
+        "latitude": 35.63308,
+        "longitude": 139.88057,
+        "admin1": "Chiba",
+        "population": null,
+        "feature_code": "PRK"
+      }
+    ],
+    "zh": [
+      {
+        "id": 1850147,
+        "name": "東京",
+        "country": "日本",
+        "country_code": "JP",
+        "timezone": "Asia/Tokyo",
+        "latitude": 35.6895,
+        "longitude": 139.69171,
+        "admin1": "东京都",
+        "population": 9733276,
+        "feature_code": "PPLC"
+      },
+      {
+        "id": 2085290,
+        "name": "Tokyo",
+        "country": "巴布亚新几内亚",
+        "country_code": "PG",
+        "timezone": "Pacific/Port_Moresby",
+        "latitude": -8.4,
+        "longitude": 147.15,
+        "admin1": "中央省",
+        "population": null,
+        "feature_code": "PPL"
+      },
+      {
+        "id": 7945384,
+        "name": "Tokyo",
+        "country": "尼泊尔",
+        "country_code": "NP",
+        "timezone": "Asia/Kathmandu",
+        "latitude": 29.16998,
+        "longitude": 83.16319,
+        "admin1": "Karnali Province",
+        "population": null,
+        "feature_code": "PPLL"
+      },
+      {
+        "id": 1834300,
+        "name": "Tonggŏch’ado-ri",
+        "country": "韩国",
+        "country_code": "KR",
+        "timezone": "Asia/Seoul",
+        "latitude": 34.23806,
+        "longitude": 125.93944,
+        "admin1": "Jeollanam-do",
+        "population": null,
+        "feature_code": "PPL"
+      },
+      {
+        "id": 1850142,
+        "name": "Tōkyō Zan",
+        "country": "日本",
+        "country_code": "JP",
+        "timezone": "Asia/Tokyo",
+        "latitude": 37.94393,
+        "longitude": 138.47507,
+        "admin1": "新潟縣",
+        "population": null,
+        "feature_code": "MT"
+      },
+      {
+        "id": 4737031,
+        "name": "Tokyo Hill",
+        "country": "美国",
+        "country_code": "US",
+        "timezone": "America/Chicago",
+        "latitude": 26.92061,
+        "longitude": -97.86361,
+        "admin1": "得克萨斯州",
+        "population": null,
+        "feature_code": "MT"
+      },
+      {
+        "id": 6301828,
+        "name": "Tokyo Heliport",
+        "country": "日本",
+        "country_code": "JP",
+        "timezone": "Asia/Tokyo",
+        "latitude": 35.63333,
+        "longitude": 139.85,
+        "admin1": "千葉縣",
+        "population": null,
+        "feature_code": "AIRH"
+      },
+      {
+        "id": 10904583,
+        "name": "Tokyo Disney Land",
+        "country": "日本",
+        "country_code": "JP",
+        "timezone": "Asia/Tokyo",
+        "latitude": 35.63308,
+        "longitude": 139.88057,
+        "admin1": "千葉縣",
+        "population": null,
+        "feature_code": "PRK"
+      }
+    ]
+  },
+  "hk": {
+    "en": [],
+    "zh": []
+  },
+  "东京": {
+    "en": [],
+    "zh": [
+      {
+        "id": 8268763,
+        "name": "东京",
+        "country": "中国",
+        "country_code": "CN",
+        "timezone": "Asia/Shanghai",
+        "latitude": 32.20514,
+        "longitude": 119.28653,
+        "admin1": "江苏",
+        "population": null,
+        "feature_code": "PPL"
+      },
+      {
+        "id": 11178989,
+        "name": "东京",
+        "country": "中国",
+        "country_code": "CN",
+        "timezone": "Asia/Shanghai",
+        "latitude": 28.05397,
+        "longitude": 119.4275,
+        "admin1": "浙江",
+        "population": null,
+        "feature_code": "PPL"
+      }
+    ]
+  },
+  "香港": {
+    "en": [],
+    "zh": [
+      {
+        "id": 1819729,
+        "name": "香港",
+        "country": null,
+        "country_code": "HK",
+        "timezone": "Asia/Hong_Kong",
+        "latitude": 22.27832,
+        "longitude": 114.17469,
+        "admin1": null,
+        "population": 7396076,
+        "feature_code": "PPLC"
+      },
+      {
+        "id": 1819730,
+        "name": "香港",
+        "country": null,
+        "country_code": "HK",
+        "timezone": "Asia/Hong_Kong",
+        "latitude": 22.25,
+        "longitude": 114.16667,
+        "admin1": null,
+        "population": 7396076,
+        "feature_code": "PCLS"
+      }
+    ]
+  }
+}

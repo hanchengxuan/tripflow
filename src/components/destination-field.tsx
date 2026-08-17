@@ -28,7 +28,6 @@ export function DestinationField({
   const [loading, setLoading] = useState(false);
   const [available, setAvailable] = useState(true);
   const requestId = useRef(0);
-  const searchContext = tripName?.trim() || planTitle?.trim() || locationName?.trim();
 
   useEffect(() => {
     const query = value.trim();
@@ -60,10 +59,7 @@ export function DestinationField({
 
   return (
     <View style={styles.field}>
-      <View style={styles.labelRow}>
-        <ThemedText type="smallBold">{tx('目的地', 'Destination')}</ThemedText>
-        <ThemedText type="small" themeColor="textMuted">{tx('可选，用于地图和智能默认', 'Optional, powers the map and smart defaults')}</ThemedText>
-      </View>
+      <ThemedText type="smallBold">{tx('目的地（可选）', 'Destination (optional)')}</ThemedText>
       <View style={[styles.inputWrap, { backgroundColor: theme.backgroundElement, borderColor: theme.borderField }]}>
         <TextInput
           value={value}
@@ -78,11 +74,6 @@ export function DestinationField({
         />
         {loading ? <ActivityIndicator color={theme.accent} /> : null}
       </View>
-      {value.trim().length >= 2 && searchContext ? (
-        <ThemedText type="small" themeColor="textMuted">
-          {tx(`会结合“${searchContext}”智能排序`, `Results are ranked with “${searchContext}” in mind`)}
-        </ThemedText>
-      ) : null}
       {value.trim().length >= 2 && suggestions.length > 0 ? (
         <View style={[styles.suggestions, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
           {suggestions.map((suggestion) => (
@@ -113,7 +104,6 @@ export function DestinationField({
 
 const styles = StyleSheet.create({
   field: { gap: 6, zIndex: 3 },
-  labelRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', gap: 8 },
   inputWrap: { minHeight: 48, borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center' },
   input: { flex: 1, minHeight: 46, fontSize: 16 },
   suggestions: { borderWidth: 1, borderRadius: 14, overflow: 'hidden' },

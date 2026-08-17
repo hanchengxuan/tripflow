@@ -8,6 +8,8 @@ export interface DestinationSuggestion {
   latitude: number;
   longitude: number;
   adminArea?: string;
+  /** Ranking signal only; never persisted on an itinerary item. */
+  population?: number;
 }
 
 export interface DestinationSearchContext {
@@ -28,15 +30,27 @@ interface CountryHint {
 }
 
 /**
- * These are intentionally small, high-confidence aliases for common travel
- * destinations. Open-Meteo remains the source of coordinates and metadata;
- * the local layer only helps the geocoder understand what the traveller meant.
+ * A hand-maintained list is a liability, so it needs to earn its place.
+ *
+ * Open-Meteo's Chinese index is partial and inconsistent, measured against the
+ * live service on 2026-08-17: 東京 resolves to Tokyo but 东京 returns a town in
+ * China; 倫敦 resolves to London but 伦敦 returns London, Ontario; 清迈 resolves
+ * to Chiang Mai but 清邁 returns nothing; 大阪 and 首尔 return nothing in either
+ * script. No single transformation fixes that — Simplified-to-Traditional
+ * repairs 东京 and breaks 清迈 — so the mapping has to be explicit.
+ *
+ * Keep it evidence-driven. Add an entry when a real search fails, not on the
+ * suspicion that someone might type an airport code. Open-Meteo stays the
+ * source of coordinates and metadata; this only rewrites the query.
+ *
+ * The structural fix is a geocoder with a real CJK index. See the note in
+ * `PROJECT_CONTEXT.md`.
  */
 const destinationHints: readonly DestinationHint[] = [
   { aliases: ['东京', '東京', 'tokyo', '日本东京', '東京日本'], query: 'Tokyo', countryCodes: ['JP'] },
   { aliases: ['大阪', '大阪市', 'osaka', '日本大阪'], query: 'Osaka', countryCodes: ['JP'] },
   { aliases: ['京都', 'kyoto', '日本京都'], query: 'Kyoto', countryCodes: ['JP'] },
-  { aliases: ['香港', 'hongkong', 'hong kong'], query: 'Hong Kong', countryCodes: ['HK'] },
+  { aliases: ['香港', '中国香港', 'hongkong', 'hong kong', 'hk', 'hkg'], query: 'Hong Kong', countryCodes: ['HK'] },
   { aliases: ['澳门', '澳門', 'macau', 'macao'], query: 'Macao', countryCodes: ['MO'] },
   { aliases: ['台北', '臺北', 'taipei'], query: 'Taipei', countryCodes: ['TW'] },
   { aliases: ['首尔', '首爾', 'seoul'], query: 'Seoul', countryCodes: ['KR'] },
@@ -102,6 +116,19 @@ function normalizeSearchText(value: string) {
     .replace(/[\s·,，.。/_-]+/g, '');
 }
 
+/**
+ * Short aliases like `us`, `uk`, `hk` are substrings of ordinary words —
+ * "museum" contains "us" — so scanning free text for them tagged unrelated
+ * trips with a country and skewed every ranking. Anything under three
+ * characters has to be the whole value.
+ */
+function mentionsAlias(normalizedText: string, alias: string) {
+  const needle = normalizeSearchText(alias);
+  if (!needle) return false;
+  if (needle.length < 3) return normalizedText === needle;
+  return normalizedText.includes(needle);
+}
+
 function countryCodesMentioned(value: string) {
   const normalized = normalizeSearchText(value);
   const codes = new Set<string>();
@@ -109,11 +136,21 @@ function countryCodesMentioned(value: string) {
     aliases: country.aliases,
     countryCodes: [country.countryCode],
   }))]) {
-    if (hint.aliases.some((alias) => normalized.includes(normalizeSearchText(alias)))) {
+    if (hint.aliases.some((alias) => mentionsAlias(normalized, alias))) {
       hint.countryCodes.forEach((code) => codes.add(code));
     }
   }
   return codes;
+}
+
+/**
+ * Population is the single most reliable way to tell the Hong Kong a traveller
+ * means from the five-person hamlet in Mexico that shares the name. Capped so
+ * it breaks ties without ever outweighing an explicit match.
+ */
+function populationScore(population?: number) {
+  if (!population || population <= 0) return 0;
+  return Math.min(320, Math.log10(population) * 46);
 }
 
 export function currencyForCountryCode(countryCode: string) {
@@ -121,6 +158,9 @@ export function currencyForCountryCode(countryCode: string) {
 }
 
 export function destinationLabel(destination: Pick<DestinationSuggestion, 'cityName' | 'countryName'>) {
+  // Territories are their own country in the geocoder, so Hong Kong would
+  // otherwise read "香港 · 香港".
+  if (destination.cityName === destination.countryName) return destination.cityName;
   return [destination.cityName, destination.countryName].join(' · ');
 }
 
@@ -133,13 +173,22 @@ export function projectDestination(latitude: number, longitude: number) {
 export function destinationQueryVariants(input: string) {
   const query = input.trim();
   if (!query) return [];
-  const normalized = normalizeSearchText(query);
+  // The geocoder returns nothing for Simplified-only names like 东京 in English
+  // and nothing at all for codes like `hk`, so the canonical English name is
+  // often the only query that resolves. The raw input stays first so an exact
+  // local match still wins when one exists.
   const variants = [query];
-  const hint = destinationHints.find(({ aliases }) => aliases.some((alias) => normalizeSearchText(alias) === normalized));
+  const hint = matchDestinationHint(query);
   if (hint && !variants.some((variant) => normalizeSearchText(variant) === normalizeSearchText(hint.query))) {
     variants.push(hint.query);
   }
   return variants;
+}
+
+function matchDestinationHint(input: string) {
+  const normalized = normalizeSearchText(input);
+  if (!normalized) return undefined;
+  return destinationHints.find(({ aliases }) => aliases.some((alias) => normalizeSearchText(alias) === normalized));
 }
 
 export function rankDestinationSuggestions(
@@ -148,7 +197,7 @@ export function rankDestinationSuggestions(
   context: DestinationSearchContext = {},
 ) {
   const query = normalizeSearchText(input);
-  const hint = destinationHints.find(({ aliases }) => aliases.some((alias) => normalizeSearchText(alias) === query));
+  const hint = matchDestinationHint(input);
   const contextText = [context.tripName, context.planTitle, context.locationName].filter(Boolean).join(' ');
   const contextCountryCodes = countryCodesMentioned(contextText);
   const canonicalCity = hint ? normalizeSearchText(hint.query) : undefined;
@@ -168,8 +217,12 @@ export function rankDestinationSuggestions(
       else if (country.startsWith(query)) score += 360;
       if (adminArea === query) score += 180;
       if (canonicalCity && city === canonicalCity) score += 260;
-      if (hint?.countryCodes.includes(countryCode)) score += 300;
+      // Outweighs an exact name match on purpose. "Hong Kong" is a village in
+      // Mexico and 东京 is a town in China; when the query is a known alias,
+      // the country it names is what the traveller meant.
+      if (hint?.countryCodes.includes(countryCode)) score += 1100;
       if (contextCountryCodes.has(countryCode)) score += 440;
+      score += populationScore(suggestion.population);
       if (contextText && (normalizeSearchText(contextText).includes(city) || normalizeSearchText(contextText).includes(country))) score += 140;
 
       return { suggestion, index, score };
@@ -187,6 +240,22 @@ interface GeocoderResult {
   latitude?: number;
   longitude?: number;
   admin1?: string;
+  population?: number;
+  feature_code?: string;
+}
+
+/**
+ * GeoNames feature classes worth offering as a destination: settlements
+ * (`PPL*`), countries and territories (`PCL*`), administrative regions
+ * (`ADM*`), and islands (`ISL`, which is how Bali is filed). Everything else
+ * the geocoder returns for a city name — airports, heliports, parks,
+ * mountains — is noise in a destination picker.
+ */
+const destinationFeaturePrefixes = ['PPL', 'PCL', 'ADM', 'ISL'];
+
+function isDestinationFeature(featureCode?: string) {
+  if (!featureCode) return true;
+  return destinationFeaturePrefixes.some((prefix) => featureCode.startsWith(prefix));
 }
 
 async function fetchDestinationResults(query: string, language: string) {
@@ -200,35 +269,41 @@ async function fetchDestinationResults(query: string, language: string) {
 
   const payload = await response.json() as { results?: GeocoderResult[] };
   return (payload.results ?? []).flatMap((result) => {
-    if (!result.id || !result.name || !result.country || !result.country_code || !result.timezone
+    // `country` is null for territories — Hong Kong and Macao have no parent
+    // country in GeoNames. Requiring it silently dropped every Hong Kong
+    // result, which is why searching 香港 only ever offered a village in
+    // Mexico. The country code is always present, so fall back to the place's
+    // own name and let `destinationLabel` collapse the repetition.
+    if (!result.id || !result.name || !result.country_code || !result.timezone
       || typeof result.latitude !== 'number' || typeof result.longitude !== 'number') return [];
+    if (!isDestinationFeature(result.feature_code)) return [];
     const countryCode = result.country_code.toUpperCase();
     return [{
       id: String(result.id) + ':' + countryCode,
       cityName: result.name,
-      countryName: result.country,
+      countryName: result.country ?? result.name,
       countryCode,
       timeZone: result.timezone,
       currency: currencyForCountryCode(countryCode),
       latitude: result.latitude,
       longitude: result.longitude,
       adminArea: result.admin1,
+      population: result.population,
     }];
   });
 }
 
+/**
+ * Keyed on the GeoNames id so the same place fetched in both Chinese and
+ * English collapses into one row — otherwise 東京 and Tokyo both appeared.
+ * The first spelling wins, and requests are issued in the reader's language
+ * first.
+ */
 function deduplicateSuggestions(suggestions: DestinationSuggestion[]) {
   const seen = new Set<string>();
   return suggestions.filter((suggestion) => {
-    const key = suggestion.countryCode
-      + ':'
-      + suggestion.cityName
-      + ':'
-      + suggestion.latitude.toFixed(3)
-      + ':'
-      + suggestion.longitude.toFixed(3);
-    if (seen.has(key)) return false;
-    seen.add(key);
+    if (seen.has(suggestion.id)) return false;
+    seen.add(suggestion.id);
     return true;
   });
 }
