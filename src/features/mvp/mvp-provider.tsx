@@ -13,7 +13,11 @@ import {
   deleteTrip,
   getProfile,
   listExpenses,
+  dissolveTripSegment,
   listItineraryItems,
+  listSegmentMembers,
+  listSegments,
+  splitTripSegment,
   listLedgerMembers,
   listSettlements,
   listTripMembers,
@@ -30,7 +34,7 @@ import {
   updateTrip,
   updateTripMember,
 } from '@/data/trip-repository';
-import type { Expense, ItineraryDestination, ItineraryItem, Profile, RouteTravelMode, Settlement, Trip, TripMember } from '@/domain/models';
+import type { Expense, ItineraryDestination, ItineraryItem, Profile, RouteTravelMode, Segment, SegmentMember, SegmentVisibility, Settlement, Trip, TripMember } from '@/domain/models';
 import { useAuth } from '@/features/auth/auth-provider';
 import { toUserMessage } from '@/lib/user-error';
 import type { Database } from '@/types/database';
@@ -43,6 +47,8 @@ interface MvpContextValue {
   members: TripMember[];
   ledgerMembers: TripMember[];
   itineraryItems: ItineraryItem[];
+  segments: Segment[];
+  segmentMembers: SegmentMember[];
   expenses: Expense[];
   settlements: Settlement[];
   profile?: Profile;
@@ -63,6 +69,8 @@ interface MvpContextValue {
   setItineraryRouteMode: (itemId: string, travelMode: RouteTravelMode) => Promise<void>;
   moveItineraryItem: (itemId: string, targetTripId: string) => Promise<void>;
   removeItineraryItem: (itemId: string) => Promise<void>;
+  splitTripSegment: (input: { name: string; startsAt: string; endsAt: string; memberIds: string[]; visibility: SegmentVisibility }) => Promise<void>;
+  dissolveTripSegment: (segmentId: string) => Promise<void>;
   addEqualExpense: (input: { title: string; currency: string; totalMinor: number; baseCurrency?: string; baseAmountMinor?: number; exchangeRate?: number; exchangeRateSource?: string; payerUserId: string; participantUserIds: string[]; receipt?: { uri: string; base64?: string | null; mimeType?: string | null; fileSize?: number } }) => Promise<{ receiptUploaded: boolean; receiptError?: unknown }>;
   addCustomExpense: (input: { title: string; currency: string; totalMinor: number; baseCurrency?: string; baseAmountMinor?: number; exchangeRate?: number; exchangeRateSource?: string; payerAllocations: { userId: string; amountMinor: number }[]; shareAllocations: { userId: string; amountMinor: number }[]; itineraryItemId?: string; source?: Database['public']['Enums']['expense_source']; clientMutationId?: string; receipt?: { uri: string; base64?: string | null; mimeType?: string | null; fileSize?: number } }) => Promise<{ receiptUploaded: boolean; receiptError?: unknown; itineraryLinkError?: unknown; refreshError?: unknown }>;
   updateCustomExpense: (input: { expenseId: string; title: string; currency: string; totalMinor: number; baseCurrency: string; baseAmountMinor: number; exchangeRate: number; exchangeRateSource?: string; payerAllocations: { userId: string; amountMinor: number }[]; shareAllocations: { userId: string; amountMinor: number }[]; itineraryItemId?: string }) => Promise<{ expenseId: string }>;
@@ -84,6 +92,8 @@ export function MvpProvider({ children }: PropsWithChildren) {
   const [members, setMembers] = useState<TripMember[]>([]);
   const [ledgerMembers, setLedgerMembers] = useState<TripMember[]>([]);
   const [itineraryItems, setItineraryItems] = useState<ItineraryItem[]>([]);
+  const [segments, setSegments] = useState<Segment[]>([]);
+  const [segmentMembers, setSegmentMembers] = useState<SegmentMember[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [settlements, setSettlements] = useState<Settlement[]>([]);
   const [profile, setProfile] = useState<Profile>();
@@ -94,20 +104,25 @@ export function MvpProvider({ children }: PropsWithChildren) {
       setMembers([]);
       setLedgerMembers([]);
       setItineraryItems([]);
+      setSegments([]);
+      setSegmentMembers([]);
       setExpenses([]);
       setSettlements([]);
       return;
     }
-    const [nextMembers, nextLedgerMembers, nextItems, nextExpenses, nextSettlements] = await Promise.all([
+    const [nextMembers, nextLedgerMembers, nextItems, nextSegments, nextExpenses, nextSettlements] = await Promise.all([
       listTripMembers(trip.id),
       listLedgerMembers(trip.id),
       listItineraryItems(trip.id),
+      listSegments(trip.id),
       listExpenses(trip.id),
       listSettlements(trip.id),
     ]);
     setMembers(nextMembers);
     setLedgerMembers(nextLedgerMembers);
     setItineraryItems(nextItems);
+    setSegments(nextSegments);
+    setSegmentMembers(await listSegmentMembers(nextSegments.map(({ id }) => id)));
     setExpenses(nextExpenses);
     setSettlements(nextSettlements);
   }, []);
@@ -254,6 +269,29 @@ export function MvpProvider({ children }: PropsWithChildren) {
     setItineraryItems(await listItineraryItems(activeTrip.id));
   }, [activeTrip]);
 
+  /** Reloads segments and their membership together; one is meaningless without the other. */
+  const reloadSegments = useCallback(async (tripId: string) => {
+    const nextSegments = await listSegments(tripId);
+    setSegments(nextSegments);
+    setSegmentMembers(await listSegmentMembers(nextSegments.map(({ id }) => id)));
+  }, []);
+
+  const splitTripSegmentAction = useCallback(async (input: { name: string; startsAt: string; endsAt: string; memberIds: string[]; visibility: SegmentVisibility }) => {
+    if (!activeTrip) throw new Error('请先创建或加入一个行程。');
+    await splitTripSegment({ tripId: activeTrip.id, ...input });
+    // The split moves plans, so the itinerary has to be re-read as well: a
+    // plan that left the whole trip is no longer readable to everyone.
+    setItineraryItems(await listItineraryItems(activeTrip.id));
+    await reloadSegments(activeTrip.id);
+  }, [activeTrip, reloadSegments]);
+
+  const dissolveTripSegmentAction = useCallback(async (segmentId: string) => {
+    if (!activeTrip) throw new Error('请先创建或加入一个行程。');
+    await dissolveTripSegment(segmentId);
+    setItineraryItems(await listItineraryItems(activeTrip.id));
+    await reloadSegments(activeTrip.id);
+  }, [activeTrip, reloadSegments]);
+
   const addEqualExpense = useCallback(async (input: { title: string; currency: string; totalMinor: number; baseCurrency?: string; baseAmountMinor?: number; exchangeRate?: number; exchangeRateSource?: string; payerUserId: string; participantUserIds: string[]; receipt?: { uri: string; base64?: string | null; mimeType?: string | null; fileSize?: number } }) => {
     if (!activeTrip) throw new Error('请先创建或加入一个行程。');
     const result = await createEqualExpense({ ...input, tripId: activeTrip.id, userId: currentUserId });
@@ -326,6 +364,8 @@ export function MvpProvider({ children }: PropsWithChildren) {
     members,
     ledgerMembers,
     itineraryItems,
+    segments,
+    segmentMembers,
     expenses,
     settlements,
     profile,
@@ -346,6 +386,8 @@ export function MvpProvider({ children }: PropsWithChildren) {
     setItineraryRouteMode,
     moveItineraryItem: moveItineraryItemAction,
     removeItineraryItem,
+    splitTripSegment: splitTripSegmentAction,
+    dissolveTripSegment: dissolveTripSegmentAction,
     addEqualExpense,
     addCustomExpense,
     updateCustomExpense: updateCustomExpenseAction,
@@ -353,7 +395,7 @@ export function MvpProvider({ children }: PropsWithChildren) {
     attachExpenseReceipt,
     markSettlement,
     unmarkSettlement,
-  }), [loading, error, trips, activeTrip, members, ledgerMembers, itineraryItems, expenses, settlements, profile, currentUserId, selectTrip, refresh, createTripAction, joinTrip, createInvite, saveTrip, deleteTripAction, setMemberRole, removeMember, saveProfile, addItineraryItem, addStayTransfer, saveItineraryItem, setItineraryRouteMode, moveItineraryItemAction, removeItineraryItem, addEqualExpense, addCustomExpense, updateCustomExpenseAction, setExpenseSettledAction, attachExpenseReceipt, markSettlement, unmarkSettlement]);
+  }), [loading, error, trips, activeTrip, members, ledgerMembers, itineraryItems, segments, segmentMembers, expenses, settlements, profile, currentUserId, selectTrip, refresh, createTripAction, joinTrip, createInvite, saveTrip, deleteTripAction, setMemberRole, removeMember, saveProfile, addItineraryItem, addStayTransfer, saveItineraryItem, setItineraryRouteMode, moveItineraryItemAction, removeItineraryItem, splitTripSegmentAction, dissolveTripSegmentAction, addEqualExpense, addCustomExpense, updateCustomExpenseAction, setExpenseSettledAction, attachExpenseReceipt, markSettlement, unmarkSettlement]);
 
   return <MvpContext.Provider value={value}>{children}</MvpContext.Provider>;
 }
