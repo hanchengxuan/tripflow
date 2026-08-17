@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { BottomSheet } from '@/components/bottom-sheet';
-import { DateTimePairField } from '@/components/date-time-field';
+import { DateTimePairField } from '@/components/date-time-pair-field';
 import { DestinationField } from '@/components/destination-field';
 import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/form-controls';
 import { ItineraryEditAssistant } from '@/components/itinerary-edit-assistant';
@@ -62,6 +62,11 @@ export function ItineraryComposerSheet({
 }: ItineraryComposerSheetProps) {
   const { locale, languageTag, tx } = useI18n();
   const theme = useTheme();
+  // Web's native date/time inputs render a full dd/mm/yyyy and a localized
+  // clock at a fixed size and cannot shrink, so two pairs side by side clip
+  // the year and the minutes at every width the sheet actually reaches. Native
+  // keeps the designed side-by-side row, where the formatted text is compact.
+  const stackDates = Platform.OS === 'web';
   const [title, setTitle] = useState('');
   const [location, setLocation] = useState('');
   const [googlePlaceId, setGooglePlaceId] = useState('');
@@ -309,16 +314,17 @@ export function ItineraryComposerSheet({
             timeValue={startTime}
             onDateChange={updatePlanDate}
             onTimeChange={setStartTime}
+            stacked
           />
         ) : kind === 'lodging' ? (
-          <View style={styles.dateTimeRow}>
-            <DateTimePairField label={tx('入住', 'Check-in')} dateLabel={tx('入住日期', 'Check-in date')} dateValue={date} timeLabel={tx('入住时间', 'Check-in time')} timeValue={startTime} onDateChange={updatePlanDate} onTimeChange={setStartTime} />
-            <DateTimePairField label={tx('退房', 'Check-out')} dateLabel={tx('退房日期', 'Check-out date')} dateValue={endDate} timeLabel={tx('退房时间', 'Check-out time')} timeValue={endTime} onDateChange={updatePlanEndDate} onTimeChange={setEndTime} />
+          <View style={[styles.dateTimeRow, stackDates && styles.dateTimeRowStacked]}>
+            <DateTimePairField label={tx('入住', 'Check-in')} dateLabel={tx('入住日期', 'Check-in date')} dateValue={date} timeLabel={tx('入住时间', 'Check-in time')} timeValue={startTime} onDateChange={updatePlanDate} onTimeChange={setStartTime} stacked={stackDates} />
+            <DateTimePairField label={tx('退房', 'Check-out')} dateLabel={tx('退房日期', 'Check-out date')} dateValue={endDate} timeLabel={tx('退房时间', 'Check-out time')} timeValue={endTime} onDateChange={updatePlanEndDate} onTimeChange={setEndTime} stacked={stackDates} />
           </View>
         ) : (
-          <View style={styles.dateTimeRow}>
-            <DateTimePairField label={tx('开始', 'Start')} dateLabel={tx('开始日期', 'Start date')} dateValue={date} timeLabel={tx('开始时间', 'Start time')} timeValue={startTime} onDateChange={updatePlanDate} onTimeChange={setStartTime} />
-            <DateTimePairField label={tx('结束', 'End')} dateLabel={tx('结束日期', 'End date')} dateValue={endDate} timeLabel={tx('结束时间', 'End time')} timeValue={endTime} onDateChange={updatePlanEndDate} onTimeChange={setEndTime} />
+          <View style={[styles.dateTimeRow, stackDates && styles.dateTimeRowStacked]}>
+            <DateTimePairField label={tx('开始', 'Start')} dateLabel={tx('开始日期', 'Start date')} dateValue={date} timeLabel={tx('开始时间', 'Start time')} timeValue={startTime} onDateChange={updatePlanDate} onTimeChange={setStartTime} stacked={stackDates} />
+            <DateTimePairField label={tx('结束', 'End')} dateLabel={tx('结束日期', 'End date')} dateValue={endDate} timeLabel={tx('结束时间', 'End time')} timeValue={endTime} onDateChange={updatePlanEndDate} onTimeChange={setEndTime} stacked={stackDates} />
           </View>
         )}
         {editingItem ? (
@@ -446,6 +452,7 @@ const styles = StyleSheet.create({
   kindChoices: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   rangeConfirm: { gap: 10 },
   dateTimeRow: { alignSelf: 'stretch', flexDirection: 'row', alignItems: 'stretch', gap: Spacing.sm },
+  dateTimeRowStacked: { flexDirection: 'column' },
   formActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   actionGrow: { flexGrow: 1, flexBasis: 150 },
   deleteTrigger: { minHeight: 44, alignItems: 'center', justifyContent: 'center' },
