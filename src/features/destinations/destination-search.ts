@@ -294,17 +294,33 @@ async function fetchDestinationResults(query: string, language: string) {
 }
 
 /**
- * Keyed on the GeoNames id so the same place fetched in both Chinese and
- * English collapses into one row — otherwise 東京 and Tokyo both appeared.
- * The first spelling wins, and requests are issued in the reader's language
- * first.
+ * Collapse rows a traveller cannot tell apart.
+ *
+ * Two keys, because there are two ways to end up with a duplicate. The
+ * geocoder id catches the same place fetched in both Chinese and English —
+ * 東京 and Tokyo. Everything the row actually renders catches distinct
+ * records that look identical: Hong Kong is filed both as a capital and as a
+ * territory, which drew two "香港 · Asia/Hong_Kong · HKD" rows.
+ *
+ * Runs after ranking so the survivor is the best-scoring one.
  */
 function deduplicateSuggestions(suggestions: DestinationSuggestion[]) {
-  const seen = new Set<string>();
+  const seenIds = new Set<string>();
+  const seenRows = new Set<string>();
   return suggestions.filter((suggestion) => {
-    if (seen.has(suggestion.id)) return false;
-    seen.add(suggestion.id);
-    return true;
+    const row = [
+      normalizeSearchText(suggestion.cityName),
+      normalizeSearchText(suggestion.countryName),
+      suggestion.countryCode,
+      suggestion.timeZone,
+    ].join('|');
+    const duplicate = seenIds.has(suggestion.id) || seenRows.has(row);
+    // Record both keys even when dropping, or a record discarded as a
+    // duplicate row would slip back in under its other-language name: Hong
+    // Kong's territory entry was dropped as "香港" and returned as "Hong Kong".
+    seenIds.add(suggestion.id);
+    seenRows.add(row);
+    return !duplicate;
   });
 }
 
@@ -328,5 +344,5 @@ export async function searchDestinations(
     throw new Error('Destination search is temporarily unavailable');
   }
 
-  return rankDestinationSuggestions(query, deduplicateSuggestions(successful), context).slice(0, 8);
+  return deduplicateSuggestions(rankDestinationSuggestions(query, successful, context)).slice(0, 8);
 }

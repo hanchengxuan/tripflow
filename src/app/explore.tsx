@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from 'react';
 import { LayoutAnimation, Pressable, Share, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { DateTimeField } from '@/components/date-time-field';
+import { DestinationField } from '@/components/destination-field';
+import { DestinationSettings } from '@/components/destination-settings';
 import { Chevron } from '@/components/chevron';
 import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/form-controls';
 import { InviteQrCode, InviteQrScanner } from '@/components/invite-qr';
@@ -10,7 +12,6 @@ import { KindPill } from '@/components/kind-pill';
 import { ListDivider, ListRow, ListSurface } from '@/components/list-surface';
 import { MemberAvatar } from '@/components/member-avatar';
 import { Screen } from '@/components/screen';
-import { SelectionField } from '@/components/selection-field';
 import { SectionHeading } from '@/components/section-heading';
 import { ThemedText } from '@/components/themed-text';
 import { TripOverviewCard } from '@/components/trip-overview-card';
@@ -18,7 +19,9 @@ import { getCurrencyOptions, getTimeZoneOptions, tripRoleLabels, tripRoleLabelsE
 import type { Trip, TripRole } from '@/domain/models';
 import { useI18n } from '@/features/i18n/i18n-provider';
 import { buildInviteUrl, parseInviteToken } from '@/features/invites/invite-link';
+import { destinationLabel, type DestinationSuggestion } from '@/features/destinations/destination-search';
 import { useMvp } from '@/features/mvp/mvp-provider';
+import { defaultHomeCurrency, defaultTripTimeZone } from '@/features/trips/trip-defaults';
 import { useTheme } from '@/hooks/use-theme';
 import { toUserMessage } from '@/lib/user-error';
 
@@ -58,13 +61,17 @@ export default function TripsScreen() {
   const [name, setName] = useState('');
   const [startsOn, setStartsOn] = useState(dateOffset(30));
   const [endsOn, setEndsOn] = useState(dateOffset(37));
-  const [currency, setCurrency] = useState('HKD');
-  const [timeZone, setTimeZone] = useState('Asia/Hong_Kong');
+  const [currency, setCurrency] = useState(() => defaultHomeCurrency(trips));
+  const [timeZone, setTimeZone] = useState(() => defaultTripTimeZone(trips));
+  const [destinationText, setDestinationText] = useState('');
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [editName, setEditName] = useState('');
   const [editStartsOn, setEditStartsOn] = useState('');
   const [editEndsOn, setEditEndsOn] = useState('');
-  const [editCurrency, setEditCurrency] = useState('HKD');
-  const [editTimeZone, setEditTimeZone] = useState('Asia/Hong_Kong');
+  const [editCurrency, setEditCurrency] = useState(() => defaultHomeCurrency(trips));
+  const [editTimeZone, setEditTimeZone] = useState(() => defaultTripTimeZone(trips));
+  const [editDestinationText, setEditDestinationText] = useState('');
+  const [editSettingsOpen, setEditSettingsOpen] = useState(false);
   const [editingTrip, setEditingTrip] = useState(false);
   const [confirmDeleteTrip, setConfirmDeleteTrip] = useState(false);
   const [editingMemberId, setEditingMemberId] = useState<string>();
@@ -151,6 +158,8 @@ export default function TripsScreen() {
     await run('create', async () => {
       await createTrip({ name, startsOn, endsOn, homeCurrency: currency, defaultTimeZone: timeZone });
       setName('');
+      setDestinationText('');
+      setSettingsOpen(false);
       setOpenPanel(null);
     }, tx('新行程已创建。', 'Trip created.'));
   }
@@ -244,7 +253,7 @@ export default function TripsScreen() {
       {openPanel === 'create' ? (
         <View style={[styles.focusPanel, { backgroundColor: theme.backgroundElement }]}>
           <PanelHeading title={tx('创建新行程', 'Create a new trip')} />
-          <TripForm name={name} setName={setName} startsOn={startsOn} setStartsOn={setStartsOn} endsOn={endsOn} setEndsOn={setEndsOn} currency={currency} setCurrency={setCurrency} timeZone={timeZone} setTimeZone={setTimeZone} currencyOptions={currencyOptions} timeZoneOptions={timeZoneOptions} tx={tx} />
+          <TripForm name={name} setName={setName} startsOn={startsOn} setStartsOn={setStartsOn} endsOn={endsOn} setEndsOn={setEndsOn} currency={currency} setCurrency={setCurrency} timeZone={timeZone} setTimeZone={setTimeZone} destinationText={destinationText} setDestinationText={setDestinationText} settingsOpen={settingsOpen} setSettingsOpen={setSettingsOpen} currencyOptions={currencyOptions} timeZoneOptions={timeZoneOptions} tx={tx} />
           <ActionButton busy={busyAction === 'create'} disabled={!name.trim()} onPress={() => void submitTrip()}>{tx('创建并进入行程', 'Create and open trip')}</ActionButton>
         </View>
       ) : null}
@@ -268,7 +277,7 @@ export default function TripsScreen() {
 
           {editingTrip ? (
             <View style={styles.editorBlock}>
-              <TripForm name={editName} setName={setEditName} startsOn={editStartsOn} setStartsOn={setEditStartsOn} endsOn={editEndsOn} setEndsOn={setEditEndsOn} currency={editCurrency} setCurrency={setEditCurrency} timeZone={editTimeZone} setTimeZone={setEditTimeZone} currencyOptions={currencyOptions} timeZoneOptions={timeZoneOptions} tx={tx} />
+              <TripForm name={editName} setName={setEditName} startsOn={editStartsOn} setStartsOn={setEditStartsOn} endsOn={editEndsOn} setEndsOn={setEditEndsOn} currency={editCurrency} setCurrency={setEditCurrency} timeZone={editTimeZone} setTimeZone={setEditTimeZone} destinationText={editDestinationText} setDestinationText={setEditDestinationText} settingsOpen={editSettingsOpen} setSettingsOpen={setEditSettingsOpen} currencyOptions={currencyOptions} timeZoneOptions={timeZoneOptions} tx={tx} />
               <View style={styles.editorActions}>
                 <View style={styles.actionGrow}><ActionButton tone="secondary" onPress={() => { prepareEdit(activeTrip); setEditingTrip(false); }}>{tx('取消', 'Cancel')}</ActionButton></View>
                 <View style={styles.actionGrow}><ActionButton busy={busyAction === 'edit-trip'} disabled={!editName.trim()} onPress={() => void submitTripEdit()}>{tx('保存行程', 'Save trip')}</ActionButton></View>
@@ -384,10 +393,78 @@ export default function TripsScreen() {
 function PanelHeading({ title, caption }: { title: string; caption?: string }) { return <View style={styles.panelHeader}><ThemedText type="smallBold" style={styles.panelTitle}>{title}</ThemedText>{caption ? <ThemedText type="small" themeColor="textSecondary">{caption}</ThemedText> : null}</View>; }
 function Detail({ label, value, compact }: { label: string; value: string; compact: boolean }) { return <View style={[styles.detail, compact && styles.detailStacked]}><ThemedText type="small" themeColor="textSecondary">{label}</ThemedText><ThemedText type="smallBold">{value}</ThemedText></View>; }
 
-function TripForm(props: { name: string; setName: (value: string) => void; startsOn: string; setStartsOn: (value: string) => void; endsOn: string; setEndsOn: (value: string) => void; currency: string; setCurrency: (value: string) => void; timeZone: string; setTimeZone: (value: string) => void; currencyOptions: { label: string; value: string }[]; timeZoneOptions: { label: string; value: string }[]; tx: (zh: string, en: string) => string }) {
+interface TripFormProps {
+  name: string;
+  setName: (value: string) => void;
+  startsOn: string;
+  setStartsOn: (value: string) => void;
+  endsOn: string;
+  setEndsOn: (value: string) => void;
+  currency: string;
+  setCurrency: (value: string) => void;
+  timeZone: string;
+  setTimeZone: (value: string) => void;
+  destinationText: string;
+  setDestinationText: (value: string) => void;
+  settingsOpen: boolean;
+  setSettingsOpen: (value: boolean) => void;
+  currencyOptions: { label: string; value: string }[];
+  timeZoneOptions: { label: string; value: string }[];
+  tx: (zh: string, en: string) => string;
+}
+
+/**
+ * Name, dates, and where you are going. Time zone and currency used to be two
+ * pickers of equal weight in this form, which asked every traveller to answer
+ * a question about IANA zone names before they could create a trip. Choosing a
+ * destination now sets both; the summary row underneath keeps them visible and
+ * correctable without putting them in the way.
+ */
+function TripForm(props: TripFormProps) {
   const { width } = useWindowDimensions();
   const compact = width < 520;
-  return <View style={styles.formStack}><FormField label={props.tx('行程名称', 'Trip name')} value={props.name} onChangeText={props.setName} placeholder={props.tx('例如：北海道滑雪之旅', 'For example: Hokkaido ski trip')} /><View style={[styles.formRow, compact && styles.formRowCompact]}><View style={[styles.fieldGrow, compact && styles.fieldGrowCompact]}><DateTimeField label={props.tx('开始日期', 'Start date')} value={props.startsOn} mode="date" onChange={props.setStartsOn} /></View><View style={[styles.fieldGrow, compact && styles.fieldGrowCompact]}><DateTimeField label={props.tx('结束日期', 'End date')} value={props.endsOn} mode="date" minimumDate={new Date(`${props.startsOn}T12:00:00`)} onChange={props.setEndsOn} /></View></View><View style={[styles.formRow, compact && styles.formRowCompact]}><View style={[styles.fieldGrow, compact && styles.fieldGrowCompact]}><SelectionField label={props.tx('记账币种', 'Home currency')} value={props.currency} options={props.currencyOptions} onChange={props.setCurrency} /></View><View style={[styles.fieldGrow, compact && styles.fieldGrowCompact]}><SelectionField label={props.tx('行程时区', 'Time zone')} value={props.timeZone} options={props.timeZoneOptions} onChange={props.setTimeZone} /></View></View></View>;
+
+  function chooseDestination(suggestion: DestinationSuggestion) {
+    props.setDestinationText(destinationLabel(suggestion));
+    props.setTimeZone(suggestion.timeZone);
+    if (suggestion.currency) props.setCurrency(suggestion.currency);
+  }
+
+  return (
+    <View style={styles.formStack}>
+      <FormField
+        label={props.tx('行程名称', 'Trip name')}
+        value={props.name}
+        onChangeText={props.setName}
+        placeholder={props.tx('例如：北海道滑雪之旅', 'For example: Hokkaido ski trip')}
+      />
+      <DestinationField
+        value={props.destinationText}
+        planTitle={props.name}
+        onChange={props.setDestinationText}
+        onSelect={chooseDestination}
+      />
+      <View style={[styles.formRow, compact && styles.formRowCompact]}>
+        <View style={[styles.fieldGrow, compact && styles.fieldGrowCompact]}>
+          <DateTimeField label={props.tx('开始日期', 'Start date')} value={props.startsOn} mode="date" onChange={props.setStartsOn} />
+        </View>
+        <View style={[styles.fieldGrow, compact && styles.fieldGrowCompact]}>
+          <DateTimeField label={props.tx('结束日期', 'End date')} value={props.endsOn} mode="date" minimumDate={new Date(`${props.startsOn}T12:00:00`)} onChange={props.setEndsOn} />
+        </View>
+      </View>
+      <DestinationSettings
+        currency={props.currency}
+        currencyOptions={props.currencyOptions}
+        onCurrencyChange={props.setCurrency}
+        onTimeZoneChange={props.setTimeZone}
+        onToggle={() => props.setSettingsOpen(!props.settingsOpen)}
+        open={props.settingsOpen}
+        timeZone={props.timeZone}
+        timeZoneOptions={props.timeZoneOptions}
+        tx={props.tx}
+      />
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({

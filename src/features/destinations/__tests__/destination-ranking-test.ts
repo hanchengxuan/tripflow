@@ -79,6 +79,27 @@ describe('destination search against recorded geocoder responses', () => {
     expect(japanese.filter(({ timeZone }) => timeZone === 'Asia/Tokyo')).toHaveLength(1);
   });
 
+  it('shows one Hong Kong, not the capital record and the territory record', async () => {
+    const results = await searchDestinations('香港', 'zh-CN', {});
+    const identical = results.filter((suggestion) => (
+      destinationLabel(suggestion) === '香港' && suggestion.timeZone === 'Asia/Hong_Kong'
+    ));
+
+    expect(identical).toHaveLength(1);
+  });
+
+  it('does not let a record dropped in one language return in the other', async () => {
+    const results = await searchDestinations('hong kong', 'zh-CN', {});
+    const hongKong = results.filter(({ countryCode }) => countryCode === 'HK');
+
+    // The city is filed twice (capital and territory) and fetched in two
+    // languages, so it arrives four times. Exactly one row may survive —
+    // whichever name matches what was typed.
+    const city = hongKong.filter(({ cityName }) => cityName === '香港' || cityName === 'Hong Kong');
+    expect(city).toHaveLength(1);
+    expect(new Set(hongKong.map(({ id }) => id)).size).toBe(hongKong.length);
+  });
+
   it('drops airports, parks, and mountains from a destination picker', async () => {
     const results = await searchDestinations('Tokyo', 'en', {});
 

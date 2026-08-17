@@ -4,8 +4,8 @@ import { Linking, Platform, Pressable, StyleSheet, useWindowDimensions, View } f
 import { BottomSheet } from '@/components/bottom-sheet';
 import { DateTimePairField } from '@/components/date-time-pair-field';
 import { DestinationField } from '@/components/destination-field';
+import { DestinationSettings } from '@/components/destination-settings';
 import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/form-controls';
-import { Chevron } from '@/components/chevron';
 import { InfoCard } from '@/components/info-card';
 import { ItineraryHealthCard } from '@/components/itinerary-health-card';
 import { ItineraryEditAssistant } from '@/components/itinerary-edit-assistant';
@@ -17,7 +17,6 @@ import { MapsLink, RouteEstimateChip, routeTravelModeLabel, routeTravelModes, Tr
 import { DaySeparator, RouteSegment, TimelineRow } from '@/components/timeline-rail';
 import { Screen } from '@/components/screen';
 import { SectionHeading } from '@/components/section-heading';
-import { SelectionField } from '@/components/selection-field';
 import { ThemedText } from '@/components/themed-text';
 import { getCurrencyOptions, getTimeZoneOptions, itineraryKindLabels, itineraryKindLabelsEn, itineraryKinds } from '@/constants/options';
 import { Spacing, type ThemeColor } from '@/constants/theme';
@@ -724,7 +723,7 @@ export default function TodayScreen() {
                 <DestinationSettings
                   currency={itemCurrency}
                   currencyOptions={destinationCurrencyOptions}
-                  destination={destination}
+                  placeLabel={destination.cityName}
                   open={destinationSettingsOpen}
                   timeZone={itemTimeZone}
                   timeZoneOptions={destinationTimeZoneOptions}
@@ -824,61 +823,6 @@ export default function TodayScreen() {
   );
 }
 
-function DestinationSettings({
-  currency,
-  currencyOptions,
-  destination,
-  open,
-  timeZone,
-  timeZoneOptions,
-  onCurrencyChange,
-  onTimeZoneChange,
-  onToggle,
-  tx,
-}: {
-  currency: string;
-  currencyOptions: { label: string; value: string }[];
-  destination: ItineraryDestination;
-  open: boolean;
-  timeZone: string;
-  timeZoneOptions: { label: string; value: string }[];
-  onCurrencyChange: (value: string) => void;
-  onTimeZoneChange: (value: string) => void;
-  onToggle: () => void;
-  tx: (zh: string, en: string) => string;
-}) {
-  const theme = useTheme();
-  const resolvedCurrencyOptions = currencyOptions.some((option) => option.value === currency)
-    ? currencyOptions
-    : [{ value: currency, label: currency }, ...currencyOptions];
-  const resolvedTimeZoneOptions = timeZoneOptions.some((option) => option.value === timeZone)
-    ? timeZoneOptions
-    : [{ value: timeZone, label: timeZone }, ...timeZoneOptions];
-  return (
-    <View style={styles.destinationSettings}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityState={{ expanded: open }}
-        onPress={onToggle}
-        style={({ pressed }) => [styles.destinationSummary, pressed && styles.pressed]}>
-        <View style={styles.destinationSummaryCopy}>
-          <ThemedText type="smallBold">{tx('已自动设置', 'Smart defaults')}</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            {destination.cityName} · {timeZone} · {currency} · {tx('点按调整', 'tap to adjust')}
-          </ThemedText>
-        </View>
-        <Chevron color={theme.textSecondary} direction={open ? 'down' : 'right'} />
-      </Pressable>
-      {open ? (
-        <View style={styles.destinationSettingsRow}>
-          <View style={styles.destinationSettingGrow}><SelectionField label={tx('安排时区', 'Plan time zone')} value={timeZone} options={resolvedTimeZoneOptions} onChange={onTimeZoneChange} /></View>
-          <View style={styles.destinationSettingGrow}><SelectionField label={tx('当地币种', 'Local currency')} value={currency} options={resolvedCurrencyOptions} onChange={onCurrencyChange} /></View>
-        </View>
-      ) : null}
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   form: { width: '100%', gap: 14 },
   kindChoices: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
@@ -897,11 +841,6 @@ const styles = StyleSheet.create({
   closeDiagonalOne: { position: 'absolute', width: 18, height: 2, borderRadius: 1, transform: [{ rotate: '45deg' }] },
   closeDiagonalTwo: { position: 'absolute', width: 18, height: 2, borderRadius: 1, transform: [{ rotate: '-45deg' }] },
   lockedDestination: { borderRadius: 12, padding: 14, gap: 3 },
-  destinationSettings: { gap: 8 },
-  destinationSummary: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 4 },
-  destinationSummaryCopy: { flex: 1, gap: 1 },
-  destinationSettingsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, padding: 12, borderRadius: 14 },
-  destinationSettingGrow: { flexGrow: 1, flexBasis: 180 },
   deleteConfirm: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 14, gap: 10 },
   dangerConfirm: { minHeight: 48, borderRadius: 12, paddingHorizontal: 14, justifyContent: 'center', alignItems: 'center' },
   timelineSection: { paddingTop: 8 },
