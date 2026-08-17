@@ -54,3 +54,7 @@ example
 
 # icon renders; rebuild with `node assets/brand/build.mjs --ship`
 assets/brand/out/
+
+# Supabase CLI local artifacts (supabase start)
+supabase/.branches/
+supabase/.temp/

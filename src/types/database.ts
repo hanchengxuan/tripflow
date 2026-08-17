@@ -1069,6 +1069,10 @@ export type Database = {
         Returns: undefined
       }
       delete_trip: { Args: { requested_trip_id: string }; Returns: undefined }
+      dissolve_trip_segment: {
+        Args: { requested_segment_id: string }
+        Returns: undefined
+      }
       is_active_user: { Args: never; Returns: boolean }
       is_trip_creator: { Args: { requested_trip_id: string }; Returns: boolean }
       is_trip_member: { Args: { requested_trip_id: string }; Returns: boolean }
@@ -1158,6 +1162,35 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "trips"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      split_trip_segment: {
+        Args: {
+          member_ids: string[]
+          requested_trip_id: string
+          segment_ends_at: string
+          segment_name: string
+          segment_starts_at: string
+          segment_visibility: Database["public"]["Enums"]["segment_visibility"]
+        }
+        Returns: {
+          created_at: string
+          created_by: string
+          ends_at: string
+          id: string
+          location_label: string
+          name: string
+          parent_segment_id: string | null
+          starts_at: string
+          trip_id: string
+          updated_at: string
+          visibility: Database["public"]["Enums"]["segment_visibility"]
+        }
+        SetofOptions: {
+          from: "*"
+          to: "segments"
           isOneToOne: true
           isSetofReturn: false
         }
