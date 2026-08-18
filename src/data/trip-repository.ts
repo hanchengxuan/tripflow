@@ -1,4 +1,4 @@
-import type { Expense, ItineraryDestination, ItineraryItem, Profile, RouteTravelMode, Settlement, Trip, TripMember } from '@/domain/models';
+import type { Expense, ItineraryDestination, ItineraryItem, Profile, RouteTravelMode, Segment, SegmentMember, SegmentVisibility, Settlement, Trip, TripMember } from '@/domain/models';
 import { getSupabaseClient } from '@/lib/supabase';
 import type { Database, Tables } from '@/types/database';
 
@@ -663,6 +663,77 @@ export async function recordSettlement(input: {
 export async function unrecordSettlement(settlementId: string) {
   const { error } = await getSupabaseClient().rpc('unrecord_settlement', {
     requested_settlement_id: settlementId,
+  });
+  if (error) throw error;
+}
+
+function mapSegment(row: Tables<'segments'>): Segment {
+  return {
+    id: row.id,
+    tripId: row.trip_id,
+    name: row.name,
+    startsAt: row.starts_at,
+    endsAt: row.ends_at,
+    locationLabel: row.location_label,
+    visibility: row.visibility,
+    parentSegmentId: row.parent_segment_id ?? undefined,
+  };
+}
+
+/**
+ * Branches of a trip. Row-level security already hides a `members_only`
+ * branch from travellers who are not on it, so this returns only what the
+ * reader is allowed to see rather than filtering client-side.
+ */
+export async function listSegments(tripId: string): Promise<Segment[]> {
+  const { data, error } = await getSupabaseClient()
+    .from('segments')
+    .select('*')
+    .eq('trip_id', tripId)
+    .order('starts_at');
+  if (error) throw error;
+  return data.map(mapSegment);
+}
+
+export async function listSegmentMembers(segmentIds: string[]): Promise<SegmentMember[]> {
+  if (segmentIds.length === 0) return [];
+  const { data, error } = await getSupabaseClient()
+    .from('segment_members')
+    .select('segment_id, user_id')
+    .in('segment_id', segmentIds);
+  if (error) throw error;
+  return data.map((row) => ({ segmentId: row.segment_id, userId: row.user_id }));
+}
+
+/**
+ * "Split from here." Creating the branch, adding its travellers, and moving
+ * the plans inside its window has to be one operation — a partial split would
+ * leave plans visible to people who are no longer on that leg.
+ */
+export async function splitTripSegment(input: {
+  tripId: string;
+  name: string;
+  startsAt: string;
+  endsAt: string;
+  memberIds: string[];
+  visibility: SegmentVisibility;
+}): Promise<Segment> {
+  const { data, error } = await getSupabaseClient().rpc('split_trip_segment', {
+    requested_trip_id: input.tripId,
+    segment_name: input.name.trim(),
+    segment_starts_at: input.startsAt,
+    segment_ends_at: input.endsAt,
+    segment_visibility: input.visibility,
+    member_ids: input.memberIds,
+  });
+  if (error) throw error;
+  return mapSegment(data);
+}
+
+/** Returns the branch's plans to the whole trip, then removes the branch. */
+export async function dissolveTripSegment(segmentId: string) {
+  const { error } = await getSupabaseClient().rpc('dissolve_trip_segment', {
+    requested_segment_id: segmentId,
   });
   if (error) throw error;
 }

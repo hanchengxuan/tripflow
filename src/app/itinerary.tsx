@@ -3,6 +3,8 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ItineraryComposerSheet } from '@/components/itinerary-composer-sheet';
+import { SegmentList } from '@/components/segment-list';
+import { SplitSegmentSheet } from '@/components/split-segment-sheet';
 import { FormField, InlineNotice } from '@/components/form-controls';
 import { InfoCard } from '@/components/info-card';
 import { DaySeparator, TimelineRow } from '@/components/timeline-rail';
@@ -14,6 +16,7 @@ import type { ThemeColor } from '@/constants/theme';
 import type { ItineraryItem, ItineraryKind } from '@/domain/models';
 import { useI18n } from '@/features/i18n/i18n-provider';
 import { useMvp } from '@/features/mvp/mvp-provider';
+import { toUserMessage } from '@/lib/user-error';
 import { isoToZonedDateTime } from '@/lib/trip-time';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -60,6 +63,7 @@ export default function ItineraryScreen() {
   const {
     activeTrip,
     addItineraryItem,
+    dissolveTripSegment,
     error,
     currentUserId,
     itineraryItems,
@@ -67,9 +71,16 @@ export default function ItineraryScreen() {
     removeItineraryItem,
     saveItineraryItem,
     saveTrip,
+    segmentMembers,
+    segments,
+    splitTripSegment,
   } = useMvp();
   const [query, setQuery] = useState('');
   const [composerOpen, setComposerOpen] = useState(false);
+  const [splitFromItemId, setSplitFromItemId] = useState<string>();
+  const [splitError, setSplitError] = useState<string>();
+  const splitFromItem = itineraryItems.find(({ id }) => id === splitFromItemId);
+  const segmentNameById = new Map(segments.map((segment) => [segment.id, segment.name]));
   const [editingItemId, setEditingItemId] = useState<string>();
   const [success, setSuccess] = useState<string>();
   const handledItemParam = useRef<string | undefined>(undefined);
@@ -160,6 +171,7 @@ export default function ItineraryScreen() {
         ) : null}
       >
         {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
+        {splitError ? <InlineNotice tone="error">{splitError}</InlineNotice> : null}
         {success ? <InlineNotice>{success}</InlineNotice> : null}
         <SectionHeading
           title={tx('全部安排', 'All plans')}
@@ -181,6 +193,21 @@ export default function ItineraryScreen() {
               autoCorrect={false}
               placeholder={tx('搜索标题、地点或目的地', 'Search titles, places, or destinations')}
             />
+            {segments.length > 0 ? (
+              <SegmentList
+                canEdit={canEdit}
+                members={members}
+                onDissolve={(segmentId) => {
+                  setSplitError(undefined);
+                  void dissolveTripSegment(segmentId)
+                    .then(() => setSuccess(tx('分支已解散，安排已回到整个行程。', 'Branch dissolved; its plans are back on the whole trip.')))
+                    .catch((caught) => setSplitError(toUserMessage(caught, tx('无法解散这个分支，请稍后重试。', 'Could not dissolve this branch. Please try again.'))));
+                }}
+                segmentMembers={segmentMembers}
+                segments={segments}
+                timeZone={activeTrip.defaultTimeZone}
+              />
+            ) : null}
             {filteredItems.length > 0 ? (
               <View style={styles.timeline}>
                 {filteredItems.map((item, index) => {
@@ -209,6 +236,22 @@ export default function ItineraryScreen() {
                             {tx('结束于 ', 'Ends ') + formatDayLabel(end.date, languageTag) + ' ' + end.time}
                           </ThemedText>
                         ) : null}
+                        {segmentNameById.get(item.segmentId ?? '') ? (
+                          <View style={[styles.branchTag, { backgroundColor: theme.accentSoft }]}>
+                            <ThemedText type="small" style={{ color: theme.accentOnSoft }}>
+                              {tx('分支 · ', 'Branch · ') + segmentNameById.get(item.segmentId ?? '')}
+                            </ThemedText>
+                          </View>
+                        ) : canEdit && !item.segmentId ? (
+                          <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel={tx(`从“${item.title}”拆分出分支`, `Split a branch from “${item.title}”`)}
+                            hitSlop={6}
+                            onPress={() => setSplitFromItemId(item.id)}
+                            style={({ pressed }) => [styles.splitAction, pressed && styles.pressed]}>
+                            <ThemedText type="small" themeColor="link">{tx('从这里拆分', 'Split from here')}</ThemedText>
+                          </Pressable>
+                        ) : null}
                       </TimelineRow>
                     </Fragment>
                   );
@@ -232,6 +275,18 @@ export default function ItineraryScreen() {
           </InfoCard>
         )}
       </Screen>
+      {activeTrip ? (
+        <SplitSegmentSheet
+          key={splitFromItemId}
+          fromItem={splitFromItem}
+          members={members}
+          onDismiss={() => setSplitFromItemId(undefined)}
+          onSplit={splitTripSegment}
+          timeZone={activeTrip.defaultTimeZone}
+          tripEndsOn={activeTrip.endsOn}
+          visible={Boolean(canEdit && splitFromItem)}
+        />
+      ) : null}
       {activeTrip ? (
         <ItineraryComposerSheet
           activeTrip={activeTrip}
@@ -258,6 +313,8 @@ export default function ItineraryScreen() {
 
 const styles = StyleSheet.create({
   timeline: { gap: 0 },
+  branchTag: { alignSelf: 'flex-start', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, marginTop: 2 },
+  splitAction: { alignSelf: 'flex-start', minHeight: 32, justifyContent: 'center', marginTop: 2 },
   floatingAdd: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', shadowOpacity: 0.2, shadowRadius: 14, shadowOffset: { width: 0, height: 6 } },
   plusIcon: { width: 20, height: 20, alignItems: 'center', justifyContent: 'center' },
   closeIcon: { width: 20, height: 20, alignItems: 'center', justifyContent: 'center' },
