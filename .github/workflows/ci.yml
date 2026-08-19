@@ -1,9 +1,10 @@
 name: CI
 
+# No `push` trigger for main. `deploy-production.yml` already calls this
+# workflow, so a push trigger here ran the same four jobs a second time on
+# every merge — roughly a third of this repository's Actions minutes.
 on:
   pull_request:
-  push:
-    branches: [main]
   workflow_call:
 
 permissions:
