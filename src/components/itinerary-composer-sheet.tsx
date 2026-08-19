@@ -44,6 +44,8 @@ export interface ItineraryComposerSheetProps {
     destination?: ItineraryDestination;
   }) => Promise<void>;
   onSuccess?: (message: string) => void;
+  /** Opens the branch sheet for this plan. Absent when branching does not apply. */
+  onSplitFromHere?: () => void;
   visible: boolean;
 }
 
@@ -57,6 +59,7 @@ export function ItineraryComposerSheet({
   onExtendTrip,
   onSave,
   onSuccess,
+  onSplitFromHere,
   visible,
 }: ItineraryComposerSheetProps) {
   const { locale, languageTag, tx } = useI18n();
@@ -360,9 +363,16 @@ export function ItineraryComposerSheet({
           />
         ) : null}
         {editingItem && !confirmDeleteItem ? (
-          <Pressable accessibilityRole="button" onPress={() => setConfirmDeleteItem(true)} style={({ pressed }) => [styles.deleteTrigger, pressed && styles.pressed]}>
-            <ThemedText type="smallBold" style={{ color: theme.danger }}>{tx('删除这项安排', 'Delete this plan')}</ThemedText>
-          </Pressable>
+          <View style={styles.itemActions}>
+            {onSplitFromHere ? (
+              <Pressable accessibilityRole="button" onPress={onSplitFromHere} style={({ pressed }) => [styles.itemAction, pressed && styles.pressed]}>
+                <ThemedText type="smallBold" themeColor="link">{tx('从这里分开走', 'Split off from here')}</ThemedText>
+              </Pressable>
+            ) : null}
+            <Pressable accessibilityRole="button" onPress={() => setConfirmDeleteItem(true)} style={({ pressed }) => [styles.itemAction, pressed && styles.pressed]}>
+              <ThemedText type="smallBold" style={{ color: theme.danger }}>{tx('删除这项安排', 'Delete this plan')}</ThemedText>
+            </Pressable>
+          </View>
         ) : null}
         {pendingTripRange ? (
           <View style={styles.rangeConfirm}>
@@ -399,7 +409,8 @@ const styles = StyleSheet.create({
   dateTimeRowStacked: { flexDirection: 'column' },
   formActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   actionGrow: { flexGrow: 1, flexBasis: 150 },
-  deleteTrigger: { minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  itemActions: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: Spacing.md },
+  itemAction: { minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   lockedDestination: { borderRadius: 12, padding: 14, gap: 3 },
   deleteConfirm: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 14, gap: 10 },
   dangerConfirm: { minHeight: 48, borderRadius: 12, paddingHorizontal: 14, justifyContent: 'center', alignItems: 'center' },

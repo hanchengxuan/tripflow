@@ -14,12 +14,17 @@ import { toUserMessage } from '@/lib/user-error';
 import { useTheme } from '@/hooks/use-theme';
 
 /**
- * "Split from here."
+ * Splitting off from a plan.
  *
- * The window opens at the plan the traveller tapped and runs to the end of the
- * trip, which is the case this exists for: partway through, some people peel
- * off. Everyone is selected by default and the split is expressed by removing
- * the people who are not coming, rather than by rebuilding the group.
+ * Reached from that plan's editor rather than from the timeline: branching is
+ * a rare, per-plan action, and the timeline already routes per-plan actions —
+ * deleting among them — through the editor. A link on every row read as
+ * repetition long before it read as an affordance.
+ *
+ * The window opens at the plan and runs to the end of the trip, which is the
+ * case this exists for: partway through, some people peel off. Everyone is
+ * selected by default and the split is expressed by removing the people who
+ * are not coming, rather than by rebuilding the group.
  */
 export function SplitSegmentSheet({
   fromItem,
@@ -69,14 +74,14 @@ export function SplitSegmentSheet({
       });
       onDismiss();
     } catch (caught) {
-      setError(toUserMessage(caught, tx('无法拆分这段行程，请稍后重试。', 'Could not split this leg. Please try again.')));
+      setError(toUserMessage(caught, tx('无法创建分支，请稍后重试。', 'Could not create the branch. Please try again.')));
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <BottomSheet onDismiss={onDismiss} title={tx('从这里拆分', 'Split from here')} visible={visible}>
+    <BottomSheet onDismiss={onDismiss} title={tx('从这里分开走', 'Split off from here')} visible={visible}>
       <View style={styles.form}>
         <ThemedText type="small" themeColor="textSecondary">
           {tx('这段时间内的安排会移到分支里，只有分支同行者能看到。账本仍然是整个行程一本。',
