@@ -242,15 +242,6 @@ export default function ItineraryScreen() {
                               {tx('分支 · ', 'Branch · ') + segmentNameById.get(item.segmentId ?? '')}
                             </ThemedText>
                           </View>
-                        ) : canEdit && !item.segmentId ? (
-                          <Pressable
-                            accessibilityRole="button"
-                            accessibilityLabel={tx(`从“${item.title}”拆分出分支`, `Split a branch from “${item.title}”`)}
-                            hitSlop={6}
-                            onPress={() => setSplitFromItemId(item.id)}
-                            style={({ pressed }) => [styles.splitAction, pressed && styles.pressed]}>
-                            <ThemedText type="small" themeColor="link">{tx('从这里拆分', 'Split from here')}</ThemedText>
-                          </Pressable>
                         ) : null}
                       </TimelineRow>
                     </Fragment>
@@ -304,6 +295,11 @@ export default function ItineraryScreen() {
           })}
           onSave={saveItineraryItem}
           onSuccess={setSuccess}
+          onSplitFromHere={canEdit && editingItem && !editingItem.segmentId ? () => {
+            const from = editingItem.id;
+            closeComposer();
+            setSplitFromItemId(from);
+          } : undefined}
           visible={Boolean(canEdit && composerOpen)}
         />
       ) : null}
@@ -314,7 +310,6 @@ export default function ItineraryScreen() {
 const styles = StyleSheet.create({
   timeline: { gap: 0 },
   branchTag: { alignSelf: 'flex-start', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, marginTop: 2 },
-  splitAction: { alignSelf: 'flex-start', minHeight: 32, justifyContent: 'center', marginTop: 2 },
   floatingAdd: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', shadowOpacity: 0.2, shadowRadius: 14, shadowOffset: { width: 0, height: 6 } },
   plusIcon: { width: 20, height: 20, alignItems: 'center', justifyContent: 'center' },
   closeIcon: { width: 20, height: 20, alignItems: 'center', justifyContent: 'center' },
