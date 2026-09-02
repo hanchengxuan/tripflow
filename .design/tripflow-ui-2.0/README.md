@@ -133,7 +133,7 @@ The shipped login screen was redesigned after review. What changes:
 - **Registration profile setup gets a design at all** — it previously had none. Three-segment progress, an explicitly optional avatar, name and password.
 - **Invite entry names the trip in the headline** rather than burying it in body copy.
 
-## Extended by UI 2.1 and 2.2
+## Extended by UI 2.1, 2.2 and 2.3
 
 The four surfaces built after this bundle — the Plans screen, branches, itinerary health and smart
 edit — are designed in [`../tripflow-ui-2.1/`](../tripflow-ui-2.1/README.md).
@@ -142,7 +142,11 @@ edit — are designed in [`../tripflow-ui-2.1/`](../tripflow-ui-2.1/README.md).
 page at all, and writes down the two vocabularies this bundle left unstated: what a settings row
 looks like and what its trailing element means, and how an irreversible action asks.
 
-Both reuse every token and component here; read them alongside this file rather than instead of it.
+[`../tripflow-ui-2.3/`](../tripflow-ui-2.3/README.md) applies 2.2's three rules to everything they did
+not reach: Today's duplicate plan editor, the Trips page, the sign-in chain, the 404, and the ledger's
+settle view.
+
+All three reuse every token and component here; read them alongside this file rather than instead of it.
 
 ## Next slice: pick up here
 
