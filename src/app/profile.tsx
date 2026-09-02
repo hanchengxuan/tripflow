@@ -4,8 +4,8 @@ import { Image } from 'expo-image';
 import { useRouter, type Href } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
-import { BottomSheet } from '@/components/bottom-sheet';
-import { ActionButton, ChoiceChip, InlineNotice } from '@/components/form-controls';
+import { ConfirmSheet } from '@/components/confirm-sheet';
+import { ChoiceChip, InlineNotice } from '@/components/form-controls';
 import { PasswordSheet } from '@/components/password-sheet';
 import { ProfileEditSheet, type AvatarDraft } from '@/components/profile-edit-sheet';
 import { Screen } from '@/components/screen';
@@ -310,24 +310,17 @@ export default function ProfileScreen() {
         visible={panel === 'password'}
       />
 
-      {/* The destructive action is prominent and 取消 is last and separated,
-          which is what Apple's action-sheet guidance asks for. */}
-      <BottomSheet closeLabel={tx('返回', 'Back')} onDismiss={closePanel} title={tx('永久删除账号？', 'Permanently delete your account?')} visible={panel === 'delete'}>
-        <View style={styles.confirm}>
-          {panelError ? <InlineNotice tone="error">{panelError}</InlineNotice> : null}
-          <ThemedText type="small" themeColor="textSecondary">
-            {tx('你会退出所有行程，且此操作无法撤销。多人行程的共享记录会匿名保留。',
-                'You will leave every trip and this cannot be undone. Shared records remain anonymized.')}
-          </ThemedText>
-          <ActionButton tone="danger" busy={busyAction === 'delete'} onPress={() => void removeAccount()}>
-            {tx('确认永久删除', 'Delete permanently')}
-          </ActionButton>
-          <View style={[styles.confirmRule, { backgroundColor: theme.border }]} />
-          <ActionButton tone="secondary" disabled={busyAction === 'delete'} onPress={closePanel}>
-            {tx('取消', 'Cancel')}
-          </ActionButton>
-        </View>
-      </BottomSheet>
+      <ConfirmSheet
+        busy={busyAction === 'delete'}
+        confirmLabel={tx('确认永久删除', 'Delete permanently')}
+        consequence={tx('你会退出所有行程，且此操作无法撤销。多人行程的共享记录会匿名保留。',
+                        'You will leave every trip and this cannot be undone. Shared records remain anonymized.')}
+        error={panelError}
+        onConfirm={() => void removeAccount()}
+        onDismiss={closePanel}
+        title={tx('永久删除账号？', 'Permanently delete your account?')}
+        visible={panel === 'delete'}
+      />
     </Screen>
   );
 }
@@ -337,6 +330,4 @@ const styles = StyleSheet.create({
   avatarImage: { width: '100%', height: '100%' },
   initials: { fontSize: 16, lineHeight: 22, fontWeight: '700' },
   languageChoices: { flexDirection: 'row', gap: Spacing.xs },
-  confirm: { width: '100%', gap: Spacing.sm },
-  confirmRule: { height: StyleSheet.hairlineWidth },
 });

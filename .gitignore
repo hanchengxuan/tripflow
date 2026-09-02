@@ -65,3 +65,7 @@ supabase/.temp/
 # design bundle output; rebuild with `node .design/tripflow-ui-2.2/build.mjs`
 .design/tripflow-ui-2.2/*.dc.html
 .design/tripflow-ui-2.2/preview.html
+
+# design bundle output; rebuild with `node .design/tripflow-ui-2.3/build.mjs`
+.design/tripflow-ui-2.3/*.dc.html
+.design/tripflow-ui-2.3/preview.html

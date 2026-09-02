@@ -1,0 +1,23 @@
+{
+  "pages": [
+    { "id": "page-1", "name": "行程 Trips" }
+  ],
+  "artboards": [
+    { "file": "TripsNow.dc.html", "page": "page-1", "x": 0, "y": 0, "w": 390, "h": 844, "title": "行程 · 现状" },
+    { "file": "Trips.dc.html", "page": "page-1", "x": 490, "y": 0, "w": 390, "h": 844, "title": "行程 · 提案" },
+    { "file": "TripsManage.dc.html", "page": "page-1", "x": 980, "y": 0, "w": 390, "h": 844, "title": "管理当前行程 · 提案" },
+    { "file": "TripsMember.dc.html", "page": "page-1", "x": 1470, "y": 0, "w": 390, "h": 844, "title": "同行者权限 · 提案" },
+    { "file": "TripsDelete.dc.html", "page": "page-1", "x": 1960, "y": 0, "w": 390, "h": 844, "title": "删除行程 · 提案" }
+  ],
+  "annotations": [
+    {
+      "id": "brief-trips",
+      "page": "page-1",
+      "x": -460,
+      "y": 0,
+      "w": 380,
+      "text": "行程页几乎就是「我的」和「编辑安排」改造之前的样子，只是没人回头看它。上下文行是「创建 · 加入 · 管理」—— 一个假目录。新建、加入、编辑行程、删除行程、改权限、移出成员、生成邀请，七件事全部是行内展开的面板，按钮标题在「新建行程 ↔ 收起」之间来回。同一屏里有四种按钮实现：主按钮、实心次级、48/12 的描边 danger、48/12 的实心 danger，后两种都是手写的 Pressable，而 ActionButton 早就有 tone=\"danger\"。日期显示的是 2026-03-12 — 2026-03-18，而 formatTripRange 就在同一个文件里。分隔线用 backgroundSelected。段落标题在这个文件里手写了两遍 20/26，而 SectionHeading 在同一文件里被 import 且在四十行之后被使用。\n\n最伤的是成员行：展开会在列表里长出一块权限面板，再按「移出此行程」又在那块里长出确认区，两次把下面的行推走 —— UI 2.1 已经在分支解散上认定过这个缺陷。\n\n参考：iOS 设置把一组只读事实写成带数值的行，把会打开东西的写成带箭头的行，把破坏性动作单独放一面；Apple 的 action sheet 规则是破坏性动作最显眼、取消单独放最下。\n\n提案：\n1. 页面本身只读：当前行程 hero + 我的行程列表 + 两个入口按钮，按钮不再改名。\n2. 七件事各自进底部面板，和添加安排、我的那几个面板同一个 BottomSheet。\n3. 面板里的行沿用 UI 2.2 的写法：尾部数值 = 不打开东西，人字形箭头 = 会打开。\n4. 两个手写 danger 按钮删掉，改用 ActionButton tone=\"danger\"；删除行程和移出成员走同一个确认面板形状。\n5. 我的行程列表原来既整行可按又挂「查看」链接，去掉链接，留箭头。\n6. 日期改用 formatTripRange；发丝线改用 border；段落标题改用 SectionHeading。\n7. 上下文行改成「东京 3 月 · 5 位同行者 · 共 3 个行程」。"
+    }
+  ],
+  "launch": { "view": "canvas", "page": "page-1" }
+}

@@ -3,6 +3,7 @@ import { Platform, StyleSheet, View } from 'react-native';
 
 import { BottomSheet } from '@/components/bottom-sheet';
 import { Chevron } from '@/components/chevron';
+import { ConfirmSheet } from '@/components/confirm-sheet';
 import { DateTimePairField } from '@/components/date-time-pair-field';
 import { DestinationField } from '@/components/destination-field';
 import { DestinationSettings } from '@/components/destination-settings';
@@ -290,8 +291,7 @@ export function ItineraryComposerSheet({
   // Confirming a deletion takes over the panel rather than swapping the footer
   // underneath the form. The old shape put the confirmation where 保存 had
   // been, so edits already typed had no way out; here 取消 restores the form
-  // with every field intact, and the destructive action is prominent with
-  // 取消 below it and separated.
+  // with every field intact.
   if (confirmDeleteItem && editingItem) {
     const when = formatZonedDateTimeRange(
       editingItem.startsAt,
@@ -301,29 +301,17 @@ export function ItineraryComposerSheet({
     );
     const where = editingItem.destination?.cityName ?? editingItem.locationLabel;
     return (
-      <BottomSheet
-        closeLabel={tx('返回', 'Back')}
+      <ConfirmSheet
+        busy={busy}
+        confirmLabel={tx('删除这项安排', 'Delete this plan')}
+        consequence={tx('此操作无法恢复，同行的人也会看到这项安排消失。', 'This cannot be undone, and everyone on the trip will see it disappear.')}
+        detail={[when, where].filter(Boolean).join(' · ')}
+        error={formError}
+        onConfirm={() => void deleteSelectedItem()}
         onDismiss={() => setConfirmDeleteItem(false)}
         title={tx(`删除“${editingItem.title}”？`, `Delete “${editingItem.title}”?`)}
         visible={visible}
-      >
-        <View style={styles.form}>
-          <ThemedText type="small" themeColor="textSecondary">
-            {[when, where].filter(Boolean).join(' · ')}
-          </ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            {tx('此操作无法恢复，同行的人也会看到这项安排消失。', 'This cannot be undone, and everyone on the trip will see it disappear.')}
-          </ThemedText>
-          <ActionButton tone="danger" busy={busy} onPress={() => void deleteSelectedItem()}>
-            {tx('删除这项安排', 'Delete this plan')}
-          </ActionButton>
-          <View style={[styles.confirmRule, { backgroundColor: theme.border }]} />
-          <ActionButton tone="secondary" disabled={busy} onPress={() => setConfirmDeleteItem(false)}>
-            {tx('取消', 'Cancel')}
-          </ActionButton>
-          {formError ? <InlineNotice tone="error">{formError}</InlineNotice> : null}
-        </View>
-      </BottomSheet>
+      />
     );
   }
 

@@ -1,0 +1,59 @@
+<div class="screen tagged">
+  <div class="tag tag-new">提案 · 页面只读，动作都在面板里</div>
+  <div class="scroll" style="gap:16px">
+
+    <div class="hdr">
+      <h1>行程</h1>
+      <div class="ctx">东京 3 月 · 5 位同行者 · 共 3 个行程</div>
+    </div>
+
+    <div class="hero">
+      <div class="hero-top">
+        <div style="flex:1;min-width:0">
+          <div class="group" style="padding:0;color:var(--accentOnSoft)">当前行程</div>
+          <h2>东京 3 月</h2>
+        </div>
+        <span class="pill" style="background:var(--accentSoft);color:var(--accentOnSoft)"><i style="background:var(--accent)"></i>进行中</span>
+      </div>
+      <div class="hero-facts">
+        <div class="fact"><span class="l-s">日期</span><b>3月12 — 3月18</b></div>
+        <div class="fact"><span class="l-s">同行</span><b>5 人</b></div>
+      </div>
+      <div class="btn btn-s">管理当前行程</div>
+    </div>
+
+    <!-- The two entry points open panels; neither renames itself to 收起. -->
+    <div class="btn-row">
+      <div class="btn btn-s">新建行程</div>
+      <div class="btn btn-s">加入行程</div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px">
+        <div class="group" style="padding:0">我的行程</div><div class="l-s">3</div>
+      </div>
+      <div class="list">
+        <!-- One affordance per row: the row opens the trip. The 「查看」 link
+             that sat beside the press target is gone. -->
+        <div class="lrow">
+          <div class="copy"><div class="l-t">东京 3 月</div><div class="l-s">3月12 — 3月18 · CNY</div></div>
+          <span class="pill" style="background:var(--kActivityS);color:var(--kActivity)">当前</span>
+          <svg width="8" height="14" viewBox="0 0 8 14" fill="none" aria-hidden="true" style="flex:none"><path d="m1.4 1.4 5.2 5.6-5.2 5.6" stroke="#8A9491" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="hair"></div>
+        <div class="lrow">
+          <div class="copy"><div class="l-t">首尔跨年</div><div class="l-s">12月29 — 1月2 · CNY</div></div>
+          <svg width="8" height="14" viewBox="0 0 8 14" fill="none" aria-hidden="true" style="flex:none"><path d="m1.4 1.4 5.2 5.6-5.2 5.6" stroke="#8A9491" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="hair"></div>
+        <div class="lrow">
+          <div class="copy"><div class="l-t">清迈冬休</div><div class="l-s">1月18 — 1月26 · CNY</div></div>
+          <svg width="8" height="14" viewBox="0 0 8 14" fill="none" aria-hidden="true" style="flex:none"><path d="m1.4 1.4 5.2 5.6-5.2 5.6" stroke="#8A9491" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="fade"></div>
+  <div class="nav"><span>今天</span><span class="on">行程</span><span>地图</span><span>账本</span><span>我的</span></div>
+</div>

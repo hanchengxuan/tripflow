@@ -1,0 +1,86 @@
+<div class="screen tagged">
+  <div class="tag tag-now">现状 · src/app/explore.tsx（管理面板展开）</div>
+  <div class="scroll" style="gap:14px">
+
+    <!-- (1) The context row is a table of contents, not context. -->
+    <div class="hdr">
+      <h1>行程</h1>
+      <div class="ctx">创建 · 加入 · 管理</div>
+    </div>
+
+    <!-- (2) Two buttons whose labels flip to 收起 — a control that renames
+         itself according to a panel somewhere below it. -->
+    <div class="btn-row">
+      <div class="btn btn-s">收起</div>
+      <div class="btn btn-s">邀请码 / 扫码</div>
+    </div>
+
+    <!-- (3) Everything happens in a panel that unfolds in the page. -->
+    <div style="background:var(--surface);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:18px">
+      <div style="display:flex;align-items:flex-start;gap:16px">
+        <div style="flex:1"><div style="font-size:20px;line-height:26px;font-weight:600">东京 3 月</div></div>
+        <div class="l-s" style="font-weight:700">关闭</div>
+      </div>
+
+      <!-- (4) Raw ISO dates, while formatTripRange sits in the same file. -->
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;justify-content:space-between;gap:16px"><span class="l-s">日期</span><span class="l-t">2026-03-12 — 2026-03-18</span></div>
+        <div style="display:flex;justify-content:space-between;gap:16px"><span class="l-s">记账币种</span><span class="l-t">CNY</span></div>
+        <div style="display:flex;justify-content:space-between;gap:16px"><span class="l-s">时区</span><span class="l-t">Asia/Tokyo</span></div>
+        <div style="display:flex;justify-content:space-between;gap:16px"><span class="l-s">我的权限</span><span class="l-t">管理员</span></div>
+
+        <!-- (5) A filled secondary button beside a hand-rolled 48/12 outlined
+             danger button — the fourth and fifth button implementations. -->
+        <div class="btn-row" style="padding-top:4px">
+          <div class="btn btn-s">编辑行程资料</div>
+          <div class="btn" style="border:1px solid var(--selected);color:var(--danger);font-weight:700;font-size:14px">删除行程</div>
+        </div>
+      </div>
+
+      <!-- (6) A section heading hand-written at 20/26 while SectionHeading is
+           imported in this same file and used forty lines below. -->
+      <div style="border-top:1px solid var(--selected);padding-top:14px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px">
+          <div style="font-size:20px;line-height:26px;font-weight:700">同行者</div>
+          <div class="l-s">5</div>
+        </div>
+
+        <div>
+          <div style="min-height:56px;display:flex;align-items:center;gap:12px;padding:8px 0">
+            <div class="av">寒</div>
+            <div style="flex:1;min-width:0"><div class="l-t">寒橙（你）</div><div class="l-s">管理员</div></div>
+          </div>
+          <div style="height:1px;background:var(--selected)"></div>
+          <div style="min-height:56px;display:flex;align-items:center;gap:12px;padding:8px 0">
+            <div class="av">林</div>
+            <div style="flex:1;min-width:0"><div class="l-t">林小雨</div><div class="l-s">可编辑</div></div>
+            <!-- (7) The affordance is the word 管理 / 收起. -->
+            <div class="l-s" style="font-weight:700">收起</div>
+          </div>
+
+          <!-- (8) Expanding a member grows a block inside the list, and the
+               removal confirmation grows again inside that — pushing every
+               row below it down, twice, under the reader's thumb. -->
+          <div style="background:var(--selected);border-radius:12px;margin-bottom:10px;padding:14px;display:flex;flex-direction:column;gap:12px">
+            <div class="l-t">权限</div>
+            <div class="role-row"><span class="chip">管理员</span><span class="chip on">可编辑</span><span class="chip">仅查看</span></div>
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <div class="l-s">确定将 林小雨 移出行程？历史账目会保留。</div>
+              <div class="btn-row"><div class="btn btn-s">取消</div><div class="btn btn-p">确认移出</div></div>
+            </div>
+          </div>
+
+          <div style="height:1px;background:var(--selected)"></div>
+          <div style="min-height:56px;display:flex;align-items:center;gap:12px;padding:8px 0">
+            <div class="av">周</div>
+            <div style="flex:1;min-width:0"><div class="l-t">周舟</div><div class="l-s">可编辑</div></div>
+            <div class="l-s" style="font-weight:700">管理</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="fade"></div>
+  <div class="nav"><span>今天</span><span class="on">行程</span><span>地图</span><span>账本</span><span>我的</span></div>
+</div>
