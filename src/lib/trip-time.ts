@@ -65,3 +65,17 @@ export function stayNightsInZone(startsAt: string, endsAt: string | undefined, t
   };
   return Math.max(1, Math.round((localDate(endsAt) - localDate(startsAt)) / 86_400_000));
 }
+
+/**
+ * A calendar range as the Trips screen states it (`3月12 — 3月16`).
+ *
+ * Takes `YYYY-MM-DD` day strings, so it is safe for a trip's `startsOn` /
+ * `endsOn` and for a segment window already reduced to local days. Midday
+ * anchors the parse away from the UTC date boundary.
+ */
+export function formatDayRange(startsOn: string, endsOn: string, locale: string) {
+  const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
+  const start = new Date(`${startsOn}T12:00:00`).toLocaleDateString(locale, options);
+  if (startsOn === endsOn) return start;
+  return `${start} — ${new Date(`${endsOn}T12:00:00`).toLocaleDateString(locale, options)}`;
+}

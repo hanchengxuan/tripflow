@@ -3,13 +3,13 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ItineraryComposerSheet } from '@/components/itinerary-composer-sheet';
-import { SegmentList } from '@/components/segment-list';
+import { PlanFilterBar } from '@/components/plan-filter-bar';
+import { SegmentSheet } from '@/components/segment-sheet';
 import { SplitSegmentSheet } from '@/components/split-segment-sheet';
-import { FormField, InlineNotice } from '@/components/form-controls';
+import { InlineNotice } from '@/components/form-controls';
 import { InfoCard } from '@/components/info-card';
 import { DaySeparator, TimelineRow } from '@/components/timeline-rail';
 import { Screen } from '@/components/screen';
-import { SectionHeading } from '@/components/section-heading';
 import { ThemedText } from '@/components/themed-text';
 import { itineraryKindLabels, itineraryKindLabelsEn } from '@/constants/options';
 import type { ThemeColor } from '@/constants/theme';
@@ -76,6 +76,8 @@ export default function ItineraryScreen() {
     splitTripSegment,
   } = useMvp();
   const [query, setQuery] = useState('');
+  const [segmentFilterId, setSegmentFilterId] = useState<string>();
+  const [branchesOpen, setBranchesOpen] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
   const [splitFromItemId, setSplitFromItemId] = useState<string>();
   const [splitError, setSplitError] = useState<string>();
@@ -99,9 +101,19 @@ export default function ItineraryScreen() {
   );
   const filteredItems = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase();
-    if (!normalized) return allItems;
-    return allItems.filter((item) => searchableText(item).includes(normalized));
-  }, [allItems, query]);
+    return allItems.filter((item) => {
+      if (segmentFilterId && item.segmentId !== segmentFilterId) return false;
+      return !normalized || searchableText(item).includes(normalized);
+    });
+  }, [allItems, query, segmentFilterId]);
+  const branchCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const { segmentId } of allItems) {
+      if (segmentId) counts.set(segmentId, (counts.get(segmentId) ?? 0) + 1);
+    }
+    return counts;
+  }, [allItems]);
+  const filtered = Boolean(segmentFilterId) || Boolean(query.trim());
 
   const currentMember = members.find(({ userId }) => userId === currentUserId);
   const canEdit = currentMember?.role === 'owner' || currentMember?.role === 'editor';
@@ -173,40 +185,24 @@ export default function ItineraryScreen() {
         {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
         {splitError ? <InlineNotice tone="error">{splitError}</InlineNotice> : null}
         {success ? <InlineNotice>{success}</InlineNotice> : null}
-        <SectionHeading
-          title={tx('全部安排', 'All plans')}
-          detail={canEdit
-            ? tx('按时间查看完整安排；点按任意一项可编辑，使用右下角按钮添加。', 'Scan the full timeline; tap any plan to edit, or use the button to add one.')
-            : tx('按时间查看这趟行程的完整安排，包括已经结束的项目。', 'Scan the complete trip timeline, including plans that have already ended.')}
-          trailing={activeTrip ? (
-            <ThemedText type="small" themeColor="textSecondary">
-              {String(filteredItems.length) + '/' + String(allItems.length)}
-            </ThemedText>
-          ) : null}
-        />
         {activeTrip ? (
           <>
-            <FormField
-              label={tx('查找安排', 'Find a plan')}
-              value={query}
-              onChangeText={setQuery}
-              autoCorrect={false}
-              placeholder={tx('搜索标题、地点或目的地', 'Search titles, places, or destinations')}
+            <PlanFilterBar
+              branchCounts={branchCounts}
+              onManageBranches={segments.length > 0 ? () => setBranchesOpen(true) : undefined}
+              onQueryChange={setQuery}
+              onSelectSegment={setSegmentFilterId}
+              query={query}
+              segments={segments}
+              selectedSegmentId={segmentFilterId}
             />
-            {segments.length > 0 ? (
-              <SegmentList
-                canEdit={canEdit}
-                members={members}
-                onDissolve={(segmentId) => {
-                  setSplitError(undefined);
-                  void dissolveTripSegment(segmentId)
-                    .then(() => setSuccess(tx('分支已解散，安排已回到整个行程。', 'Branch dissolved; its plans are back on the whole trip.')))
-                    .catch((caught) => setSplitError(toUserMessage(caught, tx('无法解散这个分支，请稍后重试。', 'Could not dissolve this branch. Please try again.'))));
-                }}
-                segmentMembers={segmentMembers}
-                segments={segments}
-                timeZone={activeTrip.defaultTimeZone}
-              />
+            {filtered ? (
+              <ThemedText type="small" themeColor="textSecondary">
+                {tx(
+                  `显示 ${String(filteredItems.length)} / ${String(allItems.length)} 项安排`,
+                  `Showing ${String(filteredItems.length)} of ${String(allItems.length)} plans`,
+                )}
+              </ThemedText>
             ) : null}
             {filteredItems.length > 0 ? (
               <View style={styles.timeline}>
@@ -225,6 +221,9 @@ export default function ItineraryScreen() {
                         endLabel={end && end.date === start.date ? end.time : undefined}
                         title={item.title}
                         place={itemPlace(item)}
+                        branch={segmentNameById.get(item.segmentId ?? '')
+                          ? tx('分支 ', 'Branch ') + segmentNameById.get(item.segmentId ?? '')
+                          : undefined}
                         kindColor={theme[kindColorKeys[item.kind]]}
                         kindSoftColor={theme[kindSoftColorKeys[item.kind]]}
                         kindLabel={kindLabel(item.kind)}
@@ -236,13 +235,6 @@ export default function ItineraryScreen() {
                             {tx('结束于 ', 'Ends ') + formatDayLabel(end.date, languageTag) + ' ' + end.time}
                           </ThemedText>
                         ) : null}
-                        {segmentNameById.get(item.segmentId ?? '') ? (
-                          <View style={[styles.branchTag, { backgroundColor: theme.accentSoft }]}>
-                            <ThemedText type="small" style={{ color: theme.accentOnSoft }}>
-                              {tx('分支 · ', 'Branch · ') + segmentNameById.get(item.segmentId ?? '')}
-                            </ThemedText>
-                          </View>
-                        ) : null}
                       </TimelineRow>
                     </Fragment>
                   );
@@ -251,9 +243,11 @@ export default function ItineraryScreen() {
             ) : (
               <InfoCard title={tx('没有匹配的安排', 'No matching plans')}>
                 <ThemedText themeColor="textSecondary">
-                  {query.trim()
-                    ? tx('试试搜索城市、地点或安排标题。', 'Try a city, place, or plan title.')
-                    : tx('点击“添加安排”开始。', 'Choose Add plan to start.')}
+                  {segmentFilterId
+                    ? tx('这个分支下还没有安排。切回“全部”查看整个行程。', 'This branch has no plans yet. Switch back to All to see the whole trip.')
+                    : query.trim()
+                      ? tx('试试搜索城市、地点或安排标题。', 'Try a city, place, or plan title.')
+                      : tx('点击“添加安排”开始。', 'Choose Add plan to start.')}
                 </ThemedText>
               </InfoCard>
             )}
@@ -266,6 +260,25 @@ export default function ItineraryScreen() {
           </InfoCard>
         )}
       </Screen>
+      {activeTrip ? (
+        <SegmentSheet
+          canEdit={canEdit}
+          items={itineraryItems}
+          members={members}
+          onDismiss={() => setBranchesOpen(false)}
+          onDissolve={(segmentId) => {
+            setSplitError(undefined);
+            if (segmentId === segmentFilterId) setSegmentFilterId(undefined);
+            void dissolveTripSegment(segmentId)
+              .then(() => setSuccess(tx('分支已解散，安排已回到整个行程。', 'Branch dissolved; its plans are back on the whole trip.')))
+              .catch((caught) => setSplitError(toUserMessage(caught, tx('无法解散这个分支，请稍后重试。', 'Could not dissolve this branch. Please try again.'))));
+          }}
+          segmentMembers={segmentMembers}
+          segments={segments}
+          timeZone={activeTrip.defaultTimeZone}
+          visible={branchesOpen && segments.length > 0}
+        />
+      ) : null}
       {activeTrip ? (
         <SplitSegmentSheet
           key={splitFromItemId}
@@ -309,7 +322,6 @@ export default function ItineraryScreen() {
 
 const styles = StyleSheet.create({
   timeline: { gap: 0 },
-  branchTag: { alignSelf: 'flex-start', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, marginTop: 2 },
   floatingAdd: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', shadowOpacity: 0.2, shadowRadius: 14, shadowOffset: { width: 0, height: 6 } },
   plusIcon: { width: 20, height: 20, alignItems: 'center', justifyContent: 'center' },
   closeIcon: { width: 20, height: 20, alignItems: 'center', justifyContent: 'center' },

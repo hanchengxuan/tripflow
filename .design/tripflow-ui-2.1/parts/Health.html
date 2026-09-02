@@ -1,0 +1,57 @@
+<div class="screen tagged" style="height:660px">
+  <div class="tag tag-new">提案 · One attention strip, one action per issue</div>
+  <div class="scroll" style="gap:14px">
+
+    <!-- Tonal surface, no border. The 3px bar is InlineNotice's existing shape,
+         carrying the highest severity present. -->
+    <div style="background:var(--subtle);border-radius:16px;overflow:hidden;display:flex">
+      <div style="width:3px;background:var(--danger)"></div>
+      <div style="flex:1;min-width:0;padding:2px 16px">
+
+        <div style="min-height:52px;display:flex;align-items:center;gap:12px;padding:12px 0">
+          <div style="flex:1;min-width:0;font-size:15px;line-height:20px;font-weight:600">行程体检 · 2 处待确认</div>
+          <div class="link" style="min-height:44px;display:flex;align-items:center">重新检查</div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div style="min-height:60px;display:flex;align-items:center;gap:12px;padding:12px 0">
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="width:8px;height:8px;border-radius:4px;background:var(--danger);flex:none"></div>
+              <div style="font-size:12px;line-height:17px;font-weight:700;color:var(--danger)">时间重叠 · 需要处理</div>
+            </div>
+            <div class="l-t">龍吟 晚餐 与 teamLab Planets 重叠</div>
+            <div class="l-s">两项都在 19:00 — 21:00。点按修改前一项。</div>
+          </div>
+          <svg width="8" height="14" viewBox="0 0 8 14" fill="none" aria-hidden="true" style="flex:none">
+            <path d="m1.4 1.4 5.2 5.6-5.2 5.6" stroke="#8A9491" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+
+        <div class="divider"></div>
+
+        <div style="min-height:60px;display:flex;align-items:center;gap:12px;padding:12px 0">
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="width:8px;height:8px;border-radius:4px;background:var(--plan);flex:none"></div>
+              <div style="font-size:12px;line-height:17px;font-weight:700;color:var(--plan)">衔接较紧 · 建议查看</div>
+            </div>
+            <div class="l-t">取 JR Pass 后只剩 15 分钟</div>
+            <div class="l-s">东京站到丰洲的车程约 28 分钟。</div>
+          </div>
+          <svg width="8" height="14" viewBox="0 0 8 14" fill="none" aria-hidden="true" style="flex:none">
+            <path d="m1.4 1.4 5.2 5.6-5.2 5.6" stroke="#8A9491" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:10px;padding-top:6px">
+      <div style="font-size:12px;line-height:17px;font-weight:700;color:var(--muted);letter-spacing:0.06em">改了什么</div>
+      <div style="font-size:13px;line-height:19px;font-weight:500;color:var(--text2)">· 卡片描边去掉，问题不再是「边框里的边框」。<br>· 严重度只说一次：色点 + 一行「类型 · 严重度」。<br>· 每条问题一个动作 —— 整行可按，打开第一项安排的编辑面板。<br>· 「重新检查」从实心次级按钮降为文字链接，屏幕只留一个主路径。</div>
+    </div>
+
+  </div>
+</div>

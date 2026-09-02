@@ -133,6 +133,12 @@ The shipped login screen was redesigned after review. What changes:
 - **Registration profile setup gets a design at all** — it previously had none. Three-segment progress, an explicitly optional avatar, name and password.
 - **Invite entry names the trip in the headline** rather than burying it in body copy.
 
+## Extended by UI 2.1
+
+The four surfaces built after this bundle — the Plans screen, branches, itinerary health and smart
+edit — are designed in [`../tripflow-ui-2.1/`](../tripflow-ui-2.1/README.md). It reuses every token and
+component here; read it alongside this file rather than instead of it.
+
 ## Next slice: pick up here
 
 Remaining gaps in the order they should be done. Each is its own `codex/*` branch and PR.

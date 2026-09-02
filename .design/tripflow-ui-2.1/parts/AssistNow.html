@@ -1,0 +1,44 @@
+<div class="screen tagged" style="height:760px">
+  <div class="tag tag-now">现状 · Smart edit inside the plan sheet</div>
+  <div style="padding:44px 0 0">
+    <!-- Sheet surface -->
+    <div style="background:var(--surface);border-radius:20px 20px 0 0;margin:8px 0 0;padding:16px 20px 24px;display:flex;flex-direction:column;gap:16px">
+      <div style="width:36px;height:4px;border-radius:2px;background:var(--border);align-self:center"></div>
+      <div style="font-size:20px;line-height:26px;font-weight:600;letter-spacing:-0.2px">编辑安排</div>
+
+      <!-- Surface inside a surface, with a decorative left accent bar. -->
+      <div style="background:var(--subtle);border-left:3px solid var(--accent);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px">
+          <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+            <div style="font-size:14px;line-height:20px;font-weight:700">描述要怎么调整</div>
+            <div style="font-size:14px;line-height:20px;font-weight:500;color:var(--text2)">龍吟 晚餐</div>
+          </div>
+          <div class="link" style="min-height:44px;display:flex;align-items:center">关闭</div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div class="f-label">想怎么改？</div>
+          <div class="input" style="min-height:86px;align-items:flex-start;padding-top:12px">例如：改到博物馆结束后，18:30 开始</div>
+        </div>
+
+        <div style="font-size:14px;line-height:20px;font-weight:500;color:var(--text2)">只会生成预览，确认后才会保存。</div>
+        <div class="btn btn-p">生成预览</div>
+
+        <div style="border-top:1px solid var(--border);padding-top:16px;display:flex;flex-direction:column;gap:12px">
+          <div style="font-size:14px;line-height:20px;font-weight:700">修改预览</div>
+          <div style="font-size:14px;line-height:20px;font-weight:500;color:var(--text2)">把晚餐移到 teamLab 之后，避开重叠。</div>
+          <div style="display:flex;gap:12px">
+            <div style="width:44px;font-size:14px;line-height:20px;font-weight:700">时间</div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+              <div style="font-size:14px;line-height:20px;font-weight:500;color:var(--text2)">3月10日 19:00 — 21:00</div>
+              <div style="font-size:14px;line-height:20px;font-weight:700;color:var(--accent)">→ 3月10日 21:30 — 23:00</div>
+            </div>
+          </div>
+          <!-- A second primary button, live at the same time as the first. -->
+          <div class="btn btn-p">应用修改</div>
+          <div class="link" style="text-align:center;padding:8px 0">取消预览</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

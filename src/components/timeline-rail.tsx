@@ -37,6 +37,7 @@ export function TimelineRow({
   endLabel,
   title,
   place,
+  branch,
   kindColor,
   kindLabel,
   kindSoftColor,
@@ -48,6 +49,7 @@ export function TimelineRow({
   endLabel?: string;
   title: string;
   place?: string;
+  branch?: string;
   kindColor: string;
   kindSoftColor: string;
   kindLabel: string;
@@ -61,7 +63,14 @@ export function TimelineRow({
         <ThemedText type="smallBold" style={styles.title}>{title}</ThemedText>
         <KindPill color={kindColor} softColor={kindSoftColor} label={kindLabel} />
       </View>
-      {place ? <ThemedText type="small" themeColor="textSecondary" style={styles.place}>{place}</ThemedText> : null}
+      {place || branch ? (
+        <ThemedText type="small" themeColor="textSecondary" style={styles.place}>
+          {place}
+          {branch ? (
+            <ThemedText style={[styles.branch, { color: theme.accentOnSoft }]}>{place ? ' · ' + branch : branch}</ThemedText>
+          ) : null}
+        </ThemedText>
+      ) : null}
       {children}
     </>
   );
@@ -122,6 +131,7 @@ const styles = StyleSheet.create({
   head: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   title: { flex: 1, minWidth: 0, fontSize: 17, lineHeight: 24, fontWeight: '600' },
   place: { fontSize: 13, lineHeight: 18 },
+  branch: { fontSize: 13, lineHeight: 18, fontWeight: '600' },
   pressed: { opacity: 0.68 },
 
   segmentContent: { flex: 1, minWidth: 0, gap: 8, paddingTop: 2, paddingBottom: 14 },

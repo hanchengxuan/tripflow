@@ -52,6 +52,9 @@ example
 # design bundle output; rebuild with `node .design/tripflow-ui-2.0/build.mjs`
 .design/tripflow-ui-2.0/*.html
 
+# design bundle output; rebuild with `node .design/tripflow-ui-2.1/build.mjs`
+.design/tripflow-ui-2.1/*.dc.html
+
 # icon renders; rebuild with `node assets/brand/build.mjs --ship`
 assets/brand/out/
 

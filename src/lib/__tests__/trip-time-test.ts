@@ -1,4 +1,4 @@
-import { formatZonedDateTimeRange, isoToZonedDateTime, stayNightsInZone, zonedDateTimeToIso } from '@/lib/trip-time';
+import { formatDayRange, formatZonedDateTimeRange, isoToZonedDateTime, stayNightsInZone, zonedDateTimeToIso } from '@/lib/trip-time';
 
 describe('trip time helpers', () => {
   it('stores wall-clock hotel time in the trip time zone', () => {
@@ -12,5 +12,11 @@ describe('trip time helpers', () => {
     expect(stayNightsInZone(start, end, 'Asia/Tokyo')).toBe(5);
     expect(formatZonedDateTimeRange(start, end, 'en-US', 'Asia/Tokyo')).toContain('Aug 10');
     expect(formatZonedDateTimeRange(start, end, 'en-US', 'Asia/Tokyo')).toContain('Aug 15');
+  });
+
+  it('states a branch window as calendar days, never as raw ISO dates', () => {
+    expect(formatDayRange('2026-03-12', '2026-03-16', 'en-US')).toBe('Mar 12 — Mar 16');
+    expect(formatDayRange('2026-03-14', '2026-03-14', 'en-US')).toBe('Mar 14');
+    expect(formatDayRange('2026-03-12', '2026-03-16', 'zh-CN')).not.toContain('2026-03-12');
   });
 });

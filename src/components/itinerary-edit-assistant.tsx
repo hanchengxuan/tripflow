@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ActionButton, FormField, InlineNotice } from '@/components/form-controls';
 import { ThemedText } from '@/components/themed-text';
-import { Radius, Spacing } from '@/constants/theme';
+import { Radius, Size, Spacing } from '@/constants/theme';
 import type { ItineraryItem, Trip } from '@/domain/models';
 import {
   mergeItineraryEdit,
@@ -14,6 +14,9 @@ import {
 import { useI18n } from '@/features/i18n/i18n-provider';
 import { formatZonedDateTimeRange } from '@/lib/trip-time';
 import { useTheme } from '@/hooks/use-theme';
+
+/** The rail's gutter. The diff's label column sits on the same axis. */
+const LABEL_COLUMN = 46;
 
 interface ItineraryEditAssistantProps {
   trip: Pick<Trip, 'id' | 'startsOn' | 'endsOn' | 'defaultTimeZone'>;
@@ -30,6 +33,14 @@ function issueCopy(code: 'INVALID_RANGE' | 'OUTSIDE_TRIP' | 'OVERLAP', tx: (zh: 
   }[code];
 }
 
+/**
+ * Smart edit, inside the plan editor.
+ *
+ * Collapsed it is one text link, not a container with an accent rule sitting
+ * inside the sheet's own surface. Open, exactly one primary action exists at a
+ * time: `生成预览` until a proposal arrives, then `应用修改` — regenerating and
+ * discarding drop to links so the sheet never shows two primary paths at once.
+ */
 export function ItineraryEditAssistant({ trip, item, items, onApply }: ItineraryEditAssistantProps) {
   const theme = useTheme();
   const { languageTag, tx } = useI18n();
@@ -82,109 +93,146 @@ export function ItineraryEditAssistant({ trip, item, items, onApply }: Itinerary
     }
   };
 
+  function discardPreview() {
+    setProposalState(undefined);
+    setSuccess(false);
+  }
+
+  if (!open) {
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={tx('为当前安排获取智能建议', 'Get a smart suggestion for this plan')}
+        accessibilityState={{ expanded: false }}
+        onPress={() => {
+          setOpen(true);
+          setError(undefined);
+        }}
+        style={({ pressed }) => [styles.collapsed, pressed && styles.pressed]}>
+        <ThemedText type="smallBold" themeColor="link">{tx('智能调整这项安排', 'Smart-edit this plan')}</ThemedText>
+      </Pressable>
+    );
+  }
+
   return (
-    <View style={styles.root}>
-      {!open ? (
+    <View style={[styles.panel, { backgroundColor: theme.backgroundSubtle }]}>
+      <View style={styles.panelHeader}>
+        <ThemedText type="smallBold" style={styles.panelTitle} numberOfLines={2}>
+          {tx('智能调整 · ', 'Smart edit · ') + selectedItem.title}
+        </ThemedText>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={tx('为当前安排获取智能建议', 'Get a smart suggestion for this plan')}
-          accessibilityState={{ expanded: open }}
-          onPress={() => {
-            setOpen(true);
-            setError(undefined);
-          }}
-          style={({ pressed }) => [styles.hint, { backgroundColor: theme.backgroundSubtle }, pressed && styles.pressed]}
-        >
-          <View style={[styles.hintAccent, { backgroundColor: theme.accent }]} />
-          <View style={styles.hintCopy}>
-            <ThemedText type="small" themeColor="textSecondary">{tx('想调整这项安排？', 'Need to adjust this plan?')}</ThemedText>
-            <ThemedText type="smallBold" style={{ color: theme.link }}>{tx('用一句话描述，先看看修改预览', 'Describe it in a sentence and review the preview first')}</ThemedText>
-          </View>
+          accessibilityLabel={tx('关闭智能建议', 'Close smart suggestion')}
+          hitSlop={6}
+          onPress={() => setOpen(false)}
+          style={({ pressed }) => [styles.headerAction, pressed && styles.pressed]}>
+          <ThemedText type="smallBold" themeColor="link">{tx('关闭', 'Close')}</ThemedText>
         </Pressable>
-      ) : null}
+      </View>
 
-      {open ? (
-        <View style={[styles.panel, { backgroundColor: theme.backgroundSubtle, borderLeftColor: theme.accent }]}>
-          <View style={styles.panelHeader}>
-            <View style={styles.panelTitle}>
-              <ThemedText type="smallBold">{tx('描述要怎么调整', 'Describe the change')}</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary" numberOfLines={2}>{selectedItem.title}</ThemedText>
-            </View>
-            <Pressable accessibilityRole="button" accessibilityLabel={tx('关闭智能建议', 'Close smart suggestion')} onPress={() => setOpen(false)} style={({ pressed }) => [styles.closeAction, pressed && styles.pressed]}>
-              <ThemedText type="smallBold" themeColor="link">{tx('关闭', 'Close')}</ThemedText>
+      <FormField
+        label={tx('想怎么改？', 'What should change?')}
+        value={instruction}
+        onChangeText={(value) => { setInstruction(value); setProposalState(undefined); setError(undefined); setSuccess(false); }}
+        placeholder={tx('例如：改到博物馆结束后，18:30 开始', 'For example: move it to after the museum, starting at 6:30 pm')}
+        multiline
+        maxLength={500}
+        textAlignVertical="top"
+        style={styles.input}
+      />
+
+      {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
+      {success ? <InlineNotice>{tx('修改已保存。', 'Edit saved.')}</InlineNotice> : null}
+
+      {proposal ? (
+        <>
+          <View style={styles.preview}>
+            <ThemedText type="smallBold">{tx('修改预览', 'Edit preview')}</ThemedText>
+            <ThemedText style={styles.previewSummary} themeColor="textSecondary">{proposal.summary}</ThemedText>
+            {change && selectedItem ? (
+              <View style={styles.diffList}>
+                {change.title ? <DiffRow label={tx('名称', 'Title')} before={selectedItem.title} after={change.title} /> : null}
+                {change.startsAt || change.endsAt ? (
+                  <DiffRow
+                    label={tx('时间', 'Time')}
+                    before={formatZonedDateTimeRange(selectedItem.startsAt, selectedItem.endsAt, languageTag, trip.defaultTimeZone)}
+                    after={formatZonedDateTimeRange(candidate?.startsAt ?? selectedItem.startsAt, candidate?.endsAt, languageTag, trip.defaultTimeZone)}
+                  />
+                ) : null}
+                <ThemedText style={styles.previewSummary} themeColor="textSecondary">{change.reason}</ThemedText>
+              </View>
+            ) : null}
+          </View>
+          {proposal.warnings.map((warning) => <InlineNotice key={warning}>{warning}</InlineNotice>)}
+          {validation?.errors.map((issue) => <InlineNotice key={`${issue.code}-${issue.itemIds.join('-')}`} tone="error">{issueCopy(issue.code, tx)}</InlineNotice>)}
+          <ActionButton tone="primary" busy={applyBusy} disabled={!candidateWithEnd || Boolean(validation?.errors.length) || !change} onPress={() => void applyPreview()}>
+            {tx('应用修改', 'Apply edit')}
+          </ActionButton>
+          <View style={styles.secondaryActions}>
+            <Pressable
+              accessibilityRole="button"
+              disabled={busy}
+              hitSlop={6}
+              onPress={() => void generatePreview()}
+              style={({ pressed }) => [styles.headerAction, (pressed || busy) && styles.pressed]}>
+              <ThemedText type="smallBold" themeColor="link">
+                {busy ? tx('生成中…', 'Generating…') : tx('重新生成', 'Regenerate')}
+              </ThemedText>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              hitSlop={6}
+              onPress={discardPreview}
+              style={({ pressed }) => [styles.headerAction, pressed && styles.pressed]}>
+              <ThemedText type="smallBold" themeColor="link">{tx('放弃预览', 'Discard preview')}</ThemedText>
             </Pressable>
           </View>
-          <FormField
-            label={tx('想怎么改？', 'What should change?')}
-            value={instruction}
-            onChangeText={(value) => { setInstruction(value); setProposalState(undefined); setError(undefined); setSuccess(false); }}
-            placeholder={tx('例如：改到博物馆结束后，18:30 开始', 'For example: move it to after the museum, starting at 6:30 pm')}
-            multiline
-            maxLength={500}
-            textAlignVertical="top"
-            style={styles.input}
-          />
-          <ThemedText type="small" themeColor="textSecondary">{tx('只会生成预览，确认后才会保存。', 'A preview is generated first; nothing is saved until you confirm.')}</ThemedText>
-          <ActionButton tone="primary" busy={busy} disabled={!selectedItem || !instruction.trim()} onPress={() => void generatePreview()}>
-            {tx('生成预览', 'Generate preview')}
-          </ActionButton>
+        </>
+      ) : (
+        <ActionButton tone="primary" busy={busy} disabled={!selectedItem || !instruction.trim()} onPress={() => void generatePreview()}>
+          {tx('生成预览', 'Generate preview')}
+        </ActionButton>
+      )}
 
-          {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
-          {success ? <InlineNotice>{tx('修改已保存。', 'Edit saved.')}</InlineNotice> : null}
-          {proposal ? (
-            <View style={[styles.preview, { borderTopColor: theme.border }]}>
-              <ThemedText type="smallBold">{tx('修改预览', 'Edit preview')}</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">{proposal.summary}</ThemedText>
-              {change && selectedItem ? (
-                <View style={styles.diffList}>
-                  {change.title ? <DiffRow label={tx('名称', 'Title')} before={selectedItem.title} after={change.title} /> : null}
-                  {change.startsAt || change.endsAt ? <DiffRow label={tx('时间', 'Time')} before={formatZonedDateTimeRange(selectedItem.startsAt, selectedItem.endsAt, languageTag, trip.defaultTimeZone)} after={formatZonedDateTimeRange(candidate?.startsAt ?? selectedItem.startsAt, candidate?.endsAt, languageTag, trip.defaultTimeZone)} /> : null}
-                  <ThemedText type="small" themeColor="textSecondary">{change.reason}</ThemedText>
-                </View>
-              ) : null}
-              {proposal.warnings.map((warning) => <InlineNotice key={warning}>{warning}</InlineNotice>)}
-              {validation?.errors.map((issue) => <InlineNotice key={`${issue.code}-${issue.itemIds.join('-')}`} tone="error">{issueCopy(issue.code, tx)}</InlineNotice>)}
-              <ActionButton tone="primary" busy={applyBusy} disabled={!candidateWithEnd || Boolean(validation?.errors.length) || !change} onPress={() => void applyPreview()}>
-                {tx('应用修改', 'Apply edit')}
-              </ActionButton>
-              <Pressable accessibilityRole="button" onPress={() => { setProposalState(undefined); setSuccess(false); }}>
-                <ThemedText type="smallBold" themeColor="link" style={styles.cancel}>{tx('取消预览', 'Discard preview')}</ThemedText>
-              </Pressable>
-            </View>
-          ) : null}
-        </View>
-      ) : null}
+      <ThemedText style={styles.caption} themeColor="textMuted">
+        {tx('确认后才会保存，随时可以撤回。', 'Nothing is saved until you confirm, and the edit stays reversible.')}
+      </ThemedText>
     </View>
   );
 }
 
 function DiffRow({ label, before, after }: { label: string; before: string; after: string }) {
   const theme = useTheme();
+  const { tx } = useI18n();
   return (
     <View style={styles.diffRow}>
-      <ThemedText type="smallBold" style={{ width: 44 }}>{label}</ThemedText>
+      <ThemedText style={styles.diffLabel} themeColor="textSecondary">{label}</ThemedText>
       <View style={styles.diffCopy}>
-        <ThemedText type="small" themeColor="textSecondary">{before}</ThemedText>
-        <ThemedText type="smallBold" style={{ color: theme.accent }}>→ {after}</ThemedText>
+        <ThemedText style={styles.diffBefore} themeColor="textMuted">{before}</ThemedText>
+        <ThemedText style={[styles.diffAfter, { color: theme.accent }]}>
+          {tx('改为 ', 'to ') + after}
+        </ThemedText>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { width: '100%', gap: Spacing.sm },
-  hint: { minHeight: 64, borderRadius: Radius.md, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, flexDirection: 'row', alignItems: 'stretch', gap: Spacing.sm },
-  hintAccent: { width: 3, borderRadius: 2 },
-  hintCopy: { flex: 1, justifyContent: 'center', gap: 2 },
-  panel: { borderLeftWidth: 3, borderRadius: Radius.md, padding: Spacing.md, gap: Spacing.md },
-  panelHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: Spacing.md },
-  panelTitle: { flex: 1, gap: 2 },
-  closeAction: { minHeight: 44, justifyContent: 'center', paddingHorizontal: Spacing.xs },
-  input: { minHeight: 86 },
-  preview: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: Spacing.md, gap: Spacing.sm },
-  diffList: { gap: Spacing.sm },
-  diffRow: { flexDirection: 'row', gap: Spacing.sm },
-  diffCopy: { flex: 1, gap: 2 },
-  cancel: { textAlign: 'center', paddingVertical: Spacing.xs },
-  pressed: { opacity: 0.78 },
+  collapsed: { minHeight: Size.touchMin, justifyContent: 'center' },
+  panel: { borderRadius: Radius.md, padding: Spacing.md, gap: Spacing.sm },
+  panelHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: Spacing.sm },
+  panelTitle: { flex: 1, minWidth: 0 },
+  headerAction: { minHeight: Size.touchMin, justifyContent: 'center', paddingHorizontal: Spacing['2xs'] },
+  input: { minHeight: 66 },
+  preview: { gap: Spacing['2xs'] },
+  previewSummary: { fontSize: 13, lineHeight: 19, fontWeight: '500' },
+  diffList: { gap: Spacing.xs, paddingTop: Spacing['2xs'] },
+  diffRow: { flexDirection: 'row', gap: Spacing.sm, alignItems: 'flex-start' },
+  diffLabel: { width: LABEL_COLUMN, flexGrow: 0, flexShrink: 0, flexBasis: 'auto', fontSize: 13, lineHeight: 19, fontWeight: '700' },
+  diffCopy: { flex: 1, minWidth: 0, gap: 2 },
+  diffBefore: { fontSize: 13, lineHeight: 19, fontWeight: '500' },
+  diffAfter: { fontSize: 13, lineHeight: 19, fontWeight: '600' },
+  secondaryActions: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: Spacing.lg },
+  caption: { fontSize: 12, lineHeight: 17, fontWeight: '500', textAlign: 'center' },
+  pressed: { opacity: 0.68 },
 });

@@ -1,18 +1,29 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { ActionButton, InlineNotice } from '@/components/form-controls';
+import { Chevron } from '@/components/chevron';
+import { InlineNotice } from '@/components/form-controls';
+import { ListDivider } from '@/components/list-surface';
 import { ThemedText } from '@/components/themed-text';
-import { Spacing, Radius } from '@/constants/theme';
+import { Spacing, Radius, Size } from '@/constants/theme';
 import type { ItineraryItem } from '@/domain/models';
 import { useI18n } from '@/features/i18n/i18n-provider';
 import { analyzeItineraryHealth, hasItineraryHealthIssues, type ItineraryHealthIssue, type ItineraryHealthReport } from '@/features/ai/itinerary-health';
+import type { ThemeColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 interface ItineraryHealthCardProps {
   items: ItineraryItem[];
   onEditItem?: (item: ItineraryItem) => void;
 }
+
+const severityColorKeys: Record<ItineraryHealthIssue['severity'], ThemeColor> = {
+  info: 'info',
+  warning: 'plan',
+  critical: 'danger',
+};
+
+const severityRank: Record<ItineraryHealthIssue['severity'], number> = { info: 0, warning: 1, critical: 2 };
 
 function issueLabel(issue: ItineraryHealthIssue, tx: (zh: string, en: string) => string) {
   const labels = {
@@ -32,6 +43,15 @@ function severityLabel(severity: ItineraryHealthIssue['severity'], tx: (zh: stri
   }[severity];
 }
 
+/**
+ * Itinerary health.
+ *
+ * A tonal surface with one accent bar carrying the highest severity present —
+ * the shape `InlineNotice` already uses — rather than a bordered card holding
+ * bordered boxes. Each issue is one row with one action: pressing it opens the
+ * first plan the issue names. Severity is stated once, as a dot beside its own
+ * word, so the surface never offers more than one primary path.
+ */
 export function ItineraryHealthCard({ items, onEditItem }: ItineraryHealthCardProps) {
   const theme = useTheme();
   const { tx } = useI18n();
@@ -78,97 +98,104 @@ export function ItineraryHealthCard({ items, onEditItem }: ItineraryHealthCardPr
   if (!hasItineraryHealthIssues(report) && !error) return null;
 
   const itemById = new Map(items.map((item) => [item.id, item]));
+  const issues = report?.issues ?? [];
+  const highest = issues.reduce<ItineraryHealthIssue['severity']>(
+    (worst, issue) => (severityRank[issue.severity] > severityRank[worst] ? issue.severity : worst),
+    'info',
+  );
 
   return (
-    <View style={[styles.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
-      <View style={styles.header}>
-        <View style={styles.heading}>
-          <ThemedText type="smallBold">{tx('发现行程问题', 'Itinerary needs attention')}</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            {tx('检测到冲突或衔接问题，可直接修改安排。', 'A conflict or tight gap was found. Edit the plan directly.')}
+    <View style={[styles.surface, { backgroundColor: theme.backgroundSubtle }]}>
+      <View style={[styles.severityBar, { backgroundColor: error ? theme.danger : theme[severityColorKeys[highest]] }]} />
+      <View style={styles.body}>
+        <View style={styles.header}>
+          <ThemedText style={styles.headerTitle}>
+            {issues.length > 0
+              ? tx(`行程体检 · ${String(issues.length)} 处待确认`, `Itinerary check · ${String(issues.length)} to confirm`)
+              : tx('行程体检', 'Itinerary check')}
           </ThemedText>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ busy, disabled: busy || items.length === 0 }}
+            disabled={busy || items.length === 0}
+            hitSlop={6}
+            onPress={() => void runCheck()}
+            style={({ pressed }) => [styles.recheck, (pressed || busy) && styles.pressed]}>
+            <ThemedText type="smallBold" themeColor="link">
+              {busy ? tx('检查中…', 'Checking…') : tx('重新检查', 'Check again')}
+            </ThemedText>
+          </Pressable>
         </View>
-        <ActionButton tone="secondary" busy={busy} disabled={items.length === 0} onPress={() => void runCheck()}>
-          {tx('重新检查', 'Check again')}
-        </ActionButton>
-      </View>
 
-      {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
+        {error ? (
+          <View style={styles.errorRow}>
+            <InlineNotice tone="error">{error}</InlineNotice>
+          </View>
+        ) : null}
 
-      {report ? (
-        <View style={styles.results}>
-          <ThemedText type="smallBold">{report.summary}</ThemedText>
-          {report.issues.map((issue) => {
-            const statusColor = issue.severity === 'critical'
-              ? theme.danger
-              : issue.severity === 'warning'
-                ? theme.plan
-                : theme.info;
-            const issueItems = issue.itemIds
-              .map((itemId) => itemById.get(itemId))
-              .filter((item): item is ItineraryItem => Boolean(item));
-            return (
-              <View key={issue.id} style={[styles.issue, { borderColor: theme.border }]}>
-                <View style={styles.issueHeader}>
-                  <View style={styles.issueLabel}>
-                    <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-                    <ThemedText type="smallBold">{issueLabel(issue, tx)}</ThemedText>
-                  </View>
-                  <ThemedText type="small" style={{ color: statusColor }}>
-                    {severityLabel(issue.severity, tx)}
-                  </ThemedText>
-                </View>
-                <ThemedText type="smallBold">{issue.title}</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">{issue.reason}</ThemedText>
-                {issue.question ? <ThemedText type="small" style={{ color: theme.info }}>{issue.question}</ThemedText> : null}
-                {onEditItem && issueItems.length > 0 ? (
-                  <View style={styles.issueActions}>
-                    {issueItems.map((item) => (
-                      <Pressable
-                        key={item.id}
-                        accessibilityRole="button"
-                        accessibilityLabel={tx(`修改${item.title}`, `Edit ${item.title}`)}
-                        onPress={() => onEditItem(item)}
-                        style={({ pressed }) => [styles.editAction, pressed && styles.pressed]}>
-                        <ThemedText type="smallBold" style={{ color: theme.link }}>{tx(`修改“${item.title}”`, `Edit “${item.title}”`)}</ThemedText>
-                      </Pressable>
-                    ))}
-                  </View>
-                ) : null}
-                {!onEditItem && issueItems.length > 0 ? (
-                  <ThemedText type="small" themeColor="textSecondary">
-                    {tx('你当前只有查看权限，请联系可编辑成员修改。', 'You have view-only access. Ask an editor to make the change.')}
-                  </ThemedText>
-                ) : null}
+        {issues.map((issue) => {
+          const statusColor = theme[severityColorKeys[issue.severity]];
+          const issueItems = issue.itemIds
+            .map((itemId) => itemById.get(itemId))
+            .filter((item): item is ItineraryItem => Boolean(item));
+          const target = issueItems[0];
+          const openTarget = onEditItem && target ? () => onEditItem(target) : undefined;
+          const copy = (
+            <View style={styles.issueCopy}>
+              <View style={styles.issueStatus}>
+                <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+                <ThemedText style={[styles.issueKind, { color: statusColor }]}>
+                  {issueLabel(issue, tx) + ' · ' + severityLabel(issue.severity, tx)}
+                </ThemedText>
               </View>
-            );
-          })}
-        </View>
-      ) : null}
+              <ThemedText style={styles.issueTitle}>{issue.title}</ThemedText>
+              <ThemedText style={styles.issueReason} themeColor="textSecondary">
+                {issue.question ? issue.reason + ' ' + issue.question : issue.reason}
+              </ThemedText>
+              {!onEditItem && issueItems.length > 0 ? (
+                <ThemedText style={styles.issueReason} themeColor="textMuted">
+                  {tx('你当前只有查看权限，请联系可编辑成员修改。', 'You have view-only access. Ask an editor to make the change.')}
+                </ThemedText>
+              ) : null}
+            </View>
+          );
+          return (
+            <View key={issue.id}>
+              <ListDivider />
+              {openTarget ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={tx(`修改“${target.title}”`, `Edit “${target.title}”`)}
+                  onPress={openTarget}
+                  style={({ pressed }) => [styles.issueRow, pressed && styles.pressed]}>
+                  {copy}
+                  <Chevron color={theme.textMuted} />
+                </Pressable>
+              ) : (
+                <View style={styles.issueRow}>{copy}</View>
+              )}
+            </View>
+          );
+        })}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    borderWidth: 1,
-    borderRadius: Radius.xl,
-    padding: Spacing.lg,
-    gap: Spacing.md,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.md,
-  },
-  heading: { flex: 1, gap: Spacing.xs },
-  results: { gap: Spacing.sm },
-  issue: { borderWidth: 1, borderRadius: Radius.md, padding: Spacing.md, gap: Spacing.xs },
-  issueHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.sm },
-  issueLabel: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs },
+  surface: { borderRadius: Radius.lg, overflow: 'hidden', flexDirection: 'row', alignItems: 'stretch' },
+  severityBar: { width: 3 },
+  body: { flex: 1, minWidth: 0, paddingHorizontal: Spacing.md, paddingVertical: 2 },
+  header: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingVertical: 12 },
+  headerTitle: { flex: 1, minWidth: 0, fontSize: 15, lineHeight: 20, fontWeight: '600' },
+  recheck: { minHeight: Size.touchMin, justifyContent: 'center', paddingHorizontal: Spacing['2xs'] },
+  errorRow: { paddingBottom: 12 },
+  issueRow: { minHeight: 60, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingVertical: 12 },
+  issueCopy: { flex: 1, minWidth: 0, gap: 2 },
+  issueStatus: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs },
   statusDot: { width: 8, height: 8, borderRadius: 4 },
-  issueActions: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginTop: Spacing.xs },
-  editAction: { minHeight: 44, justifyContent: 'center' },
-  pressed: { opacity: 0.62 },
+  issueKind: { fontSize: 12, lineHeight: 17, fontWeight: '700' },
+  issueTitle: { fontSize: 15, lineHeight: 20, fontWeight: '600' },
+  issueReason: { fontSize: 12, lineHeight: 17, fontWeight: '500' },
+  pressed: { opacity: 0.68 },
 });
