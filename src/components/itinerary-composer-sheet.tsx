@@ -20,6 +20,16 @@ import { toUserMessage } from '@/lib/user-error';
 import { formatDayRange, formatZonedDateTimeRange, isoToZonedDateTime, zonedDateTimeToIso } from '@/lib/trip-time';
 import { useTheme } from '@/hooks/use-theme';
 
+interface PlanAction {
+  key: string;
+  title: string;
+  onPress: () => void;
+  busy?: boolean;
+  /** Acts on this panel rather than opening another, so it carries no chevron. */
+  inPlace?: boolean;
+  danger?: boolean;
+}
+
 export interface ItineraryComposerSheetProps {
   activeTrip: Trip;
   editingItem?: ItineraryItem;
@@ -48,6 +58,13 @@ export interface ItineraryComposerSheetProps {
   onSuccess?: (message: string) => void;
   /** Opens the branch sheet for this plan. Absent when branching does not apply. */
   onSplitFromHere?: () => void;
+  /** Opens this plan's location in the platform's map app. */
+  onOpenMap?: () => void;
+  /** Adds the transfer from the previous place to this stay. Acts in place. */
+  onAddStayTransfer?: () => void;
+  addingStayTransfer?: boolean;
+  /** Opens the move-to-another-trip sheet for this plan. */
+  onMove?: () => void;
   visible: boolean;
 }
 
@@ -62,6 +79,10 @@ export function ItineraryComposerSheet({
   onSave,
   onSuccess,
   onSplitFromHere,
+  onOpenMap,
+  onAddStayTransfer,
+  addingStayTransfer = false,
+  onMove,
   visible,
 }: ItineraryComposerSheetProps) {
   const { locale, languageTag, tx } = useI18n();
@@ -227,8 +248,8 @@ export function ItineraryComposerSheet({
         tripRangeChanged
           ? tx('行程日期已扩展，安排已加入时间线。', 'Trip dates were extended and the plan was added to the timeline.')
           : editingItem
-          ? (kind === 'lodging' ? tx('住宿已更新。', 'Stay updated.') : tx('安排已更新。', 'Plan updated.'))
-          : (kind === 'lodging' ? tx('住宿已加入时间线。', 'Stay added to the timeline.') : tx('安排已加入共享时间线。', 'Plan added to the shared timeline.')),
+          ? (kind === 'lodging' ? tx('住宿已更新；旧的酒店交通已移除，请按需要重新添加。', 'Stay updated. Its old hotel transfer was removed so you can add a fresh route.') : tx('安排已更新。', 'Plan updated.'))
+          : (kind === 'lodging' ? tx('住宿已按入住区间加入，不需要每天重复添加。', 'Stay added for the full date range. No daily duplicates needed.') : tx('安排已加入共享时间线。', 'Plan added to the shared timeline.')),
       );
     } catch (caught) {
       setFormError(toUserMessage(caught, tx('无法保存行程安排，请稍后重试。', 'Could not save this plan. Please try again.')));
@@ -253,6 +274,18 @@ export function ItineraryComposerSheet({
       setBusy(false);
     }
   }
+
+  // The plan's own actions, in the order a reader needs them: look at it,
+  // extend it, move it, split from it, then the irreversible one last.
+  const planActions: PlanAction[] = editingItem ? ([
+    onOpenMap ? { key: 'map', title: tx('查看地图', 'Open map'), onPress: onOpenMap } : undefined,
+    onAddStayTransfer
+      ? { key: 'transfer', title: addingStayTransfer ? tx('正在添加…', 'Adding…') : tx('添加前往酒店', 'Add hotel transfer'), onPress: onAddStayTransfer, busy: addingStayTransfer, inPlace: true }
+      : undefined,
+    onMove ? { key: 'move', title: tx('移动到其他行程', 'Move to another trip'), onPress: onMove } : undefined,
+    onSplitFromHere ? { key: 'split', title: tx('从这里分开走', 'Split off from here'), onPress: onSplitFromHere } : undefined,
+    { key: 'delete', title: tx('删除这项安排', 'Delete this plan'), onPress: () => setConfirmDeleteItem(true), danger: true },
+  ] as (PlanAction | undefined)[]).filter((action): action is PlanAction => Boolean(action)) : [];
 
   // Confirming a deletion takes over the panel rather than swapping the footer
   // underneath the form. The old shape put the confirmation where 保存 had
@@ -404,27 +437,28 @@ export function ItineraryComposerSheet({
             }}
           />
         ) : null}
-        {/* The per-plan actions are rows, not centred links in a form whose
-            every other control is left-aligned and full width. Each carries
-            the chevron that says it opens a panel. */}
-        {editingItem ? (
+        {/* Every per-plan action is a row on one surface — not centred links
+            in a form whose every other control is left-aligned and full width,
+            and not a stack of filled secondary buttons. The trailing chevron
+            means the row goes somewhere; a row that acts in place has none.
+            Today used to keep its own copy of this panel, so the same plan
+            opened differently depending on which screen you came from. */}
+        {editingItem && planActions.length > 0 ? (
           <ListSurface tone="subtle">
-            {onSplitFromHere ? (
-              <>
+            {planActions.map((action, index) => (
+              <View key={action.key}>
+                {index > 0 ? <ListDivider /> : null}
                 <ListRow
-                  title={tx('从这里分开走', 'Split off from here')}
-                  onPress={onSplitFromHere}
-                  trailing={<Chevron color={theme.textMuted} />}
+                  title={action.title}
+                  titleColor={action.danger ? 'danger' : undefined}
+                  disabled={action.busy}
+                  onPress={action.onPress}
+                  trailing={action.inPlace
+                    ? undefined
+                    : <Chevron color={action.danger ? theme.danger : theme.textMuted} />}
                 />
-                <ListDivider />
-              </>
-            ) : null}
-            <ListRow
-              title={tx('删除这项安排', 'Delete this plan')}
-              titleColor="danger"
-              onPress={() => setConfirmDeleteItem(true)}
-              trailing={<Chevron color={theme.danger} />}
-            />
+              </View>
+            ))}
           </ListSurface>
         ) : null}
         {pendingTripRange ? (
