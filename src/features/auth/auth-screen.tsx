@@ -37,6 +37,21 @@ function useInviteToken() {
   return value ? parseInviteToken(value) : undefined;
 }
 
+/** A path that is not the primary one: a 44pt text row, never a filled button. */
+function AltLink({ label, onPress, disabled = false }: { label: string; onPress: () => void; disabled?: boolean }) {
+  const theme = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ disabled }}
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => [styles.altLink, (pressed || disabled) && styles.providerPressed]}>
+      <ThemedText type="smallBold" style={{ color: disabled ? theme.textMuted : theme.link }}>{label}</ThemedText>
+    </Pressable>
+  );
+}
+
 export function AuthScreen() {
   const theme = useTheme();
   const { locale, setLocale, tx } = useI18n();
@@ -47,7 +62,10 @@ export function AuthScreen() {
   const [password, setPassword] = useState('');
   const [resetSent, setResetSent] = useState(false);
   const [token, setToken] = useState('');
-  const [flow, setFlow] = useState<AuthFlow>('login');
+  // The code path is the default: it needs no password, and it works the
+  // same whether or not the reader already has an account. UI 2.0's auth page
+  // specified this; only the chips-to-links half had been built.
+  const [flow, setFlow] = useState<AuthFlow>('otp-login');
   const [method, setMethod] = useState<AuthMethod>('email');
   const [verifying, setVerifying] = useState(false);
   const [codeSentAt, setCodeSentAt] = useState<number>();
@@ -150,7 +168,12 @@ export function AuthScreen() {
     }
   }
 
-  const cardLabel = method === 'phone' ? tx('手机号登录或注册', 'Phone sign-in or registration') : flow === 'login' ? tx('登录', 'Sign in') : flow === 'register' ? tx('注册', 'Register') : tx('验证码登录', 'Code sign-in');
+  const cardLabel = verifying
+    ? tx('输入验证码', 'Enter the code')
+    : method === 'phone' ? tx('手机号登录或注册', 'Phone sign-in or registration')
+    : flow === 'login' ? tx('用密码登录', 'Sign in with a password')
+    : flow === 'register' ? tx('注册新账号', 'Create an account')
+    : tx('登录或注册', 'Sign in or register');
   const screenTitle = inviteToken ? tx('加入行程', 'Join a trip') : tx('结伴同行', 'Travel together');
   const screenSubtitle = inviteToken
     ? tx('登录后确认加入。', 'Sign in, then confirm.')
@@ -169,10 +192,7 @@ export function AuthScreen() {
             {inviteToken ? <ThemedText type="small" themeColor="textSecondary">{tx('邀请已保留。登录后仍需确认。', 'Your invite is saved. You will still confirm before joining.')}</ThemedText> : null}
           </View>
           <View style={[styles.authPanel, { backgroundColor: theme.backgroundElement, shadowColor: theme.shadow }]}>
-            <View style={styles.authPanelHeader}>
-              <ThemedText type="smallBold" style={{ color: theme.accent }}>{cardLabel}</ThemedText>
-              <ThemedText type="smallBold" style={styles.authPanelTitle}>{verifying ? (method === 'email' ? email : phone) : method === 'phone' ? tx('短信验证码', 'SMS code') : flow === 'register' ? tx('创建账号', 'Create account') : tx('欢迎回来', 'Welcome back')}</ThemedText>
-            </View>
+            <ThemedText type="smallBold" style={styles.authPanelTitle}>{cardLabel}</ThemedText>
             {capabilities.google ? (
               <>
                 <Pressable
@@ -197,13 +217,6 @@ export function AuthScreen() {
                 <ChoiceChip role="radio" selected={method === 'phone'} onPress={() => { setMethod('phone'); setVerifying(false); setToken(''); }}>{tx('手机号', 'Phone')}</ChoiceChip>
               </View>
             ) : null}
-            {method === 'email' ? (
-            <View style={styles.flowChoices}>
-              <ChoiceChip role="radio" selected={flow === 'login'} onPress={() => chooseFlow('login')}>{tx('密码登录', 'Sign in')}</ChoiceChip>
-              <ChoiceChip role="radio" selected={flow === 'register'} onPress={() => chooseFlow('register')}>{tx('注册', 'Register')}</ChoiceChip>
-              <ChoiceChip role="radio" selected={flow === 'otp-login'} onPress={() => chooseFlow('otp-login')}>{tx('验证码', 'Email code')}</ChoiceChip>
-            </View>
-            ) : null}
             <View style={styles.form}>
           {!verifying ? (
             <>
@@ -222,19 +235,40 @@ export function AuthScreen() {
                   </>
                 : <ActionButton busy={busy} disabled={method === 'email' ? !email.trim() : !phone.trim()} onPress={() => void sendCode()}>{method === 'phone' ? tx('发送短信验证码', 'Send SMS code') : flow === 'register' ? tx('发送注册验证码', 'Send registration code') : tx('发送登录验证码', 'Send login code')}</ActionButton>}
               {method === 'email' && flow === 'register' ? <ThemedText type="small" themeColor="textSecondary">{tx('验证邮箱后，你将设置密码、显示名称和可选头像。', 'After verifying your email, you will set a password, display name, and optional avatar.')}</ThemedText> : null}
+              {/* The paths that are not the default are named here, after the
+                  one that works — not as three chips above the field that a
+                  reader has to understand before typing anything. */}
+              {method === 'email' ? (
+                <View style={[styles.altRow, { borderTopColor: theme.border }]}>
+                  {flow !== 'otp-login' ? <AltLink label={tx('用验证码登录', 'Sign in with a code')} onPress={() => chooseFlow('otp-login')} /> : null}
+                  {flow !== 'login' ? <AltLink label={tx('用密码登录', 'Sign in with a password')} onPress={() => chooseFlow('login')} /> : null}
+                  {flow !== 'register' ? <AltLink label={tx('注册新账号', 'Create an account')} onPress={() => chooseFlow('register')} /> : null}
+                </View>
+              ) : null}
             </>
           ) : (
             <>
-              <ThemedText themeColor="textSecondary">{tx(`请输入${method === 'email' ? '邮件' : '短信'}中的 8 位验证码。`, `Enter the 8-digit code from your ${method === 'email' ? 'email' : 'text message'}.`)}</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">
+                {tx(`已发送到 ${method === 'email' ? email : phone}，8 位，${formatCountdown(expirySeconds)} 后过期。仅最新一封中的验证码有效。`,
+                    `Sent to ${method === 'email' ? email : phone}. Eight digits, expires in ${formatCountdown(expirySeconds)}. Only the newest one works.`)}
+              </ThemedText>
               <OtpCodeInput disabled={busy} value={token} onChangeText={setToken} />
-              {codeExpired
-                ? <InlineNotice tone="error">{tx('验证码已过期，请重新获取。', 'This code has expired. Request a new one.')}</InlineNotice>
-                : <ThemedText type="small" themeColor="textSecondary">{tx(`验证码 ${formatCountdown(expirySeconds)} 后过期。仅最新一封邮件中的验证码有效。`, `Code expires in ${formatCountdown(expirySeconds)}. Only the newest email code is valid.`)}</ThemedText>}
+              {codeExpired ? <InlineNotice tone="error">{tx('验证码已过期，请重新获取。', 'This code has expired. Request a new one.')}</InlineNotice> : null}
               <ActionButton busy={busy} disabled={codeExpired || !/^\d{8}$/.test(token)} onPress={() => void verifyCode()}>{method === 'phone' || flow === 'register' ? tx('验证并继续', 'Verify and continue') : tx('验证并登录', 'Verify and sign in')}</ActionButton>
-              <ActionButton tone="secondary" busy={busy} disabled={busy || resendSeconds > 0} onPress={() => void sendCode()}>
-                {resendSeconds > 0 ? tx(`${resendSeconds} 秒后可重发`, `Resend in ${resendSeconds}s`) : tx('重新发送验证码', 'Resend code')}
-              </ActionButton>
-              <ActionButton tone="secondary" disabled={busy} onPress={() => { setVerifying(false); setCodeSentAt(undefined); }}>{method === 'email' ? tx('更换邮箱', 'Use another email') : tx('更换手机号', 'Use another phone')}</ActionButton>
+              {/* One primary at a time. Resending and changing the address are
+                  ways back, not competing paths forward. */}
+              <View style={[styles.altRow, { borderTopColor: theme.border }]}>
+                <AltLink
+                  disabled={busy || resendSeconds > 0}
+                  label={resendSeconds > 0 ? tx(`${resendSeconds} 秒后可重发`, `Resend in ${resendSeconds}s`) : tx('重新发送验证码', 'Resend code')}
+                  onPress={() => void sendCode()}
+                />
+                <AltLink
+                  disabled={busy}
+                  label={method === 'email' ? tx('换一个邮箱', 'Use another email') : tx('换一个手机号', 'Use another phone')}
+                  onPress={() => { setVerifying(false); setCodeSentAt(undefined); }}
+                />
+              </View>
             </>
           )}
           {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
@@ -287,16 +321,32 @@ export function OnboardingScreen() {
   }
 
   return (
-    <Screen context={[tx('最后一步', 'Final step'), tx('密码', 'Password'), tx('基本资料', 'Profile')]} title={tx('设置你的 TripFlow 账号', 'Set up your TripFlow account')}>
+    <Screen
+      context={[session?.user.email ?? session?.user.phone ?? tx('新账号', 'New account'), tx('最后一步', 'Final step')]}
+      title={tx('设置你的账号', 'Set up your account')}>
       {inviteToken ? <InlineNotice>{tx('邀请仍然有效，完成资料后将回到加入确认。', 'Your invite is still available. You will return to its confirmation after setup.')}</InlineNotice> : null}
       <View style={[styles.onboardingCard, { backgroundColor: theme.backgroundElement }]}>
-        <Pressable accessibilityRole="button" accessibilityLabel={tx('选择头像', 'Choose avatar')} onPress={() => void chooseAvatar()} style={[styles.avatar, { backgroundColor: theme.backgroundSelected }]}>
-          {avatar ? <Image source={{ uri: avatar.uri }} style={styles.avatarImage} contentFit="cover" /> : <ThemedText type="smallBold">{tx('添加头像（可选）', 'Add avatar (optional)')}</ThemedText>}
+        {/* The same avatar row the profile panel uses: the label sits beside
+            the circle instead of wrapping inside it. */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={tx('选择头像', 'Choose avatar')}
+          onPress={() => void chooseAvatar()}
+          style={({ pressed }) => [styles.avatarRow, pressed && styles.providerPressed]}>
+          <View style={[styles.avatar, { backgroundColor: theme.backgroundSelected }]}>
+            {avatar ? <Image source={{ uri: avatar.uri }} style={styles.avatarImage} contentFit="cover" /> : null}
+          </View>
+          <View style={styles.avatarCopy}>
+            <ThemedText type="smallBold" themeColor="link">{avatar ? tx('换一张头像', 'Change avatar') : tx('添加头像', 'Add an avatar')}</ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">{tx('可选。JPG、PNG 或 WebP。', 'Optional. JPG, PNG or WebP.')}</ThemedText>
+          </View>
         </Pressable>
         <FormField label={tx('显示名称', 'Display name')} value={displayName} onChangeText={setDisplayName} maxLength={80} placeholder={tx('同行者会看到这个名称', 'This is shown to travellers')} />
         {requiresPassword ? <><FormField label={tx('设置密码', 'Create password')} value={password} onChangeText={setPassword} autoCapitalize="none" autoComplete="new-password" secureTextEntry placeholder={tx('至少 8 位，包含字母和数字', '8+ characters with letters and numbers')} /><FormField label={tx('确认密码', 'Confirm password')} value={confirmPassword} onChangeText={setConfirmPassword} autoCapitalize="none" autoComplete="new-password" secureTextEntry placeholder={tx('再次输入密码', 'Enter password again')} /></> : null}
         <ActionButton busy={busy} disabled={!displayName.trim() || (requiresPassword && (!password || !confirmPassword))} onPress={() => void finish()}>{inviteToken ? tx('完成注册并继续加入', 'Finish and continue to invite') : tx('完成注册', 'Finish registration')}</ActionButton>
-        <ActionButton tone="secondary" disabled={busy} onPress={() => void signOut()}>{tx('退出并更换邮箱', 'Sign out and use another email')}</ActionButton>
+        <View style={[styles.altRow, { borderTopColor: theme.border }]}>
+          <AltLink disabled={busy} label={tx('退出并换一个邮箱', 'Sign out and use another email')} onPress={() => void signOut()} />
+        </View>
         {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
       </View>
       <LanguageAndLegal locale={locale} setLocale={setLocale} tx={tx} />
@@ -305,7 +355,7 @@ export function OnboardingScreen() {
 }
 
 function LanguageAndLegal(props: { locale: string; setLocale: (locale: 'zh-CN' | 'en') => void; tx: (zh: string, en: string) => string }) {
-  return <><View style={styles.languageRow}><ChoiceChip selected={props.locale === 'zh-CN'} onPress={() => props.setLocale('zh-CN')}>简体中文</ChoiceChip><ChoiceChip selected={props.locale === 'en'} onPress={() => props.setLocale('en')}>English</ChoiceChip></View><View style={styles.legalLinks}><Link href={'/privacy' as Href} asChild><ThemedText type="linkPrimary">{props.tx('隐私政策', 'Privacy')}</ThemedText></Link><Link href={'/support' as Href} asChild><ThemedText type="linkPrimary">{props.tx('支持与帮助', 'Support')}</ThemedText></Link></View></>;
+  return <><View style={styles.languageRow}><ChoiceChip selected={props.locale === 'zh-CN'} onPress={() => props.setLocale('zh-CN')}>简体中文</ChoiceChip><ChoiceChip selected={props.locale === 'en'} onPress={() => props.setLocale('en')}>English</ChoiceChip></View><View style={styles.legalLinks}><Link href={'/privacy' as Href} asChild><Pressable accessibilityRole="link" style={styles.altLink}><ThemedText type="smallBold" themeColor="link">{props.tx('隐私政策', 'Privacy')}</ThemedText></Pressable></Link><Link href={'/support' as Href} asChild><Pressable accessibilityRole="link" style={styles.altLink}><ThemedText type="smallBold" themeColor="link">{props.tx('支持与帮助', 'Support')}</ThemedText></Pressable></Link></View></>;
 }
 
 export function SessionLoadingScreen({ configured }: { configured: boolean }) {
@@ -325,8 +375,11 @@ export function SessionLoadingScreen({ configured }: { configured: boolean }) {
     );
   }
   return (
-    <Screen context={[tx('应用还没有连接到 Supabase', 'Supabase is not connected yet')]} title={tx('需要完成配置', 'Setup required')}>
-      <InlineNotice tone="error">{tx('请设置 Supabase 公共地址和发布密钥。', 'Set the Supabase public URL and publishable key.')}</InlineNotice>
+    <Screen context={['TripFlow']} title={tx('需要完成配置', 'Setup required')}>
+      <InlineNotice tone="error">
+        {tx('应用还没有连接到 Supabase。请设置公共地址和发布密钥后重新启动。',
+            'This build is not connected to Supabase yet. Set the public URL and publishable key, then restart.')}
+      </InlineNotice>
     </Screen>
   );
 }
@@ -340,7 +393,7 @@ const styles = StyleSheet.create({
   authIntro: { gap: 12 },
   authIntroWide: { flex: 1, paddingRight: 12 },
   authBrand: { letterSpacing: 0.5 },
-  authTitle: { fontSize: 34, lineHeight: 42, letterSpacing: -0.8, maxWidth: 520 },
+  authTitle: { fontSize: 28, lineHeight: 34, letterSpacing: -0.4, maxWidth: 520 },
   authSubtitle: { fontSize: 15, lineHeight: 22, maxWidth: 440 },
   provider: { minHeight: Size.control, borderRadius: Radius.md, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
   providerLabel: { fontSize: 16, lineHeight: 22, fontWeight: '500' },
@@ -348,16 +401,18 @@ const styles = StyleSheet.create({
   providerPressed: { opacity: 0.68 },
   divider: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   dividerRule: { flex: 1, height: 1 },
-  authPanel: { flex: 1, maxWidth: 500, borderRadius: 24, padding: 22, gap: 16, shadowOpacity: 0.09, shadowRadius: 28, shadowOffset: { width: 0, height: 12 } },
-  authPanelHeader: { gap: 5 },
-  authPanelTitle: { fontSize: 26, lineHeight: 32 },
+  authPanel: { flex: 1, maxWidth: 500, borderRadius: Radius.xl, padding: 20, gap: 16, shadowOpacity: 0.09, shadowRadius: 28, shadowOffset: { width: 0, height: 12 } },
+  authPanelTitle: { fontSize: 20, lineHeight: 26, letterSpacing: -0.2 },
   loadingScreen: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   form: { gap: 12 },
   methodChoices: { flexDirection: 'row', gap: 8 },
-  flowChoices: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  altRow: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 2, flexDirection: 'row', flexWrap: 'wrap', columnGap: Spacing.lg },
+  altLink: { minHeight: Size.touchMin, justifyContent: 'center' },
   forgotRow: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' },
-  onboardingCard: { borderRadius: 16, padding: 18, gap: 14 },
-  avatar: { alignSelf: 'center', width: 116, height: 116, borderRadius: 58, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: 12 },
+  onboardingCard: { borderRadius: Radius.lg, padding: 18, gap: Spacing.sm },
+  avatarRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
+  avatar: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  avatarCopy: { flex: 1, minWidth: 0, gap: 2 },
   avatarImage: { width: '100%', height: '100%' },
   languageRow: { flexDirection: 'row', gap: 8, justifyContent: 'center' },
   legalLinks: { flexDirection: 'row', flexWrap: 'wrap', gap: 18, justifyContent: 'center' },

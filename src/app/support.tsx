@@ -33,7 +33,7 @@ export default function SupportScreen() {
   return (
     <>
       <Head><title>{tx('支持与帮助｜TripFlow 旅途流', 'Support | TripFlow')}</title></Head>
-      <Screen context={[tx('登录', 'Sign-in'), tx('行程协作', 'Shared trips'), tx('账目', 'Expenses')]} title={tx('支持与帮助', 'Support')}>
+      <Screen context={[tx('登录、行程协作与账目的常见问题', 'Sign-in, shared trips and expenses')]} title={tx('支持与帮助', 'Support')}>
         <InfoCard label={tx('常见问题', 'Common issues')} title={tx('先试试这些方法', 'Try these steps first')}>
           <View style={styles.content}>
             <HelpItem title={tx('收不到登录邮件', 'No login email')}>

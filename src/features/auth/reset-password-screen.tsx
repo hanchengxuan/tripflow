@@ -63,7 +63,7 @@ export function ResetPasswordScreen() {
   }
 
   return (
-    <Screen title={tx('设置新密码', 'Set a new password')} context={session.user.email ? [session.user.email] : []}>
+    <Screen title={tx('设置新密码', 'Set a new password')} context={session.user.email ? [session.user.email] : [tx('重置链接已验证', 'Reset link verified')]}>
       <FormField
         label={tx('新密码', 'New password')}
         value={password}
