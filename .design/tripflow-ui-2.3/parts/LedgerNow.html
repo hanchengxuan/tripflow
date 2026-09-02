@@ -1,0 +1,69 @@
+<div class="screen tagged">
+  <div class="tag tag-now">现状 · src/app/ledger.tsx（结算）</div>
+  <div class="scroll" style="gap:16px">
+    <div class="hdr"><h1>账本</h1><div class="ctx">东京 3 月 · 12 笔支出</div></div>
+
+    <div style="display:flex;background:var(--subtle);border-radius:999px;padding:3px">
+      <div style="flex:1;text-align:center;padding:8px;border-radius:999px;background:var(--surface);font-size:14px;font-weight:700">结算</div>
+      <div style="flex:1;text-align:center;padding:8px;font-size:14px;font-weight:500;color:var(--text2)">明细</div>
+    </div>
+
+    <!-- The balance bar is UI 2.0 and stays. -->
+    <div style="display:flex;flex-direction:column;gap:8px;padding:6px 0">
+      <div style="display:flex;justify-content:space-between"><span class="l-s" style="font-weight:700">你要付 TO SEND</span><span class="l-s" style="font-weight:700">该收 TO RECEIVE</span></div>
+      <div style="height:10px;border-radius:5px;background:var(--subtle);position:relative">
+        <div style="position:absolute;right:50%;top:0;bottom:0;width:32%;background:var(--plan);border-radius:5px 0 0 5px"></div>
+        <div style="position:absolute;left:50%;top:0;bottom:0;width:14%;background:var(--accent);border-radius:0 5px 5px 0"></div>
+        <div style="position:absolute;left:50%;top:-3px;bottom:-3px;width:2px;background:var(--text2)"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between"><span class="l-t" style="color:var(--plan)">¥1,240</span><span class="l-t" style="color:var(--accent)">¥520</span></div>
+      <div class="l-s">净额 Net −¥720 · 3 笔已完成</div>
+    </div>
+
+    <!-- (1) A section heading with an instructional sentence — the shape UI 2.1
+         removed from 安排 and 2.2 removed from 地图. (2) 22/28, a size the ramp
+         does not have, hand-written in a file that imports SectionHeading. -->
+    <div class="sec">
+      <div style="font-size:22px;line-height:28px;font-weight:700">我的待办</div>
+      <div class="sec-d">结算页的金额按币种汇总；明细页可编辑每笔支出。</div>
+    </div>
+
+    <!-- (3) A wrap-flex row that becomes a column on narrow screens, with the
+         amount at 22/28 and a hand-rolled 44/12 accent button — the sixth
+         button implementation, carrying accessibilityRole="checkbox".
+         (4) 「用其他币种付款」 expands inside the row and pushes the next one. -->
+    <div style="border-top:1px solid var(--border);padding:16px 0;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <div class="av" style="width:42px;height:42px;border-radius:21px;font-size:15px">林</div>
+      <div style="flex:1;min-width:0">
+        <div class="l-t">转给 林小雨</div>
+        <div style="font-size:22px;line-height:28px;font-weight:700">¥820.00</div>
+        <div class="link" style="font-size:14px;min-height:44px;display:flex;align-items:center">用其他币种付款</div>
+      </div>
+      <div style="min-height:44px;min-width:112px;border-radius:12px;background:var(--accent);color:#fff;
+        display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;padding:0 14px">标记已转账</div>
+    </div>
+    <div style="border-top:1px solid var(--border);padding:16px 0;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <div class="av" style="width:42px;height:42px;border-radius:21px;font-size:15px">周</div>
+      <div style="flex:1;min-width:0">
+        <div class="l-t">转给 周舟</div>
+        <div style="font-size:22px;line-height:28px;font-weight:700">¥420.00</div>
+        <div class="link" style="font-size:14px;min-height:44px;display:flex;align-items:center">用其他币种付款</div>
+      </div>
+      <div style="min-height:44px;min-width:112px;border-radius:12px;background:var(--accent);color:#fff;
+        display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;padding:0 14px">标记已转账</div>
+    </div>
+
+    <!-- (5) Two more in-place disclosures, their chevrons in link colour while
+         every other chevron in the product is muted. -->
+    <div style="border-top:1px solid var(--border);min-height:60px;display:flex;align-items:center;gap:12px;padding:12px 0">
+      <div style="flex:1"><div class="l-t">已完成</div><div class="l-s">3 笔</div></div>
+      <svg width="8" height="14" viewBox="0 0 8 14" fill="none"><path d="m1.4 1.4 5.2 5.6-5.2 5.6" stroke="#2E6A96" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <div style="border-top:1px solid var(--border);min-height:60px;display:flex;align-items:center;gap:12px;padding:12px 0">
+      <div style="flex:1"><div class="l-t">全员结算</div><div class="l-s">查看全员状态</div></div>
+      <svg width="8" height="14" viewBox="0 0 8 14" fill="none"><path d="m1.4 1.4 5.2 5.6-5.2 5.6" stroke="#2E6A96" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+  </div>
+  <div class="fade"></div>
+  <div class="nav"><span>今天</span><span>行程</span><span>地图</span><span class="on">账本</span><span>我的</span></div>
+</div>

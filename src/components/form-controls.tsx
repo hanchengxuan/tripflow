@@ -30,16 +30,24 @@ export function FormField({ label, ...props }: TextInputProps & { label: string 
   );
 }
 
+/**
+ * `compact` is for a button that sits inside a row rather than under a form:
+ * it hugs its label and drops to the 44pt touch minimum. It exists so a row
+ * action is still this component — the ledger had grown its own 44/12 accent
+ * Pressable, the sixth button implementation in the product.
+ */
 export function ActionButton({
   children,
   onPress,
   busy = false,
   disabled = false,
+  size = 'full',
   tone = 'primary',
 }: PropsWithChildren<{
   onPress: () => void;
   busy?: boolean;
   disabled?: boolean;
+  size?: 'full' | 'compact';
   tone?: 'primary' | 'secondary' | 'danger';
 }>) {
   const isDisabled = busy || disabled;
@@ -52,6 +60,7 @@ export function ActionButton({
       onPress={onPress}
       style={({ pressed }) => [
         styles.button,
+        size === 'compact' && styles.buttonCompact,
         tone === 'primary' && { backgroundColor: pressed ? theme.accentPressed : theme.accent },
         tone === 'secondary' && { backgroundColor: theme.accentSoft },
         tone === 'danger' && { backgroundColor: theme.danger },
@@ -60,7 +69,7 @@ export function ActionButton({
       {busy ? (
         <ActivityIndicator color={tone === 'secondary' ? theme.text : theme.textOnAccent} />
       ) : (
-        <ThemedText style={[styles.buttonLabel, { color: tone === 'secondary' ? theme.text : theme.textOnAccent }]}>
+        <ThemedText style={[styles.buttonLabel, size === 'compact' && styles.buttonLabelCompact, { color: tone === 'secondary' ? theme.text : theme.textOnAccent }]}>
           {children}
         </ThemedText>
       )}
@@ -123,7 +132,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  buttonCompact: { minHeight: Size.touchMin, paddingHorizontal: 14, paddingVertical: 8, alignSelf: 'flex-start' },
   buttonLabel: { fontSize: 16, lineHeight: 22, fontWeight: '500' },
+  buttonLabelCompact: { fontSize: 14, lineHeight: 20, fontWeight: '600' },
   dimmed: { opacity: 0.58 },
   chip: { height: 36, borderRadius: Radius.pill, paddingHorizontal: 14, justifyContent: 'center' },
   chipLabel: { fontSize: 14, lineHeight: 18, fontWeight: '500' },

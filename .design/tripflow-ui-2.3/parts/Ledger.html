@@ -1,0 +1,58 @@
+<div class="screen tagged">
+  <div class="tag tag-new">提案 · 待办是行，展开的都进面板</div>
+  <div class="scroll" style="gap:16px">
+    <div class="hdr"><h1>账本</h1><div class="ctx">东京 3 月 · 12 笔支出 · 2 笔待转</div></div>
+
+    <div style="display:flex;background:var(--subtle);border-radius:999px;padding:3px">
+      <div style="flex:1;text-align:center;padding:8px;border-radius:999px;background:var(--surface);font-size:14px;font-weight:700">结算</div>
+      <div style="flex:1;text-align:center;padding:8px;font-size:14px;font-weight:500;color:var(--text2)">明细</div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:8px;padding:6px 0">
+      <div style="display:flex;justify-content:space-between"><span class="l-s" style="font-weight:700">你要付 TO SEND</span><span class="l-s" style="font-weight:700">该收 TO RECEIVE</span></div>
+      <div style="height:10px;border-radius:5px;background:var(--subtle);position:relative">
+        <div style="position:absolute;right:50%;top:0;bottom:0;width:32%;background:var(--plan);border-radius:5px 0 0 5px"></div>
+        <div style="position:absolute;left:50%;top:0;bottom:0;width:14%;background:var(--accent);border-radius:0 5px 5px 0"></div>
+        <div style="position:absolute;left:50%;top:-3px;bottom:-3px;width:2px;background:var(--text2)"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between"><span class="l-t" style="color:var(--plan)">¥1,240</span><span class="l-t" style="color:var(--accent)">¥520</span></div>
+      <div class="l-s">净额 Net −¥720 · 3 笔已完成</div>
+    </div>
+
+    <!-- The heading states what the section is; the sentence explaining how the
+         two tabs differ is gone. The amount is on the ramp at 20/26. -->
+    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px">
+      <div class="sec-t">我的待办</div><div class="l-s">2 笔</div>
+    </div>
+
+    <div class="list">
+      <div class="srow">
+        <div class="av" style="width:38px;height:38px;border-radius:19px;font-size:13px">林</div>
+        <div class="lab">转给 林小雨</div>
+        <div class="val" style="color:var(--plan)">¥820.00</div>
+        <div style="min-height:44px;border-radius:14px;background:var(--accent);color:#fff;display:flex;align-items:center;
+          justify-content:center;font-size:14px;line-height:20px;font-weight:600;padding:0 14px;flex:none">标记已转账</div>
+      </div>
+      <div class="hair"></div>
+      <div class="srow">
+        <div class="av" style="width:38px;height:38px;border-radius:19px;font-size:13px">周</div>
+        <div class="lab">转给 周舟</div>
+        <div class="val" style="color:var(--plan)">¥420.00</div>
+        <div style="min-height:44px;border-radius:14px;background:var(--accent);color:#fff;display:flex;align-items:center;
+          justify-content:center;font-size:14px;line-height:20px;font-weight:600;padding:0 14px;flex:none">标记已转账</div>
+      </div>
+    </div>
+
+    <!-- Everything that used to unfold is a row that opens a panel, with the
+         muted chevron every other row in the product uses. -->
+    <div class="list">
+      <div class="srow"><div class="lab">用其他币种付款</div><div class="val">2 笔</div><svg width="8" height="14" viewBox="0 0 8 14" fill="none" aria-hidden="true" style="flex:none"><path d="m1.4 1.4 5.2 5.6-5.2 5.6" stroke="#8A9491" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="hair"></div>
+      <div class="srow"><div class="lab">已完成</div><div class="val">3 笔</div><svg width="8" height="14" viewBox="0 0 8 14" fill="none" aria-hidden="true" style="flex:none"><path d="m1.4 1.4 5.2 5.6-5.2 5.6" stroke="#8A9491" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="hair"></div>
+      <div class="srow"><div class="lab">全员结算</div><div class="val">5 人 · 2 种币种</div><svg width="8" height="14" viewBox="0 0 8 14" fill="none" aria-hidden="true" style="flex:none"><path d="m1.4 1.4 5.2 5.6-5.2 5.6" stroke="#8A9491" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    </div>
+  </div>
+  <div class="fade"></div>
+  <div class="nav"><span>今天</span><span>行程</span><span>地图</span><span class="on">账本</span><span>我的</span></div>
+</div>

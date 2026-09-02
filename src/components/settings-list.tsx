@@ -46,6 +46,7 @@ export function SettingsRow({
   onPress,
   subtitle,
   value,
+  valueColor,
 }: {
   accessibilityLabel?: string;
   busy?: boolean;
@@ -60,6 +61,8 @@ export function SettingsRow({
   onPress?: () => void;
   subtitle?: string;
   value?: string;
+  /** Only where the value carries a direction — money owed out or owed in. */
+  valueColor?: string;
 }) {
   const theme = useTheme();
   const content = (
@@ -70,7 +73,7 @@ export function SettingsRow({
         {subtitle ? <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>{subtitle}</ThemedText> : null}
       </View>
       {value ? (
-        <ThemedText type="smallBold" themeColor="textSecondary" numberOfLines={1} style={styles.value}>{value}</ThemedText>
+        <ThemedText type="smallBold" themeColor="textSecondary" numberOfLines={1} style={[styles.value, valueColor ? { color: valueColor } : null]}>{value}</ThemedText>
       ) : null}
       {control}
       {onPress && (chevron ?? true) ? <Chevron color={labelColor === 'danger' ? theme.danger : theme.textMuted} /> : null}

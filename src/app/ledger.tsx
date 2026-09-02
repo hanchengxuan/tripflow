@@ -13,8 +13,12 @@ import { ListDivider, ListSurface } from '@/components/list-surface';
 import { Screen } from '@/components/screen';
 import { SegmentedControl } from '@/components/segmented-control';
 import { SelectionField } from '@/components/selection-field';
-import { BalanceBar } from '@/components/balance-bar';
-import { SectionHeading } from '@/components/section-heading';
+import {
+  SettlementWorkspace,
+  amountInputFromMinor,
+  type BalanceSnapshot as SettlementWorkspaceBalanceSnapshot,
+  type SettlementDraft,
+} from '@/components/settlement-workspace';
 import { ThemedText } from '@/components/themed-text';
 import { getCurrencyOptions } from '@/constants/options';
 import {
@@ -22,7 +26,6 @@ import {
   calculateOutstandingBalancesByCurrency,
   calculateBalancesInCurrency,
   convertMinorAmount,
-  currencyMinorDigits,
   formatMinorAmount,
   parseExchangeRate,
   parseAmountToMinor,
@@ -44,12 +47,7 @@ type ReceiptDraft = {
   fileSize?: number;
 };
 
-type BalanceSnapshot = {
-  currency: string;
-  outstandingTransfers: SettlementTransfer[];
-};
-
-type SettlementDraft = { currency: string; amount: string; rate: string };
+type BalanceSnapshot = SettlementWorkspaceBalanceSnapshot;
 
 function defaultAllocationValueFor(mode: 'equal' | 'exact' | 'percentage' | 'shares', index: number, count: number) {
   if (mode === 'shares') return '1';
@@ -62,8 +60,6 @@ function defaultAllocationValueFor(mode: 'equal' | 'exact' | 'percentage' | 'sha
 
 export default function LedgerScreen() {
   const theme = useTheme();
-  const { width } = useWindowDimensions();
-  const compact = width < 520;
   const { locale, formatDateTime, tx } = useI18n();
   const {
     activeTrip,
@@ -82,7 +78,6 @@ export default function LedgerScreen() {
     error,
   } = useMvp();
   const [activeView, setActiveView] = useState<'settle' | 'activity'>('settle');
-  const [showGroupSettlement, setShowGroupSettlement] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
   const [editingExpenseId, setEditingExpenseId] = useState<string>();
   const [itineraryItemId, setItineraryItemId] = useState('');
@@ -104,7 +99,6 @@ export default function LedgerScreen() {
   const [busyExpenseId, setBusyExpenseId] = useState<string>();
   const [busySettlementId, setBusySettlementId] = useState<string>();
   const [settlementDrafts, setSettlementDrafts] = useState<Record<string, SettlementDraft>>({});
-  const [expandedSettlementKey, setExpandedSettlementKey] = useState<string>();
   const [formError, setFormError] = useState<string>();
   const [success, setSuccess] = useState<string>();
   const [aiNotice, setAiNotice] = useState<string>();
@@ -142,7 +136,6 @@ export default function LedgerScreen() {
   const positiveColor = theme.moneyIn;
   const moneyOutColor = theme.moneyOut;
   const dangerColor = theme.danger;
-  const linkColor = theme.link;
 
   const exchangeRateState: ExchangeRateLoadState = automaticExchangeRate.pairKey === exchangeRatePairKey
     ? automaticExchangeRate
@@ -546,7 +539,6 @@ export default function LedgerScreen() {
         delete next[transferKey];
         return next;
       });
-      setExpandedSettlementKey(undefined);
       setSuccess(tx('已标记为已转账，收款方的“已收入”会同步更新。', 'Marked as sent. The recipient’s received total is updated automatically.'));
     } catch (caught) {
       setFormError(toUserMessage(caught, tx('无法更新转账状态，请刷新后重试。', 'Could not update the transfer. Refresh and try again.')));
@@ -588,7 +580,13 @@ export default function LedgerScreen() {
     <>
       <Screen
       context={activeTrip
-        ? [activeTrip.name, tx(`本位币 ${activeTrip.homeCurrency}`, `Home currency ${activeTrip.homeCurrency}`), tx(`${expenses.length} 笔支出`, `${expenses.length} expenses`)]
+        ? [
+            activeTrip.name,
+            tx(`${expenses.length} 笔支出`, `${expenses.length} expenses`),
+            myPendingTransfers.length > 0
+              ? tx(`${myPendingTransfers.length} 笔待转`, `${myPendingTransfers.length} to send`)
+              : tx(`本位币 ${activeTrip.homeCurrency}`, `Home currency ${activeTrip.homeCurrency}`),
+          ]
         : [tx('还没有进行中的行程', 'No active trip yet')]}
       title={tx('账本', 'Ledger')}
       floatingAction={activeTrip ? (
@@ -622,32 +620,22 @@ export default function LedgerScreen() {
         <InlineNotice>{tx('请先创建或加入一个行程，再开始记账。', 'Create or join a trip before using the ledger.')}</InlineNotice>
       ) : activeView === 'settle' ? (
         <SettlementWorkspace
-          tx={tx}
-          names={names}
-          memberById={memberById}
-          currentUserId={currentUserId}
           balanceSnapshots={balanceSnapshots}
-          settlements={settlements}
-          myPendingTransfers={myPendingTransfers}
-          myIncomingTransfers={myIncomingTransfers}
-          pendingTransfers={pendingTransfers}
-          summaryTransfers={normalizedPendingTransfers}
-          hasCompleteConversions={Boolean(hasCompleteConversions)}
           baseCurrency={baseCurrency}
-          currencyOptions={currencyOptions}
-          settlementDrafts={settlementDrafts}
-          expandedSettlementKey={expandedSettlementKey}
-          setSettlementDrafts={setSettlementDrafts}
-          setExpandedSettlementKey={setExpandedSettlementKey}
           busySettlementId={busySettlementId}
-          compact={compact}
-          showGroupSettlement={showGroupSettlement}
-          toggleGroupSettlement={() => setShowGroupSettlement((current) => !current)}
-          themeSelected={theme.backgroundSelected}
-          positiveColor={positiveColor}
-          moneyOutColor={moneyOutColor}
-          linkColor={linkColor}
           completeTransfer={completeTransfer}
+          currencyOptions={currencyOptions}
+          currentUserId={currentUserId}
+          hasCompleteConversions={Boolean(hasCompleteConversions)}
+          memberById={memberById}
+          myIncomingTransfers={myIncomingTransfers}
+          myPendingTransfers={myPendingTransfers}
+          names={names}
+          pendingTransfers={pendingTransfers}
+          settlementDrafts={settlementDrafts}
+          settlements={settlements}
+          setSettlementDrafts={setSettlementDrafts}
+          summaryTransfers={normalizedPendingTransfers}
           undoTransfer={undoTransfer}
         />
       ) : (
@@ -1070,275 +1058,6 @@ function FieldGroup({ label, children }: { label: string; children: React.ReactN
   );
 }
 
-function SettlementPaymentEditor(props: {
-  tx: (zh: string, en: string) => string;
-  baseCurrency: string;
-  currencyOptions: { label: string; value: string }[];
-  transfer: SettlementTransfer & { currency: string };
-  draft: SettlementDraft;
-  setDraft: (draft: SettlementDraft) => void;
-}) {
-  const { tx } = props;
-  const { width } = useWindowDimensions();
-  const compact = width < 520;
-  const sameCurrency = props.draft.currency.toUpperCase() === props.baseCurrency.toUpperCase();
-  return (
-    <View style={[styles.paymentEditor, compact && styles.paymentEditorCompact]}>
-      <View style={[styles.paymentEditorFields, compact && styles.paymentEditorFieldsCompact]}>
-        <View style={[styles.paymentCurrencyField, compact && styles.paymentCurrencyFieldCompact]}>
-          <SelectionField
-            label={tx('付款币种', 'Payment currency')}
-            value={props.draft.currency}
-            options={props.currencyOptions}
-            onChange={(currency) => props.setDraft({ ...props.draft, currency, amount: '', rate: currency === props.baseCurrency ? '1' : props.draft.rate })}
-          />
-        </View>
-        <View style={styles.grow}>
-          <FormField
-            label={tx('实际转账金额', 'Amount sent')}
-            value={props.draft.amount}
-            onChangeText={(amount) => props.setDraft({ ...props.draft, amount })}
-            keyboardType="decimal-pad"
-            placeholder="0.00"
-          />
-        </View>
-      </View>
-      {!sameCurrency ? (
-        <FormField
-          label={tx(`汇率：1 ${props.draft.currency} = ? ${props.baseCurrency}`, `Rate: 1 ${props.draft.currency} = ? ${props.baseCurrency}`)}
-          value={props.draft.rate}
-          onChangeText={(rate) => props.setDraft({ ...props.draft, rate })}
-          keyboardType="decimal-pad"
-          placeholder="0.92"
-        />
-      ) : null}
-      <ThemedText type="small" themeColor="textSecondary">
-        {(() => {
-          try {
-            if (!props.draft.amount.trim()) return tx('会从待转余额中扣除实际折算金额。', 'The converted amount will be deducted from the balance due.');
-            const rate = sameCurrency ? 1 : parseExchangeRate(props.draft.rate);
-            const converted = convertMinorAmount(parseAmountToMinor(props.draft.amount, props.draft.currency), props.draft.currency, props.baseCurrency, rate);
-            return tx(`记入 ${props.baseCurrency}：${formatMinorAmount(converted, props.baseCurrency)} · 待转 ${formatMinorAmount(props.transfer.amountMinor, props.baseCurrency)}`, `Books ${formatMinorAmount(converted, props.baseCurrency)} in ${props.baseCurrency} · due ${formatMinorAmount(props.transfer.amountMinor, props.baseCurrency)}`);
-          } catch {
-            return tx('请输入金额和有效汇率。', 'Enter an amount and a valid rate.');
-          }
-        })()}
-      </ThemedText>
-    </View>
-  );
-}
-
-function SettlementWorkspace(props: {
-  tx: (zh: string, en: string) => string;
-  names: Map<string, string>;
-  memberById: Map<string, TripMember>;
-  currentUserId: string;
-  balanceSnapshots: BalanceSnapshot[];
-  settlements: Settlement[];
-  myPendingTransfers: (SettlementTransfer & { currency: string })[];
-  myIncomingTransfers: (SettlementTransfer & { currency: string })[];
-  pendingTransfers: (SettlementTransfer & { currency: string })[];
-  summaryTransfers: (SettlementTransfer & { currency: string })[];
-  hasCompleteConversions: boolean;
-  baseCurrency: string;
-  currencyOptions: { label: string; value: string }[];
-  settlementDrafts: Record<string, SettlementDraft>;
-  expandedSettlementKey?: string;
-  setSettlementDrafts: React.Dispatch<React.SetStateAction<Record<string, SettlementDraft>>>;
-  setExpandedSettlementKey: (key?: string) => void;
-  busySettlementId?: string;
-  compact: boolean;
-  showGroupSettlement: boolean;
-  toggleGroupSettlement: () => void;
-  themeSelected: string;
-  positiveColor: string;
-  moneyOutColor: string;
-  linkColor: string;
-  completeTransfer: (transfer: SettlementTransfer & { currency: string }) => Promise<void>;
-  undoTransfer: (settlement: Settlement) => Promise<void>;
-}) {
-  const { tx } = props;
-  const theme = useTheme();
-  const [showCompleted, setShowCompleted] = useState(false);
-  const mySettlements = props.settlements.filter((settlement) =>
-    settlement.fromUserId === props.currentUserId || settlement.toUserId === props.currentUserId,
-  );
-
-  return (
-    <View style={styles.workspace}>
-      <View style={styles.personalSummary}>
-        {props.balanceSnapshots.length === 0 ? (
-          <ThemedText themeColor="textSecondary">{tx('记录第一笔共同支出后，这里会生成结算待办。', 'Add the first shared expense to create settlement tasks.')}</ThemedText>
-        ) : (() => {
-          const pendingOut = sumTransfers(props.summaryTransfers, 'from', props.currentUserId);
-          const pendingIn = sumTransfers(props.summaryTransfers, 'to', props.currentUserId);
-          return (
-            <>
-              <BalanceBar
-                outLabel={tx('你要付 TO SEND', 'TO SEND')}
-                outAmount={formatMinorAmount(pendingOut, props.baseCurrency)}
-                outValue={pendingOut}
-                inLabel={tx('该收 TO RECEIVE', 'TO RECEIVE')}
-                inAmount={formatMinorAmount(pendingIn, props.baseCurrency)}
-                inValue={pendingIn}
-                footnote={tx(
-                  `净额 Net ${formatMinorAmount(pendingIn - pendingOut, props.baseCurrency)} · ${mySettlements.length} 笔已完成`,
-                  `Net ${formatMinorAmount(pendingIn - pendingOut, props.baseCurrency)} · ${mySettlements.length} completed`,
-                )}
-              />
-              {!props.hasCompleteConversions ? <InlineNotice>{tx('部分外币支出缺少汇率；上方仅汇总已换算金额。', 'Some foreign-currency expenses need a rate; the summary includes converted amounts only.')}</InlineNotice> : null}
-            </>
-          );
-        })()}
-      </View>
-
-      <View style={styles.sectionBlock}>
-        <SectionHeading title={tx('我的待办', 'My tasks')} detail={tx('结算页的金额按币种汇总；明细页可编辑每笔支出。', 'Balances are grouped by currency; edit any expense from Activity.')} />
-        {props.myPendingTransfers.length === 0 ? (
-          <View style={styles.quietEmpty}>
-            <ThemedText type="smallBold">{tx('待转出已清空', 'Nothing to send')}</ThemedText>
-            {props.myIncomingTransfers.length > 0 ? (
-              <ThemedText type="small" themeColor="textSecondary">{tx(`仍有 ${props.myIncomingTransfers.length} 笔款项待他人转给你。`, `${props.myIncomingTransfers.length} incoming payment${props.myIncomingTransfers.length === 1 ? '' : 's'} still pending.`)}</ThemedText>
-            ) : null}
-          </View>
-        ) : props.myPendingTransfers.map((transfer) => {
-          const key = `${transfer.currency}-${transfer.fromParticipantId}-${transfer.toParticipantId}`;
-          const recipient = props.memberById.get(transfer.toParticipantId);
-          const draft = props.settlementDrafts[key] ?? { currency: props.baseCurrency, amount: amountInputFromMinor(transfer.amountMinor, props.baseCurrency), rate: '1' };
-          const expanded = props.expandedSettlementKey === key;
-          return (
-            <View key={key} style={[styles.transferRow, { borderTopColor: theme.border }, props.compact && styles.transferRowCompact]}>
-              <MemberAvatar avatarUrl={recipient?.avatarUrl} displayName={recipient?.displayName ?? tx('同行者', 'Traveller')} size={42} />
-              <View style={styles.transferCopy}>
-                <ThemedText type="smallBold">{tx(`转给 ${props.names.get(transfer.toParticipantId) ?? '同行者'}`, `Pay ${props.names.get(transfer.toParticipantId) ?? 'Traveller'}`)}</ThemedText>
-                <ThemedText style={styles.transferAmount}>{formatMinorAmount(transfer.amountMinor, props.baseCurrency)}</ThemedText>
-                <Pressable accessibilityRole="button" onPress={() => props.setExpandedSettlementKey(expanded ? undefined : key)} style={({ pressed }) => [styles.textButton, pressed && styles.pressed]}>
-                  <ThemedText type="small" style={{ color: props.linkColor }}>{expanded ? tx('收起付款设置', 'Hide payment settings') : tx('用其他币种付款', 'Pay in another currency')}</ThemedText>
-                </Pressable>
-              </View>
-              <Pressable
-                accessibilityRole="checkbox"
-                accessibilityState={{ checked: false, busy: props.busySettlementId === key }}
-                disabled={Boolean(props.busySettlementId)}
-                onPress={() => void props.completeTransfer(transfer)}
-                style={({ pressed }) => [styles.markPaidButton, { backgroundColor: theme.accent }, props.compact && styles.markPaidButtonCompact, pressed && styles.pressed, Boolean(props.busySettlementId) && styles.disabled]}>
-                <ThemedText type="smallBold" style={{ color: theme.textOnAccent }}>{tx('标记已转账', 'Mark sent')}</ThemedText>
-              </Pressable>
-              {expanded ? (
-                <SettlementPaymentEditor
-                  tx={tx}
-                  baseCurrency={props.baseCurrency}
-                  currencyOptions={props.currencyOptions}
-                  transfer={transfer}
-                  draft={draft}
-                  setDraft={(next) => props.setSettlementDrafts((current) => ({ ...current, [key]: next }))}
-                />
-              ) : null}
-            </View>
-          );
-        })}
-      </View>
-
-      {mySettlements.length > 0 ? (
-        <View style={styles.sectionBlock}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityState={{ expanded: showCompleted }}
-            onPress={() => setShowCompleted((current) => !current)}
-            style={({ pressed }) => [styles.settlementDisclosure, { borderTopColor: theme.border }, pressed && styles.pressed]}>
-            <View style={styles.grow}>
-              <ThemedText type="smallBold">{tx('已完成', 'Completed')}</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">{tx(`${mySettlements.length} 笔`, `${mySettlements.length} payment${mySettlements.length === 1 ? '' : 's'}`)}</ThemedText>
-            </View>
-            <Chevron color={props.linkColor} direction={showCompleted ? 'down' : 'right'} />
-          </Pressable>
-          {showCompleted ? mySettlements.map((settlement) => {
-            const sentByMe = settlement.fromUserId === props.currentUserId;
-            const otherMember = props.memberById.get(sentByMe ? settlement.toUserId : settlement.fromUserId);
-            return (
-              <View key={settlement.id} style={[styles.completedRow, { borderTopColor: theme.border }]}>
-                <MemberAvatar avatarUrl={otherMember?.avatarUrl} displayName={otherMember?.displayName ?? tx('同行者', 'Traveller')} size={38} />
-                <View style={styles.grow}>
-                  <ThemedText type="smallBold">
-                    {sentByMe
-                      ? tx(`已转给 ${props.names.get(settlement.toUserId) ?? '同行者'}`, `Sent to ${props.names.get(settlement.toUserId) ?? 'Traveller'}`)
-                      : tx(`已收到 ${props.names.get(settlement.fromUserId) ?? '同行者'} 的转账`, `Received from ${props.names.get(settlement.fromUserId) ?? 'Traveller'}`)}
-                  </ThemedText>
-                  <ThemedText type="small" themeColor="textSecondary">{formatMinorAmount(settlement.amountMinor, settlement.currency)}</ThemedText>
-                </View>
-                {sentByMe ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    disabled={Boolean(props.busySettlementId)}
-                    onPress={() => void props.undoTransfer(settlement)}
-                    style={({ pressed }) => [styles.textButton, pressed && styles.pressed, Boolean(props.busySettlementId) && styles.disabled]}>
-                    <ThemedText type="smallBold" style={{ color: props.linkColor }}>{tx('恢复未转账', 'Mark unsent')}</ThemedText>
-                  </Pressable>
-                ) : (
-                  <ThemedText type="smallBold" style={{ color: props.positiveColor }}>{tx('已收入', 'Received')}</ThemedText>
-                )}
-              </View>
-            );
-          }) : null}
-        </View>
-      ) : null}
-
-      <Pressable
-        accessibilityRole="button"
-        accessibilityState={{ expanded: props.showGroupSettlement }}
-        onPress={props.toggleGroupSettlement}
-        style={({ pressed }) => [styles.settlementDisclosure, { borderTopColor: theme.border }, pressed && styles.pressed]}>
-        <View style={styles.grow}>
-          <ThemedText type="smallBold">{tx('全员结算', 'Group settlement')}</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">{tx('查看全员状态', 'View group status')}</ThemedText>
-        </View>
-        <Chevron color={props.linkColor} direction={props.showGroupSettlement ? 'down' : 'right'} />
-      </Pressable>
-
-      {props.showGroupSettlement ? <View style={styles.sectionBlock}>
-        {props.balanceSnapshots.map((snapshot) => (
-          <View key={snapshot.currency} style={styles.groupCurrency}>
-            <ThemedText type="smallBold" style={[styles.currencyDivider, { color: props.positiveColor }]}>{snapshot.currency}</ThemedText>
-            {[...props.names.entries()].map(([userId, displayName]) => {
-              const member = props.memberById.get(userId);
-              const pendingOut = sumTransfers(snapshot.outstandingTransfers, 'from', userId);
-              const pendingIn = sumTransfers(snapshot.outstandingTransfers, 'to', userId);
-              const sent = sumSettlements(props.settlements, snapshot.currency, 'from', userId);
-              const received = sumSettlements(props.settlements, snapshot.currency, 'to', userId);
-              return (
-                <View key={userId} style={[styles.memberSettlementRow, { borderTopColor: theme.border }]}>
-                  <View style={styles.memberIdentity}>
-                    <MemberAvatar avatarUrl={member?.avatarUrl} displayName={displayName} size={36} />
-                    <View style={styles.grow}><ThemedText type="smallBold">{displayName}</ThemedText>{member?.archived ? <ThemedText type="small" themeColor="textSecondary">{tx('已离开行程', 'Left trip')}</ThemedText> : null}</View>
-                  </View>
-                  <View style={styles.memberMetrics}>
-                    <MiniMetric label={tx('待转', 'Due')} value={pendingOut} currency={snapshot.currency} />
-                    <MiniMetric label={tx('已转', 'Sent')} value={sent} currency={snapshot.currency} />
-                    <MiniMetric label={tx('待收', 'Expected')} value={pendingIn} currency={snapshot.currency} />
-                    <MiniMetric label={tx('已收', 'Received')} value={received} currency={snapshot.currency} color={props.positiveColor} />
-                  </View>
-                </View>
-              );
-            })}
-          </View>
-        ))}
-        {props.pendingTransfers.length > 0 ? (
-          <View style={[styles.groupRouteList, { borderTopColor: theme.border }]}>
-            <ThemedText type="smallBold">{tx('剩余转账路径', 'Remaining transfers')}</ThemedText>
-            {props.pendingTransfers.map((transfer) => {
-              const from = props.memberById.get(transfer.fromParticipantId);
-              const to = props.memberById.get(transfer.toParticipantId);
-              return <View key={`${transfer.currency}-${transfer.fromParticipantId}-${transfer.toParticipantId}`} style={styles.routeRow}><MemberAvatar avatarUrl={from?.avatarUrl} displayName={from?.displayName ?? tx('同行者', 'Traveller')} size={30} /><ThemedText type="small" themeColor="textSecondary" style={styles.routeText}>{tx(`${from?.displayName ?? '同行者'} → ${to?.displayName ?? '同行者'}`, `${from?.displayName ?? 'Traveller'} → ${to?.displayName ?? 'Traveller'}`)}</ThemedText><MemberAvatar avatarUrl={to?.avatarUrl} displayName={to?.displayName ?? tx('同行者', 'Traveller')} size={30} /><ThemedText type="smallBold">{formatMinorAmount(transfer.amountMinor, transfer.currency)}</ThemedText></View>;
-            })}
-          </View>
-        ) : props.balanceSnapshots.length > 0 ? (
-          <ThemedText type="smallBold" style={{ color: props.positiveColor }}>{tx('全部结清', 'All settled')}</ThemedText>
-        ) : null}
-      </View> : null}
-    </View>
-  );
-}
-
 function ExpenseActivity(props: {
   tx: (zh: string, en: string) => string;
   expenses: Expense[];
@@ -1481,40 +1200,9 @@ function ExpenseActivity(props: {
   );
 }
 
-function MiniMetric({ label, value, currency, color }: { label: string; value: number; currency: string; color?: string }) {
-  return (
-    <View style={styles.miniMetric}>
-      <ThemedText type="small" themeColor="textSecondary">{label}</ThemedText>
-      <ThemedText type="smallBold" style={color && value > 0 ? { color } : undefined}>{formatMinorAmount(value, currency)}</ThemedText>
-    </View>
-  );
-}
-
-function sumTransfers(transfers: SettlementTransfer[], direction: 'from' | 'to', userId: string) {
-  return transfers.reduce((sum, transfer) => {
-    const matches = direction === 'from'
-      ? transfer.fromParticipantId === userId
-      : transfer.toParticipantId === userId;
-    return matches ? sum + transfer.amountMinor : sum;
-  }, 0);
-}
-
-function sumSettlements(settlements: Settlement[], currency: string, direction: 'from' | 'to', userId: string) {
-  return settlements.reduce((sum, settlement) => {
-    const matches = settlement.currency === currency && (direction === 'from'
-      ? settlement.fromUserId === userId
-      : settlement.toUserId === userId);
-    return matches ? sum + settlement.amountMinor : sum;
-  }, 0);
-}
-
-function amountInputFromMinor(amountMinor: number, currency: string) {
-  const digits = currencyMinorDigits(currency);
-  return (amountMinor / 10 ** digits).toFixed(digits);
-}
-
 const styles = StyleSheet.create({
-  workspace: { gap: 30 },
+  quietEmpty: { gap: 4, paddingVertical: 22, borderTopWidth: StyleSheet.hairlineWidth },
+  sectionTitle: { fontSize: 20, lineHeight: 26, letterSpacing: -0.2 },
   activityWorkspace: { gap: 12 },
   toolbar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   floatingAdd: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', shadowOpacity: 0.2, shadowRadius: 14, shadowOffset: { width: 0, height: 6 } },
@@ -1552,39 +1240,7 @@ const styles = StyleSheet.create({
   secondaryAction: { minHeight: 44, flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14, borderRadius: 12 },
   receiptPreviewRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   receiptPreview: { width: 80, height: 80, borderRadius: 12 },
-  personalSummary: { gap: 18, paddingVertical: 6 },
-  summaryHeading: { gap: 4 },
-  sectionTitle: { fontSize: 22, lineHeight: 28, fontWeight: '700' },
-  personalCurrencyRow: { gap: 10, paddingVertical: 14, borderTopWidth: StyleSheet.hairlineWidth },
-  currencyIdentity: { gap: 2 },
-  currencyCode: { minWidth: 42, paddingBottom: 2 },
-  sectionBlock: { gap: 0 },
-  sectionHeading: { gap: 4, paddingBottom: 10 },
-  transferRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingVertical: 16, borderTopWidth: StyleSheet.hairlineWidth },
-  transferRowCompact: { flexDirection: 'column', alignItems: 'stretch', flexWrap: 'nowrap', gap: 10 },
-  transferCopy: { gap: 2, flex: 1 },
-  transferAmount: { fontSize: 22, lineHeight: 28, fontWeight: '700' },
-  markPaidButton: { minHeight: 44, minWidth: 112, alignItems: 'center', justifyContent: 'center', borderRadius: 12, paddingHorizontal: 14 },
-  markPaidButtonCompact: { width: '100%' },
-  paymentEditor: { flexBasis: '100%', gap: 10, paddingTop: 8, paddingLeft: 54 },
-  paymentEditorCompact: { width: '100%', flexBasis: 'auto', paddingLeft: 0 },
-  paymentEditorFields: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', gap: 12 },
-  paymentEditorFieldsCompact: { flexDirection: 'column', alignItems: 'stretch', flexWrap: 'nowrap' },
-  paymentCurrencyField: { width: 150 },
-  paymentCurrencyFieldCompact: { width: '100%' },
-  completedRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, borderTopWidth: StyleSheet.hairlineWidth },
   textButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 4 },
-  quietEmpty: { gap: 4, paddingVertical: 22, borderTopWidth: StyleSheet.hairlineWidth },
-  settlementDisclosure: { minHeight: 60, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, borderTopWidth: StyleSheet.hairlineWidth },
-  groupCurrency: { gap: 0, paddingBottom: 18 },
-  currencyDivider: { paddingVertical: 10 },
-  memberSettlementRow: { gap: 8, paddingVertical: 13, borderTopWidth: StyleSheet.hairlineWidth },
-  memberIdentity: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  memberName: { flex: 1 },
-  memberMetrics: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  miniMetric: { minWidth: '45%', flexGrow: 1, gap: 1 },
-  groupRouteList: { gap: 5, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth },
-  routeRow: { minHeight: 44, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 }, routeText: { flexGrow: 1, flexShrink: 1 },
   expenseItem: {},
   expenseSummary: { minHeight: 68, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14 },
   expenseAmountBlock: { alignItems: 'flex-end', gap: 2 },
