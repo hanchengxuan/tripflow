@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 
 import { BottomSheet } from '@/components/bottom-sheet';
+import { ConfirmSheet } from '@/components/confirm-sheet';
 import { DateTimePairField } from '@/components/date-time-pair-field';
 import { DestinationField } from '@/components/destination-field';
 import { DestinationSettings } from '@/components/destination-settings';
 import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/form-controls';
 import { ItineraryEditAssistant } from '@/components/itinerary-edit-assistant';
 import { LocationField } from '@/components/location-field';
+import { SettingsDivider, SettingsGroup, SettingsRow } from '@/components/settings-list';
 import { ThemedText } from '@/components/themed-text';
 import { getCurrencyOptions, getTimeZoneOptions, itineraryKindLabels, itineraryKindLabelsEn, itineraryKinds } from '@/constants/options';
 import { Spacing } from '@/constants/theme';
@@ -17,6 +19,23 @@ import { useI18n } from '@/features/i18n/i18n-provider';
 import { toUserMessage } from '@/lib/user-error';
 import { formatZonedDateTimeRange, isoToZonedDateTime, zonedDateTimeToIso } from '@/lib/trip-time';
 import { useTheme } from '@/hooks/use-theme';
+
+function formatLocalizedDateRange(startsOn: string, endsOn: string, locale: string) {
+  const options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'short', day: 'numeric' };
+  const start = new Date(`${startsOn}T12:00:00`).toLocaleDateString(locale, options);
+  const end = new Date(`${endsOn}T12:00:00`).toLocaleDateString(locale, options);
+  return `${start} — ${end}`;
+}
+
+interface PlanAction {
+  key: string;
+  title: string;
+  onPress: () => void;
+  busy?: boolean;
+  /** Acts on this panel rather than opening another, so it carries no chevron. */
+  inPlace?: boolean;
+  danger?: boolean;
+}
 
 export interface ItineraryComposerSheetProps {
   activeTrip: Trip;
@@ -46,6 +65,13 @@ export interface ItineraryComposerSheetProps {
   onSuccess?: (message: string) => void;
   /** Opens the branch sheet for this plan. Absent when branching does not apply. */
   onSplitFromHere?: () => void;
+  /** Opens this plan's location in the platform's map app. */
+  onOpenMap?: () => void;
+  /** Adds the transfer from the previous place to this stay. Acts in place. */
+  onAddStayTransfer?: () => void;
+  addingStayTransfer?: boolean;
+  /** Opens the move-to-another-trip sheet for this plan. */
+  onMove?: () => void;
   visible: boolean;
 }
 
@@ -60,6 +86,10 @@ export function ItineraryComposerSheet({
   onSave,
   onSuccess,
   onSplitFromHere,
+  onOpenMap,
+  onAddStayTransfer,
+  addingStayTransfer = false,
+  onMove,
   visible,
 }: ItineraryComposerSheetProps) {
   const { locale, languageTag, tx } = useI18n();
@@ -225,8 +255,8 @@ export function ItineraryComposerSheet({
         tripRangeChanged
           ? tx('行程日期已扩展，安排已加入时间线。', 'Trip dates were extended and the plan was added to the timeline.')
           : editingItem
-          ? (kind === 'lodging' ? tx('住宿已更新。', 'Stay updated.') : tx('安排已更新。', 'Plan updated.'))
-          : (kind === 'lodging' ? tx('住宿已加入时间线。', 'Stay added to the timeline.') : tx('安排已加入共享时间线。', 'Plan added to the shared timeline.')),
+          ? (kind === 'lodging' ? tx('住宿已更新；旧的酒店交通已移除，请按需要重新添加。', 'Stay updated. Its old hotel transfer was removed so you can add a fresh route.') : tx('安排已更新。', 'Plan updated.'))
+          : (kind === 'lodging' ? tx('住宿已按入住区间加入，不需要每天重复添加。', 'Stay added for the full date range. No daily duplicates needed.') : tx('安排已加入共享时间线。', 'Plan added to the shared timeline.')),
       );
     } catch (caught) {
       setFormError(toUserMessage(caught, tx('无法保存行程安排，请稍后重试。', 'Could not save this plan. Please try again.')));
@@ -252,6 +282,45 @@ export function ItineraryComposerSheet({
     }
   }
 
+  // The plan's own actions, in the order a reader needs them: look at it,
+  // extend it, move it, split from it, then the irreversible one last.
+  const planActions: PlanAction[] = editingItem ? ([
+    onOpenMap ? { key: 'map', title: tx('查看地图', 'Open map'), onPress: onOpenMap } : undefined,
+    onAddStayTransfer
+      ? { key: 'transfer', title: addingStayTransfer ? tx('正在添加…', 'Adding…') : tx('添加前往酒店', 'Add hotel transfer'), onPress: onAddStayTransfer, busy: addingStayTransfer, inPlace: true }
+      : undefined,
+    onMove ? { key: 'move', title: tx('移动到其他行程', 'Move to another trip'), onPress: onMove } : undefined,
+    onSplitFromHere ? { key: 'split', title: tx('从这里分开走', 'Split off from here'), onPress: onSplitFromHere } : undefined,
+    { key: 'delete', title: tx('删除这项安排', 'Delete this plan'), onPress: () => setConfirmDeleteItem(true), danger: true },
+  ] as (PlanAction | undefined)[]).filter((action): action is PlanAction => Boolean(action)) : [];
+
+  // Confirming a deletion takes over the panel rather than swapping the footer
+  // underneath the form. The old shape put the confirmation where 保存 had
+  // been, so edits already typed had no way out; here 取消 restores the form
+  // with every field intact, and the destructive action is prominent with
+  // 取消 below it and separated.
+  if (confirmDeleteItem && editingItem) {
+    const when = formatZonedDateTimeRange(
+      editingItem.startsAt,
+      editingItem.endsAt,
+      languageTag,
+      editingItem.destination?.timeZone ?? activeTrip.defaultTimeZone,
+    );
+    const where = editingItem.destination?.cityName ?? editingItem.locationLabel;
+    return (
+      <ConfirmSheet
+        busy={busy}
+        confirmLabel={tx('删除这项安排', 'Delete this plan')}
+        consequence={tx('此操作无法恢复，同行的人也会看到这项安排消失。', 'This cannot be undone, and everyone on the trip will see it disappear.')}
+        detail={[when, where].filter(Boolean).join(' · ')}
+        error={formError}
+        onConfirm={() => void deleteSelectedItem()}
+        onDismiss={() => setConfirmDeleteItem(false)}
+        title={tx(`删除“${editingItem.title}”？`, `Delete “${editingItem.title}”?`)}
+        visible={visible}
+      />
+    );
+  }
   return (
     <BottomSheet
       onDismiss={onDismiss}
@@ -362,37 +431,34 @@ export function ItineraryComposerSheet({
             }}
           />
         ) : null}
-        {editingItem && !confirmDeleteItem ? (
-          <View style={styles.itemActions}>
-            {onSplitFromHere ? (
-              <Pressable accessibilityRole="button" onPress={onSplitFromHere} style={({ pressed }) => [styles.itemAction, pressed && styles.pressed]}>
-                <ThemedText type="smallBold" themeColor="link">{tx('从这里分开走', 'Split off from here')}</ThemedText>
-              </Pressable>
-            ) : null}
-            <Pressable accessibilityRole="button" onPress={() => setConfirmDeleteItem(true)} style={({ pressed }) => [styles.itemAction, pressed && styles.pressed]}>
-              <ThemedText type="smallBold" style={{ color: theme.danger }}>{tx('删除这项安排', 'Delete this plan')}</ThemedText>
-            </Pressable>
-          </View>
+        {editingItem && planActions.length > 0 ? (
+          <SettingsGroup>
+            {planActions.map((action, index) => (
+              <View key={action.key}>
+                {index > 0 ? <SettingsDivider /> : null}
+                <SettingsRow
+                  accessibilityLabel={action.title}
+                  busy={action.busy}
+                  chevron={!action.inPlace}
+                  disabled={action.busy}
+                  label={action.title}
+                  labelColor={action.danger ? 'danger' : undefined}
+                  onPress={action.onPress}
+                />
+              </View>
+            ))}
+          </SettingsGroup>
         ) : null}
         {pendingTripRange ? (
           <View style={styles.rangeConfirm}>
-            <InlineNotice>{tx(`这项安排超出当前行程。要把行程调整为 ${pendingTripRange.startsOn} — ${pendingTripRange.endsOn} 吗？`, `This plan is outside the current trip. Extend it to ${pendingTripRange.startsOn} — ${pendingTripRange.endsOn}?`)}</InlineNotice>
+            <InlineNotice>{tx(`这项安排超出当前行程。要把行程调整为 ${formatLocalizedDateRange(pendingTripRange.startsOn, pendingTripRange.endsOn, languageTag)} 吗？`, `This plan is outside the current trip. Extend it to ${formatLocalizedDateRange(pendingTripRange.startsOn, pendingTripRange.endsOn, languageTag)}?`)}</InlineNotice>
             <View style={styles.formActions}>
               <View style={styles.actionGrow}><ActionButton tone="secondary" onPress={() => setPendingTripRange(undefined)}>{tx('返回修改', 'Edit dates')}</ActionButton></View>
               <View style={styles.actionGrow}><ActionButton busy={busy} onPress={() => void submitItem(true)}>{tx('调整并加入', 'Extend and add')}</ActionButton></View>
             </View>
           </View>
         ) : null}
-        {confirmDeleteItem && editingItem ? (
-          <View style={[styles.deleteConfirm, { borderTopColor: theme.backgroundSelected }]}>
-            <ThemedText type="smallBold">{tx(`删除“${editingItem.title}”？`, `Delete “${editingItem.title}”?`)}</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">{tx('此操作无法恢复。', 'This cannot be undone.')}</ThemedText>
-            <View style={styles.formActions}>
-              <View style={styles.actionGrow}><ActionButton tone="secondary" onPress={() => setConfirmDeleteItem(false)}>{tx('保留', 'Keep')}</ActionButton></View>
-              <View style={styles.actionGrow}><Pressable accessibilityRole="button" disabled={busy} onPress={() => void deleteSelectedItem()} style={({ pressed }) => [styles.dangerConfirm, { backgroundColor: theme.danger }, pressed && styles.pressed, busy && styles.disabled]}><ThemedText type="smallBold" style={{ color: theme.textOnAccent }}>{busy ? tx('删除中…', 'Deleting…') : tx('删除', 'Delete')}</ThemedText></Pressable></View>
-            </View>
-          </View>
-        ) : !pendingTripRange ? (
+        {!pendingTripRange ? (
           <ActionButton busy={busy} disabled={!title.trim() || (kind === 'lodging' && !location.trim())} onPress={() => void submitItem()}>{editingItem ? tx('保存', 'Save') : tx('加入行程', 'Add')}</ActionButton>
         ) : null}
         {formError ? <InlineNotice tone="error">{formError}</InlineNotice> : null}
@@ -409,11 +475,5 @@ const styles = StyleSheet.create({
   dateTimeRowStacked: { flexDirection: 'column' },
   formActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   actionGrow: { flexGrow: 1, flexBasis: 150 },
-  itemActions: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: Spacing.md },
-  itemAction: { minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   lockedDestination: { borderRadius: 12, padding: 14, gap: 3 },
-  deleteConfirm: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 14, gap: 10 },
-  dangerConfirm: { minHeight: 48, borderRadius: 12, paddingHorizontal: 14, justifyContent: 'center', alignItems: 'center' },
-  pressed: { opacity: 0.68 },
-  disabled: { opacity: 0.5 },
 });
