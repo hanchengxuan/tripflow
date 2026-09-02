@@ -1,0 +1,57 @@
+<div class="screen tagged" style="height:720px">
+  <div class="tag tag-new">提案 · 一个列表面板，选择是勾选而不是描边</div>
+  <div style="position:absolute;inset:28px 0 0;background:rgba(12,25,36,0.32)"></div>
+
+  <div class="sheet" style="top:56px;bottom:0;overflow:hidden">
+    <div class="grab"></div>
+    <div class="sheet-h"><h2>从这里分开走</h2><div class="l-t" style="color:var(--text2)">取消</div></div>
+    <div class="sheet-body">
+
+      <!-- The consequence keeps its own shape: InlineNotice, which is what the
+           system already uses to state one. -->
+      <div class="notice"><div class="bar"></div>
+        <p>3月14日 08:30 起的安排会移到分支里，只有同行的人看得到。账本仍然是整个行程一本。</p></div>
+
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div class="f-label">分支名称</div><div class="input" style="color:var(--text)">后半段</div></div>
+      <div style="display:flex;gap:12px">
+        <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+          <div class="f-label">从</div><div class="input" style="color:var(--text);font-size:14px">3月14日 08:30</div></div>
+        <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+          <div class="f-label">到</div><div class="input" style="color:var(--text);font-size:14px">3月16日 23:59</div></div>
+      </div>
+
+      <!-- One surface, hairline-separated rows, a trailing check. The count is
+           stated once, so 「谁继续同行」 no longer has to be counted by eye. -->
+      <div style="display:flex;flex-direction:column;gap:8px" id="people">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px">
+          <div class="group" style="padding:0">谁继续同行</div><div class="l-s">4 / 5 人</div></div>
+        <div class="list" style="background:var(--subtle)">
+          <div class="srow" style="min-height:52px"><div class="av">寒</div><div class="lab">寒橙</div>
+            <div class="check on"><svg width="12" height="10" viewBox="0 0 12 10" fill="none" aria-hidden="true">
+              <path d="m1.4 5.2 3.2 3.2L10.6 1.6" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
+          <div class="hair"></div>
+          <div class="srow" style="min-height:52px"><div class="av">林</div><div class="lab">林小雨</div>
+            <div class="check on"><svg width="12" height="10" viewBox="0 0 12 10" fill="none" aria-hidden="true">
+              <path d="m1.4 5.2 3.2 3.2L10.6 1.6" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
+          <div class="hair"></div>
+          <div class="srow" style="min-height:52px"><div class="av">周</div><div class="lab">周舟</div>
+            <div class="check on"><svg width="12" height="10" viewBox="0 0 12 10" fill="none" aria-hidden="true">
+              <path d="m1.4 5.2 3.2 3.2L10.6 1.6" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
+          <div class="hair"></div>
+          <!-- Not going: the row dims its name and the check is empty. The
+               state is still named for a reader who cannot see either. -->
+          <div class="srow" style="min-height:52px"><div class="av" style="background:var(--bg);color:var(--muted)">陈</div>
+            <div class="lab" style="color:var(--muted)">陈默<span class="l-s" style="color:var(--muted)"> · 不去</span></div>
+            <div class="check off"></div></div>
+          <div class="hair"></div>
+          <div class="srow" style="min-height:52px"><div class="av">阿</div><div class="lab">阿岚</div>
+            <div class="check on"><svg width="12" height="10" viewBox="0 0 12 10" fill="none" aria-hidden="true">
+              <path d="m1.4 5.2 3.2 3.2L10.6 1.6" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
+        </div>
+      </div>
+
+      <div class="btn btn-p">创建分支</div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,78 @@
+<div class="screen tagged">
+  <div class="tag tag-new">提案 · 地图即画布，紧凑地点卡贴在下缘</div>
+
+  <!-- The screen stops scrolling. Header, then the map takes every remaining
+       pixel. A compact card names the selected place; the full plan list is
+       one tap away — Google's Places UI Kit calls these the compact and the
+       full layout, and Apple Maps' lowest detent is the same idea. -->
+  <div class="frame">
+    <div class="hdr">
+      <h1>地图</h1>
+      <div class="ctx">东京 3 月 · 6 个地点 · 24 项安排</div>
+    </div>
+
+    <!-- The legend states each status in words next to its colour, so the map
+         never carries meaning by hue alone. -->
+    <div class="legend">
+      <span><i style="background:var(--mapRoute)"></i>正在这里</span>
+      <span><i style="background:var(--accent)"></i>准备前往</span>
+      <span><i style="background:var(--mapMarker);box-shadow:inset 0 0 0 1px var(--border)"></i>已去过</span>
+    </div>
+
+    <div style="flex:1;min-height:0;position:relative;padding-bottom:82px">
+      <div class="map" id="map" style="position:absolute;inset:0 0 82px 0;border-radius:20px">
+        <div class="grid" style="left:0;right:0;top:90px;height:1px"></div>
+        <div class="grid" style="left:0;right:0;top:180px;height:1px"></div>
+        <div class="grid" style="left:0;right:0;top:270px;height:1px"></div>
+        <div class="grid" style="left:0;right:0;top:360px;height:1px"></div>
+        <div class="grid" style="left:0;right:0;top:450px;height:1px"></div>
+        <div class="grid" style="top:0;bottom:0;left:60px;width:1px"></div>
+        <div class="grid" style="top:0;bottom:0;left:140px;width:1px"></div>
+        <div class="grid" style="top:0;bottom:0;left:220px;width:1px"></div>
+        <div class="grid" style="top:0;bottom:0;left:290px;width:1px"></div>
+        <div class="land" style="left:14px;top:96px;width:150px;height:118px"></div>
+        <div class="land" style="left:150px;top:60px;width:130px;height:150px;border-radius:52% 48% 44% 56%"></div>
+        <div class="land on" style="left:96px;top:206px;width:180px;height:132px;border-radius:48% 52% 56% 44%"></div>
+        <div class="land" style="left:22px;top:322px;width:120px;height:96px;border-radius:56% 44% 48% 52%"></div>
+
+        <svg style="position:absolute;inset:0" width="350" height="560" aria-hidden="true">
+          <polyline points="120,150 196,132 214,238 168,268 138,350"
+            fill="none" stroke="var(--mapRoute)" stroke-width="3" stroke-linecap="round"
+            stroke-linejoin="round" opacity="0.86"/>
+        </svg>
+        <div class="pin" style="left:120px;top:150px;background:var(--mapMarker);color:var(--mapBg)">3</div>
+        <div class="pin" style="left:196px;top:132px;background:var(--mapMarker);color:var(--mapBg)">2</div>
+        <div class="glow" style="left:214px;top:238px;background:var(--mapRoute)"></div>
+        <div class="pin sel" style="left:214px;top:238px;background:var(--mapRoute);color:#16211F">9</div>
+        <div class="pin" style="left:168px;top:268px;background:var(--accent);color:#fff">6</div>
+        <div class="pin" style="left:138px;top:350px;background:var(--accent);color:#fff">4</div>
+
+        <!-- One tonal surface with one ambient shadow. No border under a shadow. -->
+        <div style="position:absolute;right:14px;top:14px;display:flex;flex-direction:column;
+          border-radius:13px;overflow:hidden;box-shadow:0 3px 10px rgba(0,0,0,0.22)">
+          <div class="ctl">＋</div>
+          <div class="hair"></div>
+          <div class="ctl">−</div>
+          <div class="hair"></div>
+          <div class="ctl" style="font-size:13px">1:1</div>
+        </div>
+      </div>
+
+      <!-- Compact place card: who is selected, its status, how many plans, and
+           one way in. It is one row tall, so the map keeps the frame. -->
+      <div id="panel" style="position:absolute;left:0;right:0;bottom:82px;background:var(--surface);
+        border-radius:16px;padding:0 16px;box-shadow:0 6px 20px rgba(22,33,31,0.16)">
+        <div class="lrow" style="min-height:68px">
+          <div class="copy">
+            <div style="font-size:17px;line-height:24px;font-weight:600">京都</div>
+            <div class="l-s">正在这里 · 9 项安排 · Asia/Tokyo · JPY</div>
+          </div>
+          <svg width="8" height="14" viewBox="0 0 8 14" fill="none" aria-hidden="true" style="flex:none">
+            <path d="m1.4 1.4 5.2 5.6-5.2 5.6" stroke="#8A9491" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="nav"><span>今天</span><span>行程</span><span class="on">地图</span><span>账本</span><span>我的</span></div>
+</div>

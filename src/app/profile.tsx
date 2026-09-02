@@ -1,15 +1,19 @@
 import { useState } from 'react';
-import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { Link, type Href } from 'expo-router';
-import { LayoutAnimation, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Image } from 'expo-image';
+import { useRouter, type Href } from 'expo-router';
+import { StyleSheet, View } from 'react-native';
 
-import { Chevron } from '@/components/chevron';
-import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/form-controls';
-import { OtpCodeInput } from '@/components/otp-code-input';
+import { BottomSheet } from '@/components/bottom-sheet';
+import { ActionButton, ChoiceChip, InlineNotice } from '@/components/form-controls';
+import { PasswordSheet } from '@/components/password-sheet';
+import { ProfileEditSheet, type AvatarDraft } from '@/components/profile-edit-sheet';
 import { Screen } from '@/components/screen';
+import { SettingsDivider, SettingsGroup, SettingsRow } from '@/components/settings-list';
+import { SignInMethodsSheet } from '@/components/sign-in-methods-sheet';
 import { ThemedText } from '@/components/themed-text';
 import { tripRoleLabels, tripRoleLabelsEn } from '@/constants/options';
+import { Spacing } from '@/constants/theme';
 import { beginEmailLink, beginPhoneLink, changePassword, deleteAccount, linkGoogleIdentity, setInitialPassword, signOut, verifyEmailLink, verifyPhoneLink } from '@/features/auth/auth-service';
 import { useAuth } from '@/features/auth/auth-provider';
 import { useI18n } from '@/features/i18n/i18n-provider';
@@ -17,98 +21,61 @@ import { useMvp } from '@/features/mvp/mvp-provider';
 import { useTheme } from '@/hooks/use-theme';
 import { toUserMessage } from '@/lib/user-error';
 
-type AvatarDraft = { uri: string; mimeType?: string | null };
+type Panel = 'profile' | 'signIn' | 'password' | 'delete';
 
+/**
+ * Me.
+ *
+ * Every row on this screen is written the same way, and its trailing element
+ * says what pressing it does: a chevron opens a panel, a value or a control
+ * does not. The forms that used to unfold in place — profile, sign-in methods,
+ * password, account deletion — are the bottom sheets the rest of the product
+ * already uses, so nothing on this page grows and pushes the rows below it out
+ * from under the reader's thumb.
+ */
 export default function ProfileScreen() {
   const theme = useTheme();
-  const { width } = useWindowDimensions();
-  const compact = width < 520;
+  const router = useRouter();
   const { locale, setLocale, tx } = useI18n();
   const { capabilities, session } = useAuth();
   const { profile, activeTrip, members, currentUserId, saveProfile } = useMvp();
-  const [editing, setEditing] = useState(false);
+  const [panel, setPanel] = useState<Panel>();
   const [draftName, setDraftName] = useState('');
   const [avatarDraft, setAvatarDraft] = useState<AvatarDraft>();
   const [busyAction, setBusyAction] = useState<'save' | 'signout' | 'delete'>();
-  const [confirmingDeletion, setConfirmingDeletion] = useState(false);
   const [notice, setNotice] = useState<{ tone: 'info' | 'error'; text: string }>();
-  const [linkMode, setLinkMode] = useState<'email' | 'phone'>();
-  const [linkValue, setLinkValue] = useState('');
-  const [linkToken, setLinkToken] = useState('');
-  const [linkCodeSent, setLinkCodeSent] = useState(false);
-  const [showSignInMethods, setShowSignInMethods] = useState(false);
+  const [panelError, setPanelError] = useState<string>();
+
   const membership = members.find(({ userId }) => userId === currentUserId);
+  const roleLabel = membership
+    ? (locale === 'zh-CN' ? tripRoleLabels[membership.role] : tripRoleLabelsEn[membership.role])
+    : undefined;
   const shownName = profile?.displayName || tx('旅行者', 'Traveller');
   const avatarSource = avatarDraft?.uri ?? profile?.avatarUrl;
   const initials = shownName.trim().slice(0, 2).toUpperCase();
-  const hasChanges = Boolean(
-    avatarDraft || (draftName.trim() && draftName.trim() !== profile?.displayName),
-  );
-  const googleLinked = session?.user.identities?.some(({ provider }) => provider === 'google');
+  const hasChanges = Boolean(avatarDraft || (draftName.trim() && draftName.trim() !== profile?.displayName));
+  const googleLinked = Boolean(session?.user.identities?.some(({ provider }) => provider === 'google'));
   // A provider-only account has no password to re-authenticate against.
   const hasPassword = session?.user.identities?.some(({ provider }) => provider === 'email') ?? false;
-  const [passwordOpen, setPasswordOpen] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [nextPassword, setNextPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const linkedMethods = [
+    session?.user.email ? tx('邮箱', 'Email') : undefined,
+    session?.user.phone ? tx('手机号', 'Phone') : undefined,
+    googleLinked ? 'Google' : undefined,
+  ].filter(Boolean);
 
-  async function startLink() {
-    if (!linkMode) return;
-    setBusyAction('save');
+  function openPanel(next: Panel) {
     setNotice(undefined);
-    try {
-      const normalized = linkMode === 'email' ? await beginEmailLink(linkValue) : await beginPhoneLink(linkValue);
-      setLinkValue(normalized);
-      setLinkToken('');
-      setLinkCodeSent(true);
-    } catch (caught) {
-      setNotice({ tone: 'error', text: toUserMessage(caught, tx('无法发送验证码，请检查后重试。', 'Could not send a code. Check the value and try again.')) });
-    } finally {
-      setBusyAction(undefined);
+    setPanelError(undefined);
+    if (next === 'profile') {
+      setDraftName(profile?.displayName ?? '');
+      setAvatarDraft(undefined);
     }
+    setPanel(next);
   }
 
-  async function confirmLink() {
-    if (!linkMode) return;
-    setBusyAction('save');
-    setNotice(undefined);
-    try {
-      if (linkMode === 'email') await verifyEmailLink(linkValue, linkToken);
-      else await verifyPhoneLink(linkValue, linkToken);
-      setNotice({ tone: 'info', text: tx('新的登录方式已绑定到当前账号。', 'The new sign-in method is linked to this account.') });
-      setLinkMode(undefined);
-      setLinkCodeSent(false);
-      setLinkValue('');
-      setLinkToken('');
-    } catch (caught) {
-      setNotice({ tone: 'error', text: toUserMessage(caught, tx('验证码无效或已过期。', 'The code is invalid or expired.')) });
-    } finally {
-      setBusyAction(undefined);
-    }
-  }
-
-  async function linkGoogle() {
-    setBusyAction('save');
-    setNotice(undefined);
-    try {
-      await linkGoogleIdentity();
-    } catch (caught) {
-      setNotice({ tone: 'error', text: toUserMessage(caught, tx('Google 绑定尚未配置或暂时不可用。', 'Google linking is not configured or temporarily unavailable.')) });
-      setBusyAction(undefined);
-    }
-  }
-
-  function beginEditing() {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setDraftName(profile?.displayName ?? '');
-    setAvatarDraft(undefined);
-    setEditing(true);
-    setNotice(undefined);
-  }
-
-  function cancelEditing() {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setEditing(false);
+  function closePanel() {
+    setPanel(undefined);
+    setPanelError(undefined);
     setAvatarDraft(undefined);
     setDraftName('');
   }
@@ -116,10 +83,7 @@ export default function ProfileScreen() {
   async function chooseAvatar() {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      setNotice({
-        tone: 'error',
-        text: tx('请允许访问照片后再选择头像。', 'Allow photo access to choose an avatar.'),
-      });
+      setPanelError(tx('请允许访问照片后再选择头像。', 'Allow photo access to choose an avatar.'));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -135,42 +99,74 @@ export default function ProfileScreen() {
 
   async function save() {
     setBusyAction('save');
-    setNotice(undefined);
+    setPanelError(undefined);
     try {
       await saveProfile({ displayName: draftName, avatar: avatarDraft });
-      setEditing(false);
-      setAvatarDraft(undefined);
+      closePanel();
       setNotice({ tone: 'info', text: tx('个人资料已更新。', 'Profile updated.') });
     } catch (caught) {
-      setNotice({
-        tone: 'error',
-        text: toUserMessage(caught, tx('无法保存个人资料，请稍后重试。', 'Could not save your profile. Please try again.')),
-      });
+      setPanelError(toUserMessage(caught, tx('无法保存个人资料，请稍后重试。', 'Could not save your profile. Please try again.')));
     } finally {
       setBusyAction(undefined);
     }
   }
 
-  function resetPasswordForm() {
-    setCurrentPassword('');
-    setNextPassword('');
-    setConfirmPassword('');
+  async function beginLink(mode: 'email' | 'phone', value: string) {
+    setBusyAction('save');
+    setPanelError(undefined);
+    try {
+      return mode === 'email' ? await beginEmailLink(value) : await beginPhoneLink(value);
+    } catch (caught) {
+      setPanelError(toUserMessage(caught, tx('无法发送验证码，请检查后重试。', 'Could not send a code. Check the value and try again.')));
+      return undefined;
+    } finally {
+      setBusyAction(undefined);
+    }
   }
 
-  async function submitPassword() {
+  async function confirmLink(mode: 'email' | 'phone', value: string, token: string) {
     setBusyAction('save');
-    setNotice(undefined);
+    setPanelError(undefined);
     try {
-      if (nextPassword !== confirmPassword) {
+      if (mode === 'email') await verifyEmailLink(value, token);
+      else await verifyPhoneLink(value, token);
+      closePanel();
+      setNotice({ tone: 'info', text: tx('新的登录方式已绑定到当前账号。', 'The new sign-in method is linked to this account.') });
+      return true;
+    } catch (caught) {
+      setPanelError(toUserMessage(caught, tx('验证码无效或已过期。', 'The code is invalid or expired.')));
+      return false;
+    } finally {
+      setBusyAction(undefined);
+    }
+  }
+
+  async function linkGoogle() {
+    setBusyAction('save');
+    setPanelError(undefined);
+    try {
+      await linkGoogleIdentity();
+    } catch (caught) {
+      setPanelError(toUserMessage(caught, tx('Google 绑定尚未配置或暂时不可用。', 'Google linking is not configured or temporarily unavailable.')));
+      setBusyAction(undefined);
+    }
+  }
+
+  async function submitPassword({ current, next, confirm }: { current: string; next: string; confirm: string }) {
+    setBusyAction('save');
+    setPanelError(undefined);
+    try {
+      if (next !== confirm) {
         throw new Error(tx('两次输入的新密码不一致。', 'The new passwords do not match.'));
       }
-      if (hasPassword) await changePassword(currentPassword, nextPassword);
-      else await setInitialPassword(nextPassword);
-      resetPasswordForm();
-      setPasswordOpen(false);
+      if (hasPassword) await changePassword(current, next);
+      else await setInitialPassword(next);
+      closePanel();
       setNotice({ tone: 'info', text: tx('密码已更新，下次登录请使用新密码。', 'Password updated. Use the new one next time you sign in.') });
+      return true;
     } catch (caught) {
-      setNotice({ tone: 'error', text: toUserMessage(caught, tx('无法更新密码，请稍后重试。', 'Could not update the password. Please try again.')) });
+      setPanelError(toUserMessage(caught, tx('无法更新密码，请稍后重试。', 'Could not update the password. Please try again.')));
+      return false;
     } finally {
       setBusyAction(undefined);
     }
@@ -189,225 +185,158 @@ export default function ProfileScreen() {
 
   async function removeAccount() {
     setBusyAction('delete');
-    setNotice(undefined);
+    setPanelError(undefined);
     try {
       await deleteAccount();
     } catch (caught) {
-      setNotice({ tone: 'error', text: toUserMessage(caught, tx('删除账号失败，请稍后重试。', 'Could not delete the account. Please try again.')) });
+      setPanelError(toUserMessage(caught, tx('删除账号失败，请稍后重试。', 'Could not delete the account. Please try again.')));
       setBusyAction(undefined);
     }
   }
 
+  // Context says who you are on this trip, rather than listing the sections
+  // that follow.
+  const context = [activeTrip?.name, roleLabel].filter(Boolean) as string[];
+
   return (
-    <Screen context={[tx('资料', 'Profile'), tx('偏好', 'Preferences'), tx('安全', 'Security')]} title={tx('我的', 'Me')}>
+    <Screen context={context.length > 0 ? context : [tx('还没有选择行程', 'No trip selected')]} title={tx('我的', 'Me')}>
       {notice ? <InlineNotice tone={notice.tone}>{notice.text}</InlineNotice> : null}
 
-      <View style={[styles.identity, compact && styles.identityCompact]}>
-        <Pressable
-          accessibilityLabel={tx('更换头像', 'Change avatar')}
-          accessibilityRole="button"
-          disabled={!editing}
-          onPress={() => void chooseAvatar()}
-          style={[styles.avatar, { backgroundColor: theme.backgroundSelected }] }>
-          {avatarSource ? (
-            <Image source={{ uri: avatarSource }} style={styles.avatarImage} contentFit="cover" />
-          ) : (
-            <ThemedText style={[styles.initials, { color: theme.accentOnSoft }]}>{initials}</ThemedText>
-          )}
-          {editing ? (
-            <View style={[styles.avatarEditBadge, { backgroundColor: theme.scrim }]}>
-              <ThemedText type="smallBold" style={{ color: theme.textOnScrim }}>{tx('更换', 'Edit')}</ThemedText>
-            </View>
-          ) : null}
-        </Pressable>
-        <View style={styles.identityCopy}>
-          <ThemedText type="subtitle" style={styles.profileName}>{shownName}</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
-            {session?.user.email ?? tx('未提供邮箱', 'No email provided')}
-          </ThemedText>
-        </View>
-        {!editing ? (
-          <Pressable accessibilityRole="button" onPress={beginEditing} style={[styles.editButton, { backgroundColor: theme.backgroundSelected }] }>
-            <ThemedText type="smallBold">{tx('编辑资料', 'Edit')}</ThemedText>
-          </Pressable>
-        ) : null}
-      </View>
-
-      {editing ? (
-        <View style={[styles.editor, { backgroundColor: theme.backgroundElement, shadowColor: theme.shadow }] }>
-          <FormField
-            label={tx('显示名称', 'Display name')}
-            value={draftName}
-            onChangeText={setDraftName}
-            placeholder={tx('例如：小李', 'For example: Liam')}
-            maxLength={80}
-          />
-          <ThemedText type="small" themeColor="textSecondary">
-            {tx('头像支持 JPG、PNG 或 WebP，最大 5 MB。', 'Use a JPG, PNG, or WebP image up to 5 MB.')}
-          </ThemedText>
-          <View style={[styles.editorActions, compact && styles.editorActionsCompact]}>
-            <View style={styles.actionGrow}>
-              <ActionButton tone="secondary" disabled={busyAction === 'save'} onPress={cancelEditing}>{tx('取消', 'Cancel')}</ActionButton>
-            </View>
-            <View style={styles.actionGrow}>
-              <ActionButton busy={busyAction === 'save'} disabled={!draftName.trim() || !hasChanges} onPress={() => void save()}>{tx('保存更改', 'Save changes')}</ActionButton>
-            </View>
-          </View>
-          {!hasChanges ? <ThemedText type="small" themeColor="textSecondary">{tx('修改名称或头像后即可保存。', 'Change your name or avatar to save.')}</ThemedText> : null}
-        </View>
-      ) : null}
-
-      <View style={styles.section}>
-        <ThemedText type="smallBold" themeColor="textSecondary">{tx('偏好设置', 'Preferences')}</ThemedText>
-        <View style={[styles.settingRow, compact && styles.settingRowCompact]}>
-          <View style={styles.settingCopy}>
-            <ThemedText>{tx('界面语言', 'App language')}</ThemedText>
-          </View>
-          <View style={styles.languageChoices}>
-            <ChoiceChip role="radio" selected={locale === 'zh-CN'} onPress={() => setLocale('zh-CN')}>中文</ChoiceChip>
-            <ChoiceChip role="radio" selected={locale === 'en'} onPress={() => setLocale('en')}>EN</ChoiceChip>
-          </View>
-        </View>
-        <View style={[styles.divider, { backgroundColor: theme.backgroundSelected }]} />
-        <SettingValue label={tx('当前行程', 'Current trip')} value={activeTrip?.name ?? tx('尚未选择', 'None selected')} />
-        <View style={[styles.divider, { backgroundColor: theme.backgroundSelected }]} />
-        <SettingValue
-          label={tx('当前权限', 'Trip role')}
-          value={membership ? (locale === 'zh-CN' ? tripRoleLabels[membership.role] : tripRoleLabelsEn[membership.role]) : tx('暂无', 'None')}
-        />
-      </View>
-
-      <View style={styles.section}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={{ expanded: showSignInMethods }}
-          onPress={() => setShowSignInMethods((current) => !current)}
-          style={({ pressed }) => [styles.sectionDisclosure, pressed && styles.pressed]}>
-          <View style={styles.settingCopy}><ThemedText type="smallBold" themeColor="textSecondary">{tx('登录方式', 'Sign-in methods')}</ThemedText><ThemedText type="small" themeColor="textSecondary">{session?.user.email ?? tx('查看绑定方式', 'Manage linked accounts')}</ThemedText></View>
-          <Chevron color={theme.textSecondary} direction={showSignInMethods ? 'down' : 'right'} />
-        </Pressable>
-        {showSignInMethods ? <View style={styles.disclosureBody}>
-        <SettingValue label={tx('邮箱', 'Email')} value={session?.user.email ?? tx('未绑定', 'Not linked')} />
-        <View style={[styles.divider, { backgroundColor: theme.backgroundSelected }]} />
-        <SettingValue label={tx('手机号', 'Phone')} value={session?.user.phone ?? tx('未绑定', 'Not linked')} />
-        <View style={[styles.divider, { backgroundColor: theme.backgroundSelected }]} />
-        <SettingValue label="Google" value={googleLinked ? tx('已绑定', 'Linked') : tx('未绑定', 'Not linked')} />
-        <View style={styles.loginActions}>
-          {!session?.user.email ? <ActionButton tone="secondary" onPress={() => { setLinkMode('email'); setLinkCodeSent(false); setLinkValue(''); }}>{tx('添加邮箱', 'Add email')}</ActionButton> : null}
-          {capabilities.phone && !session?.user.phone ? <ActionButton tone="secondary" onPress={() => { setLinkMode('phone'); setLinkCodeSent(false); setLinkValue(''); }}>{tx('添加手机号', 'Add phone')}</ActionButton> : null}
-          {capabilities.google && !googleLinked ? <ActionButton tone="secondary" busy={busyAction === 'save'} onPress={() => void linkGoogle()}>{tx('绑定 Google', 'Link Google')}</ActionButton> : null}
-        </View>
-        {linkMode ? (
-          <View style={[styles.linkEditor, { backgroundColor: theme.backgroundElement }]}>
-            {!linkCodeSent ? <FormField label={linkMode === 'email' ? tx('邮箱', 'Email') : tx('手机号（含国家区号）', 'Phone with country code')} value={linkValue} onChangeText={setLinkValue} autoCapitalize="none" keyboardType={linkMode === 'email' ? 'email-address' : 'phone-pad'} placeholder={linkMode === 'email' ? 'you@example.com' : '+61412345678'} /> : <><ThemedText type="small" themeColor="textSecondary">{tx(`验证码已发送至 ${linkValue}`, `Code sent to ${linkValue}`)}</ThemedText><OtpCodeInput value={linkToken} onChangeText={setLinkToken} /></>}
-            {linkCodeSent ? <ActionButton busy={busyAction === 'save'} disabled={!/^\d{8}$/.test(linkToken)} onPress={() => void confirmLink()}>{tx('验证并绑定', 'Verify and link')}</ActionButton> : <ActionButton busy={busyAction === 'save'} disabled={!linkValue.trim()} onPress={() => void startLink()}>{tx('发送验证码', 'Send code')}</ActionButton>}
-            <ActionButton tone="secondary" disabled={busyAction === 'save'} onPress={() => { setLinkMode(undefined); setLinkCodeSent(false); }}>{tx('取消', 'Cancel')}</ActionButton>
-          </View>
-        ) : null}
-        </View> : null}
-      </View>
-
-      <View style={styles.section}>
-        <ThemedText type="smallBold" themeColor="textSecondary">{tx('账号与安全', 'Account and security')}</ThemedText>
-        <View style={styles.linkList}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityState={{ expanded: passwordOpen }}
-            onPress={() => { setPasswordOpen((open) => !open); resetPasswordForm(); }}
-            style={styles.linkRow}>
-            <ThemedText>{hasPassword ? tx('修改密码', 'Change password') : tx('设置密码', 'Set a password')}</ThemedText>
-            <ThemedText type="smallBold" themeColor="textSecondary">{passwordOpen ? tx('收起', 'Close') : tx('管理', 'Manage')}</ThemedText>
-          </Pressable>
-          {passwordOpen ? (
-            <View style={styles.linkForm}>
-              {!hasPassword ? (
-                <ThemedText type="small" themeColor="textSecondary">
-                  {tx('这个账号通过 Google 创建，还没有密码。设置后即可用邮箱和密码登录。', 'This account was created with Google and has no password yet. Set one to also sign in with email.')}
-                </ThemedText>
+      <SettingsGroup>
+        <SettingsRow
+          label={shownName}
+          subtitle={session?.user.email ?? tx('未提供邮箱', 'No email provided')}
+          accessibilityLabel={tx('编辑个人资料', 'Edit profile')}
+          leading={
+            <View style={[styles.avatar, { backgroundColor: theme.backgroundSelected }]}>
+              {profile?.avatarUrl ? (
+                <Image source={{ uri: profile.avatarUrl }} style={styles.avatarImage} contentFit="cover" />
               ) : (
-                <FormField label={tx('当前密码', 'Current password')} value={currentPassword} onChangeText={setCurrentPassword} autoCapitalize="none" autoComplete="current-password" secureTextEntry placeholder={tx('输入当前密码', 'Enter current password')} />
+                <ThemedText style={[styles.initials, { color: theme.accentOnSoft }]}>{initials}</ThemedText>
               )}
-              <FormField label={tx('新密码', 'New password')} value={nextPassword} onChangeText={setNextPassword} autoCapitalize="none" autoComplete="new-password" secureTextEntry placeholder={tx('至少 8 位，包含字母和数字', '8+ characters with letters and numbers')} />
-              <FormField label={tx('确认新密码', 'Confirm new password')} value={confirmPassword} onChangeText={setConfirmPassword} autoCapitalize="none" autoComplete="new-password" secureTextEntry placeholder={tx('再次输入新密码', 'Enter the new password again')} />
-              <ActionButton
-                busy={busyAction === 'save'}
-                disabled={(hasPassword && !currentPassword) || !nextPassword || !confirmPassword}
-                onPress={() => void submitPassword()}>
-                {hasPassword ? tx('更新密码', 'Update password') : tx('设置密码', 'Set password')}
-              </ActionButton>
             </View>
-          ) : null}
-          <View style={[styles.divider, { backgroundColor: theme.backgroundSelected }]} />
-          <Link href={'/privacy' as Href} asChild><Pressable style={styles.linkRow}><ThemedText>{tx('隐私政策', 'Privacy policy')}</ThemedText><ThemedText type="smallBold" themeColor="textSecondary">{tx('查看', 'Open')}</ThemedText></Pressable></Link>
-          <View style={[styles.divider, { backgroundColor: theme.backgroundSelected }]} />
-          <Link href={'/support' as Href} asChild><Pressable style={styles.linkRow}><ThemedText>{tx('支持与帮助', 'Support and help')}</ThemedText><ThemedText type="smallBold" themeColor="textSecondary">{tx('查看', 'Open')}</ThemedText></Pressable></Link>
-          <View style={[styles.divider, { backgroundColor: theme.backgroundSelected }]} />
-          <Pressable accessibilityRole="button" onPress={() => void logout()} style={styles.linkRow}>
-            <ThemedText>{busyAction === 'signout' ? tx('正在退出…', 'Signing out…') : tx('退出登录', 'Sign out')}</ThemedText>
-          </Pressable>
-        </View>
-      </View>
+          }
+          onPress={() => openPanel('profile')}
+        />
+      </SettingsGroup>
 
-      <View style={styles.dangerSection}>
-        {confirmingDeletion ? (
-          <View style={[styles.deleteConfirmation, { backgroundColor: theme.backgroundElement }] }>
-            <ThemedText type="smallBold">{tx('确认永久删除账号？', 'Permanently delete your account?')}</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">
-              {tx('你会退出所有行程，且此操作无法撤销。多人行程的共享记录会匿名保留。', 'You will leave every trip and this cannot be undone. Shared records remain anonymized.')}
-            </ThemedText>
-            <ActionButton tone="danger" busy={busyAction === 'delete'} onPress={() => void removeAccount()}>{tx('确认永久删除', 'Delete permanently')}</ActionButton>
-            <ActionButton tone="secondary" disabled={busyAction === 'delete'} onPress={() => setConfirmingDeletion(false)}>{tx('取消', 'Cancel')}</ActionButton>
-          </View>
-        ) : (
-          <Pressable accessibilityRole="button" onPress={() => setConfirmingDeletion(true)}>
-            <ThemedText type="smallBold" style={[styles.dangerText, { color: theme.danger }]}>{tx('删除账号', 'Delete account')}</ThemedText>
-          </Pressable>
-        )}
-      </View>
+      <SettingsGroup label={tx('偏好', 'Preferences')}>
+        <SettingsRow
+          label={tx('界面语言', 'App language')}
+          control={
+            <View style={styles.languageChoices}>
+              <ChoiceChip role="radio" selected={locale === 'zh-CN'} onPress={() => setLocale('zh-CN')}>中文</ChoiceChip>
+              <ChoiceChip role="radio" selected={locale === 'en'} onPress={() => setLocale('en')}>EN</ChoiceChip>
+            </View>
+          }
+        />
+        <SettingsDivider />
+        <SettingsRow label={tx('当前行程', 'Current trip')} value={activeTrip?.name ?? tx('尚未选择', 'None selected')} />
+        <SettingsDivider />
+        <SettingsRow label={tx('当前权限', 'Trip role')} value={roleLabel ?? tx('暂无', 'None')} />
+      </SettingsGroup>
+
+      <SettingsGroup label={tx('账号与安全', 'Account and security')}>
+        <SettingsRow
+          label={tx('登录方式', 'Sign-in methods')}
+          value={linkedMethods.length > 0 ? linkedMethods.join(' · ') : tx('未绑定', 'None linked')}
+          onPress={() => openPanel('signIn')}
+        />
+        <SettingsDivider />
+        <SettingsRow
+          label={tx('密码', 'Password')}
+          value={hasPassword ? tx('已设置', 'Set') : tx('未设置', 'Not set')}
+          onPress={() => openPanel('password')}
+        />
+        <SettingsDivider />
+        <SettingsRow label={tx('隐私政策', 'Privacy policy')} onPress={() => router.push('/privacy' as Href)} />
+        <SettingsDivider />
+        <SettingsRow label={tx('支持与帮助', 'Support and help')} onPress={() => router.push('/support' as Href)} />
+      </SettingsGroup>
+
+      {/* Leaving and deleting sit on their own surfaces, apart from the rows
+          you read — the separation iOS Settings makes for the same reason. */}
+      <SettingsGroup>
+        <SettingsRow
+          label={busyAction === 'signout' ? tx('正在退出…', 'Signing out…') : tx('退出登录', 'Sign out')}
+          busy={busyAction === 'signout'}
+          chevron={false}
+          onPress={() => void logout()}
+        />
+      </SettingsGroup>
+
+      <SettingsGroup>
+        <SettingsRow label={tx('删除账号', 'Delete account')} labelColor="danger" onPress={() => openPanel('delete')} />
+      </SettingsGroup>
+
+      <ProfileEditSheet
+        avatarSource={avatarSource}
+        busy={busyAction === 'save'}
+        draftAvatar={avatarDraft}
+        draftName={draftName}
+        hasChanges={hasChanges}
+        initials={initials}
+        onChangeName={setDraftName}
+        onChooseAvatar={() => void chooseAvatar()}
+        onDismiss={closePanel}
+        onSave={() => void save()}
+        tx={tx}
+        visible={panel === 'profile'}
+      />
+
+      <SignInMethodsSheet
+        busy={busyAction === 'save'}
+        canLinkGoogle={capabilities.google}
+        canLinkPhone={capabilities.phone}
+        email={session?.user.email}
+        error={panelError}
+        googleLinked={googleLinked}
+        onBeginLink={beginLink}
+        onConfirmLink={confirmLink}
+        onDismiss={closePanel}
+        onLinkGoogle={() => void linkGoogle()}
+        phone={session?.user.phone}
+        tx={tx}
+        visible={panel === 'signIn'}
+      />
+
+      <PasswordSheet
+        busy={busyAction === 'save'}
+        error={panelError}
+        hasPassword={hasPassword}
+        onDismiss={closePanel}
+        onSubmit={submitPassword}
+        tx={tx}
+        visible={panel === 'password'}
+      />
+
+      {/* The destructive action is prominent and 取消 is last and separated,
+          which is what Apple's action-sheet guidance asks for. */}
+      <BottomSheet closeLabel={tx('返回', 'Back')} onDismiss={closePanel} title={tx('永久删除账号？', 'Permanently delete your account?')} visible={panel === 'delete'}>
+        <View style={styles.confirm}>
+          {panelError ? <InlineNotice tone="error">{panelError}</InlineNotice> : null}
+          <ThemedText type="small" themeColor="textSecondary">
+            {tx('你会退出所有行程，且此操作无法撤销。多人行程的共享记录会匿名保留。',
+                'You will leave every trip and this cannot be undone. Shared records remain anonymized.')}
+          </ThemedText>
+          <ActionButton tone="danger" busy={busyAction === 'delete'} onPress={() => void removeAccount()}>
+            {tx('确认永久删除', 'Delete permanently')}
+          </ActionButton>
+          <View style={[styles.confirmRule, { backgroundColor: theme.border }]} />
+          <ActionButton tone="secondary" disabled={busyAction === 'delete'} onPress={closePanel}>
+            {tx('取消', 'Cancel')}
+          </ActionButton>
+        </View>
+      </BottomSheet>
     </Screen>
   );
 }
 
-function SettingValue({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.valueRow}>
-      <ThemedText>{label}</ThemedText>
-      <ThemedText type="smallBold" numberOfLines={1} style={styles.valueText}>{value}</ThemedText>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  identity: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingVertical: 8 },
-  identityCompact: { flexWrap: 'wrap', alignItems: 'flex-start' },
-  avatar: { width: 88, height: 88, borderRadius: 44, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  avatar: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   avatarImage: { width: '100%', height: '100%' },
-  initials: { fontSize: 28, lineHeight: 34, fontWeight: '700' },
-  avatarEditBadge: { position: 'absolute', left: 0, right: 0, bottom: 0, minHeight: 28, alignItems: 'center', justifyContent: 'center' },
-  identityCopy: { flex: 1, minWidth: 0, gap: 2 },
-  profileName: { fontSize: 28, lineHeight: 36 },
-  editButton: { minHeight: 44, paddingHorizontal: 16, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  editor: { borderRadius: 16, padding: 18, gap: 12, shadowOpacity: 0.07, shadowRadius: 18, shadowOffset: { width: 0, height: 7 } },
-  editorActions: { flexDirection: 'row', gap: 10 },
-  editorActionsCompact: { flexDirection: 'column' },
-  actionGrow: { flex: 1 },
-  section: { gap: 14, paddingTop: 18 },
-  sectionDisclosure: { minHeight: 56, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  disclosureBody: { gap: 14 },
-  settingRow: { flexDirection: 'row', alignItems: 'center', gap: 18 },
-  settingRowCompact: { flexDirection: 'column', alignItems: 'stretch', gap: 10 },
-  settingCopy: { flex: 1, gap: 2 },
-  languageChoices: { flexDirection: 'row', gap: 8 },
-  divider: { height: StyleSheet.hairlineWidth },
-  valueRow: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 20 },
-  valueText: { flexShrink: 1, textAlign: 'right' },
-  linkList: { gap: 0 },
-  loginActions: { gap: 8 },
-  linkEditor: { borderRadius: 16, padding: 16, gap: 12 },
-  linkRow: { minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 16 },
-  linkForm: { gap: 12, paddingTop: 4, paddingBottom: 14 },
-  dangerSection: { paddingTop: 10, paddingBottom: 16 },
-  deleteConfirmation: { borderRadius: 16, padding: 18, gap: 12 },
-  dangerText: { paddingVertical: 14 },
-  pressed: { opacity: 0.68 },
+  initials: { fontSize: 16, lineHeight: 22, fontWeight: '700' },
+  languageChoices: { flexDirection: 'row', gap: Spacing.xs },
+  confirm: { width: '100%', gap: Spacing.sm },
+  confirmRule: { height: StyleSheet.hairlineWidth },
 });

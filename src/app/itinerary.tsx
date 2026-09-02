@@ -57,7 +57,7 @@ function searchableText(item: ItineraryItem) {
 }
 
 export default function ItineraryScreen() {
-  const params = useLocalSearchParams<{ itemId?: string | string[] }>();
+  const params = useLocalSearchParams<{ itemId?: string | string[]; place?: string | string[] }>();
   const { languageTag, locale, tx } = useI18n();
   const theme = useTheme();
   const {
@@ -86,6 +86,7 @@ export default function ItineraryScreen() {
   const [editingItemId, setEditingItemId] = useState<string>();
   const [success, setSuccess] = useState<string>();
   const handledItemParam = useRef<string | undefined>(undefined);
+  const handledPlaceParam = useRef<string | undefined>(undefined);
   const kindLabel = (kind: ItineraryKind) => locale === 'zh-CN' ? itineraryKindLabels[kind] : itineraryKindLabelsEn[kind];
   const itemPlace = (item: ItineraryItem) => {
     if (!item.destination) return item.locationLabel;
@@ -121,6 +122,16 @@ export default function ItineraryScreen() {
 
   const activeTripId = activeTrip?.id;
   const itemIdParam = Array.isArray(params.itemId) ? params.itemId[0] : params.itemId;
+  const placeParam = Array.isArray(params.place) ? params.place[0] : params.place;
+
+  // Arriving from the map's place panel: narrow the rail to that city. The
+  // search already matches a destination's city name, so the filter bar shows
+  // what happened and the reader can clear it the usual way.
+  useEffect(() => {
+    if (!placeParam || handledPlaceParam.current === placeParam) return;
+    handledPlaceParam.current = placeParam;
+    setQuery(placeParam);
+  }, [placeParam]);
 
   useEffect(() => {
     if (!activeTripId || !currentMember || !itemIdParam || handledItemParam.current === itemIdParam) return;

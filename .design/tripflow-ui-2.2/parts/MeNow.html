@@ -1,0 +1,77 @@
+<div class="screen tagged">
+  <div class="tag tag-now">现状 · profile.tsx</div>
+  <div class="scroll" style="gap:0">
+
+    <!-- (1) The context row is a table of contents, not context. -->
+    <div class="hdr">
+      <h1>我的</h1>
+      <div class="ctx">资料 · 偏好 · 安全</div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:16px;padding:8px 0">
+      <div class="av lg">HC</div>
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+        <!-- (2) 28/36 hardcoded on top of type="subtitle". -->
+        <div style="font-size:28px;line-height:36px;font-weight:600">寒橙</div>
+        <div class="l-s">hanchengxuan98@gmail.com</div>
+      </div>
+      <div style="min-height:44px;padding:0 16px;border-radius:14px;background:var(--selected);
+        display:flex;align-items:center;font-size:14px;line-height:20px;font-weight:700">编辑资料</div>
+    </div>
+
+    <!-- (3) Rows sit straight on the canvas. Trips and Ledger put the same
+         kind of row on a white ListSurface. -->
+    <div style="display:flex;flex-direction:column;gap:14px;padding-top:18px">
+      <div class="l-s" style="font-weight:700">偏好设置</div>
+
+      <!-- idiom A: label + chips, no fixed height -->
+      <div data-row style="display:flex;align-items:center;gap:18px">
+        <div style="flex:1;font-size:16px;line-height:22px">界面语言</div>
+        <div style="display:flex;gap:8px"><span class="chip on">中文</span><span class="chip">EN</span></div>
+      </div>
+      <!-- (4) The divider is `backgroundSelected` — the mint SELECTED surface —
+           used as a hairline. `border` is the token for a line. -->
+      <div style="height:1px;background:var(--selected)"></div>
+      <!-- idiom B: 48pt, label + value, not pressable -->
+      <div data-row style="min-height:48px;display:flex;align-items:center;justify-content:space-between;gap:20px">
+        <div style="font-size:16px;line-height:22px">当前行程</div><div class="l-t">东京 3 月</div></div>
+      <div style="height:1px;background:var(--selected)"></div>
+      <div data-row style="min-height:48px;display:flex;align-items:center;justify-content:space-between;gap:20px">
+        <div style="font-size:16px;line-height:22px">当前权限</div><div class="l-t">管理员</div></div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px;padding-top:18px">
+      <!-- idiom C: 56pt disclosure, two lines, chevron -->
+      <div data-row style="min-height:56px;display:flex;align-items:center;gap:12px">
+        <div style="flex:1;min-width:0"><div class="l-s" style="font-weight:700">登录方式</div>
+          <div class="l-s">hanchengxuan98@gmail.com</div></div>
+        <svg width="8" height="14" viewBox="0 0 8 14" fill="none" aria-hidden="true">
+          <path d="m1.4 1.4 5.2 5.6-5.2 5.6" stroke="#8A9491" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px;padding-top:18px">
+      <div class="l-s" style="font-weight:700">账号与安全</div>
+      <!-- idiom D: 52pt, label + the WORD 管理 / 查看 as the affordance -->
+      <div data-row style="min-height:52px;display:flex;align-items:center;justify-content:space-between;gap:16px">
+        <div style="font-size:16px;line-height:22px">修改密码</div><div class="l-t" style="color:var(--text2)">管理</div></div>
+      <div style="height:1px;background:var(--selected)"></div>
+      <div data-row style="min-height:52px;display:flex;align-items:center;justify-content:space-between;gap:16px">
+        <div style="font-size:16px;line-height:22px">隐私政策</div><div class="l-t" style="color:var(--text2)">查看</div></div>
+      <div style="height:1px;background:var(--selected)"></div>
+      <div data-row style="min-height:52px;display:flex;align-items:center;justify-content:space-between;gap:16px">
+        <div style="font-size:16px;line-height:22px">支持与帮助</div><div class="l-t" style="color:var(--text2)">查看</div></div>
+      <div style="height:1px;background:var(--selected)"></div>
+      <!-- ...and here the affordance word is simply missing. -->
+      <div data-row style="min-height:52px;display:flex;align-items:center;gap:16px">
+        <div style="font-size:16px;line-height:22px">退出登录</div></div>
+    </div>
+
+    <div style="padding:10px 0 16px">
+      <div class="danger-link" style="padding:14px 0">删除账号</div>
+    </div>
+  </div>
+
+  <div class="fade"></div>
+  <div class="nav"><span>今天</span><span>行程</span><span>地图</span><span>账本</span><span class="on">我的</span></div>
+</div>

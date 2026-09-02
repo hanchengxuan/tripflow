@@ -1,0 +1,48 @@
+<div class="screen tagged">
+  <div class="tag tag-new">提案 · 地点面板（按紧凑卡片后打开）</div>
+  <div style="position:absolute;inset:28px 20px 0;top:127px;bottom:82px;background:var(--mapBg);border-radius:20px"></div>
+  <div style="position:absolute;inset:28px 0 0;background:rgba(12,25,36,0.32)"></div>
+
+  <!-- The full layout, in the BottomSheet the composers already use. -->
+  <div class="sheet" style="bottom:0;padding-bottom:28px">
+    <div class="grab"></div>
+    <div class="sheet-h">
+      <h2>京都</h2>
+      <div style="display:flex;align-items:center;gap:6px;border-radius:999px;padding:6px 10px;
+        background:var(--subtle);color:var(--text2);font-size:12px;line-height:17px;font-weight:700">
+        <i style="width:7px;height:7px;border-radius:4px;background:var(--mapRoute);display:block"></i>正在这里</div>
+    </div>
+    <div class="sheet-body" style="gap:10px">
+      <div class="l-s">日本 · Asia/Tokyo · JPY · 9 项安排</div>
+
+      <!-- One affordance per row: the row opens the plan. The chevron says so.
+           No second 「查看」 link doing the same thing. -->
+      <div class="list" style="background:var(--subtle)">
+        <div class="srow" style="min-height:60px"><div class="lab" style="display:flex;flex-direction:column;gap:2px">
+          <span class="l-t">伏见稻荷大社</span><span class="l-s">3月14日 08:30 — 10:30</span></div>
+          <svg width="8" height="14" viewBox="0 0 8 14" fill="none" aria-hidden="true" style="flex:none">
+            <path d="m1.4 1.4 5.2 5.6-5.2 5.6" stroke="#8A9491" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="hair"></div>
+        <div class="srow" style="min-height:60px"><div class="lab" style="display:flex;flex-direction:column;gap:2px">
+          <span class="l-t">锦市场午餐</span><span class="l-s">3月14日 12:00 — 13:30</span></div>
+          <svg width="8" height="14" viewBox="0 0 8 14" fill="none" aria-hidden="true" style="flex:none">
+            <path d="m1.4 1.4 5.2 5.6-5.2 5.6" stroke="#8A9491" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="hair"></div>
+        <div class="srow" style="min-height:60px"><div class="lab" style="display:flex;flex-direction:column;gap:2px">
+          <span class="l-t">岚山竹林</span><span class="l-s">3月15日 09:00 — 11:00</span></div>
+          <svg width="8" height="14" viewBox="0 0 8 14" fill="none" aria-hidden="true" style="flex:none">
+            <path d="m1.4 1.4 5.2 5.6-5.2 5.6" stroke="#8A9491" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="hair"></div>
+        <div class="srow" style="min-height:60px"><div class="lab" style="display:flex;flex-direction:column;gap:2px">
+          <span class="l-t">京都站 → 大阪</span><span class="l-s">3月15日 18:40 — 19:35</span></div>
+          <svg width="8" height="14" viewBox="0 0 8 14" fill="none" aria-hidden="true" style="flex:none">
+            <path d="m1.4 1.4 5.2 5.6-5.2 5.6" stroke="#8A9491" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="hair"></div>
+        <!-- The remaining plans stop being a dead sentence and become the way in. -->
+        <div class="srow" style="min-height:56px"><div class="lab" style="color:var(--link);font-weight:600">在行程里看全部 9 项</div>
+          <svg width="8" height="14" viewBox="0 0 8 14" fill="none" aria-hidden="true" style="flex:none">
+            <path d="m1.4 1.4 5.2 5.6-5.2 5.6" stroke="#2E6A96" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      </div>
+    </div>
+  </div>
+</div>

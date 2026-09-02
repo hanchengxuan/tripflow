@@ -7,12 +7,18 @@ import { useI18n } from '@/features/i18n/i18n-provider';
 import { useTheme } from '@/hooks/use-theme';
 
 interface BottomSheetProps extends PropsWithChildren {
+  /**
+   * Header dismiss label. Defaults to 取消 / Cancel; a panel that already
+   * carries its own Cancel — a confirmation — names this one differently so
+   * the same word does not appear twice on one surface.
+   */
+  closeLabel?: string;
   onDismiss: () => void;
   title: string;
   visible: boolean;
 }
 
-export function BottomSheet({ children, onDismiss, title, visible }: BottomSheetProps) {
+export function BottomSheet({ children, closeLabel, onDismiss, title, visible }: BottomSheetProps) {
   const insets = useSafeAreaInsets();
   const { tx } = useI18n();
   const theme = useTheme();
@@ -46,12 +52,12 @@ export function BottomSheet({ children, onDismiss, title, visible }: BottomSheet
             <View style={styles.header}>
               <ThemedText type="subtitle" style={styles.title}>{title}</ThemedText>
               <Pressable
-                accessibilityLabel={tx('取消并关闭', 'Cancel and close')}
+                accessibilityLabel={closeLabel ?? tx('取消并关闭', 'Cancel and close')}
                 accessibilityRole="button"
                 hitSlop={6}
                 onPress={onDismiss}
                 style={({ pressed }) => [styles.closeButton, pressed && styles.pressed]}>
-                <ThemedText type="smallBold" themeColor="textSecondary">{tx('取消', 'Cancel')}</ThemedText>
+                <ThemedText type="smallBold" themeColor="textSecondary">{closeLabel ?? tx('取消', 'Cancel')}</ThemedText>
               </Pressable>
             </View>
             <ScrollView

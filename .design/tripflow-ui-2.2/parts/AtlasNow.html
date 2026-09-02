@@ -1,0 +1,108 @@
+<div class="screen tagged">
+  <div class="tag tag-now">现状 · atlas.tsx + destination-atlas.tsx</div>
+  <div class="scroll" style="gap:12px">
+
+    <!-- Screen header: title + one context row. -->
+    <div class="hdr">
+      <h1>地图</h1>
+      <div class="ctx">东京 3 月 · 24 项安排</div>
+    </div>
+
+    <!-- (1) A SectionHeading that repeats the screen title and adds an
+         instruction — the same five-layers-of-chrome shape UI 2.1 removed
+         from the Plans screen. -->
+    <div class="sec" id="sec">
+      <div class="sec-row">
+        <div class="sec-t">目的地地图</div>
+        <div class="l-s">6 个地点</div>
+      </div>
+      <div class="sec-d">点一下标记，查看这个地点的安排。</div>
+    </div>
+
+    <!-- (2) The map is a 1010:666 card inside a scrolling page: 350 wide,
+         231 tall on a 844 frame. -->
+    <div class="map" id="map" style="width:350px;height:231px;border-radius:24px">
+      <div class="grid" style="left:0;right:0;top:45px;height:1px"></div>
+      <div class="grid" style="left:0;right:0;top:87px;height:1px"></div>
+      <div class="grid" style="left:0;right:0;top:128px;height:1px"></div>
+      <div class="grid" style="left:0;right:0;top:170px;height:1px"></div>
+      <div class="grid" style="top:0;bottom:0;left:52px;width:1px"></div>
+      <div class="grid" style="top:0;bottom:0;left:121px;width:1px"></div>
+      <div class="grid" style="top:0;bottom:0;left:190px;width:1px"></div>
+      <div class="grid" style="top:0;bottom:0;left:260px;width:1px"></div>
+      <div class="land" style="left:18px;top:52px;width:104px;height:62px"></div>
+      <div class="land" style="left:130px;top:40px;width:96px;height:74px;border-radius:52% 48% 44% 56%"></div>
+      <div class="land on" style="left:236px;top:58px;width:82px;height:52px;border-radius:48% 52% 56% 44%"></div>
+      <div class="land" style="left:150px;top:132px;width:70px;height:56px;border-radius:56% 44% 48% 52%"></div>
+
+      <svg style="position:absolute;inset:0" width="350" height="231" aria-hidden="true">
+        <polyline points="262,78 276,86 288,74" fill="none" stroke="var(--mapRoute)" stroke-width="3"
+          stroke-linecap="round" stroke-linejoin="round" opacity="0.86"/>
+      </svg>
+      <div class="glow" style="left:262px;top:78px;background:var(--mapRoute)"></div>
+      <div class="pin sel" style="left:262px;top:78px;background:var(--mapRoute);color:#16211F">9</div>
+      <div class="pin" style="left:276px;top:86px;background:var(--accent);color:#fff">6</div>
+      <div class="pin" style="left:288px;top:74px;background:var(--mapMarker);color:var(--mapBg)">4</div>
+
+      <!-- (3) Zoom controls carry a 1px border AND an ambient shadow. -->
+      <div style="position:absolute;right:14px;top:14px;display:flex;flex-direction:column;gap:8px">
+        <div class="ctl" style="border:1px solid var(--border);box-shadow:0 3px 8px rgba(0,0,0,0.16)">−</div>
+        <div class="ctl" style="border:1px solid var(--border);box-shadow:0 3px 8px rgba(0,0,0,0.16)">＋</div>
+        <div class="ctl" style="border:1px solid var(--border);box-shadow:0 3px 8px rgba(0,0,0,0.16);font-size:13px">1:1</div>
+      </div>
+
+      <!-- (4) A permanent instruction caption, in caps, over the map. -->
+      <div style="position:absolute;left:16px;bottom:14px">
+        <div style="font-size:12px;line-height:17px;font-weight:500;color:var(--mapMarker)">旅途轨迹</div>
+        <div style="font-size:12px;line-height:17px;font-weight:500;color:var(--mapMarker);opacity:0.72">拖动浏览 · 双指缩放</div>
+      </div>
+    </div>
+
+    <!-- (5) A bordered card. (6) 26px city type, off the ramp. (7) A status
+         pill in accent — the colour reserved for the one primary action.
+         (8) Every row carries a 「查看」 link and is itself pressable. -->
+    <div id="detail" style="border:1px solid var(--border);border-radius:20px;padding:16px;
+      background:var(--surface);display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;align-items:flex-start;gap:12px">
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+          <div style="font-size:26px;line-height:32px;font-weight:600">京都</div>
+          <div class="l-s">日本 · Asia/Tokyo · JPY</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;border-radius:999px;padding:7px 10px;
+          background:var(--accentSoft);color:var(--accent);font-size:12px;line-height:17px;font-weight:700">
+          <i style="width:7px;height:7px;border-radius:4px;background:var(--mapRoute);display:block"></i>正在这里
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:2px">
+        <div style="min-height:48px;display:flex;align-items:center;gap:10px;padding:6px 0">
+          <i style="width:7px;height:7px;border-radius:4px;background:var(--accent);display:block;flex:none"></i>
+          <div style="flex:1;min-width:0"><div class="l-t">伏见稻荷大社</div><div class="l-s">3月14日 08:30 — 10:30</div></div>
+          <div class="link" style="font-size:13px">查看</div>
+        </div>
+        <div style="min-height:48px;display:flex;align-items:center;gap:10px;padding:6px 0">
+          <i style="width:7px;height:7px;border-radius:4px;background:var(--accent);display:block;flex:none"></i>
+          <div style="flex:1;min-width:0"><div class="l-t">锦市场午餐</div><div class="l-s">3月14日 12:00 — 13:30</div></div>
+          <div class="link" style="font-size:13px">查看</div>
+        </div>
+        <div style="min-height:48px;display:flex;align-items:center;gap:10px;padding:6px 0">
+          <i style="width:7px;height:7px;border-radius:4px;background:var(--accent);display:block;flex:none"></i>
+          <div style="flex:1;min-width:0"><div class="l-t">岚山竹林</div><div class="l-s">3月15日 09:00 — 11:00</div></div>
+          <div class="link" style="font-size:13px">查看</div>
+        </div>
+        <div style="min-height:48px;display:flex;align-items:center;gap:10px;padding:6px 0">
+          <i style="width:7px;height:7px;border-radius:4px;background:var(--accent);display:block;flex:none"></i>
+          <div style="flex:1;min-width:0"><div class="l-t">京都站 → 大阪</div><div class="l-s">3月15日 18:40 — 19:35</div></div>
+          <div class="link" style="font-size:13px">查看</div>
+        </div>
+        <!-- (9) Five more plans exist and there is no way to reach them. -->
+        <div class="l-s">还有 5 项安排</div>
+      </div>
+    </div>
+
+    <div class="l-s" style="text-align:right;font-size:11px;line-height:16px;color:var(--muted)">
+      城市坐标：Open-Meteo · 世界轮廓：SVG Maps</div>
+  </div>
+
+  <div class="fade"></div>
+  <div class="nav"><span>今天</span><span>行程</span><span class="on">地图</span><span>账本</span><span>我的</span></div>
+</div>

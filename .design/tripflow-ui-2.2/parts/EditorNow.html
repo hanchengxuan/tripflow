@@ -1,0 +1,56 @@
+<div class="screen tagged">
+  <div class="tag tag-now">现状 · 编辑态 + 删除确认</div>
+  <div style="position:absolute;inset:28px 0 0;background:rgba(12,25,36,0.32)"></div>
+
+  <div class="sheet" style="top:96px;bottom:0;border-radius:26px 26px 0 0;overflow:hidden">
+    <div class="grab"></div>
+    <div class="sheet-h"><h2>编辑安排</h2><div class="l-t" style="color:var(--text2)">取消</div></div>
+    <div class="sheet-body" style="gap:14px">
+
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div class="f-label">安排</div>
+        <div class="input" style="color:var(--text)">伏见稻荷大社</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div class="f-label">目的地</div>
+        <div class="input" style="color:var(--text)">京都 · 日本</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div class="f-label">地点</div>
+        <div class="input" style="color:var(--text)">伏见稻荷大社</div>
+      </div>
+      <div style="display:flex;gap:12px">
+        <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+          <div class="f-label">开始</div><div class="input" style="color:var(--text);font-size:14px">3月14日 08:30</div></div>
+        <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+          <div class="f-label">结束</div><div class="input" style="color:var(--text);font-size:14px">3月14日 10:30</div></div>
+      </div>
+
+      <div class="link" style="min-height:44px;display:flex;align-items:center">用一句话调整这项安排</div>
+
+      <!-- (1) Two links, centred, in a form whose every other control is
+           left-aligned and full width. -->
+      <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:16px">
+        <div style="min-height:44px;display:flex;align-items:center" class="link">从这里分开走</div>
+        <div style="min-height:44px;display:flex;align-items:center" class="danger-link">删除这项安排</div>
+      </div>
+
+      <!-- (2) Pressing 删除 replaces the primary action. While this block is
+           open there is no way to save the edits already typed above.
+           (3) A hand-rolled 48/12 Pressable — a fifth button implementation,
+           beside ActionButton, which already has tone="danger".
+           (4) Cancel and the destructive action sit side by side at equal
+           weight; HIG separates them and puts Cancel last. -->
+      <div style="border-top:1px solid var(--selected);padding-top:14px;display:flex;flex-direction:column;gap:10px">
+        <div class="l-t">删除「伏见稻荷大社」？</div>
+        <div class="l-s">此操作无法恢复。</div>
+        <div style="display:flex;gap:10px">
+          <div class="btn btn-s" style="flex:1">保留</div>
+          <div style="flex:1;min-height:48px;border-radius:12px;background:var(--danger);color:#fff;
+            display:flex;align-items:center;justify-content:center;font-size:14px;line-height:20px;font-weight:700">删除</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>

@@ -1,0 +1,77 @@
+<div class="screen tagged">
+  <div class="tag tag-new">提案 · 一种行的写法，尾部说明这一行会做什么</div>
+  <div class="scroll" style="gap:16px">
+
+    <!-- Context states who you are here, not which sections exist below. -->
+    <div class="hdr">
+      <h1>我的</h1>
+      <div class="ctx">东京 3 月 · 管理员</div>
+    </div>
+
+    <!-- Identity is a row like every other row: it opens the profile sheet. -->
+    <div class="list">
+      <div class="lrow" data-row style="min-height:76px">
+        <div class="av lg" style="width:56px;height:56px;border-radius:28px;font-size:18px">HC</div>
+        <div class="copy">
+          <div style="font-size:17px;line-height:24px;font-weight:600">寒橙</div>
+          <div class="l-s">hanchengxuan98@gmail.com</div>
+        </div>
+        <svg width="8" height="14" viewBox="0 0 8 14" fill="none" aria-hidden="true" style="flex:none">
+          <path d="m1.4 1.4 5.2 5.6-5.2 5.6" stroke="#8A9491" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div class="group">偏好</div>
+      <div class="list">
+        <!-- Trailing control: the row itself is not pressable. -->
+        <div class="srow" data-row><div class="lab">界面语言</div>
+          <div style="display:flex;gap:8px"><span class="chip on">中文</span><span class="chip">EN</span></div></div>
+        <div class="hair"></div>
+        <!-- Trailing value: read-only. -->
+        <div class="srow" data-row><div class="lab">当前行程</div><div class="val">东京 3 月</div></div>
+        <div class="hair"></div>
+        <div class="srow" data-row><div class="lab">当前权限</div><div class="val">管理员</div></div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div class="group">账号与安全</div>
+      <div class="list">
+        <!-- Trailing value + chevron: it opens a sheet. -->
+        <div class="srow" data-row><div class="lab">登录方式</div><div class="val">邮箱 · Google</div>
+          <svg width="8" height="14" viewBox="0 0 8 14" fill="none" aria-hidden="true" style="flex:none">
+            <path d="m1.4 1.4 5.2 5.6-5.2 5.6" stroke="#8A9491" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="hair"></div>
+        <div class="srow" data-row><div class="lab">密码</div><div class="val">已设置</div>
+          <svg width="8" height="14" viewBox="0 0 8 14" fill="none" aria-hidden="true" style="flex:none">
+            <path d="m1.4 1.4 5.2 5.6-5.2 5.6" stroke="#8A9491" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="hair"></div>
+        <div class="srow" data-row><div class="lab">隐私政策</div>
+          <svg width="8" height="14" viewBox="0 0 8 14" fill="none" aria-hidden="true" style="flex:none">
+            <path d="m1.4 1.4 5.2 5.6-5.2 5.6" stroke="#8A9491" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="hair"></div>
+        <div class="srow" data-row><div class="lab">支持与帮助</div>
+          <svg width="8" height="14" viewBox="0 0 8 14" fill="none" aria-hidden="true" style="flex:none">
+            <path d="m1.4 1.4 5.2 5.6-5.2 5.6" stroke="#8A9491" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      </div>
+    </div>
+
+    <!-- Leaving and deleting are their own surfaces, the way iOS Settings
+         separates them from the rows you read. -->
+    <div class="list"><div class="srow" data-row><div class="lab">退出登录</div></div></div>
+    <div class="list"><div class="srow" data-row><div class="lab" style="color:var(--danger);font-weight:600">删除账号</div></div></div>
+
+    <div style="display:flex;flex-direction:column;gap:10px;padding-top:2px">
+      <div class="group">这一页的规则</div>
+      <div style="font-size:13px;line-height:19px;font-weight:500;color:var(--text2)">
+        行的尾部说明按下去会发生什么：<b style="color:var(--text)">人字形箭头 = 会去别的地方（面板或页面）</b>；
+        <b style="color:var(--text)">数值或控件 = 不会</b>；就地执行的行（退出登录）不带箭头。密码和登录方式的表单从行内展开改为底部面板，
+        和添加安排、添加支出用的是同一个 <code>BottomSheet</code>。发丝线用 <code>border</code>，
+        不再借用 <code>backgroundSelected</code>。</div>
+    </div>
+  </div>
+
+  <div class="fade"></div>
+  <div class="nav"><span>今天</span><span>行程</span><span>地图</span><span>账本</span><span class="on">我的</span></div>
+</div>

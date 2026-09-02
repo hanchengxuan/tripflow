@@ -1,0 +1,51 @@
+<div class="screen tagged" style="height:720px">
+  <div class="tag tag-now">现状 · split-segment-sheet.tsx</div>
+  <div style="position:absolute;inset:28px 0 0;background:rgba(12,25,36,0.32)"></div>
+
+  <div class="sheet" style="top:56px;bottom:0;overflow:hidden">
+    <div class="grab"></div>
+    <div class="sheet-h"><h2>从这里分开走</h2><div class="l-t" style="color:var(--text2)">取消</div></div>
+    <div class="sheet-body">
+
+      <div class="l-s" style="font-size:14px;line-height:20px">
+        这段时间内的安排会移到分支里，只有分支同行者能看到。账本仍然是整个行程一本。</div>
+
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div class="f-label">分支名称</div><div class="input" style="color:var(--text)">后半段</div></div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div class="f-label">从</div><div class="input" style="color:var(--text);font-size:14px">3月14日 08:30</div></div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div class="f-label">到</div><div class="input" style="color:var(--text);font-size:14px">3月16日 23:59</div></div>
+
+      <!-- Five bordered cards in a stack, four of them stroked in `accent` —
+           the colour the system reserves for the single primary path — while
+           the primary button sits below in the same colour. The state word
+           repeats what the stroke already claims, and there is no count. -->
+      <div style="display:flex;flex-direction:column;gap:8px" id="people">
+        <div class="l-t">谁继续同行</div>
+        <div style="min-height:56px;display:flex;align-items:center;gap:12px;padding:0 12px;
+          border:1px solid var(--accent);border-radius:14px;background:var(--selected)">
+          <div class="av">寒</div><div style="flex:1" class="l-t">寒橙</div>
+          <div class="l-s" style="color:var(--accentOnSoft)">同行</div></div>
+        <div style="min-height:56px;display:flex;align-items:center;gap:12px;padding:0 12px;
+          border:1px solid var(--accent);border-radius:14px;background:var(--selected)">
+          <div class="av">林</div><div style="flex:1" class="l-t">林小雨</div>
+          <div class="l-s" style="color:var(--accentOnSoft)">同行</div></div>
+        <div style="min-height:56px;display:flex;align-items:center;gap:12px;padding:0 12px;
+          border:1px solid var(--accent);border-radius:14px;background:var(--selected)">
+          <div class="av">周</div><div style="flex:1" class="l-t">周舟</div>
+          <div class="l-s" style="color:var(--accentOnSoft)">同行</div></div>
+        <div style="min-height:56px;display:flex;align-items:center;gap:12px;padding:0 12px;
+          border:1px solid var(--border);border-radius:14px">
+          <div class="av" style="background:var(--subtle);color:var(--text2)">陈</div>
+          <div style="flex:1" class="l-t">陈默</div><div class="l-s" style="color:var(--muted)">不去</div></div>
+        <div style="min-height:56px;display:flex;align-items:center;gap:12px;padding:0 12px;
+          border:1px solid var(--accent);border-radius:14px;background:var(--selected)">
+          <div class="av">阿</div><div style="flex:1" class="l-t">阿岚</div>
+          <div class="l-s" style="color:var(--accentOnSoft)">同行</div></div>
+      </div>
+
+      <div class="btn btn-p">创建分支</div>
+    </div>
+  </div>
+</div>

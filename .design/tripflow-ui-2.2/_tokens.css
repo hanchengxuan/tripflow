@@ -1,0 +1,157 @@
+  :root{
+    --bg:#F7F8F8; --surface:#FFFFFF; --subtle:#EFF1F1; --selected:#E1EDE7;
+    --text:#16211F; --text2:#5A6663; --muted:#8A9491; --onAccent:#FFFFFF; --link:#2E6A96;
+    --accent:#0E6E57; --accentSoft:#E1EDE7; --accentOnSoft:#0A5744;
+    --info:#2E6A96; --plan:#A65A2E; --danger:#AF3128; --dangerSoft:#F8E7E5;
+    --border:#E2E5E5; --borderField:#CFD6D4;
+    --kTransport:#2E6A96; --kTransportS:#E7EEF4;
+    --kLodging:#63569B; --kLodgingS:#ECEAF4;
+    --kFood:#A05329;    --kFoodS:#F4EAE3;
+    --kActivity:#2F7A62;--kActivityS:#E6F0EC;
+    --kTask:#856520;    --kTaskS:#F2EDE0;
+    --kNote:#5A6663;    --kNoteS:#ECEEEE;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+    color:var(--text);-webkit-font-smoothing:antialiased}
+  a{color:var(--link);text-decoration:none} a:hover{color:#245579}
+
+  /* Screen chrome — src/components/screen.tsx */
+  .screen{width:390px;height:844px;position:relative;overflow:hidden;background:var(--bg)}
+  .scroll{padding:24px 20px 0;display:flex;flex-direction:column;gap:18px}
+  .hdr{display:flex;flex-direction:column;gap:4px;margin-bottom:4px}
+  .hdr h1{margin:0;font-size:28px;line-height:34px;font-weight:600;letter-spacing:-0.4px}
+  .ctx{font-size:14px;line-height:20px;font-weight:500;color:var(--text2)}
+
+  /* SectionHeading — src/components/section-heading.tsx */
+  .sec{display:flex;flex-direction:column;gap:3px}
+  .sec-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .sec-t{font-size:20px;line-height:26px;font-weight:600;letter-spacing:-0.2px}
+  .sec-d{font-size:14px;line-height:20px;font-weight:500;color:var(--text2)}
+
+  /* Time rail — src/components/timeline-rail.tsx */
+  .rail-row{display:flex;gap:12px;align-items:stretch}
+  .gutter{width:46px;display:flex;flex-direction:column;align-items:flex-end;padding-top:1px;align-self:flex-start}
+  .t-start{font-size:13px;line-height:18px;font-weight:600;font-variant-numeric:tabular-nums}
+  .t-end{font-size:12px;line-height:16px;font-weight:500;color:var(--muted);font-variant-numeric:tabular-nums}
+  .spine{width:12px;display:flex;flex-direction:column;align-items:center}
+  .stub{width:2px;height:4px;background:var(--border)}
+  .dot{width:10px;height:10px;border-radius:5px}
+  .line{width:2px;flex:1;min-height:12px;border-radius:1px;background:var(--border)}
+  .content{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;padding-bottom:18px}
+  .head{display:flex;align-items:center;gap:10px}
+  .r-title{flex:1;min-width:0;font-size:17px;line-height:24px;font-weight:600}
+  .place{font-size:13px;line-height:18px;font-weight:500;color:var(--text2)}
+  .day{display:flex;gap:12px;align-items:stretch}
+  .day-copy{flex:1;min-width:0;display:flex;align-items:center;gap:10px;padding:2px 0 10px}
+  .day-l{font-size:14px;line-height:20px;font-weight:700;color:var(--text2)}
+  .day-rule{flex:1;height:1px;background:var(--border)}
+
+  /* KindPill — src/components/kind-pill.tsx */
+  .pill{align-self:flex-start;min-height:28px;display:inline-flex;align-items:center;gap:6px;
+    border-radius:999px;padding:4px 12px;font-size:12px;line-height:16px;font-weight:600}
+  .pill i{width:7px;height:7px;border-radius:999px;display:block}
+
+  /* Controls — src/components/form-controls.tsx */
+  .f-label{font-size:13px;line-height:18px;font-weight:500;color:var(--text2)}
+  .input{min-height:48px;border:1px solid var(--borderField);border-radius:12px;padding:10px 14px;
+    font-size:16px;background:var(--surface);display:flex;align-items:center;color:var(--muted)}
+  .btn{min-height:48px;border-radius:14px;padding:12px 18px;display:flex;align-items:center;
+    justify-content:center;font-size:16px;line-height:22px;font-weight:500}
+  .btn-p{background:var(--accent);color:var(--onAccent)}
+  .btn-s{background:var(--accentSoft);color:var(--text)}
+  .chip{height:36px;border-radius:999px;padding:0 14px;display:inline-flex;align-items:center;
+    font-size:14px;line-height:18px;font-weight:500;background:var(--subtle);color:var(--text)}
+  .chip.on{background:var(--accent);color:var(--onAccent);font-weight:600}
+  .notice{border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:12px;background:var(--accentSoft)}
+  .notice .bar{width:3px;align-self:stretch;border-radius:2px;background:var(--accent)}
+  .notice p{margin:0;font-size:14px;line-height:20px;font-weight:500}
+
+  /* ListSurface — src/components/list-surface.tsx */
+  .list{background:var(--surface);border-radius:16px;padding:2px 16px}
+  .lrow{min-height:60px;display:flex;align-items:center;gap:12px;padding:12px 0}
+  .lrow .copy{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+  .l-t{font-size:15px;line-height:20px;font-weight:600}
+  .l-s{font-size:12px;line-height:17px;font-weight:500;color:var(--text2)}
+  .divider{height:1px;background:var(--border)}
+  .link{font-size:14px;line-height:20px;font-weight:700;color:var(--link)}
+
+  /* Floating nav + FAB — app-tabs-custom.tsx / Size.nav, Size.fabClearance */
+  .nav{position:absolute;left:20px;right:20px;bottom:16px;height:54px;border-radius:999px;
+    background:rgba(255,255,255,0.82);backdrop-filter:blur(18px);box-shadow:0 8px 24px rgba(22,33,31,0.12);
+    display:flex;align-items:center;justify-content:space-around;padding:0 8px}
+  .nav span{font-size:14px;line-height:20px;font-weight:500;color:var(--text2)}
+  .nav span.on{color:var(--accent);font-weight:700}
+  .fab{position:absolute;right:20px;bottom:86px;width:52px;height:52px;border-radius:26px;
+    background:var(--accent);display:flex;align-items:center;justify-content:center;
+    box-shadow:0 6px 14px rgba(22,33,31,0.20)}
+  .fade{position:absolute;left:0;right:0;bottom:0;height:120px;
+    background:linear-gradient(to bottom,rgba(247,248,248,0),var(--bg))}
+
+  /* Spec labels (design-canvas only, not app chrome) */
+  .tag{position:absolute;top:0;left:0;right:0;height:28px;display:flex;align-items:center;
+    padding:0 20px;font-size:11px;line-height:28px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase}
+  .tag-now{background:#F8E7E5;color:#AF3128}
+  .tag-new{background:#E1EDE7;color:#0A5744}
+  .screen.tagged .scroll{padding-top:44px}
+
+  /* ---- UI 2.2 additions ---------------------------------------------- */
+
+  /* Destination atlas palette — Colors.light.map* in src/constants/theme.ts */
+  :root{
+    --mapBg:#17383A; --mapLand:#285657; --mapLandOn:#3E8C79;
+    --mapGrid:#3B6B6B; --mapRoute:#FFB16B; --mapMarker:#FFFFFF;
+  }
+
+  /* Fixed (non-scrolling) screen frame — the atlas proposal */
+  .frame{display:flex;flex-direction:column;height:100%;padding:24px 20px 0;gap:12px}
+
+  /* Map viewport */
+  .map{position:relative;background:var(--mapBg);border-radius:20px;overflow:hidden}
+  .map .land{position:absolute;background:var(--mapLand);border-radius:44% 56% 52% 48%}
+  .map .land.on{background:var(--mapLandOn)}
+  .map .grid{position:absolute;background:var(--mapGrid);opacity:0.4}
+  .pin{position:absolute;width:26px;height:26px;border-radius:13px;border:2px solid var(--mapBg);
+    display:flex;align-items:center;justify-content:center;font-size:10px;line-height:12px;font-weight:800;
+    transform:translate(-50%,-50%)}
+  .pin.sel{width:32px;height:32px;border-radius:16px;border-width:3px}
+  .glow{position:absolute;width:34px;height:34px;border-radius:17px;opacity:0.26;transform:translate(-50%,-50%)}
+  .ctl{width:42px;height:42px;border-radius:13px;display:flex;align-items:center;justify-content:center;
+    font-size:16px;font-weight:600;background:var(--surface);color:var(--text)}
+
+  /* Legend — status is never carried by colour alone */
+  .legend{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center}
+  .legend span{display:inline-flex;align-items:center;gap:6px;font-size:12px;line-height:17px;font-weight:600;color:var(--text2)}
+  .legend i{width:8px;height:8px;border-radius:4px;display:block;flex:none}
+
+  /* Settings row vocabulary — one idiom, on ListSurface */
+  .srow{min-height:56px;display:flex;align-items:center;gap:12px;padding:10px 0}
+  .srow .lab{flex:1;min-width:0;font-size:15px;line-height:20px;font-weight:500}
+  .srow .val{font-size:14px;line-height:20px;font-weight:600;color:var(--text2);
+    max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .group{font-size:12px;line-height:17px;font-weight:700;color:var(--muted);letter-spacing:0.06em;
+    text-transform:uppercase;padding:0 4px}
+
+  /* Avatars */
+  .av{width:32px;height:32px;border-radius:16px;background:var(--selected);color:var(--accentOnSoft);
+    display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex:none}
+  .av.lg{width:88px;height:88px;border-radius:44px;font-size:28px}
+
+  /* Check mark for selection rows */
+  .check{width:22px;height:22px;border-radius:11px;flex:none;display:flex;align-items:center;justify-content:center}
+  .check.on{background:var(--accent)}
+  .check.off{border:1.5px solid var(--borderField)}
+
+  /* Bottom sheet shell — src/components/bottom-sheet.tsx */
+  .sheet{position:absolute;left:0;right:0;bottom:0;background:var(--surface);
+    border-radius:26px 26px 0 0;padding:10px 20px 24px;display:flex;flex-direction:column;gap:10px;
+    box-shadow:0 -8px 28px rgba(22,33,31,0.18)}
+  .grab{width:40px;height:4px;border-radius:2px;background:var(--borderField);align-self:center;margin-bottom:4px}
+  .sheet-h{min-height:44px;display:flex;align-items:center;gap:12px}
+  .sheet-h h2{margin:0;flex:1;min-width:0;font-size:20px;line-height:26px;font-weight:600}
+  .sheet-body{display:flex;flex-direction:column;gap:14px}
+
+  .btn-d{background:var(--danger);color:#FFFFFF}
+  .danger-link{font-size:14px;line-height:20px;font-weight:700;color:var(--danger)}
+  .hair{height:1px;background:var(--border)}

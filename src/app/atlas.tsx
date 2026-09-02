@@ -11,21 +11,30 @@ export default function AtlasScreen() {
   const router = useRouter();
   const { languageTag, tx } = useI18n();
   const { activeTrip, itineraryItems } = useMvp();
+  const placeCount = new Set(
+    itineraryItems
+      .filter(({ destination }) => destination)
+      .map(({ destination }) => `${destination!.countryCode}:${destination!.cityName}`),
+  ).size;
+  // Title plus one context row, and the counts live in it — the section
+  // heading that repeated the title and explained the map is gone.
   const context = activeTrip
     ? [
         activeTrip.name,
-        tx(String(itineraryItems.length) + ' 项安排', String(itineraryItems.length) + ' plans'),
+        tx(`${placeCount} 个地点`, `${placeCount} places`),
+        tx(`${itineraryItems.length} 项安排`, `${itineraryItems.length} plans`),
       ]
     : [tx('还没有选择行程', 'No trip selected')];
 
   return (
-    <Screen title={tx('地图', 'Map')} context={context}>
+    <Screen fill={Boolean(activeTrip)} title={tx('地图', 'Map')} context={context}>
       {activeTrip ? (
         <DestinationAtlas
           items={itineraryItems}
           languageTag={languageTag}
           tx={tx}
           onViewItem={(item) => router.push({ pathname: '/itinerary', params: { itemId: item.id } })}
+          onViewPlace={({ cityName }) => router.push({ pathname: '/itinerary', params: { place: cityName } })}
         />
       ) : (
         <InfoCard title={tx('地图等待行程', 'Map is waiting for a trip')}>

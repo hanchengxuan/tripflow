@@ -1,0 +1,49 @@
+<div class="screen tagged">
+  <div class="tag tag-new">提案 · 主按钮永远在；破坏性动作走自己的面板</div>
+  <div style="position:absolute;inset:28px 0 0;background:rgba(12,25,36,0.32)"></div>
+
+  <div class="sheet" style="top:96px;bottom:0;border-radius:26px 26px 0 0;overflow:hidden">
+    <div class="grab"></div>
+    <div class="sheet-h"><h2>编辑安排</h2><div class="l-t" style="color:var(--text2)">取消</div></div>
+    <div class="sheet-body" style="gap:14px">
+
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div class="f-label">安排</div>
+        <div class="input" style="color:var(--text)">伏见稻荷大社</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div class="f-label">目的地</div>
+        <div class="input" style="color:var(--text)">京都 · 日本</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div class="f-label">地点</div>
+        <div class="input" style="color:var(--text)">伏见稻荷大社</div>
+      </div>
+      <div style="display:flex;gap:12px">
+        <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+          <div class="f-label">开始</div><div class="input" style="color:var(--text);font-size:14px">3月14日 08:30</div></div>
+        <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+          <div class="f-label">结束</div><div class="input" style="color:var(--text);font-size:14px">3月14日 10:30</div></div>
+      </div>
+
+      <div class="link" style="min-height:44px;display:flex;align-items:center">用一句话调整这项安排</div>
+
+      <!-- The two per-plan actions become rows — the same vocabulary as 我的,
+           left-aligned like every other control in the form, each with the
+           chevron that says it opens a panel. -->
+      <div class="list" style="background:var(--subtle)">
+        <div class="srow" style="min-height:52px"><div class="lab">从这里分开走</div>
+          <svg width="8" height="14" viewBox="0 0 8 14" fill="none" aria-hidden="true" style="flex:none">
+            <path d="m1.4 1.4 5.2 5.6-5.2 5.6" stroke="#8A9491" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="hair"></div>
+        <div class="srow" style="min-height:52px"><div class="lab" style="color:var(--danger);font-weight:600">删除这项安排</div>
+          <svg width="8" height="14" viewBox="0 0 8 14" fill="none" aria-hidden="true" style="flex:none">
+            <path d="m1.4 1.4 5.2 5.6-5.2 5.6" stroke="#AF3128" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      </div>
+
+      <!-- 保存 never leaves. Nothing the sheet does removes the way to keep
+           the edits already typed. -->
+      <div class="btn btn-p">保存</div>
+    </div>
+  </div>
+</div>

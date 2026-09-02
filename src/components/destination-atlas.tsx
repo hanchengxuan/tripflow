@@ -1,22 +1,31 @@
 /* eslint-disable react-hooks/immutability -- Reanimated shared values are intentionally mutable in worklets. */
 import worldMap from '@svg-maps/world';
-import { useEffect, useMemo, useState } from 'react';
-import { Animated, Pressable, StyleSheet, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Reanimated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import Svg, { Line, Path, Polyline, Rect } from 'react-native-svg';
 
-import { SectionHeading } from '@/components/section-heading';
+import { Chevron } from '@/components/chevron';
+import { DestinationPlaceSheet } from '@/components/destination-place-sheet';
 import { ThemedText } from '@/components/themed-text';
+import { Radius, Spacing } from '@/constants/theme';
 import type { ItineraryItem } from '@/domain/models';
 import { projectDestination } from '@/features/destinations/destination-search';
-import { formatZonedDateTimeRange } from '@/lib/trip-time';
+import { destinationStatus, type DestinationStatus } from '@/lib/destination-status';
+import {
+  clampToBounds,
+  contentFit,
+  frameDestinations,
+  MAP_HEIGHT,
+  MAP_WIDTH,
+  panBounds,
+} from '@/lib/map-framing';
 import { useTheme } from '@/hooks/use-theme';
 
-const MAP_WIDTH = 1010;
-const MAP_HEIGHT = 666;
-
-type DestinationStatus = 'visited' | 'current' | 'planned';
+// The world outline is vector, so magnifying it stays crisp; a trip inside one
+// country needs a lot of magnification before its cities stop overlapping.
+const MAX_SCALE = 24;
 
 interface AtlasDestination {
   key: string;
@@ -25,8 +34,6 @@ interface AtlasDestination {
   countryCode: string;
   timeZone: string;
   currency?: string;
-  latitude: number;
-  longitude: number;
   items: ItineraryItem[];
   status: DestinationStatus;
   x: number;
@@ -36,16 +43,6 @@ interface AtlasDestination {
 function destinationKey(item: ItineraryItem) {
   const destination = item.destination!;
   return `${destination.countryCode}:${destination.cityName}:${destination.latitude.toFixed(3)}:${destination.longitude.toFixed(3)}`;
-}
-
-function statusForItems(items: ItineraryItem[], now: number): DestinationStatus {
-  if (items.some((item) => {
-    const start = new Date(item.startsAt).getTime();
-    const end = new Date(item.endsAt ?? item.startsAt).getTime();
-    return start <= now && now <= end;
-  })) return 'current';
-  if (items.some((item) => new Date(item.startsAt).getTime() > now)) return 'planned';
-  return 'visited';
 }
 
 function statusLabel(status: DestinationStatus, tx: (zh: string, en: string) => string) {
@@ -60,22 +57,39 @@ function statusColor(status: DestinationStatus, theme: ReturnType<typeof useThem
   return theme.accent;
 }
 
+/**
+ * The destination map.
+ *
+ * The map is the screen, not a card inside one: it takes every pixel below the
+ * header, opens framed on the trip rather than on the whole world, and hands
+ * the detail to a compact card pinned to its lower edge — which opens the full
+ * place panel. That split is the one Apple Maps and Google's place card both
+ * make, and it is why a viewport locked to the world outline's 1010:666 ratio
+ * is no longer what decides how much map a reader gets.
+ *
+ * A legend names each status beside its colour: on the map itself a pin is
+ * only a colour and a count, and status must never be carried by hue alone.
+ */
 export function DestinationAtlas({
   items,
   languageTag,
   tx,
   onViewItem,
+  onViewPlace,
 }: {
   items: ItineraryItem[];
   languageTag: string;
   tx: (zh: string, en: string) => string;
   onViewItem?: (item: ItineraryItem) => void;
+  onViewPlace?: (destination: { cityName: string; items: ItineraryItem[] }) => void;
 }) {
   const theme = useTheme();
   const [selectedKey, setSelectedKey] = useState<string>();
+  const [placeOpen, setPlaceOpen] = useState(false);
   const [now, setNow] = useState(() => Date.now());
+  const [viewport, setViewport] = useState({ width: 0, height: 0 });
+  const cards = useRef<ScrollView>(null);
   const [mapOpacity] = useState(() => new Animated.Value(0));
-  const [mapOffset] = useState(() => new Animated.Value(10));
   const [pulse] = useState(() => new Animated.Value(1));
   const mapScale = useSharedValue(1);
   const savedScale = useSharedValue(1);
@@ -85,6 +99,8 @@ export function DestinationAtlas({
   const panStartY = useSharedValue(0);
   const viewportWidth = useSharedValue(0);
   const viewportHeight = useSharedValue(0);
+  const contentWidth = useSharedValue(0);
+  const contentHeight = useSharedValue(0);
 
   const mapTransformStyle = useAnimatedStyle(() => ({
     transform: [
@@ -94,6 +110,10 @@ export function DestinationAtlas({
     ],
   }));
 
+  // Pins ride inside the transformed map so their coordinates stay in map
+  // space, but a pin is chrome, not terrain: it keeps its size at every zoom.
+  const markerScaleStyle = useAnimatedStyle(() => ({ transform: [{ scale: 1 / mapScale.value }] }));
+
   const panGesture = Gesture.Pan()
     .minDistance(8)
     .onStart(() => {
@@ -101,10 +121,13 @@ export function DestinationAtlas({
       panStartY.value = mapTranslateY.value;
     })
     .onUpdate((event) => {
-      const maxX = Math.max(0, (viewportWidth.value * (mapScale.value - 1)) / 2);
-      const maxY = Math.max(0, (viewportHeight.value * (mapScale.value - 1)) / 2);
-      mapTranslateX.value = Math.max(-maxX, Math.min(maxX, panStartX.value + event.translationX));
-      mapTranslateY.value = Math.max(-maxY, Math.min(maxY, panStartY.value + event.translationY));
+      const bounds = panBounds(
+        { width: viewportWidth.value, height: viewportHeight.value },
+        { width: contentWidth.value, height: contentHeight.value },
+        mapScale.value,
+      );
+      mapTranslateX.value = Math.max(-bounds.x, Math.min(bounds.x, panStartX.value + event.translationX));
+      mapTranslateY.value = Math.max(-bounds.y, Math.min(bounds.y, panStartY.value + event.translationY));
     })
     .onEnd(() => {
       mapTranslateX.value = withSpring(mapTranslateX.value);
@@ -116,12 +139,15 @@ export function DestinationAtlas({
       savedScale.value = mapScale.value;
     })
     .onUpdate((event) => {
-      const nextScale = Math.max(1, Math.min(3, savedScale.value * event.scale));
-      const maxX = Math.max(0, (viewportWidth.value * (nextScale - 1)) / 2);
-      const maxY = Math.max(0, (viewportHeight.value * (nextScale - 1)) / 2);
-      mapScale.value = nextScale;
-      mapTranslateX.value = Math.max(-maxX, Math.min(maxX, mapTranslateX.value));
-      mapTranslateY.value = Math.max(-maxY, Math.min(maxY, mapTranslateY.value));
+      const nextScale = Math.max(1, Math.min(MAX_SCALE, savedScale.value * event.scale));
+      const next = clampToBounds(
+        { scale: nextScale, translateX: mapTranslateX.value, translateY: mapTranslateY.value },
+        { width: viewportWidth.value, height: viewportHeight.value },
+        { width: contentWidth.value, height: contentHeight.value },
+      );
+      mapScale.value = next.scale;
+      mapTranslateX.value = next.translateX;
+      mapTranslateY.value = next.translateY;
     })
     .onEnd(() => {
       mapScale.value = withSpring(mapScale.value);
@@ -130,21 +156,6 @@ export function DestinationAtlas({
     });
 
   const mapGesture = Gesture.Simultaneous(panGesture, pinchGesture);
-
-  function zoomMap(delta: number) {
-    const nextScale = Math.max(1, Math.min(3, mapScale.value + delta));
-    mapScale.value = withSpring(nextScale);
-    if (nextScale === 1) {
-      mapTranslateX.value = withSpring(0);
-      mapTranslateY.value = withSpring(0);
-    }
-  }
-
-  function resetMap() {
-    mapScale.value = withSpring(1);
-    mapTranslateX.value = withSpring(0);
-    mapTranslateY.value = withSpring(0);
-  }
 
   useEffect(() => {
     const clock = setInterval(() => setNow(Date.now()), 60_000);
@@ -168,22 +179,50 @@ export function DestinationAtlas({
         countryCode: destination.countryCode,
         timeZone: destination.timeZone,
         currency: destination.currency,
-        latitude: destination.latitude,
-        longitude: destination.longitude,
         items: groupedItems.sort((left, right) => left.startsAt.localeCompare(right.startsAt)),
-        status: statusForItems(groupedItems, now),
+        status: destinationStatus(groupedItems, now),
         ...point,
       };
     }).sort((left, right) => left.items[0].startsAt.localeCompare(right.items[0].startsAt));
   }, [items, now]);
 
   const selected = destinations.find(({ key }) => key === selectedKey) ?? destinations[0];
+  const content = useMemo(() => contentFit(viewport), [viewport]);
+  // Keyed on the coordinates rather than on `destinations`, whose identity
+  // changes every minute when the clock ticks. Without that the opening frame
+  // would be re-applied on the minute and snap a reader's pan away.
+  const placeKey = destinations.map(({ x, y }) => `${x.toFixed(2)},${y.toFixed(2)}`).join('|');
+  const opening = useMemo(
+    () => frameDestinations(
+      placeKey ? placeKey.split('|').map((pair) => {
+        const [x, y] = pair.split(',');
+        return { x: Number(x), y: Number(y) };
+      }) : [],
+      viewport,
+      content,
+      { maxScale: MAX_SCALE },
+    ),
+    [content, placeKey, viewport],
+  );
+
+  // The opening view frames the trip. It is applied once per layout or route
+  // change rather than on every render, so a pan the reader has made is not
+  // snapped back under their finger.
+  useEffect(() => {
+    mapScale.value = withSpring(opening.scale);
+    mapTranslateX.value = withSpring(opening.translateX);
+    mapTranslateY.value = withSpring(opening.translateY);
+  }, [mapScale, mapTranslateX, mapTranslateY, opening]);
 
   useEffect(() => {
-    const entrance = Animated.parallel([
-      Animated.timing(mapOpacity, { toValue: 1, duration: 520, useNativeDriver: true }),
-      Animated.timing(mapOffset, { toValue: 0, duration: 620, useNativeDriver: true }),
-    ]);
+    viewportWidth.value = viewport.width;
+    viewportHeight.value = viewport.height;
+    contentWidth.value = content.width;
+    contentHeight.value = content.height;
+  }, [content, contentHeight, contentWidth, viewport, viewportHeight, viewportWidth]);
+
+  useEffect(() => {
+    const entrance = Animated.timing(mapOpacity, { toValue: 1, duration: 520, useNativeDriver: true });
     entrance.start();
     const pulseLoop = Animated.loop(Animated.sequence([
       Animated.timing(pulse, { toValue: 1.16, duration: 1100, useNativeDriver: true }),
@@ -194,30 +233,68 @@ export function DestinationAtlas({
       entrance.stop();
       pulseLoop.stop();
     };
-  }, [mapOffset, mapOpacity, pulse]);
+  }, [mapOpacity, pulse]);
+
+  function zoomMap(delta: number) {
+    const nextScale = Math.max(1, Math.min(MAX_SCALE, mapScale.value + delta));
+    const next = clampToBounds(
+      { scale: nextScale, translateX: mapTranslateX.value, translateY: mapTranslateY.value },
+      viewport,
+      content,
+    );
+    mapScale.value = withSpring(next.scale);
+    mapTranslateX.value = withSpring(next.translateX);
+    mapTranslateY.value = withSpring(next.translateY);
+  }
+
+  function resetMap() {
+    mapScale.value = withSpring(opening.scale);
+    mapTranslateX.value = withSpring(opening.translateX);
+    mapTranslateY.value = withSpring(opening.translateY);
+  }
 
   const orderedPoints = destinations.map(({ x, y }) => `${x},${y}`).join(' ');
   const selectedCountryCodes = new Set(destinations.map(({ countryCode }) => countryCode.toLowerCase()));
+  const legend: DestinationStatus[] = ['current', 'planned', 'visited'];
+
+  const control = (label: string, accessibilityLabel: string, onPress: () => void, small = false) => (
+    <Pressable
+      accessibilityLabel={accessibilityLabel}
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [styles.mapControl, { backgroundColor: theme.backgroundElement }, pressed && styles.pressed]}>
+      <ThemedText type={small ? 'smallBold' : 'default'} style={{ color: theme.text }}>{label}</ThemedText>
+    </Pressable>
+  );
 
   return (
     <View style={styles.wrap}>
-      <SectionHeading
-        title={tx('目的地地图', 'Destination atlas')}
-        detail={destinations.length > 0
-          ? tx('点一下标记，查看这个地点的安排。', 'Tap a pin to see the plans for that place.')
-          : tx('选择安排的目的地后，轨迹会在这里出现。', 'Choose destinations on your plans to build the map.')}
-        trailing={destinations.length > 0 ? <ThemedText type="small" themeColor="textSecondary">{tx(`${destinations.length} 个地点`, `${destinations.length} places`)}</ThemedText> : null}
-      />
+      <View style={styles.legend} accessibilityRole="list">
+        {legend.map((status) => (
+          <View key={status} style={styles.legendItem}>
+            <View
+              style={[
+                styles.legendDot,
+                { backgroundColor: statusColor(status, theme) },
+                status === 'visited' && { borderWidth: 1, borderColor: theme.border },
+              ]}
+            />
+            <ThemedText type="small" themeColor="textSecondary">{statusLabel(status, tx)}</ThemedText>
+          </View>
+        ))}
+      </View>
 
-      <Animated.View style={[styles.mapShell, { backgroundColor: theme.mapBackground, opacity: mapOpacity, transform: [{ translateY: mapOffset }] }]}>
-        <View
-          style={styles.mapViewport}
-          onLayout={({ nativeEvent }) => {
-            viewportWidth.value = nativeEvent.layout.width;
-            viewportHeight.value = nativeEvent.layout.height;
-          }}>
+      <View style={styles.mapArea}>
+        <Animated.View
+          style={[styles.mapShell, { backgroundColor: theme.mapBackground, opacity: mapOpacity }]}
+          onLayout={({ nativeEvent }) => setViewport({ width: nativeEvent.layout.width, height: nativeEvent.layout.height })}>
           <GestureDetector gesture={mapGesture}>
-            <Reanimated.View style={[styles.mapContent, mapTransformStyle]}>
+            <Reanimated.View
+              style={[
+                styles.mapContent,
+                { width: content.width, height: content.height, marginLeft: -content.width / 2, marginTop: -content.height / 2 },
+                mapTransformStyle,
+              ]}>
               <Svg width="100%" height="100%" viewBox={`0 0 ${MAP_WIDTH} ${MAP_HEIGHT}`}>
                 <Rect width={MAP_WIDTH} height={MAP_HEIGHT} fill={theme.mapBackground} />
                 {[130, 250, 370, 490].map((y) => <Line key={`h-${y}`} x1="0" y1={y} x2={MAP_WIDTH} y2={y} stroke={theme.mapGrid} strokeWidth="1" opacity="0.45" />)}
@@ -238,124 +315,154 @@ export function DestinationAtlas({
                 const selectedMarker = destination.key === selected?.key;
                 const pinColor = statusColor(destination.status, theme);
                 return (
-                  <Pressable
+                  <Reanimated.View
                     key={destination.key}
+                    style={[styles.markerHit, { left: `${(destination.x / MAP_WIDTH) * 100}%`, top: `${(destination.y / MAP_HEIGHT) * 100}%` }, markerScaleStyle]}>
+                  <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel={tx(`${destination.cityName}，${statusLabel(destination.status, tx)}`, `${destination.cityName}, ${statusLabel(destination.status, tx)}`)}
+                    accessibilityLabel={tx(
+                      `${destination.cityName}，${statusLabel(destination.status, tx)}，${destination.items.length} 项安排`,
+                      `${destination.cityName}, ${statusLabel(destination.status, tx)}, ${destination.items.length} plans`,
+                    )}
                     accessibilityState={{ selected: selectedMarker }}
+                    // Pressing a pin selects it, always. Which place is selected
+                    // is the map's job; opening a plan belongs to the panel.
                     onPress={() => {
                       setSelectedKey(destination.key);
-                      if (destination.items.length === 1) onViewItem?.(destination.items[0]);
+                      if (viewport.width > 0) cards.current?.scrollTo({ x: index * viewport.width, animated: true });
                     }}
-                    style={[styles.markerHit, { left: `${(destination.x / MAP_WIDTH) * 100}%`, top: `${(destination.y / MAP_HEIGHT) * 100}%` }]}
+                    style={styles.markerPress}
                     testID={`destination-marker-${index}`}>
                     <Animated.View style={[styles.markerGlow, { backgroundColor: pinColor, transform: [{ scale: selectedMarker || destination.status === 'current' ? pulse : 1 }] }]} />
                     <View style={[styles.marker, { backgroundColor: pinColor, borderColor: theme.mapBackground }, selectedMarker && styles.markerSelected]}>
                       <ThemedText style={{ color: destination.status === 'visited' ? theme.mapBackground : theme.textOnAccent, fontSize: 10, lineHeight: 12, fontWeight: '800' }}>{destination.items.length}</ThemedText>
                     </View>
                   </Pressable>
+                  </Reanimated.View>
                 );
               })}
             </Reanimated.View>
           </GestureDetector>
-          <View style={styles.mapOverlay} pointerEvents="box-none">
-            <View style={styles.mapControls}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={tx('缩小地图', 'Zoom out map')}
-                onPress={() => zoomMap(-0.5)}
-                style={({ pressed }) => [styles.mapControl, { backgroundColor: theme.backgroundElement, borderColor: theme.border }, pressed && styles.pressed]}>
-                <ThemedText type="subtitle" style={{ color: theme.text }}>−</ThemedText>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={tx('放大地图', 'Zoom in map')}
-                onPress={() => zoomMap(0.5)}
-                style={({ pressed }) => [styles.mapControl, { backgroundColor: theme.backgroundElement, borderColor: theme.border }, pressed && styles.pressed]}>
-                <ThemedText type="subtitle" style={{ color: theme.text }}>＋</ThemedText>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={tx('重置地图', 'Reset map')}
-                onPress={resetMap}
-                style={({ pressed }) => [styles.mapControl, styles.resetControl, { backgroundColor: theme.backgroundElement, borderColor: theme.border }, pressed && styles.pressed]}>
-                <ThemedText type="smallBold" style={{ color: theme.text }}>1:1</ThemedText>
-              </Pressable>
-            </View>
-            <View style={styles.mapCaption} pointerEvents="none">
-              <ThemedText type="small" style={{ color: theme.mapMarker }}>{tx('旅途轨迹', 'TRIP TRACE')}</ThemedText>
-              <ThemedText type="small" style={{ color: theme.mapMarker, opacity: 0.72 }}>{tx('拖动浏览 · 双指缩放', 'Drag to explore · pinch to zoom')}</ThemedText>
-            </View>
+
+          {/* One tonal surface with one shadow: a control never carries a
+              border and an elevation at the same time. */}
+          <View style={[styles.mapControls, { backgroundColor: theme.border, shadowColor: theme.shadow }]}>
+            {control('＋', tx('放大地图', 'Zoom in map'), () => zoomMap(0.75))}
+            {control('−', tx('缩小地图', 'Zoom out map'), () => zoomMap(-0.75))}
+            {control(tx('复位', 'Fit'), tx('回到整段行程', 'Fit the whole trip'), resetMap, true)}
           </View>
-        </View>
-      </Animated.View>
+
+          {/* Source credit, which the data licences require to stay on the
+              map. It is attribution, not an instruction — the drag-and-pinch
+              caption that used to sit here is gone. */}
+          <ThemedText style={[styles.attribution, { color: theme.mapMarker }]} pointerEvents="none">
+            {tx('城市坐标：Open-Meteo · 世界轮廓：SVG Maps', 'Coordinates: Open-Meteo · Outline: SVG Maps')}
+          </ThemedText>
+        </Animated.View>
+
+        {/* Cities inside one country land within a few pixels of each other on
+            a world outline, so pins alone cannot be the way to reach a place.
+            The cards page horizontally and stay in step with the selection —
+            the carousel Google Maps puts under its map for the same reason. */}
+        {destinations.length > 0 ? (
+          <ScrollView
+            ref={cards}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            snapToInterval={viewport.width}
+            decelerationRate="fast"
+            contentContainerStyle={styles.cards}
+            onMomentumScrollEnd={({ nativeEvent }) => {
+              if (viewport.width <= 0) return;
+              const index = Math.round(nativeEvent.contentOffset.x / viewport.width);
+              const next = destinations[Math.max(0, Math.min(destinations.length - 1, index))];
+              if (next) setSelectedKey(next.key);
+            }}>
+            {destinations.map((destination) => (
+              <View key={destination.key} style={[styles.cardSlot, { width: viewport.width }]}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={tx(`${destination.cityName} 的安排`, `Plans in ${destination.cityName}`)}
+                  onPress={() => { setSelectedKey(destination.key); setPlaceOpen(true); }}
+                  style={({ pressed }) => [
+                    styles.placeCard,
+                    { backgroundColor: theme.backgroundElement, shadowColor: theme.shadow },
+                    pressed && styles.pressed,
+                  ]}>
+                  <View style={[styles.placeStatus, { backgroundColor: statusColor(destination.status, theme) }]} />
+                  <View style={styles.placeCopy}>
+                    <ThemedText type="smallBold" numberOfLines={1} style={styles.placeCity}>{destination.cityName}</ThemedText>
+                    <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+                      {[
+                        statusLabel(destination.status, tx),
+                        tx(`${destination.items.length} 项安排`, `${destination.items.length} plans`),
+                        destination.timeZone,
+                        destination.currency,
+                      ].filter(Boolean).join(' · ')}
+                    </ThemedText>
+                  </View>
+                  <Chevron color={theme.textMuted} />
+                </Pressable>
+              </View>
+            ))}
+          </ScrollView>
+        ) : (
+          <View style={[styles.placeCard, styles.placeEmpty, { backgroundColor: theme.backgroundSelected }]}>
+            <ThemedText type="smallBold">{tx('地图还在等第一个目的地', 'The map is waiting for its first destination')}</ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              {tx('在添加安排时搜索城市即可，时区和币种会自动带入。', 'Search a city while adding a plan; timezone and currency will be suggested automatically.')}
+            </ThemedText>
+          </View>
+        )}
+      </View>
 
       {selected ? (
-        <View style={[styles.detail, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
-          <View style={styles.detailHeader}>
-            <View style={styles.detailCopy}>
-              <ThemedText type="subtitle" style={styles.city}>{selected.cityName}</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">{selected.countryName} · {selected.timeZone}{selected.currency ? ` · ${selected.currency}` : ''}</ThemedText>
-            </View>
-            <View style={[styles.status, { backgroundColor: selected.status === 'visited' ? theme.backgroundSubtle : theme.accentSoft }]}>
-              <View style={[styles.statusDot, { backgroundColor: statusColor(selected.status, theme) }]} />
-              <ThemedText type="smallBold" style={{ color: selected.status === 'visited' ? theme.textSecondary : theme.accent }}>{statusLabel(selected.status, tx)}</ThemedText>
-            </View>
-          </View>
-          <View style={styles.planList}>
-            {selected.items.slice(0, 4).map((item) => (
-              <Pressable
-                key={item.id}
-                accessibilityRole={onViewItem ? 'button' : undefined}
-                onPress={onViewItem ? () => onViewItem(item) : undefined}
-                style={({ pressed }) => [styles.planRow, pressed && styles.pressed]}>
-                <View style={[styles.planDot, { backgroundColor: theme.accent }]} />
-                <View style={styles.planCopy}>
-                  <ThemedText type="smallBold" numberOfLines={1}>{item.title}</ThemedText>
-                  <ThemedText type="small" themeColor="textSecondary">{formatZonedDateTimeRange(item.startsAt, item.endsAt, languageTag, item.destination?.timeZone ?? 'UTC')}</ThemedText>
-                </View>
-                {onViewItem ? <ThemedText type="smallBold" style={{ color: theme.link }}>{tx('查看', 'View')}</ThemedText> : null}
-              </Pressable>
-            ))}
-            {selected.items.length > 4 ? <ThemedText type="small" themeColor="textSecondary">{tx(`还有 ${selected.items.length - 4} 项安排`, `${selected.items.length - 4} more plans`)}</ThemedText> : null}
-          </View>
-        </View>
-      ) : (
-        <View style={[styles.empty, { backgroundColor: theme.backgroundSelected }]}>
-          <ThemedText type="smallBold">{tx('地图还在等第一个目的地', 'The map is waiting for its first destination')}</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">{tx('在添加安排时搜索城市即可，时区和币种会自动带入。', 'Search a city while adding a plan; timezone and currency will be suggested automatically.')}</ThemedText>
-        </View>
-      )}
-      <ThemedText type="small" themeColor="textMuted" style={styles.attribution}>{tx('城市坐标：Open-Meteo · 世界轮廓：SVG Maps', 'City coordinates: Open-Meteo · World outline: SVG Maps')}</ThemedText>
+        <DestinationPlaceSheet
+          cityName={selected.cityName}
+          countryName={selected.countryName}
+          currency={selected.currency}
+          items={selected.items}
+          languageTag={languageTag}
+          onDismiss={() => setPlaceOpen(false)}
+          onViewAll={onViewPlace ? () => { setPlaceOpen(false); onViewPlace({ cityName: selected.cityName, items: selected.items }); } : undefined}
+          onViewItem={onViewItem ? (item) => { setPlaceOpen(false); onViewItem(item); } : undefined}
+          status={selected.status}
+          statusColor={statusColor(selected.status, theme)}
+          statusLabel={statusLabel(selected.status, tx)}
+          timeZone={selected.timeZone}
+          tx={tx}
+          visible={placeOpen}
+        />
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { gap: 12, paddingTop: 10 },
-  mapShell: { position: 'relative', width: '100%', aspectRatio: MAP_WIDTH / MAP_HEIGHT, borderRadius: 24, overflow: 'hidden' },
-  mapViewport: { position: 'relative', width: '100%', height: '100%', overflow: 'hidden' },
-  mapContent: { width: '100%', height: '100%' },
-  mapOverlay: StyleSheet.absoluteFill,
-  mapControls: { position: 'absolute', right: 14, top: 14, gap: 8 },
-  mapControl: { width: 42, height: 42, borderRadius: 13, borderWidth: 1, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOpacity: 0.16, shadowRadius: 8, shadowOffset: { width: 0, height: 3 } },
-  resetControl: { width: 42 },
-  markerHit: { position: 'absolute', width: 44, height: 44, marginLeft: -22, marginTop: -22, alignItems: 'center', justifyContent: 'center' },
+  wrap: { flex: 1, minHeight: 0, gap: Spacing.sm },
+  legend: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: Spacing.sm },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  legendDot: { width: 8, height: 8, borderRadius: 4 },
+  mapArea: { flex: 1, minHeight: 0, justifyContent: 'flex-end' },
+  mapShell: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, borderRadius: Radius.xl, overflow: 'hidden' },
+  // Centred by half-size negative margins so the transform's own origin is the
+  // middle of the map, which is what `frameDestinations` solves against.
+  mapContent: { position: 'absolute', left: '50%', top: '50%' },
+  mapControls: { position: 'absolute', right: 14, top: 14, borderRadius: Radius.md, overflow: 'hidden', gap: StyleSheet.hairlineWidth, shadowOpacity: 0.22, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 4 },
+  mapControl: { width: 44, height: 42, alignItems: 'center', justifyContent: 'center' },
+  markerHit: { position: 'absolute', width: 44, height: 44, marginLeft: -22, marginTop: -22 },
+  markerPress: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   markerGlow: { position: 'absolute', width: 30, height: 30, borderRadius: 15, opacity: 0.28 },
-  marker: { minWidth: 25, height: 25, borderRadius: 13, borderWidth: 2, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 3 } },
+  marker: { minWidth: 25, height: 25, borderRadius: 13, borderWidth: 2, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
   markerSelected: { minWidth: 31, height: 31, borderRadius: 16, borderWidth: 3 },
-  mapCaption: { position: 'absolute', left: 16, bottom: 14, gap: 1 },
-  detail: { borderWidth: 1, borderRadius: 20, padding: 16, gap: 14 },
-  detailHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  detailCopy: { flex: 1, gap: 2 },
-  city: { fontSize: 26, lineHeight: 32 },
-  status: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 7 },
-  statusDot: { width: 7, height: 7, borderRadius: 4 },
-  planList: { gap: 2 },
-  planRow: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
-  planDot: { width: 7, height: 7, borderRadius: 4 },
-  planCopy: { flex: 1, minWidth: 0, gap: 1 },
-  empty: { borderRadius: 16, padding: 14, gap: 3 },
-  attribution: { textAlign: 'right', fontSize: 11, lineHeight: 16 },
+  cards: { alignItems: 'stretch' },
+  cardSlot: { justifyContent: 'flex-end' },
+  placeStatus: { width: 4, alignSelf: 'stretch', minHeight: 32, borderRadius: 2 },
+  placeCard: { minHeight: 68, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, margin: Spacing.sm, borderRadius: Radius.lg, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, shadowOpacity: 0.16, shadowRadius: 20, shadowOffset: { width: 0, height: 6 }, elevation: 6 },
+  placeEmpty: { flexDirection: 'column', alignItems: 'flex-start', gap: 3, elevation: 0, shadowOpacity: 0 },
+  placeCopy: { flex: 1, minWidth: 0, gap: 2 },
+  placeCity: { fontSize: 17, lineHeight: 24, fontWeight: '600' },
+  // Above the place card, which is docked at the map's lower edge.
+  attribution: { position: 'absolute', left: 14, bottom: 96, fontSize: 11, lineHeight: 16, fontWeight: '500', opacity: 0.68 },
   pressed: { opacity: 0.68 },
 });
