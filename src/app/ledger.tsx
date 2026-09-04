@@ -19,6 +19,7 @@ import {
   type BalanceSnapshot as SettlementWorkspaceBalanceSnapshot,
   type SettlementDraft,
 } from '@/components/settlement-workspace';
+import { BaseCurrencySheet } from '@/components/base-currency-sheet';
 import { ThemedText } from '@/components/themed-text';
 import { getCurrencyOptions } from '@/constants/options';
 import {
@@ -75,6 +76,7 @@ export default function LedgerScreen() {
     attachExpenseReceipt,
     markSettlement,
     unmarkSettlement,
+    saveTrip,
     error,
   } = useMvp();
   const [activeView, setActiveView] = useState<'settle' | 'activity'>('settle');
@@ -102,6 +104,8 @@ export default function LedgerScreen() {
   const [formError, setFormError] = useState<string>();
   const [success, setSuccess] = useState<string>();
   const [aiNotice, setAiNotice] = useState<string>();
+  const [baseOpen, setBaseOpen] = useState(false);
+  const [baseDraft, setBaseDraft] = useState('');
 
   const currency = currencyOverride || activeTrip?.homeCurrency || 'HKD';
   const baseCurrency = activeTrip?.homeCurrency || 'HKD';
@@ -547,6 +551,32 @@ export default function LedgerScreen() {
     }
   }
 
+  /**
+   * Only reachable while the ledger is empty — `BaseCurrencySheet` states the
+   * reason and hides the control otherwise. The RPC needs the whole trip, so
+   * every other field is passed back unchanged.
+   */
+  async function saveBaseCurrency() {
+    if (!activeTrip || expenses.length > 0) return;
+    setBusyAction('save');
+    setFormError(undefined);
+    try {
+      await saveTrip({
+        name: activeTrip.name,
+        startsOn: activeTrip.startsOn,
+        endsOn: activeTrip.endsOn,
+        homeCurrency: baseDraft,
+        defaultTimeZone: activeTrip.defaultTimeZone,
+      });
+      setBaseOpen(false);
+      setSuccess(tx(`记账币种已设为 ${baseDraft}。`, `The ledger now keeps its books in ${baseDraft}.`));
+    } catch (caught) {
+      setFormError(toUserMessage(caught, tx('无法更新记账币种，请稍后重试。', 'Could not update the ledger currency. Please try again.')));
+    } finally {
+      setBusyAction(undefined);
+    }
+  }
+
   async function undoTransfer(settlement: Settlement) {
     setBusySettlementId(settlement.id);
     setFormError(undefined);
@@ -637,6 +667,7 @@ export default function LedgerScreen() {
           setSettlementDrafts={setSettlementDrafts}
           summaryTransfers={normalizedPendingTransfers}
           undoTransfer={undoTransfer}
+          baseCurrencyPanel={() => { setBaseDraft(baseCurrency); setBaseOpen(true); }}
         />
       ) : (
         <ExpenseActivity
@@ -711,6 +742,20 @@ export default function LedgerScreen() {
           tx={tx}
         />
       </BottomSheet>
+
+      <BaseCurrencySheet
+        busy={busyAction === 'save'}
+        currency={baseCurrency}
+        currencyOptions={currencyOptions}
+        draft={baseDraft}
+        error={formError}
+        expenseCount={expenses.length}
+        onChangeDraft={setBaseDraft}
+        onDismiss={() => setBaseOpen(false)}
+        onSubmit={() => void saveBaseCurrency()}
+        tx={tx}
+        visible={baseOpen}
+      />
     </>
   );
 }

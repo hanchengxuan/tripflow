@@ -15,6 +15,10 @@ import type { Trip, TripMember } from '@/domain/models';
  * a trailing value means the row opens nothing, a chevron means it does. Each
  * action that needs a form or a confirmation opens its own panel rather than
  * growing inside this one.
+ *
+ * The ledger's base currency used to be listed here as a trip fact. It is the
+ * ledger's setting and lives there now, where changing it can be refused once
+ * money has been recorded against it.
  */
 export function TripManageSheet({
   canEdit,
@@ -28,6 +32,7 @@ export function TripManageSheet({
   onMember,
   roleLabel,
   trip,
+  timeZone,
   tripRange,
   tx,
   visible,
@@ -42,6 +47,7 @@ export function TripManageSheet({
   onInvite: () => void;
   onMember: (userId: string) => void;
   roleLabel: (role: TripMember['role']) => string;
+  timeZone: string;
   trip: Trip;
   tripRange: string;
   tx: (zh: string, en: string) => string;
@@ -57,9 +63,10 @@ export function TripManageSheet({
               its own list, rather than the two raw ISO dates this panel used. */}
           <SettingsRow label={tx('日期', 'Dates')} value={tripRange} />
           <SettingsDivider />
-          <SettingsRow label={tx('记账币种', 'Home currency')} value={trip.homeCurrency} />
-          <SettingsDivider />
-          <SettingsRow label={tx('时区', 'Time zone')} value={trip.defaultTimeZone} />
+          {/* Derived from the itinerary, never chosen. It is stated because a
+              reader may want to know which clock the dates above are in — not
+              because anyone is expected to change it. */}
+          <SettingsRow label={tx('时区', 'Time zone')} value={timeZone} />
           <SettingsDivider />
           <SettingsRow label={tx('我的权限', 'My access')} value={myRole ? roleLabel(myRole) : '—'} />
           {canEdit ? (

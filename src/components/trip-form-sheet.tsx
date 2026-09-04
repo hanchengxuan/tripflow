@@ -3,8 +3,9 @@ import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { BottomSheet } from '@/components/bottom-sheet';
 import { DateTimeField } from '@/components/date-time-field';
 import { DestinationField } from '@/components/destination-field';
-import { DestinationSettings } from '@/components/destination-settings';
+import { DestinationSummary } from '@/components/destination-settings';
 import { ActionButton, FormField, InlineNotice } from '@/components/form-controls';
+import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { destinationLabel, type DestinationSuggestion } from '@/features/destinations/destination-search';
 
@@ -12,46 +13,40 @@ export interface TripDraft {
   name: string;
   startsOn: string;
   endsOn: string;
-  currency: string;
-  timeZone: string;
   destinationText: string;
-  settingsOpen: boolean;
+  /** Derived from the destination, never chosen. Blank until one is picked. */
+  timeZone?: string;
 }
 
 /**
  * Creating a trip, and editing one.
  *
- * Name, dates, and where you are going. Time zone and currency used to be two
- * pickers of equal weight, which asked every traveller to answer a question
- * about IANA zone names before they could create a trip. Choosing a destination
- * sets both; the summary row underneath keeps them visible and correctable
- * without putting them in the way.
+ * Name, where you are going, dates. Nothing else.
  *
- * The form used to unfold inside the Trips page under a button that renamed
- * itself to 收起. It is a sheet now, like every other form in the product.
+ * A time zone and a currency used to sit behind a 「已自动设置」 disclosure here.
+ * The zone is derived from the destination — the app can answer that question
+ * without asking it — and the currency was the ledger's base, which belongs to
+ * the ledger and is set there, where changing it can be refused once money has
+ * been recorded against it.
  */
 export function TripFormSheet({
   busy,
-  currencyOptions,
   draft,
   error,
   mode,
   onChange,
   onDismiss,
   onSubmit,
-  timeZoneOptions,
   tx,
   visible,
 }: {
   busy: boolean;
-  currencyOptions: { label: string; value: string }[];
   draft: TripDraft;
   error?: string;
   mode: 'create' | 'edit';
   onChange: (patch: Partial<TripDraft>) => void;
   onDismiss: () => void;
   onSubmit: () => void;
-  timeZoneOptions: { label: string; value: string }[];
   tx: (zh: string, en: string) => string;
   visible: boolean;
 }) {
@@ -59,11 +54,7 @@ export function TripFormSheet({
   const compact = width < 520;
 
   function chooseDestination(suggestion: DestinationSuggestion) {
-    onChange({
-      destinationText: destinationLabel(suggestion),
-      timeZone: suggestion.timeZone,
-      ...(suggestion.currency ? { currency: suggestion.currency } : {}),
-    });
+    onChange({ destinationText: destinationLabel(suggestion), timeZone: suggestion.timeZone });
   }
 
   return (
@@ -86,6 +77,7 @@ export function TripFormSheet({
           onChange={(destinationText) => onChange({ destinationText })}
           onSelect={chooseDestination}
         />
+        <DestinationSummary timeZone={draft.timeZone} tx={tx} />
         <View style={[styles.row, compact && styles.rowStacked]}>
           <View style={[styles.field, compact && styles.fieldStacked]}>
             <DateTimeField label={tx('开始日期', 'Start date')} value={draft.startsOn} mode="date" onChange={(startsOn) => onChange({ startsOn })} />
@@ -100,20 +92,15 @@ export function TripFormSheet({
             />
           </View>
         </View>
-        <DestinationSettings
-          currency={draft.currency}
-          currencyOptions={currencyOptions}
-          onCurrencyChange={(currency) => onChange({ currency })}
-          onTimeZoneChange={(timeZone) => onChange({ timeZone })}
-          onToggle={() => onChange({ settingsOpen: !draft.settingsOpen })}
-          open={draft.settingsOpen}
-          timeZone={draft.timeZone}
-          timeZoneOptions={timeZoneOptions}
-          tx={tx}
-        />
         <ActionButton busy={busy} disabled={!draft.name.trim()} onPress={onSubmit}>
           {mode === 'create' ? tx('创建并进入行程', 'Create and open trip') : tx('保存行程', 'Save trip')}
         </ActionButton>
+        {mode === 'create' ? (
+          <ThemedText type="small" themeColor="textSecondary">
+            {tx('记账币种在账本里设置，第一笔支出记下之后就固定了。',
+                'The ledger currency is set in the Ledger, and fixed once the first expense is recorded.')}
+          </ThemedText>
+        ) : null}
       </View>
     </BottomSheet>
   );

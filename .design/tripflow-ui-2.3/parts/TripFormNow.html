@@ -1,0 +1,38 @@
+<div class="screen tagged" style="height:720px">
+  <div class="tag tag-now">现状 · 新建行程</div>
+  <div style="position:absolute;inset:28px 0 0;background:rgba(12,25,36,0.32)"></div>
+  <div class="sheet" style="top:56px;bottom:0;overflow:hidden">
+    <div class="grab"></div>
+    <div class="sheet-h"><h2>新建行程</h2><div class="l-t" style="color:var(--text2)">取消</div></div>
+    <div class="sheet-body">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div class="f-label">行程名称</div><div class="input">例如：北海道滑雪之旅</div></div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div class="f-label">目的地</div><div class="input">札幌 · 日本</div></div>
+      <div style="display:flex;gap:12px">
+        <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+          <div class="f-label">开始日期</div><div class="input" style="color:var(--text);font-size:14px">3月12日</div></div>
+        <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+          <div class="f-label">结束日期</div><div class="input" style="color:var(--text);font-size:14px">3月18日</div></div>
+      </div>
+
+      <!-- (1) 时区和记账币种被并成一行「已自动设置」，展开后是两个选择器。
+           时区永远可以从目的地推出来 —— 这一行只是把一个不该问的问题
+           折叠起来，而不是不问。 -->
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="min-height:48px;display:flex;align-items:center;gap:12px;padding:0 4px">
+          <div style="flex:1"><div class="l-t">已自动设置</div><div class="l-s">札幌 · Asia/Tokyo · JPY</div></div>
+          <svg width="12" height="12" viewBox="0 0 8 14" fill="none" style="transform:rotate(45deg)"><path d="m1.4 1.4 5.2 5.6-5.2 5.6" stroke="#5A6663" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div style="background:var(--subtle);border-radius:14px;padding:12px;display:flex;gap:12px">
+          <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+            <div class="f-label">时区</div><div class="input" style="color:var(--text);font-size:14px">Asia/Tokyo</div></div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+            <div class="f-label">记账币种</div><div class="input" style="color:var(--text);font-size:14px">JPY</div></div>
+        </div>
+      </div>
+
+      <div class="btn btn-p">创建并进入行程</div>
+    </div>
+  </div>
+</div>

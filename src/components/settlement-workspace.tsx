@@ -29,7 +29,7 @@ export interface SettlementDraft {
 }
 
 type Transfer = SettlementTransfer & { currency: string };
-type Panel = 'currency' | 'completed' | 'group';
+type Panel = 'currency' | 'completed' | 'group' | 'base';
 
 export function transferKey(transfer: Transfer) {
   return `${transfer.currency}-${transfer.fromParticipantId}-${transfer.toParticipantId}`;
@@ -63,6 +63,7 @@ function sumTransfers(transfers: SettlementTransfer[], direction: 'from' | 'to',
 export function SettlementWorkspace({
   balanceSnapshots,
   baseCurrency,
+  baseCurrencyPanel,
   busySettlementId,
   completeTransfer,
   currencyOptions,
@@ -81,6 +82,8 @@ export function SettlementWorkspace({
 }: {
   balanceSnapshots: BalanceSnapshot[];
   baseCurrency: string;
+  /** Opens the ledger's own currency setting. */
+  baseCurrencyPanel: () => void;
   busySettlementId?: string;
   completeTransfer: (transfer: Transfer) => Promise<void>;
   currencyOptions: { label: string; value: string }[];
@@ -207,6 +210,10 @@ export function SettlementWorkspace({
           value={tx(`${names.size} 人 · ${balanceSnapshots.length} 种币种`, `${names.size} people · ${balanceSnapshots.length} currencies`)}
           onPress={balanceSnapshots.length > 0 ? () => setPanel('group') : undefined}
         />
+        <SettingsDivider />
+        {/* The ledger's own setting, where it belongs. It used to be a field on
+            the Trips form, changeable long after the arithmetic depended on it. */}
+        <SettingsRow label={tx('记账币种', 'Ledger currency')} value={baseCurrency} onPress={baseCurrencyPanel} />
       </SettingsGroup>
 
       <BottomSheet onDismiss={() => setPanel(undefined)} title={tx('用其他币种付款', 'Pay in another currency')} visible={panel === 'currency'}>

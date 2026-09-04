@@ -16,6 +16,7 @@ import type { ThemeColor } from '@/constants/theme';
 import type { ItineraryItem, ItineraryKind } from '@/domain/models';
 import { useI18n } from '@/features/i18n/i18n-provider';
 import { useMvp } from '@/features/mvp/mvp-provider';
+import { tripTimeZone } from '@/features/trips/trip-defaults';
 import { toUserMessage } from '@/lib/user-error';
 import { isoToZonedDateTime } from '@/lib/trip-time';
 import { useTheme } from '@/hooks/use-theme';
@@ -120,6 +121,9 @@ export default function ItineraryScreen() {
   const canEdit = currentMember?.role === 'owner' || currentMember?.role === 'editor';
   const editingItem = itineraryItems.find(({ id }) => id === editingItemId);
 
+  // The trip's own clock, derived from its earliest destination.
+  const tripZone = tripTimeZone(activeTrip, itineraryItems);
+
   const activeTripId = activeTrip?.id;
   const itemIdParam = Array.isArray(params.itemId) ? params.itemId[0] : params.itemId;
   const placeParam = Array.isArray(params.place) ? params.place[0] : params.place;
@@ -218,11 +222,11 @@ export default function ItineraryScreen() {
             {filteredItems.length > 0 ? (
               <View style={styles.timeline}>
                 {filteredItems.map((item, index) => {
-                  const timeZone = item.destination?.timeZone ?? activeTrip.defaultTimeZone;
+                  const timeZone = item.destination?.timeZone ?? tripZone;
                   const start = isoToZonedDateTime(item.startsAt, timeZone);
                   const end = item.endsAt ? isoToZonedDateTime(item.endsAt, timeZone) : undefined;
                   const previous = filteredItems[index - 1];
-                  const previousTimeZone = previous?.destination?.timeZone ?? activeTrip.defaultTimeZone;
+                  const previousTimeZone = previous?.destination?.timeZone ?? tripZone;
                   const previousDate = previous ? isoToZonedDateTime(previous.startsAt, previousTimeZone).date : undefined;
                   return (
                     <Fragment key={item.id}>
@@ -286,7 +290,7 @@ export default function ItineraryScreen() {
           }}
           segmentMembers={segmentMembers}
           segments={segments}
-          timeZone={activeTrip.defaultTimeZone}
+          timeZone={tripZone}
           visible={branchesOpen && segments.length > 0}
         />
       ) : null}
@@ -297,7 +301,7 @@ export default function ItineraryScreen() {
           members={members}
           onDismiss={() => setSplitFromItemId(undefined)}
           onSplit={splitTripSegment}
-          timeZone={activeTrip.defaultTimeZone}
+          timeZone={tripZone}
           tripEndsOn={activeTrip.endsOn}
           visible={Boolean(canEdit && splitFromItem)}
         />
@@ -315,6 +319,8 @@ export default function ItineraryScreen() {
             startsOn: range.startsOn,
             endsOn: range.endsOn,
             homeCurrency: activeTrip.homeCurrency,
+            // Passed back unchanged: extending a range must not rewrite what
+            // the trip was created with.
             defaultTimeZone: activeTrip.defaultTimeZone,
           })}
           onSave={saveItineraryItem}

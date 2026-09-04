@@ -20,6 +20,8 @@ const LABEL_COLUMN = 46;
 
 interface ItineraryEditAssistantProps {
   trip: Pick<Trip, 'id' | 'startsOn' | 'endsOn' | 'defaultTimeZone'>;
+  /** The trip's derived zone; the stored one is only its last-resort fallback. */
+  timeZone: string;
   item: ItineraryItem;
   items: ItineraryItem[];
   onApply: (candidate: ItineraryItem & { endsAt: string }) => Promise<void>;
@@ -41,7 +43,7 @@ function issueCopy(code: 'INVALID_RANGE' | 'OUTSIDE_TRIP' | 'OVERLAP', tx: (zh: 
  * time: `生成预览` until a proposal arrives, then `应用修改` — regenerating and
  * discarding drop to links so the sheet never shows two primary paths at once.
  */
-export function ItineraryEditAssistant({ trip, item, items, onApply }: ItineraryEditAssistantProps) {
+export function ItineraryEditAssistant({ trip, item, items, onApply, timeZone }: ItineraryEditAssistantProps) {
   const theme = useTheme();
   const { languageTag, tx } = useI18n();
   const [open, setOpen] = useState(false);
@@ -59,8 +61,8 @@ export function ItineraryEditAssistant({ trip, item, items, onApply }: Itinerary
   const candidateWithEnd = candidate?.endsAt ? candidate as ItineraryItem & { endsAt: string } : undefined;
   const validation = useMemo(() => {
     if (!candidate) return undefined;
-    return validateMergedItineraryEdit({ candidate, items, trip, timeZone: trip.defaultTimeZone });
-  }, [candidate, items, trip]);
+    return validateMergedItineraryEdit({ candidate, items, trip, timeZone });
+  }, [candidate, items, timeZone, trip]);
 
   const generatePreview = async () => {
     if (!selectedItem) return;
@@ -155,8 +157,8 @@ export function ItineraryEditAssistant({ trip, item, items, onApply }: Itinerary
                 {change.startsAt || change.endsAt ? (
                   <DiffRow
                     label={tx('时间', 'Time')}
-                    before={formatZonedDateTimeRange(selectedItem.startsAt, selectedItem.endsAt, languageTag, trip.defaultTimeZone)}
-                    after={formatZonedDateTimeRange(candidate?.startsAt ?? selectedItem.startsAt, candidate?.endsAt, languageTag, trip.defaultTimeZone)}
+                    before={formatZonedDateTimeRange(selectedItem.startsAt, selectedItem.endsAt, languageTag, timeZone)}
+                    after={formatZonedDateTimeRange(candidate?.startsAt ?? selectedItem.startsAt, candidate?.endsAt, languageTag, timeZone)}
                   />
                 ) : null}
                 <ThemedText style={styles.previewSummary} themeColor="textSecondary">{change.reason}</ThemedText>

@@ -1,0 +1,24 @@
+<div class="screen tagged" style="height:720px">
+  <div class="tag tag-new">提案 · 记账币种归账本，有支出后锁定</div>
+  <div style="position:absolute;inset:28px 0 0;background:rgba(12,25,36,0.32)"></div>
+  <div class="sheet" style="bottom:0;padding-bottom:28px">
+    <div class="grab"></div>
+    <div class="sheet-h"><h2>记账币种</h2><div class="l-t" style="color:var(--text2)">取消</div></div>
+    <div class="sheet-body" style="gap:14px">
+      <div class="l-s" style="font-size:14px;line-height:20px">
+        所有余额、结算和「已换算」金额都记在这个币种里。外币支出按当时的汇率折算成它。</div>
+
+      <!-- Changing the base after money is recorded would leave every stored
+           base amount denominated in the old one — the server recomputes
+           nothing. So it is stated as settled, not offered as a control. -->
+      <div class="list" style="background:var(--subtle)">
+        <div class="srow"><div class="lab">当前记账币种</div><div class="val">CNY</div></div>
+        <div class="hair"></div>
+        <div class="srow"><div class="lab">已记录支出</div><div class="val">12 笔</div></div>
+      </div>
+
+      <div class="notice"><div class="bar" style="background:var(--plan)"></div>
+        <p>已经有 12 笔支出记在 CNY 里，币种不能再改 —— 改了这些金额的折算依据就对不上了。需要换币种的话，新建一个行程。</p></div>
+    </div>
+  </div>
+</div>

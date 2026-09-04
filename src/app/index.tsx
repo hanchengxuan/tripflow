@@ -20,6 +20,7 @@ import type { ItineraryItem, ItineraryKind, RouteTravelMode } from '@/domain/mod
 import { destinationLabel } from '@/features/destinations/destination-search';
 import { useI18n } from '@/features/i18n/i18n-provider';
 import { useMvp } from '@/features/mvp/mvp-provider';
+import { tripTimeZone as deriveTripTimeZone } from '@/features/trips/trip-defaults';
 import { getRouteEstimate, type RouteEstimate } from '@/features/routes/route-estimate';
 import { toUserMessage } from '@/lib/user-error';
 import { formatZonedDateTimeRange, isoToZonedDateTime, stayNightsInZone } from '@/lib/trip-time';
@@ -87,7 +88,9 @@ export default function TodayScreen() {
     [upcomingItems, visibleStays],
   );
   const tripRange = activeTrip ? formatTripDates(activeTrip.startsOn, activeTrip.endsOn, languageTag) : undefined;
-  const tripTimeZone = activeTrip?.defaultTimeZone ?? 'UTC';
+  // Derived from the itinerary rather than read off the trip: the stored
+  // value is only ever a fallback for a trip whose plans name no destination.
+  const tripTimeZone = deriveTripTimeZone(activeTrip, itineraryItems);
   const editingItem = itineraryItems.find(({ id }) => id === editingItemId);
   const movingItem = itineraryItems.find(({ id }) => id === movingItemId);
   const moveTripOptions = useMemo(
@@ -348,7 +351,7 @@ export default function TodayScreen() {
     <>
       <Screen
       context={activeTrip
-        ? [tripRange ?? '', tx(`${members.length} 人同行`, `${members.length} travellers`), tx(`${activeTrip.homeCurrency} 本位币`, `Home currency ${activeTrip.homeCurrency}`)]
+        ? [tripRange ?? '', tx(`${members.length} 人同行`, `${members.length} travellers`), tx(`${upcomingItems.length} 项待办`, `${upcomingItems.length} ahead`)]
         : [tx('还没有进行中的行程', 'No active trip yet')]}
       title={activeTrip?.name ?? tx('今天', 'Today')}
       floatingAction={activeTrip && canEdit ? (

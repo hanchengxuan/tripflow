@@ -16,13 +16,13 @@ import { ThemedText } from '@/components/themed-text';
 import { TripFormSheet, type TripDraft } from '@/components/trip-form-sheet';
 import { TripManageSheet } from '@/components/trip-manage-sheet';
 import { TripOverviewCard } from '@/components/trip-overview-card';
-import { getCurrencyOptions, getTimeZoneOptions, tripRoleLabels, tripRoleLabelsEn } from '@/constants/options';
+import { tripRoleLabels, tripRoleLabelsEn } from '@/constants/options';
 import { Spacing } from '@/constants/theme';
 import type { Trip, TripRole } from '@/domain/models';
 import { useI18n } from '@/features/i18n/i18n-provider';
 import { buildInviteUrl, parseInviteToken } from '@/features/invites/invite-link';
 import { useMvp } from '@/features/mvp/mvp-provider';
-import { defaultHomeCurrency, defaultTripTimeZone } from '@/features/trips/trip-defaults';
+import { defaultHomeCurrency, newTripTimeZone, tripTimeZone } from '@/features/trips/trip-defaults';
 import { useTheme } from '@/hooks/use-theme';
 import { toUserMessage } from '@/lib/user-error';
 
@@ -56,7 +56,7 @@ export default function TripsScreen() {
   const theme = useTheme();
   const { locale, formatDateTime, tx } = useI18n();
   const {
-    trips, activeTrip, members, currentUserId, error,
+    trips, activeTrip, members, currentUserId, error, itineraryItems,
     selectTrip, createTrip, joinTrip, createInvite, saveTrip, deleteTrip, setMemberRole, removeMember,
   } = useMvp();
 
@@ -70,10 +70,7 @@ export default function TripsScreen() {
     name: '',
     startsOn: dateOffset(30),
     endsOn: dateOffset(37),
-    currency: defaultHomeCurrency(trips),
-    timeZone: defaultTripTimeZone(trips),
     destinationText: '',
-    settingsOpen: false,
   }));
   const [inviteCode, setInviteCode] = useState('');
   const [scanningInvite, setScanningInvite] = useState(false);
@@ -87,8 +84,6 @@ export default function TripsScreen() {
   const handledInviteParam = useRef<string | undefined>(undefined);
   const inviteParam = Array.isArray(params.invite) ? params.invite[0] : params.invite;
 
-  const currencyOptions = getCurrencyOptions(locale === 'en');
-  const timeZoneOptions = getTimeZoneOptions(locale === 'en');
   const selectedMember = members.find(({ userId }) => userId === memberId);
 
   useEffect(() => {
@@ -106,30 +101,14 @@ export default function TripsScreen() {
   }, [inviteParam, tx]);
 
   function editDraftFor(trip: Trip): TripDraft {
-    return {
-      name: trip.name,
-      startsOn: trip.startsOn,
-      endsOn: trip.endsOn,
-      currency: trip.homeCurrency,
-      timeZone: trip.defaultTimeZone,
-      destinationText: '',
-      settingsOpen: false,
-    };
+    return { name: trip.name, startsOn: trip.startsOn, endsOn: trip.endsOn, destinationText: '' };
   }
 
   function openPanel(next: Panel) {
     setPanelError(undefined);
     setSuccess(undefined);
     if (next === 'create') {
-      setDraft({
-        name: '',
-        startsOn: dateOffset(30),
-        endsOn: dateOffset(37),
-        currency: defaultHomeCurrency(trips),
-        timeZone: defaultTripTimeZone(trips),
-        destinationText: '',
-        settingsOpen: false,
-      });
+      setDraft({ name: '', startsOn: dateOffset(30), endsOn: dateOffset(37), destinationText: '' });
     }
     if (next === 'edit' && activeTrip) setDraft(editDraftFor(activeTrip));
     if (next === 'join') {
@@ -169,14 +148,31 @@ export default function TripsScreen() {
 
   async function submitTrip() {
     await run('create', async () => {
-      await createTrip({ name: draft.name, startsOn: draft.startsOn, endsOn: draft.endsOn, homeCurrency: draft.currency, defaultTimeZone: draft.timeZone });
+      // Neither of these was asked for. The zone comes from the destination
+      // typed into the form, or the device; the ledger's base currency starts
+      // where this traveller's last one did, and is changed in the Ledger.
+      await createTrip({
+        name: draft.name,
+        startsOn: draft.startsOn,
+        endsOn: draft.endsOn,
+        homeCurrency: defaultHomeCurrency(trips),
+        defaultTimeZone: newTripTimeZone(draft.timeZone),
+      });
       closePanel();
     }, tx('新行程已创建。', 'Trip created.'));
   }
 
   async function submitTripEdit() {
     await run('edit-trip', async () => {
-      await saveTrip({ name: draft.name, startsOn: draft.startsOn, endsOn: draft.endsOn, homeCurrency: draft.currency, defaultTimeZone: draft.timeZone });
+      // Editing a trip cannot touch either: the RPC requires both, so the
+      // stored values are passed straight back.
+      await saveTrip({
+        name: draft.name,
+        startsOn: draft.startsOn,
+        endsOn: draft.endsOn,
+        homeCurrency: activeTrip?.homeCurrency ?? defaultHomeCurrency(trips),
+        defaultTimeZone: draft.timeZone?.trim() || activeTrip?.defaultTimeZone || newTripTimeZone(),
+      });
       setPanel('manage');
     }, tx('行程资料已更新。', 'Trip details updated.'));
   }
@@ -274,7 +270,7 @@ export default function TripsScreen() {
                     that sat beside the press target said the same thing. */}
                 <ListRow
                   onPress={() => void openTrip(trip)}
-                  subtitle={`${formatTripRange(trip, locale)} · ${trip.homeCurrency}`}
+                  subtitle={formatTripRange(trip, locale)}
                   title={trip.name}
                   trailing={
                     <View style={styles.rowTrailing}>
@@ -293,14 +289,12 @@ export default function TripsScreen() {
 
       <TripFormSheet
         busy={busyAction === 'create' || busyAction === 'edit-trip'}
-        currencyOptions={currencyOptions}
         draft={draft}
         error={panelError}
         mode={panel === 'edit' ? 'edit' : 'create'}
         onChange={(patch) => setDraft((current) => ({ ...current, ...patch }))}
         onDismiss={panel === 'edit' ? () => setPanel('manage') : closePanel}
         onSubmit={() => void (panel === 'edit' ? submitTripEdit() : submitTrip())}
-        timeZoneOptions={timeZoneOptions}
         tx={tx}
         visible={panel === 'create' || panel === 'edit'}
       />
@@ -336,6 +330,7 @@ export default function TripsScreen() {
           onInvite={() => openPanel('invite')}
           onMember={(userId) => { setMemberId(userId); setPanel('member'); }}
           roleLabel={roleLabel}
+          timeZone={tripTimeZone(activeTrip, itineraryItems)}
           trip={activeTrip}
           tripRange={formatTripRange(activeTrip, locale)}
           tx={tx}

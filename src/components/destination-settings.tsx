@@ -1,86 +1,42 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
-import { Chevron } from '@/components/chevron';
-import { SelectionField } from '@/components/selection-field';
 import { ThemedText } from '@/components/themed-text';
-import { Radius, Size, Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { Spacing } from '@/constants/theme';
 
 /**
- * Time zone and currency, derived rather than asked for.
+ * What choosing a destination decided, stated as a fact.
  *
- * Choosing a destination already determines both, so they are shown as a
- * summary the traveller can confirm at a glance and only opened when something
- * needs correcting. Two pickers in the primary flow made every trip start with
- * a quiz about IANA zone names.
+ * This used to be a disclosure hiding two pickers — an IANA time zone and a
+ * currency. Neither was a question worth asking. A destination carries its own
+ * zone from the geocoder and the device knows its own, so the app can always
+ * answer the time-zone question itself; and the currency shown here was the
+ * ledger's base, which belongs to the ledger and is set there.
+ *
+ * A destination's own currency is still recorded — linking an expense to a plan
+ * prefills that expense's currency from it — it is simply no longer something
+ * anyone is asked to confirm.
  */
-export function DestinationSettings({
+export function DestinationSummary({
   currency,
-  currencyOptions,
-  onCurrencyChange,
-  onTimeZoneChange,
-  onToggle,
-  open,
-  placeLabel,
   timeZone,
-  timeZoneOptions,
   tx,
 }: {
-  currency: string;
-  currencyOptions: { label: string; value: string }[];
-  onCurrencyChange: (value: string) => void;
-  onTimeZoneChange: (value: string) => void;
-  onToggle: () => void;
-  open: boolean;
-  placeLabel?: string;
-  timeZone: string;
-  timeZoneOptions: { label: string; value: string }[];
+  currency?: string;
+  timeZone?: string;
   tx: (zh: string, en: string) => string;
 }) {
-  const theme = useTheme();
-  // A persisted value can sit outside the offered list; keep it selectable so
-  // opening the row never silently rewrites what was saved.
-  const resolvedCurrencyOptions = currencyOptions.some((option) => option.value === currency)
-    ? currencyOptions
-    : [{ value: currency, label: currency }, ...currencyOptions];
-  const resolvedTimeZoneOptions = timeZoneOptions.some((option) => option.value === timeZone)
-    ? timeZoneOptions
-    : [{ value: timeZone, label: timeZone }, ...timeZoneOptions];
-
+  if (!timeZone) return null;
   return (
     <View style={styles.wrap}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityState={{ expanded: open }}
-        onPress={onToggle}
-        style={({ pressed }) => [styles.summary, pressed && styles.pressed]}>
-        <View style={styles.summaryCopy}>
-          <ThemedText type="smallBold">{tx('已自动设置', 'Set automatically')}</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            {[placeLabel, timeZone, currency].filter(Boolean).join(' · ')}
-          </ThemedText>
-        </View>
-        <Chevron color={theme.textSecondary} direction={open ? 'down' : 'right'} />
-      </Pressable>
-      {open ? (
-        <View style={[styles.fields, { backgroundColor: theme.backgroundSubtle }]}>
-          <View style={styles.field}>
-            <SelectionField label={tx('时区', 'Time zone')} value={timeZone} options={resolvedTimeZoneOptions} onChange={onTimeZoneChange} />
-          </View>
-          <View style={styles.field}>
-            <SelectionField label={tx('记账币种', 'Home currency')} value={currency} options={resolvedCurrencyOptions} onChange={onCurrencyChange} />
-          </View>
-        </View>
-      ) : null}
+      <ThemedText type="small" themeColor="textSecondary">
+        {currency
+          ? tx(`时间按 ${timeZone} 显示 · 当地货币 ${currency}`, `Times shown in ${timeZone} · local currency ${currency}`)
+          : tx(`时间按 ${timeZone} 显示`, `Times shown in ${timeZone}`)}
+      </ThemedText>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { gap: Spacing.xs },
-  summary: { minHeight: Size.control, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingHorizontal: Spacing['2xs'] },
-  summaryCopy: { flex: 1, minWidth: 0, gap: 1 },
-  fields: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, padding: Spacing.sm, borderRadius: Radius.md },
-  field: { flexGrow: 1, flexShrink: 1, flexBasis: 200, minWidth: 0 },
-  pressed: { opacity: 0.68 },
+  wrap: { paddingHorizontal: Spacing['2xs'] },
 });

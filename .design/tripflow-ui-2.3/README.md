@@ -14,6 +14,7 @@ everything 2.2 did not reach — and closes the inconsistency 2.2 itself created
 | Trips | `src/app/explore.tsx` |
 | Sign-in, registration, 404 | `src/features/auth/auth-screen.tsx`, `src/app/+not-found.tsx` |
 | Ledger · settle | `src/app/ledger.tsx` → `src/components/settlement-workspace.tsx` |
+| Time zone and ledger currency | `src/features/trips/trip-defaults.ts`, `src/components/base-currency-sheet.tsx` |
 
 No new rules. The three from 2.2 do all the work here:
 
@@ -94,6 +95,36 @@ Tasks are rows now, with the amount as a trailing value in `moneyOut` and a real
 which gains `size="compact"` so a row action stays this component. Each person in the group panel is
 one row stating a net position and naming its direction.
 
+### 5. A time zone was asked for, and a currency was asked for in the wrong place
+
+Both sat behind one 「已自动设置」 disclosure on the Trips form, between a name and
+some dates.
+
+A time zone never needed asking: every destination carries one from the geocoder,
+and the device knows its own. The trip-level value is only the fallback for a plan
+that names no destination.
+
+A currency is not a property of a trip at all. `record_expense` validates every
+expense against `trips.home_currency` and stores a `base_amount_minor` converted at
+the rate of the day; balances, transfers and settlements are all denominated in it.
+It is the ledger's base.
+
+And there was a real defect behind that. `update_trip_details` writes
+`home_currency` and recomputes nothing. A trip with a dozen CNY expenses could have
+its currency switched to JPY from 「编辑行程资料」 — three taps — leaving every stored
+base amount converted against CNY while the ledger sums and settles them as JPY.
+Silently.
+
+So: the trip form asks for a name, a destination and dates. The zone is derived by
+`tripTimeZone()` — the earliest plan with a destination, else what the trip was
+created with, else the device — and stated as a fact under the destination field
+rather than offered as a control. The base currency moves to the Ledger as its own
+setting, and once a single expense exists the panel states the currency and why it
+is fixed instead of offering a control that breaks the books.
+
+A destination's own currency stays and keeps its job: linking an expense to a plan
+prefills that expense's currency from where it happened.
+
 ## Design vs. shipped app
 
 | Design | Shipped | Where |
@@ -108,6 +139,10 @@ one row stating a net position and naming its direction.
 | Settle tasks as rows with a compact button | ✅ shipped | `settlement-workspace.tsx`, `ActionButton size="compact"` |
 | Group settlement: one net figure per person | ✅ shipped | `settlement-workspace.tsx` |
 | Ledger's expense composer | ⬜ not in this pass | already a sheet with the right shape; its own slice |
+| Trip form asks name, destination, dates only | ✅ shipped | `trip-form-sheet.tsx` |
+| Time zone derived, never chosen | ✅ shipped | `tripTimeZone()` in `trip-defaults.ts`, tested |
+| Ledger currency lives in the Ledger | ✅ shipped | `base-currency-sheet.tsx` |
+| Ledger currency locked once an expense exists | ✅ shipped | `canChangeBaseCurrency()`, tested |
 
 ## What could not be verified here
 

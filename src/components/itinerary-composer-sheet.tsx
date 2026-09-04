@@ -6,16 +6,17 @@ import { Chevron } from '@/components/chevron';
 import { ConfirmSheet } from '@/components/confirm-sheet';
 import { DateTimePairField } from '@/components/date-time-pair-field';
 import { DestinationField } from '@/components/destination-field';
-import { DestinationSettings } from '@/components/destination-settings';
+import { DestinationSummary } from '@/components/destination-settings';
 import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/form-controls';
 import { ItineraryEditAssistant } from '@/components/itinerary-edit-assistant';
 import { ListDivider, ListRow, ListSurface } from '@/components/list-surface';
 import { LocationField } from '@/components/location-field';
 import { ThemedText } from '@/components/themed-text';
-import { getCurrencyOptions, getTimeZoneOptions, itineraryKindLabels, itineraryKindLabelsEn, itineraryKinds } from '@/constants/options';
+import { itineraryKindLabels, itineraryKindLabelsEn, itineraryKinds } from '@/constants/options';
 import { Radius, Spacing } from '@/constants/theme';
 import type { ItineraryDestination, ItineraryItem, ItineraryKind, Trip } from '@/domain/models';
 import { destinationLabel, type DestinationSuggestion } from '@/features/destinations/destination-search';
+import { tripTimeZone } from '@/features/trips/trip-defaults';
 import { useI18n } from '@/features/i18n/i18n-provider';
 import { toUserMessage } from '@/lib/user-error';
 import { formatDayRange, formatZonedDateTimeRange, isoToZonedDateTime, zonedDateTimeToIso } from '@/lib/trip-time';
@@ -98,9 +99,6 @@ export function ItineraryComposerSheet({
   const [googlePlaceId, setGooglePlaceId] = useState('');
   const [destinationText, setDestinationText] = useState('');
   const [destination, setDestination] = useState<ItineraryDestination>();
-  const [itemTimeZone, setItemTimeZone] = useState(activeTrip.defaultTimeZone);
-  const [itemCurrency, setItemCurrency] = useState(activeTrip.homeCurrency);
-  const [destinationSettingsOpen, setDestinationSettingsOpen] = useState(false);
   const [date, setDate] = useState(activeTrip.startsOn);
   const [endDate, setEndDate] = useState(activeTrip.startsOn);
   const [startTime, setStartTime] = useState('09:00');
@@ -111,16 +109,21 @@ export function ItineraryComposerSheet({
   const [pendingTripRange, setPendingTripRange] = useState<{ startsOn: string; endsOn: string }>();
   const [confirmDeleteItem, setConfirmDeleteItem] = useState(false);
 
-  const destinationCurrencyOptions = getCurrencyOptions(locale === 'en');
-  const destinationTimeZoneOptions = getTimeZoneOptions(locale === 'en');
-  const effectiveItemTimeZone = destination?.timeZone ? itemTimeZone : activeTrip.defaultTimeZone;
+  // The trip's own zone, for a plan that names no destination: the earliest
+  // plan that has one, else what the trip was created with, else the device.
+  const tripZone = tripTimeZone(activeTrip, itineraryItems);
+  // Both follow the destination. Neither is a control any more: a place knows
+  // its own zone, and its currency exists to prefill an expense recorded there.
+  const itemTimeZone = destination?.timeZone ?? tripZone;
+  const itemCurrency = destination?.currency;
+  const effectiveItemTimeZone = itemTimeZone;
   const kindLabel = (itemKind: ItineraryKind) => locale === 'zh-CN' ? itineraryKindLabels[itemKind] : itineraryKindLabelsEn[itemKind];
 
   useEffect(() => {
     if (!visible) return;
     const timeout = setTimeout(() => {
       if (editingItem) {
-        const nextTimeZone = editingItem.destination?.timeZone ?? activeTrip.defaultTimeZone;
+        const nextTimeZone = editingItem.destination?.timeZone ?? tripZone;
         const start = isoToZonedDateTime(editingItem.startsAt, nextTimeZone);
         const end = isoToZonedDateTime(editingItem.endsAt ?? editingItem.startsAt, nextTimeZone);
         setTitle(editingItem.title);
@@ -128,8 +131,6 @@ export function ItineraryComposerSheet({
         setGooglePlaceId(editingItem.googlePlaceId ?? '');
         setDestination(editingItem.destination);
         setDestinationText(editingItem.destination ? destinationLabel(editingItem.destination) : '');
-        setItemTimeZone(nextTimeZone);
-        setItemCurrency(editingItem.destination?.currency ?? activeTrip.homeCurrency);
         setDate(start.date);
         setStartTime(start.time);
         setEndDate(end.date);
@@ -141,21 +142,18 @@ export function ItineraryComposerSheet({
         setGooglePlaceId('');
         setDestinationText('');
         setDestination(undefined);
-        setItemTimeZone(activeTrip.defaultTimeZone);
-        setItemCurrency(activeTrip.homeCurrency);
         setDate(activeTrip.startsOn);
         setEndDate(activeTrip.startsOn);
         setStartTime('09:00');
         setEndTime('10:30');
         setKind('activity');
       }
-      setDestinationSettingsOpen(false);
       setFormError(undefined);
       setPendingTripRange(undefined);
       setConfirmDeleteItem(false);
     }, 0);
     return () => clearTimeout(timeout);
-  }, [activeTrip.defaultTimeZone, activeTrip.homeCurrency, activeTrip.id, activeTrip.startsOn, editingItem, visible]);
+  }, [tripZone, activeTrip.id, activeTrip.startsOn, editingItem, visible]);
 
   function updatePlanDate(value: string) {
     setDate(value);
@@ -190,9 +188,6 @@ export function ItineraryComposerSheet({
     };
     setDestination(nextDestination);
     setDestinationText(destinationLabel(next));
-    setItemTimeZone(next.timeZone);
-    setItemCurrency(next.currency ?? activeTrip.homeCurrency);
-    setDestinationSettingsOpen(false);
     if (!location.trim()) setLocation(next.cityName);
   }
 
@@ -228,7 +223,7 @@ export function ItineraryComposerSheet({
       if (!editingItem && tripRangeChanged) await onExtendTrip(nextTripRange);
 
       const destinationForSave = destination
-        ? { ...destination, timeZone: itemTimeZone, currency: itemCurrency || destination.currency }
+        ? destination
         : undefined;
       if (editingItem) {
         await onSave({
@@ -297,7 +292,7 @@ export function ItineraryComposerSheet({
       editingItem.startsAt,
       editingItem.endsAt,
       languageTag,
-      editingItem.destination?.timeZone ?? activeTrip.defaultTimeZone,
+      editingItem.destination?.timeZone ?? tripZone,
     );
     const where = editingItem.destination?.cityName ?? editingItem.locationLabel;
     return (
@@ -336,7 +331,7 @@ export function ItineraryComposerSheet({
           <View style={[styles.lockedDestination, { backgroundColor: theme.backgroundSelected }]}>
             <ThemedText type="smallBold">{tx('酒店交通', 'Hotel transfer')}</ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
-              {tx(`${editingItem.locationLabel ?? '—'} · ${formatZonedDateTimeRange(editingItem.endsAt ?? editingItem.startsAt, undefined, languageTag, activeTrip.defaultTimeZone)}`, `${editingItem.locationLabel ?? '—'} · ${formatZonedDateTimeRange(editingItem.endsAt ?? editingItem.startsAt, undefined, languageTag, activeTrip.defaultTimeZone)}`)}
+              {tx(`${editingItem.locationLabel ?? '—'} · ${formatZonedDateTimeRange(editingItem.endsAt ?? editingItem.startsAt, undefined, languageTag, tripZone)}`, `${editingItem.locationLabel ?? '—'} · ${formatZonedDateTimeRange(editingItem.endsAt ?? editingItem.startsAt, undefined, languageTag, tripZone)}`)}
             </ThemedText>
           </View>
         ) : (
@@ -349,20 +344,7 @@ export function ItineraryComposerSheet({
               onChange={changeDestinationText}
               onSelect={chooseDestination}
             />
-            {destination ? (
-              <DestinationSettings
-                currency={itemCurrency}
-                currencyOptions={destinationCurrencyOptions}
-                placeLabel={destination.cityName}
-                open={destinationSettingsOpen}
-                timeZone={itemTimeZone}
-                timeZoneOptions={destinationTimeZoneOptions}
-                onCurrencyChange={setItemCurrency}
-                onTimeZoneChange={setItemTimeZone}
-                onToggle={() => setDestinationSettingsOpen((current) => !current)}
-                tx={tx}
-              />
-            ) : null}
+            <DestinationSummary currency={itemCurrency} timeZone={destination ? itemTimeZone : undefined} tx={tx} />
             <LocationField
               value={location}
               onChange={(value) => { setLocation(value); setGooglePlaceId(''); }}
@@ -395,6 +377,7 @@ export function ItineraryComposerSheet({
         {editingItem ? (
           <ItineraryEditAssistant
             key={editingItem.id}
+            timeZone={tripZone}
             trip={activeTrip}
             item={editingItem}
             items={itineraryItems}
@@ -408,7 +391,7 @@ export function ItineraryComposerSheet({
                 startsAt: candidate.startsAt,
                 endsAt: candidate.endsAt,
               });
-              const nextTimeZone = candidate.destination?.timeZone ?? activeTrip.defaultTimeZone;
+              const nextTimeZone = candidate.destination?.timeZone ?? tripZone;
               const start = isoToZonedDateTime(candidate.startsAt, nextTimeZone);
               const end = isoToZonedDateTime(candidate.endsAt, nextTimeZone);
               setTitle(candidate.title);
@@ -416,8 +399,6 @@ export function ItineraryComposerSheet({
               setGooglePlaceId(candidate.googlePlaceId ?? '');
               setDestination(candidate.destination);
               setDestinationText(candidate.destination ? destinationLabel(candidate.destination) : '');
-              setItemTimeZone(nextTimeZone);
-              setItemCurrency(candidate.destination?.currency ?? activeTrip.homeCurrency);
               setDate(start.date);
               setStartTime(start.time);
               setEndDate(end.date);
