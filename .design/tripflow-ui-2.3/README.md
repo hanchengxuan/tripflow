@@ -119,11 +119,31 @@ So: the trip form asks for a name, a destination and dates. The zone is derived 
 `tripTimeZone()` — the earliest plan with a destination, else what the trip was
 created with, else the device — and stated as a fact under the destination field
 rather than offered as a control. The base currency moves to the Ledger as its own
-setting, and once a single expense exists the panel states the currency and why it
-is fixed instead of offering a control that breaks the books.
+setting.
 
 A destination's own currency stays and keeps its job: linking an expense to a plan
 prefills that expense's currency from where it happened.
+
+**A correction to the first version of this.** That version locked the base
+currency as soon as one expense existed, and its notice told the reader to start a
+new trip. Both were wrong. Spending in several currencies on one trip always
+worked — every expense records what was actually paid, in its own currency, plus a
+conversion — so a notice that reads "start a new trip to use another currency"
+describes a restriction the product does not have. And answering a real data hazard
+by removing the control is the wrong shape of answer: the fix is to make the change
+correct.
+
+Changing the base now restates the ledger. `planRedenomination()` recomputes every
+expense's conversion at a rate given per currency actually spent, and each is
+written through the same RPC the expense editor uses, which also redistributes the
+payer and participant shares of the new base amount. What was paid is never
+rewritten, so a restatement can be redone or reversed; the trip's own currency is
+written last, so an interrupted run leaves the base where it was and
+`unconvertedExpenses()` finds what to finish.
+
+One hard stop remains, and it is a fact about the world rather than about the
+schema: once a transfer has been recorded, money has actually moved between two
+people, and restating the unit the books are kept in cannot change what was paid.
 
 ## Design vs. shipped app
 
@@ -142,7 +162,9 @@ prefills that expense's currency from where it happened.
 | Trip form asks name, destination, dates only | ✅ shipped | `trip-form-sheet.tsx` |
 | Time zone derived, never chosen | ✅ shipped | `tripTimeZone()` in `trip-defaults.ts`, tested |
 | Ledger currency lives in the Ledger | ✅ shipped | `base-currency-sheet.tsx` |
-| Ledger currency locked once an expense exists | ✅ shipped | `canChangeBaseCurrency()`, tested |
+| Ledger currency changeable, restating the books | ✅ shipped | `src/lib/redenominate.ts`, tested |
+| Refused only once a transfer is recorded | ✅ shipped | `base-currency-sheet.tsx` |
+| Interrupted restatement detected and resumable | 🟡 implemented; needs a real ledger to exercise | `unconvertedExpenses()` |
 
 ## What could not be verified here
 

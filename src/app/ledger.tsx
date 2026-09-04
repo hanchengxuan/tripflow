@@ -20,6 +20,7 @@ import {
   type SettlementDraft,
 } from '@/components/settlement-workspace';
 import { BaseCurrencySheet } from '@/components/base-currency-sheet';
+import { currenciesNeedingRates, planRedenomination, unconvertedExpenses } from '@/lib/redenominate';
 import { ThemedText } from '@/components/themed-text';
 import { getCurrencyOptions } from '@/constants/options';
 import {
@@ -106,6 +107,7 @@ export default function LedgerScreen() {
   const [aiNotice, setAiNotice] = useState<string>();
   const [baseOpen, setBaseOpen] = useState(false);
   const [baseDraft, setBaseDraft] = useState('');
+  const [baseRates, setBaseRates] = useState<Record<string, string>>({});
 
   const currency = currencyOverride || activeTrip?.homeCurrency || 'HKD';
   const baseCurrency = activeTrip?.homeCurrency || 'HKD';
@@ -552,26 +554,69 @@ export default function LedgerScreen() {
   }
 
   /**
-   * Only reachable while the ledger is empty — `BaseCurrencySheet` states the
-   * reason and hides the control otherwise. The RPC needs the whole trip, so
-   * every other field is passed back unchanged.
+   * Restating the ledger in another currency.
+   *
+   * Every expense keeps what was actually paid; only its conversion into the
+   * base is rewritten, through the same RPC the expense editor uses — which
+   * also redistributes each payer's and each participant's share of the new
+   * base amount. The trip's own currency is written last, so an interrupted
+   * run leaves the base where it was and the expenses it did convert are
+   * simply re-converted on the next attempt. `unconvertedExpenses` is what
+   * finds them.
    */
   async function saveBaseCurrency() {
-    if (!activeTrip || expenses.length > 0) return;
+    if (!activeTrip) return;
+    const target = baseDraft.toUpperCase();
     setBusyAction('save');
     setFormError(undefined);
     try {
+      if (settlements.length > 0 && target !== baseCurrency.toUpperCase()) {
+        throw new Error(tx('这个行程已经有转账记录，记账币种不能再变更。', 'This trip has recorded transfers, so its ledger currency can no longer change.'));
+      }
+
+      const { lines, missingRates } = planRedenomination({
+        expenses,
+        rates: Object.fromEntries(Object.entries(baseRates).map(([code, value]) => [code, Number(value)])),
+        target,
+      });
+      if (missingRates.length > 0) {
+        throw new Error(tx(`还缺少 ${missingRates.join('、')} 的汇率。`, `A rate is still missing for ${missingRates.join(', ')}.`));
+      }
+
+      let converted = 0;
+      for (const line of lines) {
+        const expense = expenses.find(({ id }) => id === line.expenseId);
+        if (!expense) continue;
+        await updateCustomExpense({
+          expenseId: expense.id,
+          title: expense.title,
+          currency: expense.currency,
+          totalMinor: expense.totalMinor,
+          baseCurrency: line.baseCurrency,
+          baseAmountMinor: line.baseAmountMinor,
+          exchangeRate: line.exchangeRate,
+          exchangeRateSource: 'redenominated',
+          payerAllocations: expense.payers.map(({ userId, amountMinor }) => ({ userId, amountMinor })),
+          shareAllocations: expense.shares.map(({ userId, amountMinor }) => ({ userId, amountMinor })),
+          itineraryItemId: expense.itineraryItemId,
+        });
+        converted += 1;
+      }
+
       await saveTrip({
         name: activeTrip.name,
         startsOn: activeTrip.startsOn,
         endsOn: activeTrip.endsOn,
-        homeCurrency: baseDraft,
+        homeCurrency: target,
         defaultTimeZone: activeTrip.defaultTimeZone,
       });
       setBaseOpen(false);
-      setSuccess(tx(`记账币种已设为 ${baseDraft}。`, `The ledger now keeps its books in ${baseDraft}.`));
+      setBaseRates({});
+      setSuccess(converted > 0
+        ? tx(`记账币种已设为 ${target}，${converted} 笔支出已按新币种重新计价。`, `The ledger now keeps its books in ${target}; ${converted} expense${converted === 1 ? '' : 's'} restated.`)
+        : tx(`记账币种已设为 ${target}。`, `The ledger now keeps its books in ${target}.`));
     } catch (caught) {
-      setFormError(toUserMessage(caught, tx('无法更新记账币种，请稍后重试。', 'Could not update the ledger currency. Please try again.')));
+      setFormError(toUserMessage(caught, tx('无法更新记账币种，请稍后重试。已经换算好的支出不会重复处理。', 'Could not update the ledger currency. Expenses already restated are left alone; run it again to finish.')));
     } finally {
       setBusyAction(undefined);
     }
@@ -667,7 +712,7 @@ export default function LedgerScreen() {
           setSettlementDrafts={setSettlementDrafts}
           summaryTransfers={normalizedPendingTransfers}
           undoTransfer={undoTransfer}
-          baseCurrencyPanel={() => { setBaseDraft(baseCurrency); setBaseOpen(true); }}
+          baseCurrencyPanel={() => { setBaseDraft(baseCurrency); setBaseRates({}); setBaseOpen(true); }}
         />
       ) : (
         <ExpenseActivity
@@ -745,14 +790,20 @@ export default function LedgerScreen() {
 
       <BaseCurrencySheet
         busy={busyAction === 'save'}
+        currenciesSpent={currenciesNeedingRates(expenses, '').length}
         currency={baseCurrency}
         currencyOptions={currencyOptions}
         draft={baseDraft}
         error={formError}
         expenseCount={expenses.length}
+        needRates={currenciesNeedingRates(expenses, baseDraft)}
         onChangeDraft={setBaseDraft}
+        onChangeRate={(code, value) => setBaseRates((current) => ({ ...current, [code]: value }))}
         onDismiss={() => setBaseOpen(false)}
         onSubmit={() => void saveBaseCurrency()}
+        pendingCount={unconvertedExpenses(expenses, baseCurrency).length}
+        rates={baseRates}
+        settlementCount={settlements.length}
         tx={tx}
         visible={baseOpen}
       />

@@ -1,24 +1,32 @@
 <div class="screen tagged" style="height:720px">
-  <div class="tag tag-new">提案 · 记账币种归账本，有支出后锁定</div>
+  <div class="tag tag-new">提案 · 换币种 = 整本账重新计价</div>
   <div style="position:absolute;inset:28px 0 0;background:rgba(12,25,36,0.32)"></div>
-  <div class="sheet" style="bottom:0;padding-bottom:28px">
+  <div class="sheet" style="top:56px;bottom:0;overflow:hidden">
     <div class="grab"></div>
     <div class="sheet-h"><h2>记账币种</h2><div class="l-t" style="color:var(--text2)">取消</div></div>
     <div class="sheet-body" style="gap:14px">
-      <div class="l-s" style="font-size:14px;line-height:20px">
-        所有余额、结算和「已换算」金额都记在这个币种里。外币支出按当时的汇率折算成它。</div>
 
-      <!-- Changing the base after money is recorded would leave every stored
-           base amount denominated in the old one — the server recomputes
-           nothing. So it is stated as settled, not offered as a control. -->
+      <!-- Said first, because the earlier copy implied the opposite. -->
+      <div class="l-s" style="font-size:14px;line-height:20px">
+        支出可以用任何币种记录 —— 记一笔时选币种就行，付了多少就存多少。这里设的只是汇总和结算用的单位。</div>
+
       <div class="list" style="background:var(--subtle)">
         <div class="srow"><div class="lab">当前记账币种</div><div class="val">CNY</div></div>
         <div class="hair"></div>
-        <div class="srow"><div class="lab">已记录支出</div><div class="val">12 笔</div></div>
+        <div class="srow"><div class="lab">已记录支出</div><div class="val">12 笔 · 3 种币种</div></div>
       </div>
 
-      <div class="notice"><div class="bar" style="background:var(--plan)"></div>
-        <p>已经有 12 笔支出记在 CNY 里，币种不能再改 —— 改了这些金额的折算依据就对不上了。需要换币种的话，新建一个行程。</p></div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div class="f-label">记账币种</div><div class="input" style="color:var(--text)">JPY · 日元</div></div>
+
+      <!-- One rate per currency actually spent. What was paid never changes. -->
+      <div class="l-s">这 12 笔支出会按下面的汇率重新计价。付出去的金额不变，只是换个单位来汇总。</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div class="f-label">1 CNY = ? JPY</div><div class="input" style="color:var(--text)">20.4</div></div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div class="f-label">1 EUR = ? JPY</div><div class="input" style="color:var(--text)">159.2</div></div>
+
+      <div class="btn btn-p">换算并保存</div>
     </div>
   </div>
 </div>
