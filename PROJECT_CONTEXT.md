@@ -1,6 +1,6 @@
 # TripFlow project context
 
-Last verified: 2026-08-16 UTC
+Last verified: 2026-09-09 UTC (SDK compatibility prerequisite; older milestones retain their recorded dates)
 
 This file is the durable, version-controlled source of truth for engineering continuity. It contains only project-safe context. Product detail belongs in `planning.md`; implementation history belongs in Git.
 
@@ -189,6 +189,8 @@ The live migration list was rechecked after applying `itinerary_destinations`; n
 Temporary acceptance fixtures are removed after each test; production may contain real user-created rows.
 
 ## Active next milestone
+
+- UI 2.3 delivery prerequisite: Expo is aligned to 57.0.21, Router to 57.0.20, and React Native plus its explicit Jest preset to 0.86.3. Compatible xmldom and js-yaml patches remove the newly reported audit blockers without expanding the advisory allowlist. Clean npm installation, lint, TypeScript, 97 Jest tests, Expo Doctor 20/20, Web/iOS exports, the dependency audit gate, and six mobile/desktop public-route Chromium checks pass locally on 2026-09-09. No database migration or product behavior change is included. Exact-head CI/Preview and production verification remain pending. The UI implementation remains isolated on `codex/ui-23-foundation`; authenticated and physical-device acceptance are separate from these public-route checks.
 
 1. Resolve the Apple Developer Program enrollment hold; then sign into Expo/EAS, connect the EAS project, add the public Supabase variables, and produce the first iOS TestFlight build.
 2. Choose and configure the long-term public support email through `EXPO_PUBLIC_SUPPORT_EMAIL`, then finalize App Privacy disclosures, age rating, and Chinese screenshots.
