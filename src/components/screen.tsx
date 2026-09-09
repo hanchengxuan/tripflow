@@ -3,7 +3,7 @@ import { Platform, ScrollView, StyleSheet, useWindowDimensions, View } from 'rea
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
-import { Size } from '@/constants/theme';
+import { Size, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 const WEB_NAV_CLEARANCE = 112;
@@ -20,6 +20,7 @@ export function Screen({ context, floatingAction, title, children }: ScreenProps
   const theme = useTheme();
   const { width } = useWindowDimensions();
   const compact = width < 520;
+  const desktop = Platform.OS === 'web' && width >= Size.desktopBreakpoint;
   return (
     <View style={[styles.frame, { backgroundColor: theme.background }]}>
       <ScrollView
@@ -29,7 +30,7 @@ export function Screen({ context, floatingAction, title, children }: ScreenProps
           styles.content,
           {
             paddingTop: insets.top + (Platform.OS === 'web' ? 24 : 20),
-            paddingBottom: insets.bottom + (Platform.OS === 'web' ? WEB_NAV_CLEARANCE : 104),
+            paddingBottom: insets.bottom + (desktop ? (floatingAction ? Size.fab + Spacing['4xl'] : Spacing['2xl']) : Platform.OS === 'web' ? WEB_NAV_CLEARANCE : 104),
           },
         ]}>
         <View style={[styles.header, compact && styles.headerCompact]}>
@@ -38,7 +39,7 @@ export function Screen({ context, floatingAction, title, children }: ScreenProps
         </View>
         {children}
       </ScrollView>
-      {floatingAction ? <View style={[styles.floatingAction, { bottom: insets.bottom + (Platform.OS === 'web' ? WEB_ACTION_OFFSET : Size.fabClearance) }]}>{floatingAction}</View> : null}
+      {floatingAction ? <View style={[styles.floatingAction, { bottom: insets.bottom + (desktop ? 24 : Platform.OS === 'web' ? WEB_ACTION_OFFSET : Size.fabClearance) }]}>{floatingAction}</View> : null}
     </View>
   );
 }

@@ -24,6 +24,7 @@ export const Colors = {
     textSecondary: '#5A6663',
     textMuted: '#8A9491',
     textOnAccent: '#FFFFFF',
+    textOnDanger: '#FFFFFF',
     link: '#2E6A96',
 
     // accents
@@ -90,6 +91,7 @@ export const Colors = {
     textSecondary: '#9EAAA7',
     textMuted: '#7C8885',
     textOnAccent: '#0A0F0E',
+    textOnDanger: '#321310',
     link: '#7FB6DC',
 
     accent: '#34A383',
@@ -207,6 +209,9 @@ export const Radius = {
 export const Size = {
   touchMin: 44,
   control: 48,
+  amountControl: 64,
+  desktopBreakpoint: 1024,
+  sidebar: 200,
   fab: 56,
   nav: 54,
   fabClearance: 86,

@@ -17,10 +17,12 @@ import { useTheme } from '@/hooks/use-theme';
 
 export default function AppTabsCustom() {
   const { tx } = useI18n();
+  const { width } = useWindowDimensions();
+  const desktop = Platform.OS === 'web' && width >= Size.desktopBreakpoint;
 
   return (
     <Tabs style={styles.tabs}>
-      <TabSlot style={styles.tabSlot} />
+      <TabSlot style={[styles.tabSlot, desktop && styles.desktopSlot]} />
       <TabList asChild>
         <CustomTabList>
           <TabTrigger name="home" href="/" asChild>
@@ -49,10 +51,12 @@ export default function AppTabsCustom() {
 
 function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps) {
   const theme = useTheme();
+  const { width } = useWindowDimensions();
+  const desktop = Platform.OS === 'web' && width >= Size.desktopBreakpoint;
 
   return (
-    <Pressable {...props} style={({ pressed }) => [styles.tabButton, pressed && styles.pressed]}>
-      <View style={[styles.tabButtonView, isFocused && { backgroundColor: theme.backgroundSelected }]}>
+    <Pressable {...props} style={({ pressed }) => [styles.tabButton, desktop && styles.desktopTab, pressed && styles.pressed]}>
+      <View style={[styles.tabButtonView, desktop && styles.desktopTabContent, isFocused && { backgroundColor: theme.backgroundSelected }]}>
         <ThemedText type="small" themeColor={isFocused ? 'accentOnSoft' : 'textSecondary'}>
           {children}
         </ThemedText>
@@ -66,16 +70,18 @@ function CustomTabList(props: TabListProps) {
   const insets = useSafeAreaInsets();
   const theme = useTheme();
   const compact = width < 440;
+  const desktop = Platform.OS === 'web' && width >= Size.desktopBreakpoint;
   const bottom = Platform.OS === 'web' ? Spacing.md : insets.bottom + Spacing.md;
 
   return (
-    <View {...props} style={[styles.tabListContainer, { bottom }]}>
+    <View {...props} style={[styles.tabListContainer, { bottom }, desktop && styles.sidebar]}>
       <View
         style={[
           styles.innerContainer,
           compact && styles.innerContainerCompact,
+          desktop && styles.sidebarInner,
           { backgroundColor: theme.navSurface, borderColor: theme.border, shadowColor: theme.shadow },
-          Platform.OS === 'web' ? { boxShadow: theme.navShadow } : styles.nativeShadow,
+          desktop ? { backgroundColor: theme.backgroundElement } : Platform.OS === 'web' ? { boxShadow: theme.navShadow } : styles.nativeShadow,
         ]}>
         {!compact ? <ThemedText type="smallBold" style={styles.brandText}>TripFlow</ThemedText> : null}
         {props.children}
@@ -87,6 +93,11 @@ function CustomTabList(props: TabListProps) {
 const styles = StyleSheet.create({
   tabs: { flex: 1 },
   tabSlot: { flex: 1, minHeight: 0 },
+  desktopSlot: { marginLeft: Size.sidebar },
+  sidebar: { left: 0, right: undefined, top: 0, bottom: 0, width: Size.sidebar },
+  sidebarInner: { height: '100%', maxWidth: Size.sidebar, borderRadius: 0, borderWidth: 0, borderRightWidth: StyleSheet.hairlineWidth, paddingTop: Spacing.xl, paddingHorizontal: Spacing.sm, flexDirection: 'column', alignItems: 'stretch' },
+  desktopTab: { flex: 0 },
+  desktopTabContent: { alignItems: 'flex-start', paddingHorizontal: Spacing.md },
   tabListContainer: {
     position: 'absolute',
     left: Spacing.md,
@@ -114,7 +125,7 @@ const styles = StyleSheet.create({
   },
   tabButton: { flex: 1, minWidth: 0 },
   tabButtonView: {
-    minHeight: Size.touchMin - Spacing['2xs'],
+    minHeight: Size.touchMin,
     paddingHorizontal: Spacing.sm,
     borderRadius: Radius.xl,
     justifyContent: 'center',

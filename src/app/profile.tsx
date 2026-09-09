@@ -8,6 +8,7 @@ import { Chevron } from '@/components/chevron';
 import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/form-controls';
 import { OtpCodeInput } from '@/components/otp-code-input';
 import { Screen } from '@/components/screen';
+import { SettingsGroup, SettingsRow } from '@/components/settings-list';
 import { ThemedText } from '@/components/themed-text';
 import { tripRoleLabels, tripRoleLabelsEn } from '@/constants/options';
 import { beginEmailLink, beginPhoneLink, changePassword, deleteAccount, linkGoogleIdentity, setInitialPassword, signOut, verifyEmailLink, verifyPhoneLink } from '@/features/auth/auth-service';
@@ -359,9 +360,9 @@ export default function ProfileScreen() {
             <ActionButton tone="secondary" disabled={busyAction === 'delete'} onPress={() => setConfirmingDeletion(false)}>{tx('取消', 'Cancel')}</ActionButton>
           </View>
         ) : (
-          <Pressable accessibilityRole="button" onPress={() => setConfirmingDeletion(true)}>
-            <ThemedText type="smallBold" style={[styles.dangerText, { color: theme.danger }]}>{tx('删除账号', 'Delete account')}</ThemedText>
-          </Pressable>
+          <SettingsGroup>
+            <SettingsRow label={tx('删除账号', 'Delete account')} labelColor="danger" onPress={() => setConfirmingDeletion(true)} />
+          </SettingsGroup>
         )}
       </View>
     </Screen>
@@ -408,6 +409,5 @@ const styles = StyleSheet.create({
   linkForm: { gap: 12, paddingTop: 4, paddingBottom: 14 },
   dangerSection: { paddingTop: 10, paddingBottom: 16 },
   deleteConfirmation: { borderRadius: 16, padding: 18, gap: 12 },
-  dangerText: { paddingVertical: 14 },
   pressed: { opacity: 0.68 },
 });

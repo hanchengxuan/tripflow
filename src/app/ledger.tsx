@@ -813,10 +813,10 @@ function ExpenseComposer(props: {
           <FormField label={tx('支出内容', 'Expense')} value={props.title} onChangeText={props.setTitle} placeholder={tx('例如：晚餐', 'For example: Dinner')} />
           <View style={[styles.amountRow, compact && styles.amountRowCompact]}>
             <View style={styles.grow}>
-              <FormField label={tx('金额', 'Amount')} value={props.amount} onChangeText={props.setAmount} keyboardType="decimal-pad" placeholder="860.00" />
+              <FormField prominent label={tx('金额', 'Amount')} value={props.amount} onChangeText={props.setAmount} keyboardType="decimal-pad" placeholder="860.00" />
             </View>
             <View style={[styles.currencyField, compact && styles.currencyFieldCompact]}>
-              <SelectionField label={tx('币种', 'Currency')} value={props.currency} options={props.currencyOptions} onChange={props.setCurrencyOverride} />
+              <SelectionField prominent label={tx('付款币种', 'Payment currency')} value={props.currency} options={props.currencyOptions} onChange={props.setCurrencyOverride} />
             </View>
           </View>
           {props.currency.toUpperCase() !== props.baseCurrency.toUpperCase() ? (
@@ -1527,8 +1527,8 @@ const styles = StyleSheet.create({
   formGroup: { gap: 16 },
   amountRow: { flexDirection: 'row', gap: 12, alignItems: 'flex-end' },
   amountRowCompact: { flexDirection: 'column', alignItems: 'stretch', gap: 14 },
-  currencyField: { width: 116 },
-  currencyFieldCompact: { width: '100%' },
+  currencyField: { flex: 1, minWidth: 0 },
+  currencyFieldCompact: { flex: 0, width: '100%' },
   conversionRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', gap: 12, borderRadius: 12, padding: 12 },
   exchangeRateMeta: { marginTop: 4 },
   conversionPreview: { flexGrow: 1, flexBasis: 150, gap: 2, paddingBottom: 10 },

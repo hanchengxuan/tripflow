@@ -1,21 +1,27 @@
 import type { PropsWithChildren } from 'react';
-import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { useI18n } from '@/features/i18n/i18n-provider';
 import { useTheme } from '@/hooks/use-theme';
+import { Radius, Size, Spacing } from '@/constants/theme';
 
 interface BottomSheetProps extends PropsWithChildren {
   onDismiss: () => void;
   title: string;
   visible: boolean;
+  closeLabel?: string;
+  dismissDisabled?: boolean;
 }
 
-export function BottomSheet({ children, onDismiss, title, visible }: BottomSheetProps) {
+export function BottomSheet({ children, onDismiss, title, visible, closeLabel, dismissDisabled = false }: BottomSheetProps) {
   const insets = useSafeAreaInsets();
   const { tx } = useI18n();
   const theme = useTheme();
+  const { width } = useWindowDimensions();
+  const desktop = Platform.OS === 'web' && width >= Size.desktopBreakpoint;
+  const dismiss = () => { if (!dismissDisabled) onDismiss(); };
 
   if (!visible) return null;
 
@@ -23,7 +29,7 @@ export function BottomSheet({ children, onDismiss, title, visible }: BottomSheet
     <Modal
       animationType="fade"
       navigationBarTranslucent
-      onRequestClose={onDismiss}
+      onRequestClose={dismiss}
       presentationStyle="overFullScreen"
       statusBarTranslucent
       transparent
@@ -31,27 +37,29 @@ export function BottomSheet({ children, onDismiss, title, visible }: BottomSheet
       <View style={styles.overlay}>
         <Pressable
           accessible={false}
-          onPress={onDismiss}
+          onPress={dismiss}
           style={[StyleSheet.absoluteFill, { backgroundColor: theme.sheetScrim }]}
         />
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : Platform.OS === 'android' ? 'height' : undefined}
           pointerEvents="box-none"
-          style={styles.keyboardAvoider}>
+          style={[styles.keyboardAvoider, desktop && styles.desktopAvoider]}>
           <View
             accessibilityViewIsModal
-            style={[styles.sheet, { backgroundColor: theme.backgroundElement, shadowColor: theme.shadow }]}
+            style={[styles.sheet, desktop && styles.desktopSheet, { backgroundColor: theme.backgroundElement, shadowColor: theme.shadow }]}
           >
             <View style={[styles.grabber, { backgroundColor: theme.borderField }]} />
             <View style={styles.header}>
               <ThemedText type="subtitle" style={styles.title}>{title}</ThemedText>
               <Pressable
-                accessibilityLabel={tx('取消并关闭', 'Cancel and close')}
+                accessibilityLabel={closeLabel ?? tx('取消并关闭', 'Cancel and close')}
                 accessibilityRole="button"
+                accessibilityState={{ disabled: dismissDisabled }}
+                disabled={dismissDisabled}
                 hitSlop={6}
-                onPress={onDismiss}
+                onPress={dismiss}
                 style={({ pressed }) => [styles.closeButton, pressed && styles.pressed]}>
-                <ThemedText type="smallBold" themeColor="textSecondary">{tx('取消', 'Cancel')}</ThemedText>
+                <ThemedText type="smallBold" themeColor="textSecondary">{closeLabel ?? tx('取消', 'Cancel')}</ThemedText>
               </Pressable>
             </View>
             <ScrollView
@@ -73,6 +81,8 @@ export function BottomSheet({ children, onDismiss, title, visible }: BottomSheet
 const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end' },
   keyboardAvoider: { flex: 1, width: '100%', justifyContent: 'flex-end' },
+  desktopAvoider: { justifyContent: 'center', padding: Spacing.xl },
+  desktopSheet: { borderRadius: Radius['2xl'] },
   sheet: {
     width: '100%',
     maxWidth: 620,
