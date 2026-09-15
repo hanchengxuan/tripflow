@@ -53,6 +53,8 @@ export function ActionButton({
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ disabled: isDisabled, busy }}
+      accessibilityLabel={typeof children === 'string' ? children : undefined}
+      aria-busy={busy}
       disabled={isDisabled}
       onPress={onPress}
       style={({ pressed }) => [
@@ -86,6 +88,8 @@ export function ChoiceChip({
     <Pressable
       accessibilityRole={role}
       accessibilityState={{ checked: role === 'checkbox' || role === 'radio' ? selected : undefined, selected: role === 'tab' ? selected : undefined, disabled }}
+      aria-checked={role === 'checkbox' || role === 'radio' ? selected : undefined}
+      aria-selected={role === 'tab' ? selected : undefined}
       disabled={disabled}
       hitSlop={4}
       onPress={onPress}

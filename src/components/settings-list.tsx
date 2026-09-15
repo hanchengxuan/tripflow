@@ -74,6 +74,7 @@ export function SettingsRow({
       accessibilityLabel={accessibilityLabel}
       accessibilityRole="button"
       accessibilityState={{ busy, disabled: disabled || busy }}
+      aria-busy={busy}
       disabled={disabled || busy}
       onPress={onPress}
       style={({ pressed }) => [styles.row, pressed && styles.pressed, (disabled || busy) && styles.dimmed]}>

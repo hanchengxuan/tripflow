@@ -55,7 +55,7 @@ function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps) {
   const desktop = Platform.OS === 'web' && width >= Size.desktopBreakpoint;
 
   return (
-    <Pressable {...props} style={({ pressed }) => [styles.tabButton, desktop && styles.desktopTab, pressed && styles.pressed]}>
+    <Pressable {...props} accessibilityRole="tab" accessibilityState={{ selected: Boolean(isFocused) }} aria-selected={Boolean(isFocused)} style={({ pressed }) => [styles.tabButton, desktop && styles.desktopTab, pressed && styles.pressed]}>
       <View style={[styles.tabButtonView, desktop && styles.desktopTabContent, isFocused && { backgroundColor: theme.backgroundSelected }]}>
         <ThemedText type="small" themeColor={isFocused ? 'accentOnSoft' : 'textSecondary'}>
           {children}
@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
   desktopSlot: { marginLeft: Size.sidebar },
   sidebar: { left: 0, right: undefined, top: 0, bottom: 0, width: Size.sidebar },
   sidebarInner: { height: '100%', maxWidth: Size.sidebar, borderRadius: 0, borderWidth: 0, borderRightWidth: StyleSheet.hairlineWidth, paddingTop: Spacing.xl, paddingHorizontal: Spacing.sm, flexDirection: 'column', alignItems: 'stretch' },
-  desktopTab: { flex: 0 },
+  desktopTab: { flexGrow: 0, flexShrink: 0, flexBasis: 'auto', minHeight: Size.touchMin },
   desktopTabContent: { alignItems: 'flex-start', paddingHorizontal: Spacing.md },
   tabListContainer: {
     position: 'absolute',

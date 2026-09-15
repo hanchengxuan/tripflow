@@ -40,6 +40,7 @@ export function SelectionField<T extends string>({
         accessibilityRole="button"
         accessibilityLabel={`${label}：${selectedLabel}`}
         accessibilityState={{ expanded: open }}
+        aria-expanded={open}
         onPress={() => setOpen(true)}
         style={[styles.control, prominent && styles.prominent, { backgroundColor: theme.backgroundElement, borderColor: theme.borderField }]}
       >
@@ -65,6 +66,7 @@ export function SelectionField<T extends string>({
                     key={option.value}
                     accessibilityRole="radio"
                     accessibilityState={{ checked: selected, selected }}
+                    aria-checked={selected}
                     onPress={() => {
                       onChange(option.value);
                       setOpen(false);
