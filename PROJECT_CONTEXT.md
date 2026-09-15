@@ -1,6 +1,6 @@
 # TripFlow project context
 
-Last verified: 2026-09-09 UTC (SDK compatibility prerequisite; older milestones retain their recorded dates)
+Last verified: 2026-09-15 UTC (SDK patch compatibility; older milestones retain their recorded dates)
 
 This file is the durable, version-controlled source of truth for engineering continuity. It contains only project-safe context. Product detail belongs in `planning.md`; implementation history belongs in Git.
 
@@ -225,3 +225,10 @@ Temporary acceptance fixtures are removed after each test; production may contai
 - Work: treat Git, tests, and live database introspection as evidence; do not rely on conversational recollection alone.
 - Finish: update this file, commit and push, then refresh the pinned Discord summary.
 - Secrets and personal context never enter this file or the channel summary.
+
+## September 15 SDK compatibility refresh
+
+- PR #85 is merged as e19cb889790f529c098ea6ca67e67a45999e6d05; exact production CD run 34305125191 passed.
+- Expo Doctor now requires the September patch set: Expo 57.0.22 and Router 57.0.21 with their compatible Expo modules. This branch updates only package manifests and the lockfile; native configuration and application behavior are unchanged.
+- Verified locally: lint, TypeScript, 97 Jest tests, Expo Doctor 20/20, web export (11 routes), iOS export, the reviewed audit gate, and six mobile/desktop public-route Playwright tests. Linux x64 clean-install dry run with npm 11.19.0 also passed. Review: CLEAR for this dependency-only diff.
+- Next: exact-head CI and Vercel Preview, merge, then exact production deployment verification; rebase the UI foundation slice afterward. Authenticated UI and physical-device acceptance remain separate from this compatibility check. No database migration.
