@@ -246,7 +246,7 @@ export function SettlementWorkspace({
       </BottomSheet>
 
       <BottomSheet onDismiss={() => setPanel(undefined)} title={tx('已完成', 'Completed')} visible={panel === 'completed'}>
-        <ListSurface tone="subtle">
+        <ListSurface>
           {mySettlements.map((settlement, index) => {
             const sentByMe = settlement.fromUserId === currentUserId;
             const other = memberById.get(sentByMe ? settlement.toUserId : settlement.fromUserId);
