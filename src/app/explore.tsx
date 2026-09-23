@@ -1,31 +1,32 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { LayoutAnimation, Pressable, Share, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Share, StyleSheet, View } from 'react-native';
 
-import { DateTimeField } from '@/components/date-time-field';
-import { DestinationField } from '@/components/destination-field';
-import { DestinationSettings } from '@/components/destination-settings';
 import { Chevron } from '@/components/chevron';
-import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/form-controls';
-import { InviteQrCode, InviteQrScanner } from '@/components/invite-qr';
+import { ConfirmSheet } from '@/components/confirm-sheet';
+import { ActionButton, InlineNotice } from '@/components/form-controls';
+import { InviteSheet } from '@/components/invite-sheet';
+import { JoinTripSheet } from '@/components/join-trip-sheet';
 import { KindPill } from '@/components/kind-pill';
 import { ListDivider, ListRow, ListSurface } from '@/components/list-surface';
-import { MemberAvatar } from '@/components/member-avatar';
+import { MemberAccessSheet } from '@/components/member-access-sheet';
 import { Screen } from '@/components/screen';
 import { SectionHeading } from '@/components/section-heading';
 import { ThemedText } from '@/components/themed-text';
+import { TripFormSheet, type TripDraft } from '@/components/trip-form-sheet';
+import { TripManageSheet } from '@/components/trip-manage-sheet';
 import { TripOverviewCard } from '@/components/trip-overview-card';
 import { getCurrencyOptions, getTimeZoneOptions, tripRoleLabels, tripRoleLabelsEn } from '@/constants/options';
+import { Spacing } from '@/constants/theme';
 import type { Trip, TripRole } from '@/domain/models';
 import { useI18n } from '@/features/i18n/i18n-provider';
 import { buildInviteUrl, parseInviteToken } from '@/features/invites/invite-link';
-import { destinationLabel, type DestinationSuggestion } from '@/features/destinations/destination-search';
 import { useMvp } from '@/features/mvp/mvp-provider';
 import { defaultHomeCurrency, defaultTripTimeZone } from '@/features/trips/trip-defaults';
 import { useTheme } from '@/hooks/use-theme';
 import { toUserMessage } from '@/lib/user-error';
 
-type OpenPanel = 'create' | 'join' | 'manage' | null;
+type Panel = 'create' | 'join' | 'manage' | 'edit' | 'invite' | 'member' | 'deleteTrip' | 'removeMember';
 
 function dateOffset(days: number) {
   const date = new Date();
@@ -39,56 +40,56 @@ function formatTripRange(trip: Trip, locale: string) {
     if (locale === 'zh-CN') return `${date.getMonth() + 1}月${date.getDate()}`;
     return date.toLocaleDateString(locale, { month: 'short', day: 'numeric' });
   };
-  const start = format(trip.startsOn);
-  const end = format(trip.endsOn);
-  return `${start} — ${end}`;
+  return `${format(trip.startsOn)} — ${format(trip.endsOn)}`;
 }
 
+/**
+ * Trips.
+ *
+ * The page itself is something you read: the current trip, and the trips you
+ * belong to. Every action — create, join, manage, edit, invite, change access,
+ * remove someone, delete the trip — opens a panel. They used to unfold inside
+ * the page, one inside another, under buttons that renamed themselves to 收起.
+ */
 export default function TripsScreen() {
   const params = useLocalSearchParams<{ invite?: string | string[] }>();
   const theme = useTheme();
-  const { width } = useWindowDimensions();
-  const compact = width < 520;
   const { locale, formatDateTime, tx } = useI18n();
   const {
     trips, activeTrip, members, currentUserId, error,
     selectTrip, createTrip, joinTrip, createInvite, saveTrip, deleteTrip, setMemberRole, removeMember,
   } = useMvp();
+
   const currentMember = members.find(({ userId }) => userId === currentUserId);
   const canEditTrip = currentMember?.role === 'owner' || currentMember?.role === 'editor';
   const isOwner = currentMember?.role === 'owner';
-  const [openPanel, setOpenPanel] = useState<OpenPanel>(null);
-  const [name, setName] = useState('');
-  const [startsOn, setStartsOn] = useState(dateOffset(30));
-  const [endsOn, setEndsOn] = useState(dateOffset(37));
-  const [currency, setCurrency] = useState(() => defaultHomeCurrency(trips));
-  const [timeZone, setTimeZone] = useState(() => defaultTripTimeZone(trips));
-  const [destinationText, setDestinationText] = useState('');
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [editName, setEditName] = useState('');
-  const [editStartsOn, setEditStartsOn] = useState('');
-  const [editEndsOn, setEditEndsOn] = useState('');
-  const [editCurrency, setEditCurrency] = useState(() => defaultHomeCurrency(trips));
-  const [editTimeZone, setEditTimeZone] = useState(() => defaultTripTimeZone(trips));
-  const [editDestinationText, setEditDestinationText] = useState('');
-  const [editSettingsOpen, setEditSettingsOpen] = useState(false);
-  const [editingTrip, setEditingTrip] = useState(false);
-  const [confirmDeleteTrip, setConfirmDeleteTrip] = useState(false);
-  const [editingMemberId, setEditingMemberId] = useState<string>();
-  const [confirmRemoveId, setConfirmRemoveId] = useState<string>();
+  const roleLabel = (role: TripRole) => locale === 'zh-CN' ? tripRoleLabels[role] : tripRoleLabelsEn[role];
+
+  const [panel, setPanel] = useState<Panel>();
+  const [draft, setDraft] = useState<TripDraft>(() => ({
+    name: '',
+    startsOn: dateOffset(30),
+    endsOn: dateOffset(37),
+    currency: defaultHomeCurrency(trips),
+    timeZone: defaultTripTimeZone(trips),
+    destinationText: '',
+    settingsOpen: false,
+  }));
   const [inviteCode, setInviteCode] = useState('');
+  const [scanningInvite, setScanningInvite] = useState(false);
+  const [joinNotice, setJoinNotice] = useState<string>();
   const [generatedInvite, setGeneratedInvite] = useState<{ token: string; expiresAt: string }>();
   const [inviteRole, setInviteRole] = useState<'editor' | 'viewer'>('editor');
-  const [showInviteTools, setShowInviteTools] = useState(false);
-  const [scanningInvite, setScanningInvite] = useState(false);
+  const [memberId, setMemberId] = useState<string>();
   const [busyAction, setBusyAction] = useState<string>();
-  const [actionError, setActionError] = useState<string>();
+  const [panelError, setPanelError] = useState<string>();
   const [success, setSuccess] = useState<string>();
   const handledInviteParam = useRef<string | undefined>(undefined);
   const inviteParam = Array.isArray(params.invite) ? params.invite[0] : params.invite;
 
   const currencyOptions = getCurrencyOptions(locale === 'en');
   const timeZoneOptions = getTimeZoneOptions(locale === 'en');
+  const selectedMember = members.find(({ userId }) => userId === memberId);
 
   useEffect(() => {
     if (!inviteParam || handledInviteParam.current === inviteParam) return;
@@ -97,85 +98,93 @@ export default function TripsScreen() {
     if (!token) return;
     const timeout = setTimeout(() => {
       setInviteCode(token);
-      setOpenPanel('join');
       setScanningInvite(false);
-      setSuccess(tx('已读取邀请，请确认后加入行程。', 'Invite loaded. Confirm to join the trip.'));
+      setJoinNotice(tx('已读取邀请，请确认后加入行程。', 'Invite loaded. Confirm to join the trip.'));
+      setPanel('join');
     }, 0);
     return () => clearTimeout(timeout);
   }, [inviteParam, tx]);
 
-  function prepareEdit(trip: Trip) {
-    setEditName(trip.name);
-    setEditStartsOn(trip.startsOn);
-    setEditEndsOn(trip.endsOn);
-    setEditCurrency(trip.homeCurrency);
-    setEditTimeZone(trip.defaultTimeZone);
+  function editDraftFor(trip: Trip): TripDraft {
+    return {
+      name: trip.name,
+      startsOn: trip.startsOn,
+      endsOn: trip.endsOn,
+      currency: trip.homeCurrency,
+      timeZone: trip.defaultTimeZone,
+      destinationText: '',
+      settingsOpen: false,
+    };
   }
 
-  function showPanel(panel: Exclude<OpenPanel, null>) {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setOpenPanel((current) => current === panel ? null : panel);
-    setEditingTrip(false);
-    setConfirmDeleteTrip(false);
-    setEditingMemberId(undefined);
-    setConfirmRemoveId(undefined);
-    setGeneratedInvite(undefined);
-    setShowInviteTools(false);
+  function openPanel(next: Panel) {
+    setPanelError(undefined);
+    setSuccess(undefined);
+    if (next === 'create') {
+      setDraft({
+        name: '',
+        startsOn: dateOffset(30),
+        endsOn: dateOffset(37),
+        currency: defaultHomeCurrency(trips),
+        timeZone: defaultTripTimeZone(trips),
+        destinationText: '',
+        settingsOpen: false,
+      });
+    }
+    if (next === 'edit' && activeTrip) setDraft(editDraftFor(activeTrip));
+    if (next === 'join') {
+      setScanningInvite(false);
+      setJoinNotice(undefined);
+    }
+    if (next === 'invite') setGeneratedInvite(undefined);
+    setPanel(next);
+  }
+
+  function closePanel() {
+    setPanel(undefined);
+    setPanelError(undefined);
     setScanningInvite(false);
-    setActionError(undefined);
-    setSuccess(undefined);
-  }
-
-  async function openTrip(trip: Trip) {
-    setOpenPanel('manage');
-    setEditingTrip(false);
-    setConfirmDeleteTrip(false);
-    setEditingMemberId(undefined);
-    setConfirmRemoveId(undefined);
-    setGeneratedInvite(undefined);
-    setShowInviteTools(false);
-    setActionError(undefined);
-    setSuccess(undefined);
-    if (trip.id !== activeTrip?.id) await selectTrip(trip.id);
-    prepareEdit(trip);
+    setMemberId(undefined);
   }
 
   async function run(action: string, work: () => Promise<void>, successMessage?: string) {
     setBusyAction(action);
-    setActionError(undefined);
-    setSuccess(undefined);
+    setPanelError(undefined);
     try {
       await work();
       if (successMessage) setSuccess(successMessage);
     } catch (caught) {
-      setActionError(toUserMessage(caught));
+      setPanelError(toUserMessage(caught));
     } finally {
       setBusyAction(undefined);
     }
   }
 
+  async function openTrip(trip: Trip) {
+    setSuccess(undefined);
+    setPanelError(undefined);
+    if (trip.id !== activeTrip?.id) await selectTrip(trip.id);
+    setPanel('manage');
+  }
+
   async function submitTrip() {
     await run('create', async () => {
-      await createTrip({ name, startsOn, endsOn, homeCurrency: currency, defaultTimeZone: timeZone });
-      setName('');
-      setDestinationText('');
-      setSettingsOpen(false);
-      setOpenPanel(null);
+      await createTrip({ name: draft.name, startsOn: draft.startsOn, endsOn: draft.endsOn, homeCurrency: draft.currency, defaultTimeZone: draft.timeZone });
+      closePanel();
     }, tx('新行程已创建。', 'Trip created.'));
   }
 
   async function submitTripEdit() {
     await run('edit-trip', async () => {
-      await saveTrip({ name: editName, startsOn: editStartsOn, endsOn: editEndsOn, homeCurrency: editCurrency, defaultTimeZone: editTimeZone });
-      setEditingTrip(false);
+      await saveTrip({ name: draft.name, startsOn: draft.startsOn, endsOn: draft.endsOn, homeCurrency: draft.currency, defaultTimeZone: draft.timeZone });
+      setPanel('manage');
     }, tx('行程资料已更新。', 'Trip details updated.'));
   }
 
   async function permanentlyDeleteTrip() {
     await run('delete-trip', async () => {
       await deleteTrip();
-      setConfirmDeleteTrip(false);
-      setOpenPanel(null);
+      closePanel();
     }, tx('行程及其安排已永久删除。', 'Trip and its plans were permanently deleted.'));
   }
 
@@ -183,22 +192,14 @@ export default function TripsScreen() {
     await run('join', async () => {
       await joinTrip(inviteCode);
       setInviteCode('');
-      setOpenPanel(null);
+      closePanel();
     }, tx('已加入行程。', 'You joined the trip.'));
   }
 
   async function generateInvite() {
     await run('invite', async () => {
       setGeneratedInvite(await createInvite(inviteRole));
-      setShowInviteTools(true);
     });
-  }
-
-  function acceptScannedInvite(token: string) {
-    setInviteCode(token);
-    setScanningInvite(false);
-    setActionError(undefined);
-    setSuccess(tx('二维码已识别，请确认后加入行程。', 'QR code recognized. Confirm to join the trip.'));
   }
 
   async function shareInvite() {
@@ -213,22 +214,29 @@ export default function TripsScreen() {
   async function changeRole(userId: string, role: TripRole) {
     await run(`role-${userId}`, async () => {
       await setMemberRole(userId, role);
-      setEditingMemberId(undefined);
     }, tx('同行者权限已更新。', 'Traveller access updated.'));
   }
 
   async function confirmRemove(userId: string) {
     await run(`remove-${userId}`, async () => {
       await removeMember(userId);
-      setEditingMemberId(undefined);
-      setConfirmRemoveId(undefined);
+      setMemberId(undefined);
+      setPanel('manage');
     }, tx('同行者已移出此行程。', 'Traveller removed from this trip.'));
   }
 
+  // Who you are on this trip, rather than a list of the sections below.
+  const context = activeTrip
+    ? [
+        activeTrip.name,
+        tx(`${members.length} 位同行者`, `${members.length} travelling`),
+        tx(`共 ${trips.length} 个行程`, `${trips.length} trips`),
+      ]
+    : [tx('还没有行程', 'No trips yet')];
+
   return (
-    <Screen context={[tx('创建', 'Create'), tx('加入', 'Join'), tx('管理', 'Manage')]} title={tx('行程', 'Trips')}>
+    <Screen context={context} title={tx('行程', 'Trips')}>
       {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
-      {actionError ? <InlineNotice tone="error">{actionError}</InlineNotice> : null}
       {success ? <InlineNotice>{success}</InlineNotice> : null}
 
       {activeTrip ? (
@@ -245,244 +253,158 @@ export default function TripsScreen() {
         />
       ) : null}
 
+      {/* Neither button renames itself according to a panel below it. */}
       <View style={styles.quickActions}>
-        <View style={styles.actionGrow}><ActionButton tone={activeTrip ? 'secondary' : 'primary'} onPress={() => showPanel('create')}>{openPanel === 'create' ? tx('收起', 'Close') : tx('新建行程', 'New trip')}</ActionButton></View>
-        <View style={styles.actionGrow}><ActionButton tone="secondary" onPress={() => showPanel('join')}>{openPanel === 'join' ? tx('收起', 'Close') : tx('邀请码 / 扫码', 'Invite / scan')}</ActionButton></View>
+        <View style={styles.actionGrow}>
+          <ActionButton tone={activeTrip ? 'secondary' : 'primary'} onPress={() => openPanel('create')}>{tx('新建行程', 'New trip')}</ActionButton>
+        </View>
+        <View style={styles.actionGrow}>
+          <ActionButton tone="secondary" onPress={() => openPanel('join')}>{tx('加入行程', 'Join a trip')}</ActionButton>
+        </View>
       </View>
-
-      {openPanel === 'create' ? (
-        <View style={[styles.focusPanel, { backgroundColor: theme.backgroundElement }]}>
-          <PanelHeading title={tx('创建新行程', 'Create a new trip')} />
-          <TripForm name={name} setName={setName} startsOn={startsOn} setStartsOn={setStartsOn} endsOn={endsOn} setEndsOn={setEndsOn} currency={currency} setCurrency={setCurrency} timeZone={timeZone} setTimeZone={setTimeZone} destinationText={destinationText} setDestinationText={setDestinationText} settingsOpen={settingsOpen} setSettingsOpen={setSettingsOpen} currencyOptions={currencyOptions} timeZoneOptions={timeZoneOptions} tx={tx} />
-          <ActionButton busy={busyAction === 'create'} disabled={!name.trim()} onPress={() => void submitTrip()}>{tx('创建并进入行程', 'Create and open trip')}</ActionButton>
-        </View>
-      ) : null}
-
-      {openPanel === 'join' ? (
-        <View style={[styles.focusPanel, { backgroundColor: theme.backgroundElement }]}>
-          <PanelHeading title={tx('加入同行者的行程', 'Join a shared trip')} />
-          <ActionButton tone="secondary" onPress={() => setScanningInvite((current) => !current)}>{scanningInvite ? tx('关闭扫码', 'Close scanner') : tx('扫描二维码', 'Scan QR code')}</ActionButton>
-          {scanningInvite ? <InviteQrScanner tx={tx} onToken={acceptScannedInvite} /> : null}
-          <FormField label={tx('邀请码', 'Invite code')} value={inviteCode} onChangeText={setInviteCode} autoCapitalize="none" autoCorrect={false} placeholder={tx('粘贴邀请码', 'Paste invite code')} />
-          <ActionButton busy={busyAction === 'join'} disabled={inviteCode.trim().length !== 48} onPress={() => void submitInvite()}>{tx('确认加入', 'Join trip')}</ActionButton>
-        </View>
-      ) : null}
-
-      {openPanel === 'manage' && activeTrip ? (
-        <View style={[styles.focusPanel, { backgroundColor: theme.backgroundElement }]}>
-          <View style={styles.manageHeader}>
-            <PanelHeading title={activeTrip.name} />
-            <Pressable accessibilityRole="button" onPress={() => setOpenPanel(null)} style={({ pressed }) => [styles.textButton, pressed && styles.pressed]}><ThemedText type="smallBold" themeColor="textSecondary">{tx('关闭', 'Close')}</ThemedText></Pressable>
-          </View>
-
-          {editingTrip ? (
-            <View style={styles.editorBlock}>
-              <TripForm name={editName} setName={setEditName} startsOn={editStartsOn} setStartsOn={setEditStartsOn} endsOn={editEndsOn} setEndsOn={setEditEndsOn} currency={editCurrency} setCurrency={setEditCurrency} timeZone={editTimeZone} setTimeZone={setEditTimeZone} destinationText={editDestinationText} setDestinationText={setEditDestinationText} settingsOpen={editSettingsOpen} setSettingsOpen={setEditSettingsOpen} currencyOptions={currencyOptions} timeZoneOptions={timeZoneOptions} tx={tx} />
-              <View style={styles.editorActions}>
-                <View style={styles.actionGrow}><ActionButton tone="secondary" onPress={() => { prepareEdit(activeTrip); setEditingTrip(false); }}>{tx('取消', 'Cancel')}</ActionButton></View>
-                <View style={styles.actionGrow}><ActionButton busy={busyAction === 'edit-trip'} disabled={!editName.trim()} onPress={() => void submitTripEdit()}>{tx('保存行程', 'Save trip')}</ActionButton></View>
-              </View>
-            </View>
-          ) : (
-            <View style={[styles.detailsBlock, compact && styles.detailsBlockCompact]}>
-              <Detail compact={compact} label={tx('日期', 'Dates')} value={`${activeTrip.startsOn} — ${activeTrip.endsOn}`} />
-              <Detail compact={compact} label={tx('记账币种', 'Home currency')} value={activeTrip.homeCurrency} />
-              <Detail compact={compact} label={tx('时区', 'Time zone')} value={activeTrip.defaultTimeZone} />
-              <Detail compact={compact} label={tx('我的权限', 'My access')} value={currentMember ? (locale === 'zh-CN' ? tripRoleLabels[currentMember.role] : tripRoleLabelsEn[currentMember.role]) : '—'} />
-              {canEditTrip ? <View style={styles.editorActions}><View style={styles.actionGrow}><ActionButton tone="secondary" onPress={() => { prepareEdit(activeTrip); setEditingTrip(true); setConfirmDeleteTrip(false); }}>{tx('编辑行程资料', 'Edit trip details')}</ActionButton></View>{activeTrip.createdBy === currentUserId ? <View style={styles.actionGrow}><Pressable accessibilityRole="button" onPress={() => setConfirmDeleteTrip(true)} style={({ pressed }) => [styles.dangerAction, { borderColor: theme.backgroundSelected }, pressed && styles.pressed]}><ThemedText type="smallBold" style={{ color: theme.danger }}>{tx('删除行程', 'Delete trip')}</ThemedText></Pressable></View> : null}</View> : null}
-            </View>
-          )}
-
-          {confirmDeleteTrip ? (
-            <View style={[styles.dangerZone, { borderTopColor: theme.backgroundSelected }]}>
-              <PanelHeading title={tx('永久删除这个行程？', 'Permanently delete this trip?')} caption={tx('所有安排、分账、转账记录和收据都会删除，且无法恢复。只有创建者可以执行。', 'All plans, expenses, transfers, and receipts will be deleted and cannot be recovered. Only the creator can do this.')} />
-              <View style={styles.editorActions}>
-                <View style={styles.actionGrow}><ActionButton tone="secondary" onPress={() => setConfirmDeleteTrip(false)}>{tx('保留行程', 'Keep trip')}</ActionButton></View>
-                <View style={styles.actionGrow}><Pressable accessibilityRole="button" disabled={busyAction === 'delete-trip'} onPress={() => void permanentlyDeleteTrip()} style={({ pressed }) => [styles.dangerConfirm, { backgroundColor: theme.danger }, pressed && styles.pressed, busyAction === 'delete-trip' && styles.disabled]}><ThemedText type="smallBold" style={{ color: theme.textOnAccent }}>{busyAction === 'delete-trip' ? tx('删除中…', 'Deleting…') : tx('确认永久删除', 'Delete permanently')}</ThemedText></Pressable></View>
-              </View>
-            </View>
-          ) : null}
-
-          <View style={[styles.travellersBlock, { borderTopColor: theme.backgroundSelected }]}>
-            <View style={styles.sectionHeading}>
-              <View style={styles.sectionHeadingCopy}><ThemedText type="smallBold" style={styles.sectionTitle}>{tx('同行者', 'Travellers')}</ThemedText></View>
-              <ThemedText type="small" themeColor="textSecondary">{members.length}</ThemedText>
-            </View>
-            <View>
-              {members.map((member, index) => {
-                const expanded = editingMemberId === member.userId;
-                const self = member.userId === currentUserId;
-                return (
-                  <View key={member.userId}>
-                    {index > 0 ? <View style={[styles.divider, { backgroundColor: theme.backgroundSelected }]} /> : null}
-                    <Pressable accessible={isOwner && !self} disabled={!isOwner || self} accessibilityRole={isOwner && !self ? 'button' : undefined} accessibilityState={isOwner && !self ? { expanded } : undefined} onPress={() => { LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setEditingMemberId(expanded ? undefined : member.userId); setConfirmRemoveId(undefined); }} style={({ pressed }) => [styles.memberRow, pressed && styles.pressed]}>
-                      <MemberAvatar avatarUrl={member.avatarUrl} displayName={member.displayName} />
-                      <View style={styles.memberCopy}><ThemedText type="smallBold">{member.displayName}{self ? tx('（你）', ' (you)') : ''}</ThemedText><ThemedText type="small" themeColor="textSecondary">{locale === 'zh-CN' ? tripRoleLabels[member.role] : tripRoleLabelsEn[member.role]}</ThemedText></View>
-                      {isOwner && !self ? <ThemedText type="smallBold" themeColor="textSecondary">{expanded ? tx('收起', 'Close') : tx('管理', 'Manage')}</ThemedText> : null}
-                    </Pressable>
-                    {expanded ? (
-                      <View style={[styles.memberEditor, { backgroundColor: theme.backgroundSelected }]}>
-                        <ThemedText type="smallBold">{tx('权限', 'Access')}</ThemedText>
-                        <View style={styles.roleRow}>
-                          {(['owner', 'editor', 'viewer'] as TripRole[]).map((role) => <ChoiceChip key={role} selected={member.role === role} onPress={() => void changeRole(member.userId, role)}>{locale === 'zh-CN' ? tripRoleLabels[role] : tripRoleLabelsEn[role]}</ChoiceChip>)}
-                        </View>
-                        {confirmRemoveId === member.userId ? (
-                          <View style={styles.removeConfirm}><ThemedText type="small" themeColor="textSecondary">{tx(`确定将 ${member.displayName} 移出行程？历史账目会保留。`, `Remove ${member.displayName}? Historical ledger records will stay.`)}</ThemedText><View style={styles.editorActions}><View style={styles.actionGrow}><ActionButton tone="secondary" onPress={() => setConfirmRemoveId(undefined)}>{tx('取消', 'Cancel')}</ActionButton></View><View style={styles.actionGrow}><ActionButton busy={busyAction === `remove-${member.userId}`} onPress={() => void confirmRemove(member.userId)}>{tx('确认移出', 'Remove')}</ActionButton></View></View></View>
-                        ) : <Pressable accessibilityRole="button" onPress={() => setConfirmRemoveId(member.userId)} style={({ pressed }) => [styles.textButton, pressed && styles.pressed]}><ThemedText type="smallBold" style={{ color: theme.danger }}>{tx('移出此行程', 'Remove from trip')}</ThemedText></Pressable>}
-                      </View>
-                    ) : null}
-                  </View>
-                );
-              })}
-            </View>
-
-            {isOwner ? (
-              <View style={[styles.inviteArea, { borderTopColor: theme.backgroundSelected }]}>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityState={{ expanded: showInviteTools }}
-                  onPress={() => setShowInviteTools((current) => !current)}
-                  style={({ pressed }) => [styles.inviteDisclosure, pressed && styles.pressed]}>
-                  <View style={styles.inviteCopy}><ThemedText type="smallBold">{tx('邀请同行者', 'Invite travellers')}</ThemedText><ThemedText type="small" themeColor="textSecondary">{generatedInvite ? tx('邀请已生成', 'Invite ready') : tx('二维码或链接', 'QR or link')}</ThemedText></View>
-                  <Chevron color={theme.textSecondary} direction={showInviteTools ? 'down' : 'right'} />
-                </Pressable>
-                {showInviteTools ? <View style={styles.inviteTools}>
-                <View style={styles.roleRow}><ChoiceChip role="radio" selected={inviteRole === 'editor'} onPress={() => setInviteRole('editor')}>{tx('可编辑', 'Can edit')}</ChoiceChip><ChoiceChip role="radio" selected={inviteRole === 'viewer'} onPress={() => setInviteRole('viewer')}>{tx('仅查看', 'View only')}</ChoiceChip></View>
-                <ActionButton tone="secondary" busy={busyAction === 'invite'} onPress={() => void generateInvite()}>{tx('生成邀请', 'Create invite')}</ActionButton>
-                {generatedInvite ? (
-                  <View style={styles.generatedInvite}>
-                    <InviteQrCode value={buildInviteUrl(generatedInvite.token)} />
-                    <InlineNotice>{tx('邀请码', 'Invite code')}：{generatedInvite.token}{'\n'}{tx('有效期至', 'Expires')}：{formatDateTime(generatedInvite.expiresAt)}</InlineNotice>
-                    <ActionButton tone="secondary" onPress={() => void shareInvite()}>{tx('分享邀请链接', 'Share invite link')}</ActionButton>
-                  </View>
-                ) : null}
-                </View> : null}
-              </View>
-            ) : null}
-          </View>
-        </View>
-      ) : null}
 
       {trips.length > 0 ? (
         <View style={styles.section}>
           <SectionHeading title={tx('我的行程', 'My trips')} trailing={<ThemedText type="small" themeColor="textMuted">{trips.length}</ThemedText>} />
           <ListSurface>
-            {trips.map((trip, index) => {
-              const selected = trip.id === activeTrip?.id;
-              return (
-                <View key={trip.id}>
-                  {index > 0 ? <ListDivider /> : null}
-                  <ListRow
-                    onPress={() => void openTrip(trip)}
-                    subtitle={`${formatTripRange(trip, locale)} · ${trip.homeCurrency}`}
-                    title={trip.name}
-                    trailing={selected ? (
-                      <KindPill color={theme.kindActivity} label={tx('当前', 'Current')} softColor={theme.kindActivitySoft} />
-                    ) : <ThemedText type="smallBold" style={{ color: theme.link }}>{tx('查看', 'View')}</ThemedText>}
-                  />
-                </View>
-              );
-            })}
+            {trips.map((trip, index) => (
+              <View key={trip.id}>
+                {index > 0 ? <ListDivider /> : null}
+                {/* One affordance: the row opens the trip. The 「查看」 link
+                    that sat beside the press target said the same thing. */}
+                <ListRow
+                  onPress={() => void openTrip(trip)}
+                  subtitle={`${formatTripRange(trip, locale)} · ${trip.homeCurrency}`}
+                  title={trip.name}
+                  trailing={
+                    <View style={styles.rowTrailing}>
+                      {trip.id === activeTrip?.id ? (
+                        <KindPill color={theme.kindActivity} label={tx('当前', 'Current')} softColor={theme.kindActivitySoft} />
+                      ) : null}
+                      <Chevron color={theme.textMuted} />
+                    </View>
+                  }
+                />
+              </View>
+            ))}
           </ListSurface>
         </View>
+      ) : null}
+
+      <TripFormSheet
+        busy={busyAction === 'create' || busyAction === 'edit-trip'}
+        currencyOptions={currencyOptions}
+        draft={draft}
+        error={panelError}
+        mode={panel === 'edit' ? 'edit' : 'create'}
+        onChange={(patch) => setDraft((current) => ({ ...current, ...patch }))}
+        onDismiss={panel === 'edit' ? () => setPanel('manage') : closePanel}
+        onSubmit={() => void (panel === 'edit' ? submitTripEdit() : submitTrip())}
+        timeZoneOptions={timeZoneOptions}
+        tx={tx}
+        visible={panel === 'create' || panel === 'edit'}
+      />
+
+      <JoinTripSheet
+        busy={busyAction === 'join'}
+        code={inviteCode}
+        error={panelError}
+        notice={joinNotice}
+        onChangeCode={setInviteCode}
+        onDismiss={closePanel}
+        onScanned={(token) => {
+          setInviteCode(token);
+          setScanningInvite(false);
+          setJoinNotice(tx('二维码已识别，请确认后加入行程。', 'QR code recognized. Confirm to join the trip.'));
+        }}
+        onSubmit={() => void submitInvite()}
+        onToggleScanner={() => setScanningInvite((current) => !current)}
+        scanning={scanningInvite}
+        tx={tx}
+        visible={panel === 'join'}
+      />
+
+      {activeTrip ? (
+        <TripManageSheet
+          canEdit={canEditTrip}
+          currentUserId={currentUserId}
+          isOwner={isOwner}
+          members={members}
+          onDelete={activeTrip.createdBy === currentUserId ? () => setPanel('deleteTrip') : undefined}
+          onDismiss={closePanel}
+          onEdit={() => openPanel('edit')}
+          onInvite={() => openPanel('invite')}
+          onMember={(userId) => { setMemberId(userId); setPanel('member'); }}
+          roleLabel={roleLabel}
+          trip={activeTrip}
+          tripRange={formatTripRange(activeTrip, locale)}
+          tx={tx}
+          visible={panel === 'manage'}
+        />
+      ) : null}
+
+      <InviteSheet
+        busy={busyAction === 'invite'}
+        error={panelError}
+        expiresLabel={generatedInvite ? formatDateTime(generatedInvite.expiresAt) : undefined}
+        invite={generatedInvite}
+        inviteUrl={generatedInvite ? buildInviteUrl(generatedInvite.token) : undefined}
+        onDismiss={() => setPanel('manage')}
+        onGenerate={() => void generateInvite()}
+        onRoleChange={setInviteRole}
+        onShare={() => void shareInvite()}
+        role={inviteRole}
+        tx={tx}
+        visible={panel === 'invite'}
+      />
+
+      <MemberAccessSheet
+        busy={Boolean(busyAction?.startsWith('role-'))}
+        error={panelError}
+        member={selectedMember}
+        onDismiss={() => { setMemberId(undefined); setPanel('manage'); }}
+        onRemove={() => setPanel('removeMember')}
+        onRoleChange={(role) => { if (selectedMember) void changeRole(selectedMember.userId, role); }}
+        roleLabel={roleLabel}
+        tx={tx}
+        visible={panel === 'member'}
+      />
+
+      {activeTrip ? (
+        <ConfirmSheet
+          busy={busyAction === 'delete-trip'}
+          confirmLabel={tx('确认永久删除', 'Delete permanently')}
+          consequence={tx('所有安排、分账、转账记录和收据都会删除，且无法恢复。只有创建者可以执行。',
+                          'All plans, expenses, transfers, and receipts will be deleted and cannot be recovered. Only the creator can do this.')}
+          detail={`${formatTripRange(activeTrip, locale)} · ${tx(`${members.length} 位同行者`, `${members.length} travelling`)}`}
+          error={panelError}
+          onConfirm={() => void permanentlyDeleteTrip()}
+          onDismiss={() => setPanel('manage')}
+          title={tx(`永久删除“${activeTrip.name}”？`, `Permanently delete “${activeTrip.name}”?`)}
+          visible={panel === 'deleteTrip'}
+        />
+      ) : null}
+
+      {selectedMember ? (
+        <ConfirmSheet
+          busy={busyAction === `remove-${selectedMember.userId}`}
+          confirmLabel={tx('移出此行程', 'Remove from trip')}
+          consequence={tx('他们会失去这个行程的访问权限，历史账目会保留。', 'They lose access to this trip. Historical ledger records stay.')}
+          detail={roleLabel(selectedMember.role)}
+          error={panelError}
+          onConfirm={() => void confirmRemove(selectedMember.userId)}
+          onDismiss={() => setPanel('member')}
+          title={tx(`将 ${selectedMember.displayName} 移出行程？`, `Remove ${selectedMember.displayName}?`)}
+          visible={panel === 'removeMember'}
+        />
       ) : null}
     </Screen>
   );
 }
 
-function PanelHeading({ title, caption }: { title: string; caption?: string }) { return <View style={styles.panelHeader}><ThemedText type="smallBold" style={styles.panelTitle}>{title}</ThemedText>{caption ? <ThemedText type="small" themeColor="textSecondary">{caption}</ThemedText> : null}</View>; }
-function Detail({ label, value, compact }: { label: string; value: string; compact: boolean }) { return <View style={[styles.detail, compact && styles.detailStacked]}><ThemedText type="small" themeColor="textSecondary">{label}</ThemedText><ThemedText type="smallBold">{value}</ThemedText></View>; }
-
-interface TripFormProps {
-  name: string;
-  setName: (value: string) => void;
-  startsOn: string;
-  setStartsOn: (value: string) => void;
-  endsOn: string;
-  setEndsOn: (value: string) => void;
-  currency: string;
-  setCurrency: (value: string) => void;
-  timeZone: string;
-  setTimeZone: (value: string) => void;
-  destinationText: string;
-  setDestinationText: (value: string) => void;
-  settingsOpen: boolean;
-  setSettingsOpen: (value: boolean) => void;
-  currencyOptions: { label: string; value: string }[];
-  timeZoneOptions: { label: string; value: string }[];
-  tx: (zh: string, en: string) => string;
-}
-
-/**
- * Name, dates, and where you are going. Time zone and currency used to be two
- * pickers of equal weight in this form, which asked every traveller to answer
- * a question about IANA zone names before they could create a trip. Choosing a
- * destination now sets both; the summary row underneath keeps them visible and
- * correctable without putting them in the way.
- */
-function TripForm(props: TripFormProps) {
-  const { width } = useWindowDimensions();
-  const compact = width < 520;
-
-  function chooseDestination(suggestion: DestinationSuggestion) {
-    props.setDestinationText(destinationLabel(suggestion));
-    props.setTimeZone(suggestion.timeZone);
-    if (suggestion.currency) props.setCurrency(suggestion.currency);
-  }
-
-  return (
-    <View style={styles.formStack}>
-      <FormField
-        label={props.tx('行程名称', 'Trip name')}
-        value={props.name}
-        onChangeText={props.setName}
-        placeholder={props.tx('例如：北海道滑雪之旅', 'For example: Hokkaido ski trip')}
-      />
-      <DestinationField
-        value={props.destinationText}
-        planTitle={props.name}
-        onChange={props.setDestinationText}
-        onSelect={chooseDestination}
-      />
-      <View style={[styles.formRow, compact && styles.formRowCompact]}>
-        <View style={[styles.fieldGrow, compact && styles.fieldGrowCompact]}>
-          <DateTimeField label={props.tx('开始日期', 'Start date')} value={props.startsOn} mode="date" onChange={props.setStartsOn} />
-        </View>
-        <View style={[styles.fieldGrow, compact && styles.fieldGrowCompact]}>
-          <DateTimeField label={props.tx('结束日期', 'End date')} value={props.endsOn} mode="date" minimumDate={new Date(`${props.startsOn}T12:00:00`)} onChange={props.setEndsOn} />
-        </View>
-      </View>
-      <DestinationSettings
-        currency={props.currency}
-        currencyOptions={props.currencyOptions}
-        onCurrencyChange={props.setCurrency}
-        onTimeZoneChange={props.setTimeZone}
-        onToggle={() => props.setSettingsOpen(!props.settingsOpen)}
-        open={props.settingsOpen}
-        timeZone={props.timeZone}
-        timeZoneOptions={props.timeZoneOptions}
-        tx={props.tx}
-      />
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  quickActions: { flexDirection: 'row', gap: 10 }, actionGrow: { flex: 1, minWidth: 0 },
-  focusPanel: { borderRadius: 16, padding: 18, gap: 18, shadowOpacity: 0.07, shadowRadius: 18, shadowOffset: { width: 0, height: 7 } },
-  panelHeader: { flex: 1, gap: 3 }, panelTitle: { fontSize: 20, lineHeight: 26 }, manageHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 16 },
-  formStack: { gap: 14 }, formRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 }, formRowCompact: { flexDirection: 'column' }, fieldGrow: { flexGrow: 1, flexBasis: 220 }, fieldGrowCompact: { flexBasis: 'auto' },
-  section: { gap: 12 }, sectionHeading: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 }, sectionHeadingCopy: { flex: 1, gap: 2 }, sectionTitle: { fontSize: 20, lineHeight: 26 },
-  divider: { height: StyleSheet.hairlineWidth },
-  detailsBlock: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 }, detailsBlockCompact: { flexDirection: 'column' }, detail: { flexGrow: 1, flexBasis: 150, gap: 2 }, detailStacked: { flexGrow: 0, flexBasis: 'auto' },
-  editorBlock: { gap: 14 }, editorActions: { flexDirection: 'row', gap: 10 },
-  dangerAction: { minHeight: 48, borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, justifyContent: 'center', alignItems: 'center' },
-  dangerZone: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 18, gap: 14 },
-  dangerConfirm: { minHeight: 48, borderRadius: 12, paddingHorizontal: 14, justifyContent: 'center', alignItems: 'center' },
-  travellersBlock: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 18, gap: 12 },
-  memberRow: { minHeight: 62, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 6 }, memberCopy: { flex: 1, gap: 2 },
-  memberEditor: { borderRadius: 12, marginBottom: 10, padding: 14, gap: 12 }, roleRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  removeConfirm: { gap: 10 }, textButton: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' },
-  inviteArea: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 18, marginTop: 6, gap: 12 }, inviteDisclosure: { minHeight: 56, flexDirection: 'row', alignItems: 'center', gap: 12 }, inviteCopy: { flex: 1, gap: 2 }, inviteTools: { gap: 12 }, pressed: { opacity: 0.65 }, disabled: { opacity: 0.5 },
-  generatedInvite: { gap: 12 }, qrCaption: { textAlign: 'center' },
+  quickActions: { flexDirection: 'row', gap: Spacing.sm },
+  actionGrow: { flex: 1, minWidth: 0 },
+  section: { gap: Spacing.sm },
+  rowTrailing: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs },
 });
