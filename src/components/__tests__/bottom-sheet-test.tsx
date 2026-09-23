@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
-import { Text } from 'react-native';
+import { Modal, Text } from 'react-native';
 
 import { BottomSheet } from '@/components/bottom-sheet';
+
+jest.mock('@/global.css', () => ({}));
 
 jest.mock('@/components/themed-text', () => {
   const React = jest.requireActual<typeof import('react')>('react');
@@ -30,6 +32,20 @@ jest.mock('react-native-safe-area-context', () => ({
 }));
 
 describe('BottomSheet', () => {
+  it('blocks every dismissal path while an action is pending', () => {
+    const onDismiss = jest.fn();
+    let tree!: ReactTestRenderer;
+    act(() => {
+      tree = create(<BottomSheet onDismiss={onDismiss} title="保存中" visible dismissDisabled><Text>内容</Text></BottomSheet>);
+    });
+    const close = tree.root.findByProps({ accessibilityLabel: '取消并关闭' });
+    expect(close.props.accessibilityState).toEqual({ disabled: true });
+    act(() => tree.root.findByProps({ accessible: false }).props.onPress());
+    act(() => close.props.onPress());
+    act(() => tree.root.findByType(Modal).props.onRequestClose());
+    expect(onDismiss).not.toHaveBeenCalled();
+  });
+
   it('does not mount its contents while hidden', () => {
     let tree!: ReactTestRenderer;
     act(() => {

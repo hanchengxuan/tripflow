@@ -5,6 +5,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Chevron } from '@/components/chevron';
 import { useTheme } from '@/hooks/use-theme';
 import { useI18n } from '@/features/i18n/i18n-provider';
+import { Size } from '@/constants/theme';
 
 export interface SelectionOption<T extends string> {
   value: T;
@@ -16,11 +17,13 @@ export function SelectionField<T extends string>({
   value,
   options,
   onChange,
+  prominent = false,
 }: {
   label: string;
   value: T;
   options: readonly SelectionOption<T>[];
   onChange: (value: T) => void;
+  prominent?: boolean;
 }) {
   const theme = useTheme();
   const { tx } = useI18n();
@@ -32,14 +35,16 @@ export function SelectionField<T extends string>({
 
   return (
     <View style={styles.field}>
-      <ThemedText type="smallBold">{label}</ThemedText>
+      <ThemedText themeColor="textSecondary" style={styles.label}>{label}</ThemedText>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`${label}：${selectedLabel}`}
+        accessibilityState={{ expanded: open }}
+        aria-expanded={open}
         onPress={() => setOpen(true)}
-        style={[styles.control, { backgroundColor: theme.backgroundElement, borderColor: theme.borderField }]}
+        style={[styles.control, prominent && styles.prominent, { backgroundColor: theme.backgroundElement, borderColor: theme.borderField }]}
       >
-        <ThemedText>{selectedLabel}</ThemedText>
+        <ThemedText style={styles.value}>{selectedLabel}</ThemedText>
         <Chevron color={theme.textSecondary} />
       </Pressable>
       <Modal transparent visible={open} animationType="slide" onRequestClose={() => setOpen(false)}>
@@ -61,6 +66,7 @@ export function SelectionField<T extends string>({
                     key={option.value}
                     accessibilityRole="radio"
                     accessibilityState={{ checked: selected, selected }}
+                    aria-checked={selected}
                     onPress={() => {
                       onChange(option.value);
                       setOpen(false);
@@ -84,7 +90,10 @@ export function SelectionField<T extends string>({
 }
 
 const styles = StyleSheet.create({
-  field: { gap: 6 },
+  field: { gap: 6, minWidth: 0 },
+  label: { fontSize: 13, lineHeight: 18, fontWeight: '500' },
+  value: { flex: 1, minWidth: 0 },
+  prominent: { minHeight: Size.amountControl },
   control: {
     minHeight: 48,
     borderWidth: 1,
