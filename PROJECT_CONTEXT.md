@@ -1,6 +1,6 @@
 # TripFlow project context
 
-Last verified: 2026-09-15 UTC (SDK patch compatibility; older milestones retain their recorded dates)
+Last verified: 2026-09-23 UTC (SDK compatibility patch aligned with current Expo Doctor)
 
 This file is the durable, version-controlled source of truth for engineering continuity. It contains only project-safe context. Product detail belongs in `planning.md`; implementation history belongs in Git.
 
@@ -190,7 +190,7 @@ Temporary acceptance fixtures are removed after each test; production may contai
 
 ## Active next milestone
 
-- UI 2.3 delivery prerequisite: Expo is aligned to 57.0.21, Router to 57.0.20, and React Native plus its explicit Jest preset to 0.86.3. Compatible xmldom and js-yaml patches remove the newly reported audit blockers without expanding the advisory allowlist. Clean npm installation, lint, TypeScript, 97 Jest tests, Expo Doctor 20/20, Web/iOS exports, the dependency audit gate, and six mobile/desktop public-route Chromium checks pass locally on 2026-09-09. No database migration or product behavior change is included. Exact-head CI/Preview and production verification remain pending. The UI implementation remains isolated on `codex/ui-23-foundation`; authenticated and physical-device acceptance are separate from these public-route checks.
+- UI 2.3 delivery prerequisite: At the September 15 check, Expo was aligned to 57.0.22, Router to 57.0.21, and React Native plus its explicit Jest preset to 0.86.3. Compatible xmldom and js-yaml patches remove the newly reported audit blockers without expanding the advisory allowlist. Clean npm installation, lint, TypeScript, 97 Jest tests, Expo Doctor 20/20, Web/iOS exports, the dependency audit gate, and six mobile/desktop public-route Chromium checks pass locally on 2026-09-09. No database migration or product behavior change is included. Exact-head CI/Preview and production verification remain pending. The UI implementation remains isolated on `codex/ui-23-foundation`; authenticated and physical-device acceptance are separate from these public-route checks.
 - PR #85's initial Linux CI exposed missing optional WASM peer records in the macOS-generated lockfile (`@emnapi/core` and `@emnapi/runtime` 1.11.3). The lockfile was refreshed for Linux/x64 and checked using CI's npm 11.19.0; Linux-target clean-install resolution now passes. This is an install portability correction, with no advisory allowlist or workflow relaxation.
 - UI 2.3 foundation is implemented on `codex/ui-23-foundation`: desktop Web uses a 200pt sidebar and centered sheets; mobile keeps the existing six-tab navigation and bottom sheets. Shared prominent amount/currency controls measure 64pt at 375/390/1280 widths in light/dark; Ledger uses them with equal desktop columns. Account deletion is a complete, labeled settings row with its existing confirmation. Secondary buttons use neutral surfaces and danger buttons use a dedicated contrast token. Sheet dismissal can be blocked while pending; 98 Jest tests cover all three dismissal paths. The 1600-line Ledger and 413-line Profile boundaries have no added state concerns. Browser component checks cover 12 width/theme/language combinations, equal field heights, selection, sheet reopen/dismiss, deletion-row activation, and six navigation targets with visible and accessible selected states; live authenticated and physical-device acceptance remain outstanding. Rebased on PR #86 (40d6a6f); lint, TypeScript, 98 Jest tests, Expo Doctor 20/20, web/iOS exports and six public-route tests on the exported build passed on September 15. Read-only review: CLEAR for the presentation-only foundation; exact-head CI/Preview and production verification are next.
 
@@ -226,6 +226,11 @@ Temporary acceptance fixtures are removed after each test; production may contai
 - Work: treat Git, tests, and live database introspection as evidence; do not rely on conversational recollection alone.
 - Finish: update this file, commit and push, then refresh the pinned Discord summary.
 - Secrets and personal context never enter this file or the channel summary.
+
+## September 23 Expo SDK patch drift
+
+- Post-merge production run 35855752172 halted before deploy because Expo SDK metadata advanced between the September 15 PR check and September 23 merge gate. Doctor now requires Expo 57.0.24, Router 57.0.22, and compatible image modules; main was at 57.0.22/57.0.21. Do not infer production success from the PR's earlier CI.
+- On `codex/expo57-current-patches`, official `npx expo install --fix` and current local checks pass: SDK install check, lint, typecheck, 98 tests, Doctor 20/20, Web/iOS exports, reviewed production-dependency audit, and Linux npm 11.19 lockfile dry run. Focused PR and exact production verification are pending.
 
 ## September 15 SDK compatibility refresh
 
