@@ -1,4 +1,4 @@
-import { DarkTheme, DefaultTheme, Slot, ThemeProvider, usePathname } from 'expo-router';
+import { DarkTheme, DefaultTheme, Slot, ThemeProvider, usePathname, useSegments } from 'expo-router';
 import Head from 'expo-router/head';
 import * as SplashScreen from 'expo-splash-screen';
 import { useColorScheme } from 'react-native';
@@ -18,7 +18,9 @@ SplashScreen.preventAutoHideAsync();
 function SessionRouter() {
   const { configured, loading, onboardingComplete, recovering, session } = useAuth();
   const pathname = usePathname();
+  const segments = useSegments();
 
+  if (segments.some((segment) => segment === '+not-found')) return <Slot />;
   if (pathname === '/privacy' || pathname === '/support') return <Slot />;
   if (pathname === '/reset-password' && !loading) return <Slot />;
 
