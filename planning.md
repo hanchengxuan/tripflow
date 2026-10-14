@@ -490,3 +490,7 @@ The MVP is done when one scripted private-beta journey proves the complete conso
 6. The app proposes minimized settlement transfers and records full or partial settlements without losing source-expense history.
 7. A traveler downloads the correct region/offline pack, accesses essential local-script addresses and selected booking details without connectivity, and creates an offline expense draft that later synchronizes exactly once.
 8. Separate-account tests confirm that branch data and sensitive documents are never exposed outside their explicit permissions.
+
+## Booking-import MVP (October 2026)
+
+The first booking slice imports explicit flight/hotel facts from one PDF/image into editable previews. Confirmation atomically creates transport/stay intervals; unknown details stay empty, local zones are checked, originals remain uploader-private, and the trip timeline uses its existing zone. Multi-item AI replanning, inferred airport transfers, receipt OCR and generated daily activities remain future work. See `docs/booking-import.md` for the contract and acceptance gates.

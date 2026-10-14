@@ -6,3 +6,6 @@ verify_jwt = false
 
 [functions.route-estimate]
 verify_jwt = false
+
+[functions.parse-booking]
+verify_jwt = false

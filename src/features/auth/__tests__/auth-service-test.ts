@@ -1,22 +1,28 @@
 import { assertPasswordChange, completeRegistration, deleteAccount, normalizeEmail, normalizeEmailOtp, normalizePhone, sendEmailOtp, validatePassword } from '@/features/auth/auth-service';
+import { deleteAllBookingFiles } from '@/data/booking-repository';
 import { updateProfile } from '@/data/trip-repository';
 
+const mockGetUser = jest.fn();
+const mockBookingCleanup = deleteAllBookingFiles as jest.MockedFunction<typeof deleteAllBookingFiles>;
 const mockRpc = jest.fn();
 const mockSignOut = jest.fn();
 const mockSingle = jest.fn();
+const mockProfileEq = jest.fn(() => ({ single: mockSingle }));
 const mockRemove = jest.fn();
 const mockSignInWithOtp = jest.fn();
 const mockUpdateUser = jest.fn();
 const mockUpdateProfile = updateProfile as jest.MockedFunction<typeof updateProfile>;
 
+jest.mock('@/data/booking-repository', () => ({ deleteAllBookingFiles: jest.fn() }));
+
 jest.mock('@/data/trip-repository', () => ({ updateProfile: jest.fn() }));
 
 jest.mock('@/lib/supabase', () => ({
   getSupabaseClient: () => ({
-    from: () => ({ select: () => ({ single: mockSingle }) }),
+    from: () => ({ select: () => ({ eq: mockProfileEq, single: mockSingle }) }),
     storage: { from: () => ({ remove: mockRemove }) },
     rpc: mockRpc,
-    auth: { signOut: mockSignOut, signInWithOtp: mockSignInWithOtp, updateUser: mockUpdateUser },
+    auth: { getUser: mockGetUser, signOut: mockSignOut, signInWithOtp: mockSignInWithOtp, updateUser: mockUpdateUser },
   }),
 }));
 
@@ -77,14 +83,29 @@ describe('normalizeEmail', () => {
     mockRpc.mockResolvedValueOnce({ error: null });
     mockSignOut.mockResolvedValueOnce({ error: null });
 
+    mockGetUser.mockResolvedValueOnce({ data: { user: { id: 'user-a' } }, error: null });
+    mockBookingCleanup.mockResolvedValueOnce(undefined);
     await deleteAccount();
 
+    expect(mockProfileEq).toHaveBeenCalledWith('id', 'user-a');
     expect(mockRemove).toHaveBeenCalledWith(['user/avatar.png']);
+    expect(mockBookingCleanup).toHaveBeenCalledWith('user-a');
+    expect(mockBookingCleanup.mock.invocationCallOrder[0]).toBeLessThan(mockRpc.mock.invocationCallOrder[0]);
     expect(mockRpc).toHaveBeenCalledWith('delete_current_account');
     expect(mockSignOut).toHaveBeenCalledWith({ scope: 'local' });
     expect(mockRemove.mock.invocationCallOrder[0]).toBeLessThan(mockRpc.mock.invocationCallOrder[0]);
     expect(mockRpc.mock.invocationCallOrder[0]).toBeLessThan(mockSignOut.mock.invocationCallOrder[0]);
   });
+});
+
+test('account deletion stops when private original cleanup fails', async () => {
+  jest.clearAllMocks();
+  mockSingle.mockResolvedValueOnce({ data: { avatar_path: null }, error: null });
+  mockGetUser.mockResolvedValueOnce({ data: { user: { id: 'user-a' } }, error: null });
+  mockBookingCleanup.mockRejectedValueOnce(new Error('Storage unavailable'));
+  await expect(deleteAccount()).rejects.toThrow('Storage unavailable');
+  expect(mockRpc).not.toHaveBeenCalled();
+  expect(mockSignOut).not.toHaveBeenCalled();
 });
 
 describe('assertPasswordChange', () => {

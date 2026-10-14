@@ -2,6 +2,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { BookingImportEntry } from '@/components/booking-import-entry';
 import { ItineraryComposerSheet } from '@/components/itinerary-composer-sheet';
 import { SegmentList } from '@/components/segment-list';
 import { SplitSegmentSheet } from '@/components/split-segment-sheet';
@@ -62,6 +63,7 @@ export default function ItineraryScreen() {
   const theme = useTheme();
   const {
     activeTrip,
+    refresh,
     addItineraryItem,
     dissolveTripSegment,
     error,
@@ -147,7 +149,8 @@ export default function ItineraryScreen() {
   const context = activeTrip
     ? [
         activeTrip.name,
-        tx(String(itineraryItems.length) + ' 项安排', String(itineraryItems.length) + ' plans'),
+        tx(String(itineraryItems.length) + ' 项安排', String(itineraryItems.length) + (itineraryItems.length === 1 ? ' plan' : ' plans')),
+        tx('默认时区 ' + activeTrip.defaultTimeZone, 'Default time zone ' + activeTrip.defaultTimeZone),
       ]
     : [tx('还没有选择行程', 'No trip selected')];
 
@@ -193,6 +196,10 @@ export default function ItineraryScreen() {
               autoCorrect={false}
               placeholder={tx('搜索标题、地点或目的地', 'Search titles, places, or destinations')}
             />
+            <BookingImportEntry key={activeTrip.id} trip={activeTrip} userId={currentUserId} canEdit={canEdit} onImported={(message) => {
+              setSuccess(message);
+              void refresh();
+            }} />
             {segments.length > 0 ? (
               <SegmentList
                 canEdit={canEdit}
