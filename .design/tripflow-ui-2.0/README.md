@@ -108,14 +108,14 @@ Kept current. Update a row when you close a gap.
 | Time rail, day separator, route in the gap | ✅ shipped | `src/components/timeline-rail.tsx`, `route-plan.tsx` |
 | Bipolar balance bar | ✅ shipped | `src/components/balance-bar.tsx`, `src/lib/balance-bar.ts` |
 | Add-plan and add-expense as bottom **sheets** | 🟡 implemented; real-device gate pending | `src/components/bottom-sheet.tsx`, `src/app/index.tsx`, `src/app/ledger.tsx`, `src/components/screen.tsx` |
-| 54pt text-only floating navigation on every platform | ✅ implemented; native recheck pending | `src/components/app-tabs-custom.tsx` |
+| 54pt icon-and-label floating navigation on every platform | ✅ implemented; native recheck pending | `src/components/app-tabs-custom.tsx` |
 | Stay card with kind bar + nights tile | ✅ shipped | `src/components/stay-card.tsx`, `src/app/index.tsx` stays section |
 | Notice with a 3px accent bar | ✅ shipped | `src/components/form-controls.tsx` `InlineNotice` |
 | Screen header = title + one context row | ✅ shipped | `src/components/screen.tsx` and every `Screen` caller |
 | Travel modes compact until expanded | ✅ shipped | `RouteEstimateChip` toggles `src/app/index.tsx` `routeModeControls` |
 | Today raised next-up card with compact edit affordance | ✅ shipped | `src/components/next-up-card.tsx`; edit opens by pressing the card instead of permanent action links |
 | Trips current-trip hero and row-list | ✅ shipped | `src/components/trip-overview-card.tsx`, `src/components/list-surface.tsx`, `src/app/explore.tsx` |
-| Ledger segmented views, row-list activity, compact AI/manual composer | ✅ implemented; physical-phone gate pending | `src/components/segmented-control.tsx`, `src/components/list-surface.tsx`, `src/app/ledger.tsx` |
+| Ledger segmented views, row-list activity, manual expense form with optional AI text/voice helper | ✅ implemented; physical-phone gate pending | `src/components/segmented-control.tsx`, `src/components/list-surface.tsx`, `src/app/ledger.tsx` |
 
 The travel-mode product decision preserves explicit control without keeping four controls open: the current mode and estimate always remain visible, and pressing that chip reveals all four modes in place. Selecting one collapses the choices while the estimate refreshes.
 

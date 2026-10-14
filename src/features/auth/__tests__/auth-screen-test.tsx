@@ -9,7 +9,7 @@ jest.mock('@/global.css', () => ({}));
 jest.mock('expo-router', () => ({ Link: 'Link', useLocalSearchParams: () => ({}) }));
 jest.mock('react-native-safe-area-context', () => ({ useSafeAreaInsets: () => ({ top: 0, bottom: 0 }) }));
 jest.mock('@/components/google-mark', () => ({ GoogleMark: () => null }));
-jest.mock('@/features/auth/auth-provider', () => ({ useAuth: () => ({ capabilities: { google: true, phone: false } }) }));
+jest.mock('@/features/auth/auth-provider', () => ({ useAuth: () => ({ capabilities: { google: false, phone: false } }) }));
 jest.mock('@/features/i18n/i18n-provider', () => ({ useI18n: () => ({ locale: 'en', tx: (_zh: string, en: string) => en, setLocale: jest.fn() }) }));
 jest.mock('@/features/auth/auth-service', () => ({ sendEmailOtp: jest.fn(), signInWithGoogle: jest.fn() }));
 

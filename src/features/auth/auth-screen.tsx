@@ -193,7 +193,7 @@ export function AuthScreen() {
           </View>
           <View style={[styles.authPanel, { backgroundColor: theme.backgroundElement, shadowColor: theme.shadow }]}>
             <ThemedText type="smallBold" style={styles.authPanelTitle}>{cardLabel}</ThemedText>
-            {capabilities.google && !verifying ? (
+            {!verifying ? (
               <>
                 <Pressable
                   accessibilityRole="button"
