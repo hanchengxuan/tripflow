@@ -158,6 +158,7 @@ export function MvpProvider({ children }: PropsWithChildren) {
       await loadTripDetails(trip);
     } catch (caught) {
       setError(toUserMessage(caught));
+      throw caught;
     } finally {
       setLoading(false);
     }

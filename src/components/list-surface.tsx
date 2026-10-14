@@ -16,12 +16,14 @@ export function ListDivider() {
 }
 
 export function ListRow({
+  disabled = false,
   leading,
   onPress,
   subtitle,
   title,
   trailing,
 }: {
+  disabled?: boolean;
   leading?: ReactNode;
   onPress?: () => void;
   subtitle?: string;
@@ -39,7 +41,7 @@ export function ListRow({
     </>
   );
   return onPress ? (
-    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
+    <Pressable accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
       {content}
     </Pressable>
   ) : <View style={styles.row}>{content}</View>;

@@ -304,3 +304,8 @@ Temporary acceptance fixtures are removed after each test; production may contai
 
 - Before landing UI review fixes, live Expo Doctor changed its SDK 57 patch recommendations. The focused expo57-oct15-compat branch updates only Expo, @expo/ui, asset, constants, linking and router to SDK-compatible patches, preserving the existing audit allowlist and security patches. The trip-selection-race work is preserved separately.
 - Verified locally: Doctor 20/20, 133 tests, lint, TypeScript, Web/iOS exports, eight browser checks and the unchanged dependency audit gate. Review found no blocking issue in the SDK-only diff. Next: pass exact-head CI/Preview, merge and verify production before continuing the UI fixes.
+
+## October 15 UI review fixes — trip switching
+
+- The focused trip-selection-race change prevents pending trip selection from opening management after leaving Trips or opening a different panel. Duplicate row taps are serialized and switching progress is visible. Failed selection is propagated rather than opening management with stale details. Existing row-to-management behavior is preserved. No migration.
+- Verified locally: 137 tests, TypeScript, scoped lint, Web/iOS exports and eight public browser checks. The mobile signed-in reproduction completed trip loading on Ledger without a late dialog or console errors. The coordinated opener is a focused hook/controller; Trips is 417 lines versus 410 before. Desktop signed-in reproduction also passed with no late dialog or console errors. Review found no blocking issue. Next: exact-head CI/Preview, merge and production smoke.
