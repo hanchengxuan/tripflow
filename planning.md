@@ -202,7 +202,7 @@ Non-goals for P1.1: remote itinerary disclosure without opt-in, route-time inven
 
 #### Selected second vertical slice: natural-language reviewable edit (P1.2)
 
-The next slice adds an explicit “智能调整 / Smart edit” action inside the existing edit composer. An editor opens one existing itinerary item, taps the compact smart-suggestion affordance, and describes one change in Chinese or English; Gemini returns a structured proposal tied to that item. Only the selected item's minimum title/time context is sent; the app shows the exact diff, validates it locally, and writes only after the traveller presses “应用修改”. The first version deliberately supports one item and title/time fields only; location and Google Place changes remain manual so the model cannot invent a destination.
+The next slice adds an explicit “智能调整 / Smart edit” action inside the existing edit composer. An editor opens one existing itinerary item, taps the compact smart-suggestion affordance, and describes one change in Chinese or English by text, push-to-talk voice, or both; Gemini returns a structured proposal tied to that item. Only the selected item's minimum title/time context and the user-provided request are sent; the app shows the exact diff, validates it locally, and writes only after the traveller presses “应用修改”. Voice is an optional input to the same edit flow, and its recording is not persisted. The first version deliberately supports one item and title/time fields only; location and Google Place changes remain manual so the model cannot invent a destination.
 
 Acceptance criteria:
 
@@ -212,7 +212,7 @@ Acceptance criteria:
 4. Applying a proposal calls the existing itinerary update RPC only after confirmation; cancelling or closing the assistant performs no write.
 5. Existing locations, Place IDs, route modes, participants, and linked ledger records are preserved. Multi-item reorder, destination guessing, route-time invention, disruption lookup, and autonomous mutation are out of scope.
 
-The payload sent to Gemini is an explicit, user-triggered disclosure of one selected itinerary item. It must be limited to the fields needed for the requested edit, must not include other itinerary items, profile data, or ledger data, and must be treated as untrusted prompt data on the server.
+The payload sent to Gemini is an explicit, user-triggered disclosure of one selected itinerary item and the text or voice request (or both). Voice is sent through the authenticated Supabase Edge Function to Google Gemini only to generate an editable proposal; it is not persisted by TripFlow. The payload must be limited to the fields needed for the requested edit, must not include other itinerary items, profile data, or ledger data, and must be treated as untrusted prompt data on the server.
 
 Presentation decision: keep smart edit out of the Today overview by default. The entry point belongs inside the existing edit composer for the selected item, using a compact icon/button and progressive disclosure so the normal itinerary remains the primary task surface.
 

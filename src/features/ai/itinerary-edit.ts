@@ -30,6 +30,25 @@ export interface ItineraryEditValidationResult {
   candidate?: ItineraryItem;
 }
 
+export interface ItineraryEditAudio {
+  audioBase64: string;
+  audioMimeType: string;
+}
+
+const supportedAudioMimeTypes = ['audio/mp4', 'audio/m4a', 'audio/webm', 'audio/aac', 'audio/mpeg'];
+
+export function validateItineraryEditInput(input: { instruction?: string; audio?: ItineraryEditAudio }) {
+  const instruction = input.instruction?.trim() ?? '';
+  const audioBase64 = input.audio?.audioBase64.trim() ?? '';
+  const audioMimeType = input.audio?.audioMimeType.trim() ?? '';
+  if (!instruction && !audioBase64) throw new Error('请先输入或录制调整说明。');
+  if (instruction.length > 500) throw new Error('调整说明不能超过 500 个字符。');
+  if (input.audio && (!audioBase64 || audioBase64.length > 8_000_000 || !supportedAudioMimeTypes.includes(audioMimeType))) {
+    throw new Error('录音格式或大小不受支持，请使用 60 秒以内的录音。');
+  }
+  return { instruction, ...(audioBase64 ? { audioBase64, audioMimeType } : {}) };
+}
+
 function boundedText(value: unknown, fallback: string, maxLength: number) {
   if (typeof value !== 'string') return fallback;
   const text = value.trim();
@@ -149,11 +168,10 @@ export function validateMergedItineraryEdit(input: {
   return { errors: [], candidate };
 }
 
-export async function suggestItineraryEdit(input: { tripId: string; itemId: string; instruction: string }) {
-  const instruction = input.instruction.trim();
-  if (!instruction || instruction.length > 500) throw new Error('请输入 1 到 500 个字符的调整说明。');
+export async function suggestItineraryEdit(input: { tripId: string; itemId: string; instruction?: string; audio?: ItineraryEditAudio }) {
+  const content = validateItineraryEditInput(input);
   const { data, error } = await getSupabaseClient().functions.invoke('suggest-itinerary-edit', {
-    body: { tripId: input.tripId, itemId: input.itemId, instruction },
+    body: { tripId: input.tripId, itemId: input.itemId, ...content },
   });
   if (error) {
     const response = (error as { context?: Response }).context;

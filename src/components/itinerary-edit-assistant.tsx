@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ActionButton, FormField, InlineNotice } from '@/components/form-controls';
 import { ThemedText } from '@/components/themed-text';
+import { VoiceRecordingControl } from '@/components/voice-recording-control';
 import { Radius, Spacing } from '@/constants/theme';
 import type { ItineraryItem, Trip } from '@/domain/models';
 import {
@@ -51,13 +52,13 @@ export function ItineraryEditAssistant({ trip, item, items, onApply }: Itinerary
     return validateMergedItineraryEdit({ candidate, items, trip, timeZone: trip.defaultTimeZone });
   }, [candidate, items, trip]);
 
-  const generatePreview = async () => {
+  const generatePreview = async (audio?: { audioBase64: string; audioMimeType: string }) => {
     if (!selectedItem) return;
     setBusy(true);
     setError(undefined);
     setSuccess(false);
     try {
-      const nextProposal = await suggestItineraryEdit({ tripId: trip.id, itemId: selectedItem.id, instruction });
+      const nextProposal = await suggestItineraryEdit({ tripId: trip.id, itemId: selectedItem.id, instruction, ...(audio ? { audio } : {}) });
       setProposalState({ signature: selectedSignature, proposal: nextProposal });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : tx('智能调整暂时不可用，请稍后重试。', 'Smart edit is unavailable. Try again later.'));
@@ -123,6 +124,15 @@ export function ItineraryEditAssistant({ trip, item, items, onApply }: Itinerary
             maxLength={500}
             textAlignVertical="top"
             style={styles.input}
+          />
+          <VoiceRecordingControl
+            disabled={busy || applyBusy}
+            label={tx('也可以语音描述修改', 'Or describe the change by voice')}
+            permissionMessage={tx('请允许麦克风权限后录音。', 'Allow microphone access to record.')}
+            recordingLabel={tx('停止录音并生成预览', 'Stop recording and generate preview')}
+            processingLabel={tx('正在分析语音并生成预览…', 'Analyzing voice and preparing preview…')}
+            failureMessage={tx('语音处理失败，请重试或改用文字。', 'Voice processing failed. Try again or use text.')}
+            onAudioReady={(audioBase64, audioMimeType) => generatePreview({ audioBase64, audioMimeType })}
           />
           <ThemedText type="small" themeColor="textSecondary">{tx('只会生成预览，确认后才会保存。', 'A preview is generated first; nothing is saved until you confirm.')}</ThemedText>
           <ActionButton tone="primary" busy={busy} disabled={!selectedItem || !instruction.trim()} onPress={() => void generatePreview()}>

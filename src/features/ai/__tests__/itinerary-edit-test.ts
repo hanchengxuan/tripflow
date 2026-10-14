@@ -1,5 +1,5 @@
 import type { ItineraryItem } from '@/domain/models';
-import { mergeItineraryEdit, validateItineraryEditProposal, validateMergedItineraryEdit } from '@/features/ai/itinerary-edit';
+import { mergeItineraryEdit, validateItineraryEditInput, validateItineraryEditProposal, validateMergedItineraryEdit } from '@/features/ai/itinerary-edit';
 
 function item(overrides: Partial<ItineraryItem> = {}): ItineraryItem {
   return {
@@ -15,6 +15,14 @@ function item(overrides: Partial<ItineraryItem> = {}): ItineraryItem {
 }
 
 describe('itinerary edit proposals', () => {
+  it('accepts text, voice, or both as the same bounded edit request', () => {
+    expect(validateItineraryEditInput({ instruction: '晚一点出发' })).toEqual({ instruction: '晚一点出发' });
+    expect(validateItineraryEditInput({ audio: { audioBase64: 'YQ==', audioMimeType: 'audio/webm' } })).toEqual({ instruction: '', audioBase64: 'YQ==', audioMimeType: 'audio/webm' });
+    expect(validateItineraryEditInput({ instruction: '晚一点', audio: { audioBase64: 'YQ==', audioMimeType: 'audio/mp4' } })).toEqual({ instruction: '晚一点', audioBase64: 'YQ==', audioMimeType: 'audio/mp4' });
+    expect(() => validateItineraryEditInput({})).toThrow('先输入或录制');
+    expect(() => validateItineraryEditInput({ audio: { audioBase64: 'YQ==', audioMimeType: 'text/plain' } })).toThrow('不受支持');
+  });
+
   it('accepts one known, bounded change and rejects unsupported fields', () => {
     expect(validateItineraryEditProposal({
       summary: '把晚餐延后',

@@ -1,7 +1,8 @@
 import type { Session } from '@supabase/supabase-js';
 import { createContext, type PropsWithChildren, useContext, useEffect, useMemo, useState } from 'react';
 
-import { getAuthCapabilities, getSupabaseClient, isSupabaseConfigured, type AuthCapabilities } from '@/lib/supabase';
+import { getAuthCapabilities, getSupabaseClient, isSupabaseConfigured } from '@/lib/supabase';
+import type { AuthCapabilities } from '@/lib/auth-capabilities';
 import { nextRecoveryState, shouldResetOnboarding } from '@/features/auth/auth-session';
 
 interface AuthContextValue {

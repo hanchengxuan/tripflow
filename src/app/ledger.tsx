@@ -1,9 +1,8 @@
 import { Image } from 'expo-image';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
-import { RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync, useAudioRecorder, useAudioRecorderState } from 'expo-audio';
 import { Fragment, useMemo, useState } from 'react';
-import { LayoutAnimation, Linking, Platform, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { LayoutAnimation, Linking, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/form-controls';
 import { BottomSheet } from '@/components/bottom-sheet';
@@ -20,6 +19,7 @@ import {
   type SettlementDraft,
 } from '@/components/settlement-workspace';
 import { ThemedText } from '@/components/themed-text';
+import { VoiceRecordingControl } from '@/components/voice-recording-control';
 import { getCurrencyOptions } from '@/constants/options';
 import {
   calculateBalancesByCurrency,
@@ -766,22 +766,25 @@ function ExpenseComposer(props: {
   const theme = useTheme();
   const { width } = useWindowDimensions();
   const compact = width < 520;
-  const [entryMode, setEntryMode] = useState<'manual' | 'ai'>('ai');
+  const [aiHelperOpen, setAiHelperOpen] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   return (
     <View style={styles.composer}>
-      <SegmentedControl
-        options={[{ label: tx('手动', 'Manual'), value: 'manual' }, { label: tx('AI 一句话', 'AI one-line'), value: 'ai' }]}
-        value={entryMode}
-        onChange={setEntryMode}
-      />
-      {entryMode === 'ai' ? (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded: aiHelperOpen }}
+        onPress={() => setAiHelperOpen((current) => !current)}
+        style={({ pressed }) => [styles.aiDisclosure, { borderBottomColor: theme.border }, pressed && styles.pressed]}>
+        <View style={styles.grow}>
+          <ThemedText type="smallBold">{tx('文字或语音快速填入（可选）', 'Quick fill with text or voice (optional)')}</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">{tx('先生成草稿，再检查并修改下面的账目。', 'Create a draft, then review and edit the expense below.')}</ThemedText>
+        </View>
+        <Chevron color={theme.textSecondary} direction={aiHelperOpen ? 'down' : 'right'} />
+      </Pressable>
+      {aiHelperOpen ? (
         <View style={styles.aiEntry}>
-          <ThemedText type="small" themeColor="textSecondary">
-            {tx('说清内容、金额、付款人和分法，我们会先填入，保存前仍可修改。', 'Describe the expense, amount, payer and split. You can review everything before saving.')}
-          </ThemedText>
           <FormField
-            label={tx('一句话记账', 'One-line expense')}
+            label={tx('描述这笔支出', 'Describe this expense')}
             value={props.aiText}
             onChangeText={props.setAiText}
             placeholder={tx('晚餐 860 港币，小王付款，三人均分', 'Dinner 860 HKD, paid by Sam, split three ways')}
@@ -790,10 +793,18 @@ function ExpenseComposer(props: {
           <View style={styles.aiActions}>
             <View style={styles.grow}>
               <ActionButton tone="secondary" busy={props.busyAction === 'parse'} disabled={!props.aiText.trim() || Boolean(props.busyAction)} onPress={() => void props.parseWithAi()}>
-                {tx('解析并填入', 'Parse & fill')}
+                {tx('生成草稿并填入', 'Create draft & fill')}
               </ActionButton>
             </View>
-            <VoiceExpenseInput disabled={Boolean(props.busyAction)} tx={tx} onAudioReady={props.parseVoiceExpense} />
+            <VoiceRecordingControl
+              disabled={Boolean(props.busyAction)}
+              label={tx('语音描述', 'Voice input')}
+              permissionMessage={tx('需要麦克风权限才能语音记账。', 'Microphone permission is required for voice expenses.')}
+              recordingLabel={tx('结束录音并填入', 'Finish recording and fill')}
+              processingLabel={tx('解析中…', 'Processing…')}
+              failureMessage={tx('无法处理录音，请重试或改用文字。', 'Could not process the recording. Try again or use text.')}
+              onAudioReady={props.parseVoiceExpense}
+            />
           </View>
         </View>
       ) : null}
@@ -965,92 +976,6 @@ function ExpenseComposer(props: {
   );
 }
 
-async function uriToBase64(uri: string) {
-  const response = await fetch(uri);
-  const blob = await response.blob();
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(reader.error ?? new Error('Could not read recording'));
-    reader.onload = () => resolve(String(reader.result).split(',')[1] ?? '');
-    reader.readAsDataURL(blob);
-  });
-}
-
-function VoiceExpenseInput(props: {
-  disabled: boolean;
-  tx: (zh: string, en: string) => string;
-  onAudioReady: (audioBase64: string, audioMimeType: string) => Promise<void>;
-}) {
-  const theme = useTheme();
-  const recorder = useAudioRecorder(RecordingPresets.LOW_QUALITY);
-  const state = useAudioRecorderState(recorder);
-  const [voiceError, setVoiceError] = useState<string>();
-  const [processing, setProcessing] = useState(false);
-
-  async function startRecording() {
-    setVoiceError(undefined);
-    const permission = await requestRecordingPermissionsAsync();
-    if (!permission.granted) {
-      setVoiceError(props.tx('需要麦克风权限才能语音记账。', 'Microphone permission is required for voice expenses.'));
-      return;
-    }
-    await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
-    await recorder.prepareToRecordAsync();
-    recorder.record();
-  }
-
-  async function stopAndParse() {
-    setProcessing(true);
-    setVoiceError(undefined);
-    try {
-      await recorder.stop();
-      await setAudioModeAsync({ allowsRecording: false });
-      if (!recorder.uri) throw new Error('Recording is unavailable');
-      const audioBase64 = await uriToBase64(recorder.uri);
-      const audioMimeType = Platform.OS === 'web' ? 'audio/webm' : 'audio/mp4';
-      await props.onAudioReady(audioBase64, audioMimeType);
-    } catch {
-      setVoiceError(props.tx('无法处理录音，请重试或改用文字。', 'Could not process the recording. Try again or use text.'));
-    } finally {
-      setProcessing(false);
-    }
-  }
-
-  return (
-    <View style={styles.voiceGroup}>
-      <View style={styles.voiceControlRow}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={processing
-            ? props.tx('正在解析语音', 'Processing voice')
-            : state.isRecording
-              ? props.tx('结束语音记账', 'Finish voice expense')
-              : props.tx('开始语音记账', 'Start voice expense')}
-          accessibilityState={{ disabled: props.disabled || processing, busy: processing }}
-          disabled={props.disabled || processing}
-          onPress={() => void (state.isRecording ? stopAndParse() : startRecording())}
-          style={({ pressed }) => [styles.voiceButton, { backgroundColor: state.isRecording ? theme.danger : theme.info }, pressed && styles.pressed, (props.disabled || processing) && styles.disabled]}>
-          <MicrophoneGlyph />
-        </Pressable>
-        {processing ? <ThemedText type="small" themeColor="textSecondary">{props.tx('解析中…', 'Processing…')}</ThemedText> : state.isRecording ? <ThemedText type="smallBold">{Math.round(state.durationMillis / 1000)}s</ThemedText> : <ThemedText type="smallBold" themeColor="textSecondary">{props.tx('语音填入', 'Voice fill')}</ThemedText>}
-      </View>
-      {voiceError ? <InlineNotice tone="error">{voiceError}</InlineNotice> : null}
-    </View>
-  );
-}
-
-function MicrophoneGlyph() {
-  const theme = useTheme();
-  return (
-    <View style={styles.micGlyph} accessibilityElementsHidden>
-      <View style={[styles.micBody, { backgroundColor: theme.textOnAccent }]} />
-      <View style={[styles.micArc, { borderLeftColor: theme.textOnAccent, borderRightColor: theme.textOnAccent, borderBottomColor: theme.textOnAccent }]} />
-      <View style={[styles.micStem, { backgroundColor: theme.textOnAccent }]} />
-      <View style={[styles.micBase, { backgroundColor: theme.textOnAccent }]} />
-    </View>
-  );
-}
-
 function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <View style={styles.fieldGroup}>
@@ -1213,6 +1138,7 @@ const styles = StyleSheet.create({
   plusVertical: { position: 'absolute', width: 2, height: 18, borderRadius: 1 },
   composer: { gap: 20 },
   aiEntry: { gap: 12 },
+  aiDisclosure: { minHeight: 48, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: 'row', alignItems: 'center', gap: 12, paddingBottom: 12 },
   aiActions: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   formGroup: { gap: 16 },
   amountRow: { flexDirection: 'row', gap: 12, alignItems: 'flex-end' },
@@ -1224,14 +1150,6 @@ const styles = StyleSheet.create({
   conversionPreview: { flexGrow: 1, flexBasis: 150, gap: 2, paddingBottom: 10 },
   advancedDisclosure: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 12, borderTopWidth: StyleSheet.hairlineWidth },
   advancedFields: { gap: 16 },
-  voiceGroup: { gap: 8 },
-  voiceControlRow: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 48 },
-  voiceButton: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
-  micGlyph: { width: 24, height: 28, alignItems: 'center', justifyContent: 'flex-start' },
-  micBody: { width: 10, height: 16, borderRadius: 6 },
-  micArc: { position: 'absolute', top: 8, width: 20, height: 14, borderWidth: 2, borderTopColor: undefined, borderRadius: 12 },
-  micStem: { position: 'absolute', bottom: 2, width: 2, height: 6, borderRadius: 1 },
-  micBase: { position: 'absolute', bottom: 0, width: 14, height: 2, borderRadius: 1 },
   fieldGroup: { gap: 8 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   splitFields: { gap: 10, padding: 12, borderRadius: 12 },

@@ -1,4 +1,5 @@
 import type { Href } from 'expo-router';
+import { SymbolView, type SymbolViewProps } from 'expo-symbols';
 import {
   Tabs,
   TabList,
@@ -26,22 +27,22 @@ export default function AppTabsCustom() {
       <TabList asChild>
         <CustomTabList>
           <TabTrigger name="home" href="/" asChild>
-            <TabButton>{tx('今天', 'Today')}</TabButton>
+            <TabButton label={tx('今天', 'Today')} symbol={{ ios: 'house.fill', android: 'home', web: 'home' }}>{tx('今天', 'Today')}</TabButton>
           </TabTrigger>
           <TabTrigger name="itinerary" href={'/itinerary' as Href} asChild>
-            <TabButton>{tx('安排', 'Plans')}</TabButton>
+            <TabButton label={tx('安排', 'Plans')} symbol={{ ios: 'calendar', android: 'calendar_month', web: 'calendar_month' }}>{tx('安排', 'Plans')}</TabButton>
           </TabTrigger>
           <TabTrigger name="atlas" href={'/atlas' as Href} asChild>
-            <TabButton>{tx('地图', 'Map')}</TabButton>
+            <TabButton label={tx('地图', 'Map')} symbol={{ ios: 'map.fill', android: 'map', web: 'map' }}>{tx('地图', 'Map')}</TabButton>
           </TabTrigger>
           <TabTrigger name="explore" href="/explore" asChild>
-            <TabButton>{tx('行程', 'Trips')}</TabButton>
+            <TabButton label={tx('行程', 'Trips')} symbol={{ ios: 'suitcase.fill', android: 'luggage', web: 'luggage' }}>{tx('行程', 'Trips')}</TabButton>
           </TabTrigger>
           <TabTrigger name="ledger" href="/ledger" asChild>
-            <TabButton>{tx('账本', 'Ledger')}</TabButton>
+            <TabButton label={tx('账本', 'Ledger')} symbol={{ ios: 'wallet.bifold', android: 'account_balance_wallet', web: 'account_balance_wallet' }}>{tx('账本', 'Ledger')}</TabButton>
           </TabTrigger>
           <TabTrigger name="profile" href={'/profile' as Href} asChild>
-            <TabButton>{tx('我的', 'Me')}</TabButton>
+            <TabButton label={tx('我的', 'Me')} symbol={{ ios: 'person.crop.circle', android: 'person', web: 'person' }}>{tx('我的', 'Me')}</TabButton>
           </TabTrigger>
         </CustomTabList>
       </TabList>
@@ -49,16 +50,17 @@ export default function AppTabsCustom() {
   );
 }
 
-function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps) {
+function TabButton({ children, isFocused, label, symbol, ...props }: TabTriggerSlotProps & { label: string; symbol: SymbolViewProps['name'] }) {
   const theme = useTheme();
   const { width } = useWindowDimensions();
   const desktop = Platform.OS === 'web' && width >= Size.desktopBreakpoint;
 
   return (
-    <Pressable {...props} accessibilityRole="tab" accessibilityState={{ selected: Boolean(isFocused) }} aria-selected={Boolean(isFocused)} style={({ pressed }) => [styles.tabButton, desktop && styles.desktopTab, pressed && styles.pressed]}>
+    <Pressable {...props} accessibilityRole="tab" accessibilityLabel={label} accessibilityState={{ selected: Boolean(isFocused) }} aria-selected={Boolean(isFocused)} style={({ pressed }) => [styles.tabButton, desktop && styles.desktopTab, pressed && styles.pressed]}>
       <View style={[styles.tabButtonView, desktop && styles.desktopTabContent, isFocused && { backgroundColor: theme.backgroundSelected }]}>
-        <ThemedText type="small" themeColor={isFocused ? 'accentOnSoft' : 'textSecondary'}>
-          {children}
+        <SymbolView name={symbol} size={18} tintColor={isFocused ? theme.accentOnSoft : theme.textSecondary} />
+        <ThemedText type="small" themeColor={isFocused ? 'accentOnSoft' : 'textSecondary'} style={[styles.tabLabel, desktop && styles.desktopTabLabel]} numberOfLines={1}>
+          {children ?? label}
         </ThemedText>
       </View>
     </Pressable>
@@ -97,7 +99,6 @@ const styles = StyleSheet.create({
   sidebar: { left: 0, right: undefined, top: 0, bottom: 0, width: Size.sidebar },
   sidebarInner: { height: '100%', maxWidth: Size.sidebar, borderRadius: 0, borderWidth: 0, borderRightWidth: StyleSheet.hairlineWidth, paddingTop: Spacing.xl, paddingHorizontal: Spacing.sm, flexDirection: 'column', alignItems: 'stretch' },
   desktopTab: { flexGrow: 0, flexShrink: 0, flexBasis: 'auto', minHeight: Size.touchMin },
-  desktopTabContent: { alignItems: 'flex-start', paddingHorizontal: Spacing.md },
   tabListContainer: {
     position: 'absolute',
     left: Spacing.md,
@@ -126,11 +127,15 @@ const styles = StyleSheet.create({
   tabButton: { flex: 1, minWidth: 0 },
   tabButtonView: {
     minHeight: Size.touchMin,
-    paddingHorizontal: Spacing.sm,
+    paddingHorizontal: Spacing['2xs'],
     borderRadius: Radius.xl,
     justifyContent: 'center',
     alignItems: 'center',
+    gap: 1,
   },
+  tabLabel: { fontSize: 10, lineHeight: 12 },
+  desktopTabLabel: { fontSize: 14, lineHeight: 20 },
+  desktopTabContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', paddingHorizontal: Spacing.md, gap: Spacing.sm },
   brandText: { marginHorizontal: Spacing.xs },
   pressed: { opacity: 0.7 },
 });
