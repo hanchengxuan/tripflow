@@ -33,7 +33,7 @@ export async function importBookingFile(tripId: string, userId: string, file: Bo
     document_fingerprint: file.fingerprint,
     document_name: file.name,
     document_mime_type: file.mimeType,
-    plans,
+    plans: plans.map((plan) => ({ ...plan, createdBy: userId })),
   });
   // A failed response can follow a committed transaction; retain the private
   // object for an idempotent retry instead of removing a saved original.

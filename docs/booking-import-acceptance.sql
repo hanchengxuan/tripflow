@@ -22,6 +22,11 @@ begin
   if sqlerrm='Expected validation error' then raise; end if;
  end;
  if (select count(*) from public.itinerary_items where trip_id=t) <> before_count then raise exception 'Partial write escaped rollback'; end if;
+ begin
+  perform public.import_booking_document(t,repeat('9',64),'actor.pdf','application/pdf',jsonb_build_array((payload->0) || jsonb_build_object('createdBy',(select editor_id from booking_fixture))));
+  raise exception 'Changed actor imported';
+ exception when others then if sqlerrm <> 'Login changed; reopen the booking importer' then raise; end if; end;
+ if exists (select 1 from public.booking_documents where fingerprint=repeat('9',64)) then raise exception 'Changed actor wrote metadata'; end if;
  perform set_config('request.jwt.claim.sub',(select viewer_id::text from booking_fixture),true);
  begin
   perform public.import_booking_document(t,repeat('d',64),'viewer.pdf','application/pdf',payload);
