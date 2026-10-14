@@ -1,66 +1,45 @@
-import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Chevron } from '@/components/chevron';
 import { useI18n } from '@/features/i18n/i18n-provider';
-import { type PlaceSuggestion, searchPlaces } from '@/features/places/place-search';
+import type { PlaceSuggestion } from '@/features/places/place-search';
+import { usePlaceSuggestions } from '@/features/places/use-place-suggestions';
 import { useTheme } from '@/hooks/use-theme';
-
-function newSessionToken() {
-  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-}
 
 export function LocationField({ value, onChange, onSelect }: { value: string; onChange: (value: string) => void; onSelect: (suggestion: PlaceSuggestion) => void }) {
   const theme = useTheme();
   const { locale, tx } = useI18n();
-  const sessionToken = useRef(newSessionToken());
-  const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [available, setAvailable] = useState(true);
-
-  useEffect(() => {
-    if (value.trim().length < 3 || !available) return;
-    const timer = setTimeout(() => {
-      setLoading(true);
-      void searchPlaces(value, locale, sessionToken.current)
-        .then(setSuggestions)
-        .catch(() => {
-          setSuggestions([]);
-          setAvailable(false);
-        })
-        .finally(() => setLoading(false));
-    }, 450);
-    return () => clearTimeout(timer);
-  }, [available, locale, value]);
+  const search = usePlaceSuggestions(value, locale);
 
   return (
     <View style={styles.field}>
       <ThemedText type="smallBold">{tx('在哪里？', 'Where?')}</ThemedText>
       <View style={[styles.inputWrap, { backgroundColor: theme.backgroundElement, borderColor: theme.borderField }]}>
         <TextInput
+          accessibilityLabel={tx('在哪里？', 'Where?')}
           value={value}
           onChangeText={(next) => {
             onChange(next);
-            if (!available) setAvailable(true);
+            search.change(next);
           }}
           autoCorrect={false}
           placeholder={tx('搜索地点、酒店、车站或地址', 'Search places, hotels, stations, or addresses')}
           placeholderTextColor={theme.textMuted}
           style={[styles.input, { color: theme.text }]}
         />
-        {loading ? <ActivityIndicator color={theme.accent} /> : null}
+        {search.loading ? <ActivityIndicator color={theme.accent} /> : null}
       </View>
-      {value.trim().length >= 3 && suggestions.length > 0 ? (
+      {search.failed ? <ThemedText type="small" themeColor="textSecondary" accessibilityLiveRegion="polite">{tx('地点搜索暂时不可用，可继续输入地址，或修改文字重试。', 'Place search is unavailable. Keep the address, or edit to retry.')}</ThemedText> : null}
+      {value.trim().length >= 3 && search.suggestions.length > 0 ? (
         <View style={[styles.suggestions, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
-          {suggestions.map((suggestion) => (
+          {search.suggestions.map((suggestion) => (
             <Pressable
               key={suggestion.placeId}
               accessibilityRole="button"
               onPress={() => {
                 onSelect(suggestion);
-                setSuggestions([]);
-                sessionToken.current = newSessionToken();
+                search.select();
               }}
               style={({ pressed }) => [styles.suggestion, pressed && styles.pressed]}>
               <View style={[styles.dot, { backgroundColor: theme.info }]} />
