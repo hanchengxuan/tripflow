@@ -299,3 +299,8 @@ Temporary acceptance fixtures are removed after each test; production may contai
 - After explicit approval, formal-domain signed-in smoke passed: the import entry loaded, deleting the synthetic hotel original removed it from the private list while preserving both plans and the flight original, with no console errors. Physical-device picking remains open. This is a booking-fact import MVP, not generated daily activities or multi-item replanning. No credentials or account identifiers are recorded here.
 
 - Formal-domain public browser smoke passed six entry/privacy/support cases at mobile and desktop widths. Both recovery-page cases verified branded 404 and return navigation, but their console assertion rejected production HTTP/2 wording `404 ()` instead of the local `404 (Not Found)`. This is the existing test-filter mismatch; do not report production 8/8. No application runtime error was identified.
+
+## October 15 SDK 57 compatibility prerequisite
+
+- Before landing UI review fixes, live Expo Doctor changed its SDK 57 patch recommendations. The focused expo57-oct15-compat branch updates only Expo, @expo/ui, asset, constants, linking and router to SDK-compatible patches, preserving the existing audit allowlist and security patches. The trip-selection-race work is preserved separately.
+- Verified locally: Doctor 20/20, 133 tests, lint, TypeScript, Web/iOS exports, eight browser checks and the unchanged dependency audit gate. Review found no blocking issue in the SDK-only diff. Next: pass exact-head CI/Preview, merge and verify production before continuing the UI fixes.
