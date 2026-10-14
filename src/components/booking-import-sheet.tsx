@@ -53,7 +53,7 @@ export function BookingImportSheet({ trip, userId, canEdit, onDismiss, onImporte
   if (deleting) return <ConfirmSheet visible title={tx('删除订单原件？', 'Delete booking original?')} detail={deleting.file_name} consequence={tx('已加入的安排会保留。原件删除后无法恢复。', 'Imported plans remain. The original cannot be recovered.')} confirmLabel={tx('删除原件', 'Delete original')} onConfirm={() => void removeOriginal()} onDismiss={() => { if (!documentBusy) setDeleting(undefined); }} busy={documentBusy} error={flow.error} />;
 
   return <BottomSheet visible title={tx('导入订单', 'Import bookings')} onDismiss={onDismiss} dismissDisabled={Boolean(flow.busy) || documentBusy}>
-    <View style={styles.content} pointerEvents={flow.busy ? 'none' : 'auto'}>
+    <View style={[styles.content, flow.busy && styles.disabledContent]}>
       {canEdit ? <>
         <ThemedText themeColor="textSecondary">{tx('机票或酒店 PDF／截图 · 每个文件不超过 5 MB', 'Flight or hotel PDF / screenshot · up to 5 MB per file')}</ThemedText>
         <ActionButton tone="secondary" disabled={Boolean(flow.busy)} onPress={() => void flow.chooseFile()}>{flow.file ? tx('更换文件', 'Change file') : tx('选择文件', 'Choose file')}</ActionButton>
@@ -82,4 +82,4 @@ export function BookingImportSheet({ trip, userId, canEdit, onDismiss, onImporte
   </BottomSheet>;
 }
 
-const styles = StyleSheet.create({ content: { width: '100%', gap: Spacing.md } });
+const styles = StyleSheet.create({ content: { width: '100%', gap: Spacing.md }, disabledContent: { pointerEvents: 'none' } });
