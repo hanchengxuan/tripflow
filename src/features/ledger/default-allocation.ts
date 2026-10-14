@@ -6,4 +6,3 @@ export function defaultAllocationValueFor(mode: 'equal' | 'exact' | 'percentage'
   }
   return '';
 }
-
