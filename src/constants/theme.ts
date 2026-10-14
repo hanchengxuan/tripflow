@@ -22,7 +22,7 @@ export const Colors = {
     // text
     text: '#16211F',
     textSecondary: '#5A6663',
-    textMuted: '#8A9491',
+    textMuted: '#5F6B67',
     textOnAccent: '#FFFFFF',
     textOnDanger: '#FFFFFF',
     link: '#2E6A96',
@@ -89,7 +89,7 @@ export const Colors = {
 
     text: '#ECEFEE',
     textSecondary: '#9EAAA7',
-    textMuted: '#7C8885',
+    textMuted: '#97A49F',
     textOnAccent: '#0A0F0E',
     textOnDanger: '#321310',
     link: '#7FB6DC',

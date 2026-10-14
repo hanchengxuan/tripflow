@@ -204,7 +204,7 @@ export function SettlementWorkspace({
         <SettingsDivider />
         <SettingsRow
           label={tx('全员结算', 'Group settlement')}
-          value={tx(`${names.size} 人 · ${balanceSnapshots.length} 种币种`, `${names.size} people · ${balanceSnapshots.length} currencies`)}
+          value={tx(`${names.size} 人 · ${balanceSnapshots.length} 种币种`, `${names.size} ${names.size === 1 ? 'person' : 'people'} · ${balanceSnapshots.length} ${balanceSnapshots.length === 1 ? 'currency' : 'currencies'}`)}
           onPress={balanceSnapshots.length > 0 ? () => setPanel('group') : undefined}
         />
       </SettingsGroup>
@@ -282,7 +282,7 @@ export function SettlementWorkspace({
             <View key={snapshot.currency} style={styles.group}>
               <View style={styles.groupHead}>
                 <ThemedText type="small" themeColor="textMuted" style={styles.groupLabel}>{snapshot.currency}</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">{tx(`${names.size} 人`, `${names.size} people`)}</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">{tx(`${names.size} 人`, `${names.size} ${names.size === 1 ? 'person' : 'people'}`)}</ThemedText>
               </View>
               <SettingsGroup>
                 {[...names.entries()].map(([userId, displayName], index) => {

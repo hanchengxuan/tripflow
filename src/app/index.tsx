@@ -348,7 +348,7 @@ export default function TodayScreen() {
     <>
       <Screen
       context={activeTrip
-        ? [tripRange ?? '', tx(`${members.length} 人同行`, `${members.length} travellers`), tx(`${activeTrip.homeCurrency} 本位币`, `Home currency ${activeTrip.homeCurrency}`), tx(`默认时区 ${tripTimeZone}`, `Default time zone ${tripTimeZone}`)]
+        ? [tripRange ?? '', tx(`${members.length} 人同行`, `${members.length} ${members.length === 1 ? 'traveller' : 'travellers'}`), tx(`${activeTrip.homeCurrency} 本位币`, `Home currency ${activeTrip.homeCurrency}`), tx(`默认时区 ${tripTimeZone}`, `Default time zone ${tripTimeZone}`)]
         : [tx('还没有进行中的行程', 'No active trip yet')]}
       title={activeTrip?.name ?? tx('今天', 'Today')}
       floatingAction={activeTrip && canEdit ? (
@@ -397,7 +397,7 @@ export default function TodayScreen() {
             timeMetaLabel={tx('时间 WHEN', 'WHEN')}
             title={upcomingItems[0].title}
             travellersMetaLabel={tx('同行 WHO', 'WHO')}
-            travellersLabel={tx(`${members.length} 人可见`, `${members.length} travellers can see this`)}
+            travellersLabel={tx(`${members.length} 人可见`, `${members.length} ${members.length === 1 ? 'traveller can' : 'travellers can'} see this`)}
           />
 
           {visibleStays.length > 0 ? (

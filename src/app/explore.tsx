@@ -234,7 +234,7 @@ export default function TripsScreen() {
     ? [
         activeTrip.name,
         tx(`${members.length} 位同行者`, `${members.length} travelling`),
-        tx(`共 ${trips.length} 个行程`, `${trips.length} trips`),
+        tx(`共 ${trips.length} 个行程`, `${trips.length} ${trips.length === 1 ? 'trip' : 'trips'}`),
       ]
     : [tx('还没有行程', 'No trips yet')];
 
@@ -253,7 +253,7 @@ export default function TripsScreen() {
           dateRange={formatTripRange(activeTrip, locale)}
           manageLabel={tx('管理当前行程', 'Manage current trip')}
           onManage={() => void openTrip(activeTrip)}
-          peopleCount={tx(`${members.length} 人`, `${members.length} people`)}
+          peopleCount={tx(`${members.length} 人`, `${members.length} ${members.length === 1 ? 'person' : 'people'}`)}
           peopleLabel={tx('同行 People', 'People')}
           title={activeTrip.name}
         />

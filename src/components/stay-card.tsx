@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
+import { useI18n } from '@/features/i18n/i18n-provider';
 import { useTheme } from '@/hooks/use-theme';
 
 interface StayCardProps {
@@ -16,6 +17,8 @@ interface StayCardProps {
 
 export function StayCard({ dateRange, location, nights, onPress, style, title }: StayCardProps) {
   const theme = useTheme();
+  const { tx } = useI18n();
+  const nightLabel = tx('晚', nights === 1 ? 'night' : 'nights');
   const content = (
     <>
       <View style={[styles.kindBar, { backgroundColor: theme.kindLodging }]} />
@@ -26,7 +29,7 @@ export function StayCard({ dateRange, location, nights, onPress, style, title }:
       </View>
       <View style={[styles.nights, { backgroundColor: theme.kindLodgingSoft }]}>
         <ThemedText style={[styles.nightsValue, { color: theme.kindLodging }]}>{nights}</ThemedText>
-        <ThemedText style={[styles.nightsLabel, { color: theme.kindLodging }]}>晚 nights</ThemedText>
+        <ThemedText style={[styles.nightsLabel, { color: theme.kindLodging }]}>{nightLabel}</ThemedText>
       </View>
     </>
   );
@@ -34,7 +37,7 @@ export function StayCard({ dateRange, location, nights, onPress, style, title }:
   return onPress ? (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${title}, ${dateRange}, ${nights} nights`}
+      accessibilityLabel={`${title}, ${dateRange}, ${nights} ${nightLabel}`}
       onPress={onPress}
       style={({ pressed }) => [styles.card, { backgroundColor: theme.backgroundElement }, style, pressed && styles.pressed]}>
       {content}

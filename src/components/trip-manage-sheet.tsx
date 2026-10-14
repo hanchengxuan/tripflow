@@ -73,7 +73,7 @@ export function TripManageSheet({
         <View style={styles.group}>
           <View style={styles.groupHead}>
             <ThemedText type="small" themeColor="textMuted" style={styles.groupLabel}>{tx('同行者', 'Travellers')}</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">{tx(`${members.length} 人`, `${members.length} people`)}</ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">{tx(`${members.length} 人`, `${members.length} ${members.length === 1 ? 'person' : 'people'}`)}</ThemedText>
           </View>
           <SettingsGroup>
             {members.map((member, index) => {

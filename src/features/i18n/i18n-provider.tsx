@@ -30,6 +30,10 @@ export function LanguageProvider({ children }: PropsWithChildren) {
     });
   }, []);
 
+  useEffect(() => {
+    if (typeof document !== 'undefined') document.documentElement.lang = locale === 'zh-CN' ? 'zh-CN' : 'en-US';
+  }, [locale]);
+
   const value = useMemo<I18nValue>(() => ({
     locale,
     languageTag: locale === 'zh-CN' ? 'zh-CN' : 'en-US',
