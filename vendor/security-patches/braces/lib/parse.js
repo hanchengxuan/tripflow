@@ -144,7 +144,7 @@ const parse = (input, options = {}) => {
      */
 
     if (value === CHAR_LEFT_PARENTHESES) {
-      if (stack.length >= maxNestingDepth) {
+      if (stack.length > maxNestingDepth) {
         throw new SyntaxError(`Input nesting exceeds maximum depth (${maxNestingDepth})`);
       }
       block = push({ type: 'paren', nodes: [] });
@@ -199,7 +199,7 @@ const parse = (input, options = {}) => {
      */
 
     if (value === CHAR_LEFT_CURLY_BRACE) {
-      if (stack.length >= maxNestingDepth) {
+      if (stack.length > maxNestingDepth) {
         throw new SyntaxError(`Input nesting exceeds maximum depth (${maxNestingDepth})`);
       }
       depth++;

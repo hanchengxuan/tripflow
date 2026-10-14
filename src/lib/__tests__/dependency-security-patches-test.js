@@ -38,8 +38,12 @@ describe('maintained dependency security patches', () => {
   });
 
   it('rejects nested brace input before recursive expansion can exhaust the stack', () => {
+    const maximumAllowedDepth = '{'.repeat(256) + 'a' + '}'.repeat(256);
+    const overMaximumDepth = '{'.repeat(257) + 'a' + '}'.repeat(257);
     const deeplyNested = '{'.repeat(3000) + 'a' + '}'.repeat(3000);
 
+    expect(() => braces.parse(maximumAllowedDepth)).not.toThrow();
+    expect(() => braces.parse(overMaximumDepth)).toThrow(/nesting exceeds maximum depth/);
     expect(() => braces(deeplyNested, { expand: true })).toThrow(/nesting exceeds maximum depth/);
     expect(braces('{a,b}', { expand: true })).toEqual(['a', 'b']);
   });
