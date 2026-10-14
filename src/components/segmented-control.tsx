@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Radius, Spacing } from '@/constants/theme';
+import { Radius, Size, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 export function SegmentedControl<T extends string>({
@@ -23,6 +23,7 @@ export function SegmentedControl<T extends string>({
             key={option.value}
             accessibilityRole="tab"
             accessibilityState={{ selected }}
+            aria-selected={selected}
             onPress={() => onChange(option.value)}
             style={({ pressed }) => [
               styles.option,
@@ -40,10 +41,15 @@ export function SegmentedControl<T extends string>({
 }
 
 const styles = StyleSheet.create({
-  track: { flexDirection: 'row', borderRadius: Radius.pill, padding: Spacing['2xs'] },
+  track: { flexDirection: 'row', maxWidth: '100%', borderRadius: Radius.pill, padding: Spacing['2xs'] },
   option: {
-    flex: 1,
-    height: 40,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 'auto',
+    minWidth: Size.touchMin * 2,
+    minHeight: Size.touchMin,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: Radius.pill,

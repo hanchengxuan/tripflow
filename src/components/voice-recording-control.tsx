@@ -6,8 +6,8 @@ import {
   useAudioRecorderState,
 } from 'expo-audio';
 import { SymbolView } from 'expo-symbols';
-import { useEffect, useRef, useState } from 'react';
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { ActivityIndicator, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { InlineNotice } from '@/components/form-controls';
 import { ThemedText } from '@/components/themed-text';
@@ -22,6 +22,7 @@ interface VoiceRecordingControlProps {
   processingLabel: string;
   failureMessage: string;
   onAudioReady: (audioBase64: string, audioMimeType: string) => Promise<void>;
+  render?: (button: ReactNode, feedback: ReactNode, active: boolean) => ReactNode;
 }
 
 export function VoiceRecordingControl({
@@ -32,6 +33,7 @@ export function VoiceRecordingControl({
   processingLabel,
   failureMessage,
   onAudioReady,
+  render,
 }: VoiceRecordingControlProps) {
   const theme = useTheme();
   const recorder = useAudioRecorder(RecordingPresets.LOW_QUALITY);
@@ -92,22 +94,36 @@ export function VoiceRecordingControl({
 
   const recording = state.isRecording;
   const busy = disabled || processing;
+  const button = (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={processing ? processingLabel : recording ? recordingLabel : label}
+      accessibilityState={{ disabled: busy, busy: processing }}
+      disabled={busy}
+      onPress={() => void (recording ? stopAndSend() : startRecording())}
+      style={({ pressed }) => [styles.button, { backgroundColor: recording ? theme.danger : render ? theme.backgroundSubtle : theme.backgroundSelected }, pressed && styles.pressed, busy && styles.disabled]}>
+      {processing ? <ActivityIndicator color={theme.textSecondary} /> : (
+        <SymbolView
+          name={recording ? { ios: 'stop.fill', android: 'stop', web: 'stop' } : { ios: 'mic.fill', android: 'mic', web: 'mic' }}
+          size={18}
+          tintColor={recording ? theme.textOnDanger : theme.text}
+        />
+      )}
+    </Pressable>
+  );
+  if (render) {
+    const feedback = (
+      <>
+        {processing || recording ? <ThemedText type="small" themeColor="textSecondary" accessibilityLiveRegion="polite">{processing ? processingLabel : `${recordingLabel} · ${Math.round(state.durationMillis / 1000)}s`}</ThemedText> : null}
+        {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
+      </>
+    );
+    return render(button, feedback, recording || processing);
+  }
   return (
     <View style={styles.root}>
       <View style={styles.row}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={processing ? processingLabel : recording ? recordingLabel : label}
-          accessibilityState={{ disabled: busy, busy: processing }}
-          disabled={busy}
-          onPress={() => void (recording ? stopAndSend() : startRecording())}
-          style={({ pressed }) => [styles.button, { backgroundColor: recording ? theme.danger : theme.backgroundSelected }, pressed && styles.pressed, busy && styles.disabled]}>
-          <SymbolView
-            name={{ ios: 'mic.fill', android: 'mic', web: 'mic' }}
-            size={18}
-            tintColor={recording ? theme.textOnAccent : theme.text}
-          />
-        </Pressable>
+        {button}
         <ThemedText type="smallBold" themeColor="textSecondary">
           {processing ? processingLabel : recording ? `${Math.round(state.durationMillis / 1000)}s` : label}
         </ThemedText>

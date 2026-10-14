@@ -141,16 +141,20 @@
         <div class="grab"></div>
         <div class="sheethead"><h2>记一笔</h2><span class="close">取消</span></div>
 
-        <div class="segmented"><div>手动</div><div class="on">AI 一句话</div></div>
-
         <div class="field">
-          <label>描述这笔支出</label>
-          <div class="box">晚餐 860 港币，小王付款，三人均分</div>
+          <label>AI 快速填入</label>
+          <div class="box" style="display:flex;align-items:center;gap:var(--space-xs)">
+            <span style="flex:1">例如：晚餐 860 港币</span>
+            <button class="btn btn-sm" aria-label="语音记账" style="min-width:var(--size-touch-min);padding:var(--space-xs)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0014 0v-2M12 19v3M8 22h8"/></svg></button>
+            <button class="btn btn-sm" aria-label="AI 解析并填入" style="min-width:var(--size-touch-min);padding:var(--space-xs)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V4M5 11l7-7 7 7"/></svg></button>
+          </div>
         </div>
 
         <div class="notice ok"><i></i>AI 已生成草稿（置信度 92%），核对后保存。</div>
 
-        <div class="field-row">
+        <div class="field"><label>支出内容</label><div class="box">晚餐</div></div>
+
+        <div class="field-row" style="flex-direction:column">
           <div class="field"><label>金额</label><div class="box">860.00</div></div>
           <div class="field"><label>币种</label><div class="box">HKD</div></div>
         </div>

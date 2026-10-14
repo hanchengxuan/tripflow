@@ -2,16 +2,15 @@ import { Image } from 'expo-image';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { Fragment, useMemo, useState } from 'react';
-import { LayoutAnimation, Linking, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { LayoutAnimation, Linking, Pressable, StyleSheet, View } from 'react-native';
 
-import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/form-controls';
+import { InlineNotice } from '@/components/form-controls';
+import { ExpenseComposer, type ReceiptDraft } from '@/components/expense-composer';
 import { BottomSheet } from '@/components/bottom-sheet';
-import { Chevron } from '@/components/chevron';
 import { MemberAvatar } from '@/components/member-avatar';
 import { ListDivider, ListSurface } from '@/components/list-surface';
 import { Screen } from '@/components/screen';
 import { SegmentedControl } from '@/components/segmented-control';
-import { SelectionField } from '@/components/selection-field';
 import {
   SettlementWorkspace,
   amountInputFromMinor,
@@ -19,7 +18,6 @@ import {
   type SettlementDraft,
 } from '@/components/settlement-workspace';
 import { ThemedText } from '@/components/themed-text';
-import { VoiceRecordingControl } from '@/components/voice-recording-control';
 import { getCurrencyOptions } from '@/constants/options';
 import {
   calculateBalancesByCurrency,
@@ -36,27 +34,12 @@ import { type AiExpenseDraft, parseExpenseAudio, parseExpenseText } from '@/feat
 import { formatExchangeRate } from '@/features/currency/exchange-rate';
 import { useExchangeRate, type ExchangeRateLoadState } from '@/features/currency/use-exchange-rate';
 import { useI18n } from '@/features/i18n/i18n-provider';
+import { defaultAllocationValueFor } from '@/features/ledger/default-allocation';
 import { useMvp } from '@/features/mvp/mvp-provider';
 import { useTheme } from '@/hooks/use-theme';
 import { toUserMessage } from '@/lib/user-error';
 
-type ReceiptDraft = {
-  uri: string;
-  base64?: string | null;
-  mimeType?: string | null;
-  fileSize?: number;
-};
-
 type BalanceSnapshot = SettlementWorkspaceBalanceSnapshot;
-
-function defaultAllocationValueFor(mode: 'equal' | 'exact' | 'percentage' | 'shares', index: number, count: number) {
-  if (mode === 'shares') return '1';
-  if (mode === 'percentage') {
-    const base = Math.floor(100 / Math.max(count, 1));
-    return String(base + (index < 100 % Math.max(count, 1) ? 1 : 0));
-  }
-  return '';
-}
 
 export default function LedgerScreen() {
   const theme = useTheme();
@@ -717,274 +700,6 @@ export default function LedgerScreen() {
   );
 }
 
-function ExpenseComposer(props: {
-  themeSelected: string;
-  dangerColor: string;
-  tx: (zh: string, en: string) => string;
-  editing: boolean;
-  itineraryItemId: string;
-  itineraryOptions: { value: string; label: string }[];
-  setItineraryItemId: (value: string) => void;
-  aiText: string;
-  setAiText: (value: string) => void;
-  parseWithAi: () => Promise<void>;
-  parseVoiceExpense: (audioBase64: string, audioMimeType: string) => Promise<void>;
-  busyAction?: 'parse' | 'save' | 'receipt';
-  aiNotice?: string;
-  formError?: string;
-  title: string;
-  setTitle: (value: string) => void;
-  amount: string;
-  setAmount: (value: string) => void;
-  currency: string;
-  baseCurrency: string;
-  exchangeRate: string;
-  exchangeRateSource: string;
-  exchangeRateState: ExchangeRateLoadState;
-  currencyOptions: { label: string; value: string }[];
-  setCurrencyOverride: (value: string) => void;
-  setExchangeRate: (value: string) => void;
-  members: TripMember[];
-  selectedPayerIds: string[];
-  payerAmounts: Record<string, string>;
-  setPayerAmount: (userId: string, value: string) => void;
-  togglePayer: (userId: string) => void;
-  participantIds: string[];
-  toggleParticipant: (userId: string) => void;
-  splitMode: 'equal' | 'exact' | 'percentage' | 'shares';
-  changeSplitMode: (mode: 'equal' | 'exact' | 'percentage' | 'shares') => void;
-  allocationValues: Record<string, string>;
-  setAllocationValue: (userId: string, value: string) => void;
-  allocationPreview: { participantId: string; amountMinor: number }[];
-  names: Map<string, string>;
-  receipt?: ReceiptDraft;
-  setReceipt: (receipt?: ReceiptDraft) => void;
-  pickReceipt: (source: 'camera' | 'library') => Promise<void>;
-  submitExpense: () => Promise<void>;
-}) {
-  const { tx } = props;
-  const theme = useTheme();
-  const { width } = useWindowDimensions();
-  const compact = width < 520;
-  const [aiHelperOpen, setAiHelperOpen] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  return (
-    <View style={styles.composer}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityState={{ expanded: aiHelperOpen }}
-        onPress={() => setAiHelperOpen((current) => !current)}
-        style={({ pressed }) => [styles.aiDisclosure, { borderBottomColor: theme.border }, pressed && styles.pressed]}>
-        <View style={styles.grow}>
-          <ThemedText type="smallBold">{tx('文字或语音快速填入（可选）', 'Quick fill with text or voice (optional)')}</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">{tx('先生成草稿，再检查并修改下面的账目。', 'Create a draft, then review and edit the expense below.')}</ThemedText>
-        </View>
-        <Chevron color={theme.textSecondary} direction={aiHelperOpen ? 'down' : 'right'} />
-      </Pressable>
-      {aiHelperOpen ? (
-        <View style={styles.aiEntry}>
-          <FormField
-            label={tx('描述这笔支出', 'Describe this expense')}
-            value={props.aiText}
-            onChangeText={props.setAiText}
-            placeholder={tx('晚餐 860 港币，小王付款，三人均分', 'Dinner 860 HKD, paid by Sam, split three ways')}
-            maxLength={500}
-          />
-          <View style={styles.aiActions}>
-            <View style={styles.grow}>
-              <ActionButton tone="secondary" busy={props.busyAction === 'parse'} disabled={!props.aiText.trim() || Boolean(props.busyAction)} onPress={() => void props.parseWithAi()}>
-                {tx('生成草稿并填入', 'Create draft & fill')}
-              </ActionButton>
-            </View>
-            <VoiceRecordingControl
-              disabled={Boolean(props.busyAction)}
-              label={tx('语音描述', 'Voice input')}
-              permissionMessage={tx('需要麦克风权限才能语音记账。', 'Microphone permission is required for voice expenses.')}
-              recordingLabel={tx('结束录音并填入', 'Finish recording and fill')}
-              processingLabel={tx('解析中…', 'Processing…')}
-              failureMessage={tx('无法处理录音，请重试或改用文字。', 'Could not process the recording. Try again or use text.')}
-              onAudioReady={props.parseVoiceExpense}
-            />
-          </View>
-        </View>
-      ) : null}
-
-      <View style={styles.formGroup}>
-          {props.aiNotice ? <InlineNotice>{props.aiNotice}</InlineNotice> : null}
-          <FormField label={tx('支出内容', 'Expense')} value={props.title} onChangeText={props.setTitle} placeholder={tx('例如：晚餐', 'For example: Dinner')} />
-          <View style={[styles.amountRow, compact && styles.amountRowCompact]}>
-            <View style={styles.grow}>
-              <FormField prominent label={tx('金额', 'Amount')} value={props.amount} onChangeText={props.setAmount} keyboardType="decimal-pad" placeholder="860.00" />
-            </View>
-            <View style={[styles.currencyField, compact && styles.currencyFieldCompact]}>
-              <SelectionField prominent label={tx('付款币种', 'Payment currency')} value={props.currency} options={props.currencyOptions} onChange={props.setCurrencyOverride} />
-            </View>
-          </View>
-          {props.currency.toUpperCase() !== props.baseCurrency.toUpperCase() ? (
-            <View style={[styles.conversionRow, { backgroundColor: props.themeSelected }]}>
-              <View style={styles.grow}>
-                <FormField
-                  label={tx(`汇率：1 ${props.currency} = ? ${props.baseCurrency}`, `Rate: 1 ${props.currency} = ? ${props.baseCurrency}`)}
-                  value={props.exchangeRate}
-                  onChangeText={props.setExchangeRate}
-                  keyboardType="decimal-pad"
-                  placeholder="0.92"
-                />
-                {!props.editing ? (
-                  <ThemedText
-                    type="small"
-                    themeColor={props.exchangeRateState.status === 'error' ? undefined : 'textSecondary'}
-                    style={props.exchangeRateState.status === 'error' ? { color: props.dangerColor } : styles.exchangeRateMeta}>
-                    {props.exchangeRateSource === 'manual'
-                      ? tx('已手动调整', 'Adjusted manually')
-                      : props.exchangeRateState.status === 'loading'
-                        ? tx('正在获取最新工作日汇率…', 'Fetching the latest working-day rate…')
-                        : props.exchangeRateState.status === 'success'
-                          ? props.exchangeRateState.cached
-                            ? tx(`使用缓存汇率 · ${props.exchangeRateState.date ?? ''}`, `Using cached rate · ${props.exchangeRateState.date ?? ''}`)
-                            : tx(`已自动填入 · ${props.exchangeRateState.date ?? ''}`, `Filled automatically · ${props.exchangeRateState.date ?? ''}`)
-                          : tx('自动获取失败，请手动填写。', 'Could not fetch a rate. Enter it manually.')}
-                  </ThemedText>
-                ) : null}
-              </View>
-              <View style={styles.conversionPreview}>
-                <ThemedText type="smallBold">{tx('记入本位币', 'Bookkeeping amount')}</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  {(() => {
-                    try {
-                      if (!props.amount.trim() || !props.exchangeRate.trim()) return '—';
-                      return formatMinorAmount(convertMinorAmount(parseAmountToMinor(props.amount, props.currency), props.currency, props.baseCurrency, parseExchangeRate(props.exchangeRate)), props.baseCurrency);
-                    } catch {
-                      return '—';
-                    }
-                  })()}
-                </ThemedText>
-              </View>
-            </View>
-          ) : null}
-          <FieldGroup label={tx('谁付款？可多选', 'Who paid? You can choose more than one')}>
-            {props.members.map((member) => (
-              <ChoiceChip key={member.userId} selected={props.selectedPayerIds.includes(member.userId)} onPress={() => props.togglePayer(member.userId)}>{member.displayName}</ChoiceChip>
-            ))}
-          </FieldGroup>
-          {props.selectedPayerIds.length > 1 ? (
-          <View style={[styles.splitFields, { backgroundColor: props.themeSelected }]}>
-              <ThemedText type="small" themeColor="textSecondary">{tx('填写每位付款人的实际金额，总和必须等于支出总额。', 'Enter what each payer actually paid; the total must match the expense.')}</ThemedText>
-              {props.selectedPayerIds.map((userId) => (
-                <FormField
-                  key={userId}
-                  label={tx(`${props.names.get(userId) ?? '同行者'} 付款金额`, `${props.names.get(userId) ?? 'Traveller'} paid`)}
-                  value={props.payerAmounts[userId] ?? ''}
-                  onChangeText={(value) => props.setPayerAmount(userId, value)}
-                  keyboardType="decimal-pad"
-                  placeholder="0.00"
-                />
-              ))}
-            </View>
-          ) : null}
-          <FieldGroup label={tx('谁参与分摊？', 'Who shares it?')}>
-            {props.members.map((member) => (
-              <ChoiceChip key={member.userId} selected={props.participantIds.includes(member.userId)} onPress={() => props.toggleParticipant(member.userId)}>{member.displayName}</ChoiceChip>
-            ))}
-          </FieldGroup>
-          <FieldGroup label={tx('怎么分？', 'How should it split?')}>
-            {([
-              ['equal', tx('均分', 'Equal')],
-              ['exact', tx('指定金额', 'Exact')],
-              ['percentage', tx('按比例', 'Percent')],
-              ['shares', tx('按份数', 'Shares')],
-            ] as const).map(([mode, label]) => (
-              <ChoiceChip role="radio" key={mode} selected={props.splitMode === mode} onPress={() => props.changeSplitMode(mode)}>{label}</ChoiceChip>
-            ))}
-          </FieldGroup>
-          {props.splitMode !== 'equal' ? (
-            <View style={[styles.splitFields, { backgroundColor: props.themeSelected }]}>
-              <ThemedText type="small" themeColor="textSecondary">
-                {props.splitMode === 'exact' ? tx('输入每人的金额。', 'Enter an amount for each person.') : props.splitMode === 'percentage' ? tx('输入百分比，总和必须为 100。', 'Enter percentages that add up to 100.') : tx('输入每人的份数，例如 1、2、3。', 'Enter weights such as 1, 2, 3.')}
-              </ThemedText>
-              {props.participantIds.map((userId, index) => (
-                <FormField
-                  key={userId}
-                  label={tx(`${props.names.get(userId) ?? '同行者'} 的${props.splitMode === 'exact' ? '金额' : props.splitMode === 'percentage' ? '比例' : '份数'}`, `${props.names.get(userId) ?? 'Traveller'} ${props.splitMode === 'exact' ? 'amount' : props.splitMode === 'percentage' ? 'percent' : 'shares'}`)}
-                  value={props.allocationValues[userId] ?? defaultAllocationValueFor(props.splitMode, index, props.participantIds.length)}
-                  onChangeText={(value) => props.setAllocationValue(userId, value)}
-                  keyboardType="decimal-pad"
-                  placeholder={props.splitMode === 'exact' ? '0.00' : props.splitMode === 'percentage' ? '50' : '1'}
-                />
-              ))}
-            </View>
-          ) : null}
-          {props.allocationPreview.length > 0 ? (
-            <View style={[styles.splitPreview, { backgroundColor: props.themeSelected }]}>
-              <ThemedText type="smallBold">{tx('分摊预览', 'Split preview')}</ThemedText>
-              {props.allocationPreview.map(({ participantId, amountMinor }) => (
-                <ThemedText key={participantId} type="small" themeColor="textSecondary">
-                  {props.names.get(participantId) ?? tx('同行者', 'Traveller')} · {formatMinorAmount(amountMinor, props.currency)}
-                </ThemedText>
-              ))}
-            </View>
-          ) : null}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityState={{ expanded: showAdvanced }}
-            onPress={() => setShowAdvanced((current) => !current)}
-            style={({ pressed }) => [styles.advancedDisclosure, { borderTopColor: theme.border }, pressed && styles.pressed]}>
-            <ThemedText type="smallBold" style={styles.grow}>{tx('更多选项', 'More options')}</ThemedText>
-            <Chevron color={theme.textSecondary} direction={showAdvanced ? 'down' : 'right'} />
-          </Pressable>
-          {showAdvanced ? (
-            <View style={styles.advancedFields}>
-              <SelectionField
-                label={tx('关联安排（可选）', 'Link to a plan (optional)')}
-                value={props.itineraryItemId}
-                options={props.itineraryOptions}
-                onChange={props.setItineraryItemId}
-              />
-              <View style={styles.receiptGroup}>
-              <View style={styles.receiptCopy}>
-                <ThemedText type="smallBold">{tx('小票（可选）', 'Receipt (optional)')}</ThemedText>
-              </View>
-            {props.receipt ? (
-              <View style={styles.receiptPreviewRow}>
-                <Image accessible accessibilityLabel={tx('待上传的小票预览', 'Receipt preview awaiting upload')} source={props.receipt.uri} style={[styles.receiptPreview, { backgroundColor: theme.backgroundSelected }]} contentFit="contain" />
-                <Pressable accessibilityRole="button" onPress={() => props.setReceipt(undefined)} style={({ pressed }) => [styles.textButton, pressed && styles.pressed]}>
-                  <ThemedText type="smallBold" style={{ color: props.dangerColor }}>{tx('移除', 'Remove')}</ThemedText>
-                </Pressable>
-              </View>
-            ) : (
-              <View style={styles.receiptActions}>
-                <Pressable accessibilityRole="button" onPress={() => void props.pickReceipt('camera')} style={({ pressed }) => [styles.secondaryAction, { backgroundColor: props.themeSelected }, pressed && styles.pressed]}>
-                  <ThemedText type="smallBold">{tx('拍摄小票', 'Take photo')}</ThemedText>
-                </Pressable>
-                <Pressable accessibilityRole="button" onPress={() => void props.pickReceipt('library')} style={({ pressed }) => [styles.secondaryAction, { backgroundColor: props.themeSelected }, pressed && styles.pressed]}>
-                  <ThemedText type="smallBold">{tx('从相册选择', 'Choose photo')}</ThemedText>
-                </Pressable>
-              </View>
-            )}
-              </View>
-            </View>
-          ) : null}
-          {props.formError ? <InlineNotice tone="error">{props.formError}</InlineNotice> : null}
-          <ActionButton
-            busy={props.busyAction === 'save'}
-            disabled={Boolean(props.busyAction)}
-            onPress={() => void props.submitExpense()}>
-            {props.editing ? tx('保存修改', 'Save changes') : tx('保存支出', 'Save expense')}
-          </ActionButton>
-        </View>
-    </View>
-  );
-}
-
-function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <View style={styles.fieldGroup}>
-      <ThemedText type="smallBold">{label}</ThemedText>
-      <View style={styles.chips}>{children}</View>
-    </View>
-  );
-}
-
 function ExpenseActivity(props: {
   tx: (zh: string, en: string) => string;
   expenses: Expense[];
@@ -1136,30 +851,8 @@ const styles = StyleSheet.create({
   plusIcon: { width: 20, height: 20, alignItems: 'center', justifyContent: 'center' },
   plusHorizontal: { position: 'absolute', width: 18, height: 2, borderRadius: 1 },
   plusVertical: { position: 'absolute', width: 2, height: 18, borderRadius: 1 },
-  composer: { gap: 20 },
-  aiEntry: { gap: 12 },
-  aiDisclosure: { minHeight: 48, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: 'row', alignItems: 'center', gap: 12, paddingBottom: 12 },
-  aiActions: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  formGroup: { gap: 16 },
-  amountRow: { flexDirection: 'row', gap: 12, alignItems: 'flex-end' },
-  amountRowCompact: { flexDirection: 'column', alignItems: 'stretch', gap: 14 },
-  currencyField: { flex: 1, minWidth: 0 },
-  currencyFieldCompact: { flex: 0, width: '100%' },
-  conversionRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', gap: 12, borderRadius: 12, padding: 12 },
-  exchangeRateMeta: { marginTop: 4 },
-  conversionPreview: { flexGrow: 1, flexBasis: 150, gap: 2, paddingBottom: 10 },
-  advancedDisclosure: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 12, borderTopWidth: StyleSheet.hairlineWidth },
-  advancedFields: { gap: 16 },
-  fieldGroup: { gap: 8 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  splitFields: { gap: 10, padding: 12, borderRadius: 12 },
-  splitPreview: { gap: 4, padding: 12, borderRadius: 12 },
-  receiptGroup: { gap: 10, paddingTop: 4 },
-  receiptCopy: { gap: 2 },
   receiptActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   secondaryAction: { minHeight: 44, flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14, borderRadius: 12 },
-  receiptPreviewRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  receiptPreview: { width: 80, height: 80, borderRadius: 12 },
   textButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 4 },
   expenseItem: {},
   expenseSummary: { minHeight: 68, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14 },
