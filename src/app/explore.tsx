@@ -243,7 +243,7 @@ export default function TripsScreen() {
       {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
       {success ? <InlineNotice>{success}</InlineNotice> : null}
       {tripOpener.openingTripId ? <ThemedText accessibilityLiveRegion="polite" type="small" themeColor="textSecondary">{tx('正在切换行程…', 'Switching trips…')}</ThemedText> : null}
-      {!panel && panelError ? <InlineNotice tone="error">{panelError}</InlineNotice> : null}
+      {!panel && panelError && !error ? <InlineNotice tone="error">{panelError}</InlineNotice> : null}
 
       {activeTrip ? (
         <TripOverviewCard
