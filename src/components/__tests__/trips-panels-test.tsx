@@ -15,7 +15,12 @@ const mockMembers = [
 ];
 
 jest.mock('@/global.css', () => ({}));
-jest.mock('expo-router', () => ({ useLocalSearchParams: () => ({}) }));
+jest.mock('expo-router', () => ({
+  useLocalSearchParams: () => ({}),
+  useFocusEffect: (effect: () => void | (() => void)) => {
+    jest.requireActual<typeof import('react')>('react').useEffect(effect, [effect]);
+  },
+}));
 jest.mock('react-native-safe-area-context', () => ({ useSafeAreaInsets: () => ({ top: 0, bottom: 0 }) }));
 jest.mock('@/features/i18n/i18n-provider', () => ({ useI18n: () => ({ locale: 'en', languageTag: 'en-US', tx: (_zh: string, en: string) => en, formatDateTime: (value: string) => value }) }));
 jest.mock('@/features/mvp/mvp-provider', () => ({ useMvp: () => ({

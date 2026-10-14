@@ -23,6 +23,7 @@ import { useI18n } from '@/features/i18n/i18n-provider';
 import { buildInviteUrl, parseInviteToken } from '@/features/invites/invite-link';
 import { useMvp } from '@/features/mvp/mvp-provider';
 import { defaultHomeCurrency, defaultTripTimeZone } from '@/features/trips/trip-defaults';
+import { useTripOpener } from '@/features/trips/use-trip-opener';
 import { useTheme } from '@/hooks/use-theme';
 import { toUserMessage } from '@/lib/user-error';
 
@@ -65,6 +66,7 @@ export default function TripsScreen() {
   const isOwner = currentMember?.role === 'owner';
   const roleLabel = (role: TripRole) => locale === 'zh-CN' ? tripRoleLabels[role] : tripRoleLabelsEn[role];
 
+  const tripOpener = useTripOpener();
   const [panel, setPanel] = useState<Panel>();
   const [draft, setDraft] = useState<TripDraft>(() => ({
     name: '',
@@ -118,6 +120,7 @@ export default function TripsScreen() {
   }
 
   function openPanel(next: Panel) {
+    tripOpener.cancel();
     setPanelError(undefined);
     setSuccess(undefined);
     if (next === 'create') {
@@ -141,6 +144,7 @@ export default function TripsScreen() {
   }
 
   function closePanel() {
+    tripOpener.cancel();
     setPanel(undefined);
     setPanelError(undefined);
     setScanningInvite(false);
@@ -163,8 +167,8 @@ export default function TripsScreen() {
   async function openTrip(trip: Trip) {
     setSuccess(undefined);
     setPanelError(undefined);
-    if (trip.id !== activeTrip?.id) await selectTrip(trip.id);
-    setPanel('manage');
+    await tripOpener.open(trip.id, activeTrip?.id, selectTrip, () => setPanel('manage'),
+      (caught) => setPanelError(toUserMessage(caught, tx('无法切换行程，请重试。', 'Could not switch trips. Please retry.'))));
   }
 
   async function submitTrip() {
@@ -238,6 +242,8 @@ export default function TripsScreen() {
     <Screen context={context} title={tx('行程', 'Trips')}>
       {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
       {success ? <InlineNotice>{success}</InlineNotice> : null}
+      {tripOpener.openingTripId ? <ThemedText accessibilityLiveRegion="polite" type="small" themeColor="textSecondary">{tx('正在切换行程…', 'Switching trips…')}</ThemedText> : null}
+      {!panel && panelError ? <InlineNotice tone="error">{panelError}</InlineNotice> : null}
 
       {activeTrip ? (
         <TripOverviewCard
@@ -273,6 +279,7 @@ export default function TripsScreen() {
                 {/* One affordance: the row opens the trip. The 「查看」 link
                     that sat beside the press target said the same thing. */}
                 <ListRow
+                  disabled={Boolean(tripOpener.openingTripId)}
                   onPress={() => void openTrip(trip)}
                   subtitle={`${formatTripRange(trip, locale)} · ${trip.homeCurrency}`}
                   title={trip.name}
