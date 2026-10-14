@@ -103,3 +103,9 @@ Join our community of developers creating universal apps.
 
 - [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+
+### Booking import demo
+
+In Plans, choose **Import flight / hotel bookings**, select a PDF or screenshot, then choose **Send and recognize**. Review/edit the drafts before confirming. Original documents are private to their uploader; the confirmed itinerary is shared with the trip. The first version imports bookings only, without generating activities or expenses.
+
+For a fictional Loom demo, create a trip dated **2026-10-20 to 2026-10-25** in **Asia/Tokyo**, then import the samples in `output/pdf/`. The PDFs are labelled synthetic and contain no traveller identity or booking references. See [the import contract and acceptance gates](docs/booking-import.md).

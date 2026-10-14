@@ -79,6 +79,54 @@ export type Database = {
           },
         ]
       }
+      booking_documents: {
+        Row: {
+          created_at: string
+          file_name: string
+          fingerprint: string
+          id: string
+          mime_type: string
+          storage_path: string
+          trip_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          fingerprint: string
+          id?: string
+          mime_type: string
+          storage_path: string
+          trip_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          fingerprint?: string
+          id?: string
+          mime_type?: string
+          storage_path?: string
+          trip_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_documents_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_documents_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exchange_rate_snapshots: {
         Row: {
           base_currency: string
@@ -442,6 +490,7 @@ export type Database = {
       }
       itinerary_items: {
         Row: {
+          booking_item_key: string | null
           confirmation_number: string | null
           created_at: string
           created_by: string
@@ -471,6 +520,7 @@ export type Database = {
           version: number
         }
         Insert: {
+          booking_item_key?: string | null
           confirmation_number?: string | null
           created_at?: string
           created_by: string
@@ -500,6 +550,7 @@ export type Database = {
           version?: number
         }
         Update: {
+          booking_item_key?: string | null
           confirmation_number?: string | null
           created_at?: string
           created_by?: string
@@ -530,17 +581,17 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "itinerary_items_linked_stay_id_fkey"
-            columns: ["linked_stay_id"]
-            isOneToOne: false
-            referencedRelation: "itinerary_items"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "itinerary_items_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "itinerary_items_linked_stay_id_fkey"
+            columns: ["linked_stay_id"]
+            isOneToOne: false
+            referencedRelation: "itinerary_items"
             referencedColumns: ["id"]
           },
           {
@@ -978,23 +1029,7 @@ export type Database = {
         Args: { requested_segment_id: string }
         Returns: boolean
       }
-      create_equal_expense: {
-        Args: {
-          expense_base_amount_minor?: number
-          expense_base_currency?: string
-          expense_currency: string
-          expense_exchange_rate?: number
-          expense_exchange_rate_source?: string
-          expense_occurred_at?: string
-          expense_title: string
-          expense_total_minor: number
-          participant_user_ids: string[]
-          payer_user_id: string
-          requested_segment_id?: string
-          requested_trip_id: string
-        }
-        Returns: string
-      }
+      complete_profile_onboarding: { Args: never; Returns: undefined }
       create_custom_expense: {
         Args: {
           expense_base_amount_minor?: number
@@ -1016,6 +1051,37 @@ export type Database = {
         }
         Returns: string
       }
+      create_equal_expense:
+        | {
+            Args: {
+              expense_currency: string
+              expense_occurred_at?: string
+              expense_title: string
+              expense_total_minor: number
+              participant_user_ids: string[]
+              payer_user_id: string
+              requested_segment_id?: string
+              requested_trip_id: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              expense_base_amount_minor?: number
+              expense_base_currency?: string
+              expense_currency: string
+              expense_exchange_rate?: number
+              expense_exchange_rate_source?: string
+              expense_occurred_at?: string
+              expense_title: string
+              expense_total_minor: number
+              participant_user_ids: string[]
+              payer_user_id: string
+              requested_segment_id?: string
+              requested_trip_id: string
+            }
+            Returns: string
+          }
       create_stay_transfer: {
         Args: {
           requested_stay_id: string
@@ -1062,7 +1128,6 @@ export type Database = {
           invite_token: string
         }[]
       }
-      complete_profile_onboarding: { Args: never; Returns: undefined }
       delete_current_account: { Args: never; Returns: undefined }
       delete_itinerary_item: {
         Args: { requested_item_id: string }
@@ -1072,6 +1137,16 @@ export type Database = {
       dissolve_trip_segment: {
         Args: { requested_segment_id: string }
         Returns: undefined
+      }
+      import_booking_document: {
+        Args: {
+          document_fingerprint: string
+          document_mime_type: string
+          document_name: string
+          plans: Json
+          requested_trip_id: string
+        }
+        Returns: Json
       }
       is_active_user: { Args: never; Returns: boolean }
       is_trip_creator: { Args: { requested_trip_id: string }; Returns: boolean }
@@ -1094,19 +1169,29 @@ export type Database = {
         Args: { requested_item_id: string; requested_target_trip_id: string }
         Returns: string
       }
-      record_settlement: {
-        Args: {
-          settlement_base_amount_minor?: number
-          settlement_base_currency?: string
-          recipient_user_id: string
-          requested_trip_id: string
-          settlement_exchange_rate?: number
-          settlement_exchange_rate_source?: string
-          settlement_amount_minor: number
-          settlement_currency: string
-        }
-        Returns: string
-      }
+      record_settlement:
+        | {
+            Args: {
+              recipient_user_id: string
+              requested_trip_id: string
+              settlement_amount_minor: number
+              settlement_currency: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              recipient_user_id: string
+              requested_trip_id: string
+              settlement_amount_minor: number
+              settlement_base_amount_minor: number
+              settlement_base_currency: string
+              settlement_currency: string
+              settlement_exchange_rate: number
+              settlement_exchange_rate_source?: string
+            }
+            Returns: string
+          }
       set_expense_itinerary_item: {
         Args: {
           requested_expense_id: string
@@ -1117,54 +1202,6 @@ export type Database = {
       set_expense_settled: {
         Args: { requested_expense_id: string; requested_settled: boolean }
         Returns: undefined
-      }
-      unrecord_settlement: {
-        Args: { requested_settlement_id: string }
-        Returns: undefined
-      }
-      update_custom_expense: {
-        Args: {
-          expense_base_amount_minor: number
-          expense_base_currency: string
-          expense_currency: string
-          expense_exchange_rate: number
-          expense_exchange_rate_source?: string
-          expense_title: string
-          expense_total_minor: number
-          participant_amounts: number[]
-          participant_user_ids: string[]
-          payer_amounts: number[]
-          payer_user_ids: string[]
-          requested_expense_id: string
-        }
-        Returns: string
-      }
-      update_trip_details: {
-        Args: {
-          requested_trip_id: string
-          trip_default_time_zone: string
-          trip_ends_on: string
-          trip_home_currency: string
-          trip_name: string
-          trip_starts_on: string
-        }
-        Returns: {
-          created_at: string
-          created_by: string
-          default_time_zone: string
-          ends_on: string
-          home_currency: string
-          id: string
-          name: string
-          starts_on: string
-          updated_at: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "trips"
-          isOneToOne: true
-          isSetofReturn: false
-        }
       }
       split_trip_segment: {
         Args: {
@@ -1195,6 +1232,27 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      unrecord_settlement: {
+        Args: { requested_settlement_id: string }
+        Returns: undefined
+      }
+      update_custom_expense: {
+        Args: {
+          expense_base_amount_minor: number
+          expense_base_currency: string
+          expense_currency: string
+          expense_exchange_rate: number
+          expense_exchange_rate_source?: string
+          expense_title: string
+          expense_total_minor: number
+          participant_amounts: number[]
+          participant_user_ids: string[]
+          payer_amounts: number[]
+          payer_user_ids: string[]
+          requested_expense_id: string
+        }
+        Returns: string
+      }
       update_itinerary_item: {
         Args: {
           item_destination_city_name: string | null
@@ -1211,11 +1269,108 @@ export type Database = {
           item_title: string
           requested_item_id: string
         }
-        Returns: Database["public"]["Tables"]["itinerary_items"]["Row"]
+        Returns: {
+          booking_item_key: string | null
+          confirmation_number: string | null
+          created_at: string
+          created_by: string
+          destination_city_name: string | null
+          destination_country_code: string | null
+          destination_country_name: string | null
+          destination_currency: string | null
+          destination_latitude: number | null
+          destination_longitude: number | null
+          destination_time_zone: string | null
+          ends_at: string | null
+          google_place_id: string | null
+          id: string
+          is_material_change: boolean
+          kind: Database["public"]["Enums"]["itinerary_kind"]
+          linked_stay_id: string | null
+          local_script_address: string | null
+          location_label: string | null
+          notes: string | null
+          responsible_user_id: string | null
+          route_travel_mode: string
+          segment_id: string | null
+          starts_at: string
+          title: string
+          trip_id: string
+          updated_at: string
+          version: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "itinerary_items"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       update_itinerary_route_mode: {
         Args: { requested_item_id: string; requested_travel_mode: string }
-        Returns: Database["public"]["Tables"]["itinerary_items"]["Row"]
+        Returns: {
+          booking_item_key: string | null
+          confirmation_number: string | null
+          created_at: string
+          created_by: string
+          destination_city_name: string | null
+          destination_country_code: string | null
+          destination_country_name: string | null
+          destination_currency: string | null
+          destination_latitude: number | null
+          destination_longitude: number | null
+          destination_time_zone: string | null
+          ends_at: string | null
+          google_place_id: string | null
+          id: string
+          is_material_change: boolean
+          kind: Database["public"]["Enums"]["itinerary_kind"]
+          linked_stay_id: string | null
+          local_script_address: string | null
+          location_label: string | null
+          notes: string | null
+          responsible_user_id: string | null
+          route_travel_mode: string
+          segment_id: string | null
+          starts_at: string
+          title: string
+          trip_id: string
+          updated_at: string
+          version: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "itinerary_items"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      update_trip_details: {
+        Args: {
+          requested_trip_id: string
+          trip_default_time_zone: string
+          trip_ends_on: string
+          trip_home_currency: string
+          trip_name: string
+          trip_starts_on: string
+        }
+        Returns: {
+          created_at: string
+          created_by: string
+          default_time_zone: string
+          ends_on: string
+          home_currency: string
+          id: string
+          name: string
+          starts_on: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "trips"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
     }
     Enums: {
@@ -1245,12 +1400,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1274,11 +1429,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1299,11 +1454,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1324,11 +1479,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1341,11 +1496,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

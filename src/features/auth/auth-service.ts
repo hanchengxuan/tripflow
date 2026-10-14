@@ -4,6 +4,7 @@ import { Platform } from 'react-native';
 
 import { getSupabaseClient } from '@/lib/supabase';
 
+import { deleteAllBookingFiles } from '@/data/booking-repository';
 import { updateProfile } from '@/data/trip-repository';
 
 export function normalizeEmail(email: string): string {
@@ -225,6 +226,10 @@ export async function deleteAccount() {
     const { error: avatarError } = await client.storage.from('avatars').remove([profile.avatar_path]);
     if (avatarError) throw avatarError;
   }
+
+  const { data: identity, error: identityError } = await client.auth.getUser();
+  if (identityError || !identity.user) throw identityError ?? new Error('请重新登录。');
+  await deleteAllBookingFiles(identity.user.id);
 
   const { error } = await client.rpc('delete_current_account');
   if (error) throw error;

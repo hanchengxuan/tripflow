@@ -74,6 +74,11 @@ Deno.serve(async (request: Request) => {
       serviceAuthorization,
     );
 
+    const bookingRows = await requestJson<{ storage_path: string }[]>(
+      `${supabaseUrl}/rest/v1/booking_documents?select=storage_path&trip_id=eq.${encodeURIComponent(tripId)}`,
+      serviceRoleKey, serviceAuthorization,
+    );
+
     await requestJson<unknown>(
       `${supabaseUrl}/rest/v1/rpc/delete_trip`,
       publishableKey,
@@ -90,6 +95,15 @@ Deno.serve(async (request: Request) => {
         body: JSON.stringify({ prefixes: receiptPaths }),
       });
       cleanupPending = !cleanupResponse.ok;
+    }
+
+    if (bookingRows.length > 0) {
+      const cleanup = await fetch(`${supabaseUrl}/storage/v1/object/booking-documents`, {
+        method: 'DELETE',
+        headers: { apikey: serviceRoleKey, Authorization: serviceAuthorization, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prefixes: bookingRows.map(({ storage_path }) => storage_path) }),
+      });
+      cleanupPending = cleanupPending || !cleanup.ok;
     }
 
     return json({ success: true, cleanupPending });
