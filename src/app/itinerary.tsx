@@ -149,7 +149,8 @@ export default function ItineraryScreen() {
   const context = activeTrip
     ? [
         activeTrip.name,
-        tx(String(itineraryItems.length) + ' 项安排', String(itineraryItems.length) + ' plans'),
+        tx(String(itineraryItems.length) + ' 项安排', String(itineraryItems.length) + (itineraryItems.length === 1 ? ' plan' : ' plans')),
+        tx('默认时区 ' + activeTrip.defaultTimeZone, 'Default time zone ' + activeTrip.defaultTimeZone),
       ]
     : [tx('还没有选择行程', 'No trip selected')];
 

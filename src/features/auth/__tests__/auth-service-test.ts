@@ -7,6 +7,7 @@ const mockBookingCleanup = deleteAllBookingFiles as jest.MockedFunction<typeof d
 const mockRpc = jest.fn();
 const mockSignOut = jest.fn();
 const mockSingle = jest.fn();
+const mockProfileEq = jest.fn(() => ({ single: mockSingle }));
 const mockRemove = jest.fn();
 const mockSignInWithOtp = jest.fn();
 const mockUpdateUser = jest.fn();
@@ -18,7 +19,7 @@ jest.mock('@/data/trip-repository', () => ({ updateProfile: jest.fn() }));
 
 jest.mock('@/lib/supabase', () => ({
   getSupabaseClient: () => ({
-    from: () => ({ select: () => ({ single: mockSingle }) }),
+    from: () => ({ select: () => ({ eq: mockProfileEq, single: mockSingle }) }),
     storage: { from: () => ({ remove: mockRemove }) },
     rpc: mockRpc,
     auth: { getUser: mockGetUser, signOut: mockSignOut, signInWithOtp: mockSignInWithOtp, updateUser: mockUpdateUser },
@@ -86,6 +87,7 @@ describe('normalizeEmail', () => {
     mockBookingCleanup.mockResolvedValueOnce(undefined);
     await deleteAccount();
 
+    expect(mockProfileEq).toHaveBeenCalledWith('id', 'user-a');
     expect(mockRemove).toHaveBeenCalledWith(['user/avatar.png']);
     expect(mockBookingCleanup).toHaveBeenCalledWith('user-a');
     expect(mockBookingCleanup.mock.invocationCallOrder[0]).toBeLessThan(mockRpc.mock.invocationCallOrder[0]);

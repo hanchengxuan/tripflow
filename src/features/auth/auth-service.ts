@@ -216,9 +216,12 @@ export async function signOut() {
 
 export async function deleteAccount() {
   const client = getSupabaseClient();
+  const { data: identity, error: identityError } = await client.auth.getUser();
+  if (identityError || !identity.user) throw identityError ?? new Error('请重新登录。');
   const { data: profile, error: profileError } = await client
     .from('profiles')
     .select('avatar_path')
+    .eq('id', identity.user.id)
     .single();
   if (profileError) throw profileError;
 
@@ -227,8 +230,6 @@ export async function deleteAccount() {
     if (avatarError) throw avatarError;
   }
 
-  const { data: identity, error: identityError } = await client.auth.getUser();
-  if (identityError || !identity.user) throw identityError ?? new Error('请重新登录。');
   await deleteAllBookingFiles(identity.user.id);
 
   const { error } = await client.rpc('delete_current_account');

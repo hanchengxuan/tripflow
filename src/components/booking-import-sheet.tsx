@@ -27,7 +27,7 @@ export function BookingImportSheet({ trip, userId, canEdit, onDismiss, onImporte
     const result = await flow.save();
     if (!result) return;
     onImported(result.alreadyImported ? tx('这个订单已导入，没有重复添加。', 'Already imported; no plans were duplicated.')
-      : tx(`已加入 ${result.added} 项安排，跳过 ${result.skipped} 项重复安排。`, `Added ${result.added} plans; skipped ${result.skipped} duplicates.`));
+      : tx(`已加入 ${result.added} 项安排，跳过 ${result.skipped} 项重复安排。`, `Added ${result.added} ${result.added === 1 ? 'plan' : 'plans'}; skipped ${result.skipped} duplicates.`));
     onDismiss();
   }
 
@@ -67,7 +67,7 @@ export function BookingImportSheet({ trip, userId, canEdit, onDismiss, onImporte
           <ThemedText type="smallBold">{tx('检查后加入行程', 'Review before adding')}</ThemedText>
           <ThemedText type="small" themeColor="textSecondary">{tx(`请核对原订单。时间线将按 ${trip.defaultTimeZone} 显示；日期需在 ${trip.startsOn} 至 ${trip.endsOn} 内。`, `Check against the original. The timeline uses ${trip.defaultTimeZone}; bookings must fit ${trip.startsOn} to ${trip.endsOn}.`)}</ThemedText>
           {flow.drafts.map((draft, index) => <BookingDraftFields key={index} draft={draft} index={index} selected={flow.selected[index]} onToggle={() => flow.toggle(index)} onChange={(patch) => flow.update(index, patch)} />)}
-          <ActionButton busy={flow.busy === 'saving'} disabled={!count} onPress={() => void save()}>{tx(`确认加入 ${count} 项安排`, `Confirm and add ${count} plans`)}</ActionButton>
+          <ActionButton busy={flow.busy === 'saving'} disabled={!count} onPress={() => void save()}>{tx(`确认加入 ${count} 项安排`, `Confirm and add ${count} ${count === 1 ? 'plan' : 'plans'}`)}</ActionButton>
         </> : null}
       </> : null}
       {flow.error ? <InlineNotice tone="error">{flow.error}</InlineNotice> : null}
@@ -75,7 +75,7 @@ export function BookingImportSheet({ trip, userId, canEdit, onDismiss, onImporte
         <ThemedText type="smallBold">{tx('我的订单原件 · 仅自己可见', 'My originals · private to me')}</ThemedText>
         {flow.documents.map((document) => <SettingsGroup key={document.id}>
           <SettingsRow label={document.file_name} subtitle={tx('查看原件', 'Open original')} onPress={() => void openOriginal(document)} disabled={documentBusy} />
-          <SettingsRow label={tx('删除原件', 'Delete original')} labelColor="danger" onPress={() => setDeleting(document)} disabled={documentBusy} />
+          <SettingsRow label={tx('删除原件', 'Delete original')} labelColor="danger" onPress={() => { flow.setError(undefined); setDeleting(document); }} disabled={documentBusy} />
         </SettingsGroup>)}
       </> : null}
     </View>

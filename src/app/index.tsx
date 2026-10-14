@@ -348,7 +348,7 @@ export default function TodayScreen() {
     <>
       <Screen
       context={activeTrip
-        ? [tripRange ?? '', tx(`${members.length} 人同行`, `${members.length} travellers`), tx(`${activeTrip.homeCurrency} 本位币`, `Home currency ${activeTrip.homeCurrency}`)]
+        ? [tripRange ?? '', tx(`${members.length} 人同行`, `${members.length} travellers`), tx(`${activeTrip.homeCurrency} 本位币`, `Home currency ${activeTrip.homeCurrency}`), tx(`默认时区 ${tripTimeZone}`, `Default time zone ${tripTimeZone}`)]
         : [tx('还没有进行中的行程', 'No active trip yet')]}
       title={activeTrip?.name ?? tx('今天', 'Today')}
       floatingAction={activeTrip && canEdit ? (
