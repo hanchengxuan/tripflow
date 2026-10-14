@@ -1,0 +1,7 @@
+{
+  "name": "sprintf-js",
+  "version": "1.1.4",
+  "description": "TripFlow maintained security backport of sprintf-js 1.0.3",
+  "license": "BSD-3-Clause",
+  "main": "src/sprintf.js"
+}
