@@ -28,7 +28,7 @@ import {
   parseExchangeRate,
   parseAmountToMinor,
 } from '@/domain/ledger';
-import { assertAllocationsTotal, minimizeSettlementTransfers, splitByExactAmounts, splitByPercentages, splitByWeights, splitEqually, type SettlementTransfer } from '@/domain/money';
+import { minimizeSettlementTransfers, splitByExactAmounts, splitByPercentages, splitByWeights, splitEqually, type SettlementTransfer } from '@/domain/money';
 import type { Expense, ItineraryItem, Settlement, TripMember } from '@/domain/models';
 import { type AiExpenseDraft, parseExpenseAudio, parseExpenseText } from '@/features/ai/expense-parser';
 import { formatExchangeRate } from '@/features/currency/exchange-rate';
@@ -36,6 +36,8 @@ import { useExchangeRate, type ExchangeRateLoadState } from '@/features/currency
 import { useI18n } from '@/features/i18n/i18n-provider';
 import { defaultAllocationValueFor } from '@/features/ledger/default-allocation';
 import { useMvp } from '@/features/mvp/mvp-provider';
+import { InputError } from '@/domain/input-error';
+import { validateExpenseDraft } from '@/features/ledger/validate-expense-draft';
 import { useTheme } from '@/hooks/use-theme';
 import { toUserMessage } from '@/lib/user-error';
 
@@ -339,7 +341,7 @@ export default function LedgerScreen() {
       setSuccess(tx('小票已添加到这笔支出。', 'Receipt added to this expense.'));
       setExpandedExpenseId(expenseId);
     } catch (caught) {
-      setFormError(toUserMessage(caught, tx('无法添加小票，请稍后重试。', 'Could not add the receipt. Please try again.')));
+      setFormError(toUserMessage(caught, tx('无法添加小票，请稍后重试。', 'Could not add the receipt. Please try again.'), locale));
     } finally {
       setBusyAction(undefined);
     }
@@ -359,7 +361,7 @@ export default function LedgerScreen() {
       });
       applyAiDraft(draft);
     } catch (caught) {
-      setFormError(toUserMessage(caught, tx('AI 解析失败，请换一种说法或手动填写。', 'AI could not parse that. Rephrase it or enter the details manually.')));
+      setFormError(toUserMessage(caught, tx('AI 解析失败，请换一种说法或手动填写。', 'AI could not parse that. Rephrase it or enter the details manually.'), locale));
     } finally {
       setBusyAction(undefined);
     }
@@ -392,35 +394,22 @@ export default function LedgerScreen() {
     try {
       applyAiDraft(await parseExpenseAudio({ tripId: activeTrip.id, audioBase64, audioMimeType, memberIds }));
     } catch (caught) {
-      setFormError(toUserMessage(caught, tx('AI 无法识别这段语音，请重试或手动填写。', 'AI could not understand the recording. Try again or enter it manually.')));
+      setFormError(toUserMessage(caught, tx('AI 无法识别这段语音，请重试或手动填写。', 'AI could not understand the recording. Try again or enter it manually.'), locale));
     } finally {
       setBusyAction(undefined);
     }
   }
 
   async function submitExpense() {
-    let totalMinor: number;
-    let rate: number;
-    let baseAmountMinor: number;
-    let payerAllocations: { participantId: string; amountMinor: number }[];
+    let validated: ReturnType<typeof validateExpenseDraft>;
     try {
-      if (!activeTrip) throw new Error(tx('请先选择一个行程。', 'Choose a trip before saving an expense.'));
-      if (!title.trim()) throw new Error(tx('请填写支出内容。', 'Enter what this expense was for.'));
-      if (!amount.trim()) throw new Error(tx('请填写金额。', 'Enter an amount.'));
-      if (participantIds.length === 0) throw new Error(tx('请至少选择一位分摊人。', 'Choose at least one person to share the expense.'));
-      if (selectedPayerIds.length === 0) throw new Error(tx('请至少选择一位付款人。', 'Choose at least one payer.'));
-      totalMinor = parseAmountToMinor(amount, currency);
-      rate = currency.toUpperCase() === baseCurrency.toUpperCase() ? 1 : parseExchangeRate(effectiveExchangeRate);
-      baseAmountMinor = convertMinorAmount(totalMinor, currency, baseCurrency, rate);
-      if (allocationPreview.length !== participantIds.length) throw new Error(tx('请完成分摊设置，并确保总额一致。', 'Complete the split and make sure it adds up to the total.'));
-      payerAllocations = selectedPayerIds.length === 1
-        ? [{ participantId: selectedPayerIds[0], amountMinor: totalMinor }]
-        : selectedPayerIds.map((participantId) => ({ participantId, amountMinor: parseAmountToMinor(payerAmounts[participantId] ?? '', currency) }));
-      assertAllocationsTotal(totalMinor, payerAllocations, tx('付款金额', 'Payer amounts'));
+      validated = validateExpenseDraft({ tripId: activeTrip?.id, title, amount, currency, baseCurrency,
+        exchangeRate: effectiveExchangeRate, participantIds, selectedPayerIds, payerAmounts, allocationPreview });
     } catch (caught) {
-      setFormError(toUserMessage(caught, tx('请检查金额、汇率和分摊设置。', 'Check the amount, rate, and split.')));
+      setFormError(toUserMessage(caught, tx('请检查金额、汇率和分摊设置。', 'Check the amount, rate, and split.'), locale));
       return;
     }
+    const { totalMinor, rate, baseAmountMinor, payerAllocations } = validated;
     setBusyAction('save');
     setFormError(undefined);
     setSuccess(undefined);
@@ -490,7 +479,7 @@ export default function LedgerScreen() {
             : tx('支出已保存，分摊和结算待办已更新。', 'Expense saved. Shares and settlement tasks are updated.'));
       }
     } catch (caught) {
-      setFormError(toUserMessage(caught, tx('无法保存支出，请稍后重试。', 'Could not save the expense. Please try again.')));
+      setFormError(toUserMessage(caught, tx('无法保存支出，请稍后重试。', 'Could not save the expense. Please try again.'), locale));
     } finally {
       setBusyAction(undefined);
     }
@@ -506,7 +495,7 @@ export default function LedgerScreen() {
       const amountMinor = parseAmountToMinor(draft.amount, draft.currency);
       const exchangeRate = draft.currency.toUpperCase() === baseCurrency.toUpperCase() ? 1 : parseExchangeRate(draft.rate);
       const baseAmountMinor = convertMinorAmount(amountMinor, draft.currency, baseCurrency, exchangeRate);
-      if (baseAmountMinor > transfer.amountMinor) throw new Error(tx('折算金额不能超过待转余额。', 'The converted amount cannot exceed the amount due.'));
+      if (baseAmountMinor > transfer.amountMinor) throw new InputError('折算金额不能超过待转余额。', 'The converted amount cannot exceed the amount due.');
       await markSettlement({
         toUserId: transfer.toParticipantId,
         currency: draft.currency,
@@ -525,7 +514,7 @@ export default function LedgerScreen() {
       setSuccess(tx('已标记为已转账，收款方的“已收入”会同步更新。', 'Marked as sent. The recipient’s received total is updated automatically.'));
       return true;
     } catch (caught) {
-      setFormError(toUserMessage(caught, tx('无法更新转账状态，请刷新后重试。', 'Could not update the transfer. Refresh and try again.')));
+      setFormError(toUserMessage(caught, tx('无法更新转账状态，请刷新后重试。', 'Could not update the transfer. Refresh and try again.'), locale));
       return false;
     } finally {
       setBusySettlementId(undefined);
@@ -541,7 +530,7 @@ export default function LedgerScreen() {
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setSuccess(tx('已恢复为未转账。', 'Marked as not sent again.'));
     } catch (caught) {
-      setFormError(toUserMessage(caught, tx('无法撤销转账状态，请稍后重试。', 'Could not undo the transfer status. Please try again.')));
+      setFormError(toUserMessage(caught, tx('无法撤销转账状态，请稍后重试。', 'Could not undo the transfer status. Please try again.'), locale));
     } finally {
       setBusySettlementId(undefined);
     }
@@ -555,7 +544,7 @@ export default function LedgerScreen() {
       await setExpenseSettled(expense.id, !expense.settledAt);
       setSuccess(expense.settledAt ? tx('已恢复为未结清。', 'Marked as unsettled again.') : tx('这笔支出已标记为结清。', 'This expense is marked as settled.'));
     } catch (caught) {
-      setFormError(toUserMessage(caught, tx('无法更新结清状态，请稍后重试。', 'Could not update the settlement state. Please try again.')));
+      setFormError(toUserMessage(caught, tx('无法更新结清状态，请稍后重试。', 'Could not update the settlement state. Please try again.'), locale));
     } finally {
       setBusyExpenseId(undefined);
     }

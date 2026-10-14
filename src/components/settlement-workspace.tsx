@@ -11,7 +11,7 @@ import { SelectionField } from '@/components/selection-field';
 import { SettingsDivider, SettingsGroup, SettingsRow } from '@/components/settings-list';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
-import { convertMinorAmount, currencyMinorDigits, formatMinorAmount, parseAmountToMinor, parseExchangeRate } from '@/domain/ledger';
+import { convertMinorAmount, currencyAmountPlaceholder, currencyMinorDigits, formatMinorAmount, parseAmountToMinor, parseExchangeRate } from '@/domain/ledger';
 import type { SettlementTransfer } from '@/domain/money';
 import type { Settlement, TripMember } from '@/domain/models';
 import { useI18n } from '@/features/i18n/i18n-provider';
@@ -386,7 +386,7 @@ function SettlementPaymentEditor({
             value={draft.amount}
             onChangeText={(amount) => setDraft({ ...draft, amount })}
             keyboardType="decimal-pad"
-            placeholder="0.00"
+            placeholder={currencyAmountPlaceholder(draft.currency, 0)}
           />
         </View>
       </View>

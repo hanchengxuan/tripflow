@@ -1,3 +1,4 @@
+import { InputError } from '@/domain/input-error';
 import type { Expense, Settlement } from '@/domain/models';
 import type { Balance } from '@/domain/money';
 
@@ -7,34 +8,38 @@ export function currencyMinorDigits(currency: string): number {
   return zeroDecimalCurrencies.has(currency.toUpperCase()) ? 0 : 2;
 }
 
+export function currencyAmountPlaceholder(currency: string, sample = 860) {
+  return sample.toFixed(currencyMinorDigits(currency));
+}
+
 export function parseAmountToMinor(value: string, currency: string): number {
   const normalized = value.trim();
   const digits = currencyMinorDigits(currency);
   const pattern = digits === 0 ? /^\d+$/ : /^\d+(?:\.\d{1,2})?$/;
   if (!pattern.test(normalized)) {
-    throw new Error(digits === 0 ? '该币种请输入整数金额。' : '请输入最多保留两位小数的金额。');
+    throw new InputError(digits === 0 ? '该币种请输入整数金额。' : '请输入最多保留两位小数的金额。', digits === 0 ? 'Amount: enter a whole number for this currency.' : 'Amount: use at most two decimal places.');
   }
 
   const [whole, fraction = ''] = normalized.split('.');
   const scale = 10 ** digits;
   const amount = Number(whole) * scale + Number(fraction.padEnd(digits, '0') || 0);
-  if (!Number.isSafeInteger(amount) || amount <= 0) throw new Error('请输入有效的正数金额。');
+  if (!Number.isSafeInteger(amount) || amount <= 0) throw new InputError('请输入有效的正数金额。', 'Amount: enter a positive number within the supported range.');
   return amount;
 }
 
 /** Parse a positive source-to-base exchange rate (base units per source unit). */
 export function parseExchangeRate(value: string): number {
   const normalized = value.trim();
-  if (!/^\d+(?:\.\d{1,12})?$/.test(normalized)) throw new Error('请输入有效的汇率。');
+  if (!/^\d+(?:\.\d{1,12})?$/.test(normalized)) throw new InputError('请输入有效的汇率。', 'Exchange rate: enter a valid positive rate.');
   const rate = Number(normalized);
-  if (!Number.isFinite(rate) || rate <= 0) throw new Error('请输入大于 0 的汇率。');
+  if (!Number.isFinite(rate) || rate <= 0) throw new InputError('请输入大于 0 的汇率。', 'Exchange rate: enter a rate greater than zero.');
   return rate;
 }
 
 /** Convert a minor-unit amount using an explicit, auditable exchange rate. */
 export function convertMinorAmount(amountMinor: number, sourceCurrency: string, baseCurrency: string, rate: number): number {
   if (sourceCurrency.toUpperCase() === baseCurrency.toUpperCase()) return amountMinor;
-  if (!Number.isFinite(rate) || rate <= 0) throw new Error('Exchange rate must be greater than zero');
+  if (!Number.isFinite(rate) || rate <= 0) throw new InputError('请输入有效的正数汇率。', 'Exchange rate: enter a valid positive rate.');
   const sourceMajor = amountMinor / 10 ** currencyMinorDigits(sourceCurrency);
   return Math.round(sourceMajor * rate * 10 ** currencyMinorDigits(baseCurrency));
 }

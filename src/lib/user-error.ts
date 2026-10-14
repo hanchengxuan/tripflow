@@ -1,3 +1,5 @@
+import { InputError } from '@/domain/input-error';
+
 const translations: [RegExp, string][] = [
   [/invalid login credentials|invalid.*token|token.*invalid/i, '登录信息无效，请重新获取验证码。'],
   [/email rate limit|rate limit/i, '请求过于频繁，请稍后再试。'],
@@ -20,13 +22,15 @@ const translations: [RegExp, string][] = [
   [/could not find the function .*update_itinerary_item|schema cache/i, '行程安排服务尚未就绪，请刷新应用后重试。'],
 ];
 
-export function toUserMessage(caught: unknown, fallback = '操作失败，请稍后重试。') {
+export function toUserMessage(caught: unknown, fallback = '操作失败，请稍后重试。', locale: 'zh-CN' | 'en' = 'zh-CN') {
+  if (caught instanceof InputError) return locale === 'en' ? caught.english : caught.message;
   const message = caught instanceof Error
     ? caught.message
     : caught && typeof caught === 'object' && 'message' in caught && typeof caught.message === 'string'
       ? caught.message
       : undefined;
   if (!message) return fallback;
+  if (locale === 'en') return fallback;
   if (/[㐀-鿿]/u.test(message)) return message;
   return translations.find(([pattern]) => pattern.test(message))?.[1] ?? fallback;
 }
