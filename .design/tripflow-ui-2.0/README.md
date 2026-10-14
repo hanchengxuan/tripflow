@@ -115,9 +115,11 @@ Kept current. Update a row when you close a gap.
 | Travel modes compact until expanded | ✅ shipped | `RouteEstimateChip` toggles `src/app/index.tsx` `routeModeControls` |
 | Today raised next-up card with compact edit affordance | ✅ shipped | `src/components/next-up-card.tsx`; edit opens by pressing the card instead of permanent action links |
 | Trips current-trip hero and row-list | ✅ shipped | `src/components/trip-overview-card.tsx`, `src/components/list-surface.tsx`, `src/app/explore.tsx` |
-| Ledger segmented views, row-list activity, manual expense form with optional AI text/voice helper | ✅ implemented; physical-phone gate pending | `src/components/segmented-control.tsx`, `src/components/list-surface.tsx`, `src/app/ledger.tsx` |
+| Ledger segmented views, row-list activity, manual expense form with an inline AI text/voice input | ✅ implemented; physical-phone gate pending | `src/components/segmented-control.tsx`, `src/components/expense-composer.tsx`, `src/components/expense-quick-fill.tsx` |
 
 The travel-mode product decision preserves explicit control without keeping four controls open: the current mode and estimate always remain visible, and pressing that chip reveals all four modes in place. Selecting one collapses the choices while the estimate refreshes.
+
+Ledger keeps one expense form. Optional AI assistance is one compact input with microphone and fill icons, without a mode switch or a separate explanatory panel. The manual fields stay visible, and the generated draft still requires review before saving. On narrow screens, amount and currency fields keep their full content height before payer controls.
 
 ### 0. Auth screens — designed, not yet built
 
