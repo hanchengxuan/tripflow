@@ -8,7 +8,7 @@ import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/
 import { SelectionField } from '@/components/selection-field';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
-import { convertMinorAmount, formatMinorAmount, parseAmountToMinor, parseExchangeRate } from '@/domain/ledger';
+import { currencyAmountPlaceholder, convertMinorAmount, formatMinorAmount, parseAmountToMinor, parseExchangeRate } from '@/domain/ledger';
 import type { TripMember } from '@/domain/models';
 import type { ExchangeRateLoadState } from '@/features/currency/use-exchange-rate';
 import { defaultAllocationValueFor } from '@/features/ledger/default-allocation';
@@ -88,7 +88,7 @@ export function ExpenseComposer(props: {
           <FormField label={tx('支出内容', 'Expense')} value={props.title} onChangeText={props.setTitle} placeholder={tx('例如：晚餐', 'For example: Dinner')} />
           <View style={[styles.amountRow, compact && styles.amountRowCompact]}>
             <View style={[styles.amountField, compact && styles.stackedField]}>
-              <FormField prominent label={tx('金额', 'Amount')} value={props.amount} onChangeText={props.setAmount} keyboardType="decimal-pad" placeholder="860.00" />
+              <FormField prominent label={tx('金额', 'Amount')} value={props.amount} onChangeText={props.setAmount} keyboardType="decimal-pad" placeholder={currencyAmountPlaceholder(props.currency)} />
             </View>
             <View style={[styles.currencyField, compact && styles.currencyFieldCompact]}>
               <SelectionField prominent label={tx('付款币种', 'Payment currency')} value={props.currency} options={props.currencyOptions} onChange={props.setCurrencyOverride} />
@@ -151,7 +151,7 @@ export function ExpenseComposer(props: {
                   value={props.payerAmounts[userId] ?? ''}
                   onChangeText={(value) => props.setPayerAmount(userId, value)}
                   keyboardType="decimal-pad"
-                  placeholder="0.00"
+                  placeholder={currencyAmountPlaceholder(props.currency, 0)}
                 />
               ))}
             </View>
@@ -183,7 +183,7 @@ export function ExpenseComposer(props: {
                   value={props.allocationValues[userId] ?? defaultAllocationValueFor(props.splitMode, index, props.participantIds.length)}
                   onChangeText={(value) => props.setAllocationValue(userId, value)}
                   keyboardType="decimal-pad"
-                  placeholder={props.splitMode === 'exact' ? '0.00' : props.splitMode === 'percentage' ? '50' : '1'}
+                  placeholder={props.splitMode === 'exact' ? currencyAmountPlaceholder(props.currency, 0) : props.splitMode === 'percentage' ? '50' : '1'}
                 />
               ))}
             </View>
