@@ -17,6 +17,9 @@ test('app entry renders without runtime errors', async ({ page }) => {
   await expect(page).toHaveTitle(/TripFlow/);
   await expect(page.locator('body')).toBeVisible();
   await expect(page.getByRole('main')).toHaveCount(1);
+  await expect.poll(() => page.locator('#root').evaluate((root) =>
+    Math.abs(root.getBoundingClientRect().width - document.documentElement.clientWidth)
+  )).toBeLessThan(1);
   await expect(page.locator('meta[name=viewport]')).not.toHaveAttribute('content', /maximum-scale|user-scalable=no/);
   await expect(page.locator('html')).toHaveAttribute('lang', /^(zh-CN|en-US)$/);
   expect(errors).toEqual([]);
