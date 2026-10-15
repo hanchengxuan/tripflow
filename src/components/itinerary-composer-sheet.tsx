@@ -7,7 +7,6 @@ import { DateTimePairField } from '@/components/date-time-pair-field';
 import { DestinationField } from '@/components/destination-field';
 import { DestinationSettings } from '@/components/destination-settings';
 import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/form-controls';
-import { ItineraryEditAssistant } from '@/components/itinerary-edit-assistant';
 import { LocationField } from '@/components/location-field';
 import { QuickTimeShifts } from '@/components/quick-time-shifts';
 import { SettingsDivider, SettingsGroup, SettingsRow } from '@/components/settings-list';
@@ -409,39 +408,6 @@ export function ItineraryComposerSheet({
           </View>
         )}
         {editingItem && !editingItem.linkedStayId ? <QuickTimeShifts allowExtend={kind !== 'lodging'} onShift={applyTimeShift} /> : null}
-        {editingItem ? (
-          <ItineraryEditAssistant
-            key={editingItem.id}
-            trip={activeTrip}
-            item={editingItem}
-            items={itineraryItems}
-            onApply={async (candidate) => {
-              await onSave({
-                itemId: candidate.id,
-                title: candidate.title,
-                locationLabel: candidate.locationLabel,
-                googlePlaceId: candidate.googlePlaceId,
-                destination: candidate.destination,
-                startsAt: candidate.startsAt,
-                endsAt: candidate.endsAt,
-              });
-              const nextTimeZone = candidate.destination?.timeZone ?? activeTrip.defaultTimeZone;
-              const start = isoToZonedDateTime(candidate.startsAt, nextTimeZone);
-              const end = isoToZonedDateTime(candidate.endsAt, nextTimeZone);
-              setTitle(candidate.title);
-              setLocation(candidate.locationLabel ?? '');
-              setGooglePlaceId(candidate.googlePlaceId ?? '');
-              setDestination(candidate.destination);
-              setDestinationText(candidate.destination ? destinationLabel(candidate.destination) : '');
-              setItemTimeZone(nextTimeZone);
-              setItemCurrency(candidate.destination?.currency ?? activeTrip.homeCurrency);
-              setDate(start.date);
-              setStartTime(start.time);
-              setEndDate(end.date);
-              setEndTime(end.time);
-            }}
-          />
-        ) : null}
         {editingItem && planActions.length > 0 ? (
           <SettingsGroup>
             {planActions.map((action, index) => (
