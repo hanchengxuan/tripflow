@@ -398,3 +398,9 @@ Temporary acceptance fixtures are removed after each test; production may contai
 - `parse-expense` accepts exactly one of text, audio or `imageBase64` (`image/jpeg|png|webp`, at most 8,000,000 base64 characters). Photo capture and normalization moved from `ledger.tsx` into `features/ledger/receipt-photo.ts`, shared with the existing receipt buttons; the three client parsers share one request helper.
 - The privacy policy now names receipt photos among the content Gemini processes (effective date 2026-10-15).
 - Deploy `parse-expense` together with the app change: an old function rejects image requests with "请提供文字或语音记账内容". Real Gemini receipt reading is verified only after deploy; locally the image path was proven up to the Gemini call with a dummy key.
+
+## October 16 destination atlas fixes
+
+- Pins were drawn about 10.7° of longitude too far east (Tokyo sat in the ocean) and drifted further from the equator. `@svg-maps/world` is Mercator with its left edge near 169°W; `projectDestination` now uses constants measured against country outlines, and a test checks that city pins land inside their country.
+- Zoom used to scale a rendered layer up to 3×, so outlines blurred and pins grew and overlapped. The map now zooms by changing the SVG viewBox (`atlas-camera.ts`), opens fitted to the trip's destinations (a single-city trip shows its region), keeps pins a fixed size, and labels each pin with its city.
+- Tapping a pin with several plans did nothing visible: the first place was already selected and its details sat below the map. It now opens a sheet listing that place's plans; a single-plan pin still opens the plan directly. On web the sheet opens one tick later so the same click cannot land on the first row under the pointer.

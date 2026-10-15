@@ -164,9 +164,19 @@ export function destinationLabel(destination: Pick<DestinationSuggestion, 'cityN
   return [destination.cityName, destination.countryName].join(' · ');
 }
 
+/**
+ * Places a coordinate on the @svg-maps/world artwork (1010 × 666). That map is
+ * Mercator with its left edge near 169°W, so x is offset rather than starting
+ * at 180°W; the constants were measured against country outlines in the file.
+ */
+const MAP_UNITS_PER_DEGREE = 1010 / 360;
+const MAP_X_AT_PRIME_MERIDIAN = 474.9;
+const MAP_Y_AT_EQUATOR = 463.5;
+
 export function projectDestination(latitude: number, longitude: number) {
-  const x = ((longitude + 180) / 360) * 1010;
-  const y = Math.max(18, Math.min(666 - 18, ((90 - latitude) / 180) * 666 + 150));
+  const x = (MAP_X_AT_PRIME_MERIDIAN + longitude * MAP_UNITS_PER_DEGREE + 1010) % 1010;
+  const mercatorDegrees = (Math.log(Math.tan(Math.PI / 4 + (Math.max(-85, Math.min(85, latitude)) * Math.PI) / 360)) * 180) / Math.PI;
+  const y = Math.max(0, Math.min(666, MAP_Y_AT_EQUATOR - mercatorDegrees * MAP_UNITS_PER_DEGREE));
   return { x, y };
 }
 
