@@ -23,6 +23,7 @@ import { useI18n } from '@/features/i18n/i18n-provider';
 import { buildInviteUrl, parseInviteToken } from '@/features/invites/invite-link';
 import { useMvp } from '@/features/mvp/mvp-provider';
 import { defaultHomeCurrency, defaultTripTimeZone } from '@/features/trips/trip-defaults';
+import { tripPhase, type TripPhase } from '@/features/trips/trip-phase';
 import { useTripOpener } from '@/features/trips/use-trip-opener';
 import { useTheme } from '@/hooks/use-theme';
 import { toUserMessage } from '@/lib/user-error';
@@ -33,6 +34,12 @@ function dateOffset(days: number) {
   const date = new Date();
   date.setDate(date.getDate() + days);
   return date.toISOString().slice(0, 10);
+}
+
+function tripPhaseLabel(phase: TripPhase, tx: (zh: string, en: string) => string) {
+  if (phase === 'upcoming') return tx('即将出发', 'Upcoming');
+  if (phase === 'ended') return tx('已结束', 'Ended');
+  return tx('进行中', 'In progress');
 }
 
 function formatTripRange(trip: Trip, locale: string) {
@@ -67,6 +74,7 @@ export default function TripsScreen() {
   const roleLabel = (role: TripRole) => locale === 'zh-CN' ? tripRoleLabels[role] : tripRoleLabelsEn[role];
 
   const tripOpener = useTripOpener();
+  const [openedAt] = useState(() => new Date());
   const [panel, setPanel] = useState<Panel>();
   const [draft, setDraft] = useState<TripDraft>(() => ({
     name: '',
@@ -247,7 +255,7 @@ export default function TripsScreen() {
 
       {activeTrip ? (
         <TripOverviewCard
-          activeLabel={tx('进行中', 'Active')}
+          activeLabel={tripPhaseLabel(tripPhase(activeTrip, openedAt), tx)}
           currentLabel={tx('当前行程 Active', 'Current trip')}
           dateLabel={tx('日期 Dates', 'Dates')}
           dateRange={formatTripRange(activeTrip, locale)}
