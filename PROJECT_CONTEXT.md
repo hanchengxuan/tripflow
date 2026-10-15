@@ -391,3 +391,10 @@ Temporary acceptance fixtures are removed after each test; production may contai
 - Settlement stays ledger-wide by design: nothing auto-settles while any member balance is open, and manual marks are never changed.
 - The migration backfills every trip once, so already-balanced ledgers (such as single-member test trips) become settled on apply.
 - `supabase/tests/auto-settle-acceptance.sql` covers self-paid, shared debt, ledger-wide status, transfer, new debt, an edit that removes the debt, manual marks, and delete.
+
+## October 15 receipt photo to expense draft
+
+- The ledger quick-fill bar has a camera button: one tap takes a photo (camera on native, file picker on web), attaches it as the expense receipt, and asks `parse-expense` to read the paid total, currency and merchant into an editable draft. If reading fails, the photo stays attached and the traveller fills the form by hand.
+- `parse-expense` accepts exactly one of text, audio or `imageBase64` (`image/jpeg|png|webp`, at most 8,000,000 base64 characters). Photo capture and normalization moved from `ledger.tsx` into `features/ledger/receipt-photo.ts`, shared with the existing receipt buttons; the three client parsers share one request helper.
+- The privacy policy now names receipt photos among the content Gemini processes (effective date 2026-10-15).
+- Deploy `parse-expense` together with the app change: an old function rejects image requests with "请提供文字或语音记账内容". Real Gemini receipt reading is verified only after deploy; locally the image path was proven up to the Gemini call with a dummy key.

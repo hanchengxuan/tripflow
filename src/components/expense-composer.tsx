@@ -33,6 +33,7 @@ export function ExpenseComposer(props: {
   setAiText: (value: string) => void;
   parseWithAi: () => Promise<void>;
   parseVoiceExpense: (audioBase64: string, audioMimeType: string) => Promise<void>;
+  scanReceipt: () => Promise<void>;
   busyAction?: 'parse' | 'save' | 'receipt';
   aiNotice?: string;
   formError?: string;
@@ -78,6 +79,7 @@ export function ExpenseComposer(props: {
         onChangeText={props.setAiText}
         onFill={props.parseWithAi}
         onAudioReady={props.parseVoiceExpense}
+        onScanReceipt={props.scanReceipt}
         busy={Boolean(props.busyAction)}
         processing={props.busyAction === 'parse'}
         tx={tx}

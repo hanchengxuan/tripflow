@@ -1,8 +1,6 @@
 import { Image } from 'expo-image';
-import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
-import * as ImagePicker from 'expo-image-picker';
 import { Fragment, useMemo, useState } from 'react';
-import { LayoutAnimation, Linking, Pressable, StyleSheet, View } from 'react-native';
+import { LayoutAnimation, Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { InlineNotice } from '@/components/form-controls';
 import { ExpenseComposer, type ReceiptDraft } from '@/components/expense-composer';
@@ -30,11 +28,12 @@ import {
 } from '@/domain/ledger';
 import { minimizeSettlementTransfers, splitByExactAmounts, splitByPercentages, splitByWeights, splitEqually, type SettlementTransfer } from '@/domain/money';
 import type { Expense, ItineraryItem, Settlement, TripMember } from '@/domain/models';
-import { type AiExpenseDraft, parseExpenseAudio, parseExpenseText } from '@/features/ai/expense-parser';
+import { type AiExpenseDraft, parseExpenseAudio, parseExpenseImage, parseExpenseText } from '@/features/ai/expense-parser';
 import { formatExchangeRate } from '@/features/currency/exchange-rate';
 import { useExchangeRate, type ExchangeRateLoadState } from '@/features/currency/use-exchange-rate';
 import { useI18n } from '@/features/i18n/i18n-provider';
 import { defaultAllocationValueFor } from '@/features/ledger/default-allocation';
+import { captureReceiptPhoto } from '@/features/ledger/receipt-photo';
 import { useMvp } from '@/features/mvp/mvp-provider';
 import { InputError } from '@/domain/input-error';
 import { validateExpenseDraft } from '@/features/ledger/validate-expense-draft';
@@ -299,49 +298,50 @@ export default function LedgerScreen() {
     setAllocationValues((current) => Object.fromEntries(participantIds.map((participantId, index) => [participantId, current[participantId] ?? defaultAllocationValueFor(mode, index, participantIds.length)])));
   }
 
+  function reportPhotoProblem(status: 'permission-denied' | 'too-large') {
+    setFormError(status === 'permission-denied'
+      ? tx('需要相机权限才能拍摄小票。你仍可从相册选择。', 'Camera permission is required to photograph a receipt. You can still choose one from the library.')
+      : tx('小票图片不能超过 10 MB。', 'Receipt images must be 10 MB or smaller.'));
+  }
+
   async function pickReceipt(source: 'camera' | 'library', expenseId?: string) {
     setFormError(undefined);
     try {
-      if (source === 'camera') {
-        const permission = await ImagePicker.requestCameraPermissionsAsync();
-        if (!permission.granted) {
-          setFormError(tx('需要相机权限才能拍摄小票。你仍可从相册选择。', 'Camera permission is required to photograph a receipt. You can still choose one from the library.'));
-          return;
-        }
-      }
-      const result = source === 'camera'
-        ? await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.85 })
-        : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.85 });
-      if (result.canceled) return;
-      const asset = result.assets[0];
-      const context = ImageManipulator.manipulate(asset.uri);
-      if (asset.width > 2000) context.resize({ width: 2000, height: null });
-      const rendered = await context.renderAsync();
-      const normalized = await rendered.saveAsync({
-        format: SaveFormat.JPEG,
-        compress: 0.75,
-        base64: true,
-      });
-      const nextReceipt: ReceiptDraft = {
-        uri: normalized.uri,
-        base64: normalized.base64,
-        mimeType: 'image/jpeg',
-      };
-      const estimatedSize = normalized.base64 ? Math.ceil(normalized.base64.length * 0.75) : 0;
-      if (estimatedSize > 10 * 1024 * 1024) {
-        setFormError(tx('小票图片不能超过 10 MB。', 'Receipt images must be 10 MB or smaller.'));
-        return;
-      }
+      const photo = await captureReceiptPhoto(source);
+      if (photo.status === 'canceled') return;
+      if (photo.status !== 'ok') return reportPhotoProblem(photo.status);
       if (!expenseId) {
-        setReceipt(nextReceipt);
+        setReceipt(photo.receipt);
         return;
       }
       setBusyAction('receipt');
-      await attachExpenseReceipt(expenseId, nextReceipt);
+      await attachExpenseReceipt(expenseId, photo.receipt);
       setSuccess(tx('小票已添加到这笔支出。', 'Receipt added to this expense.'));
       setExpandedExpenseId(expenseId);
     } catch (caught) {
       setFormError(toUserMessage(caught, tx('无法添加小票，请稍后重试。', 'Could not add the receipt. Please try again.'), locale));
+    } finally {
+      setBusyAction(undefined);
+    }
+  }
+
+  async function scanReceipt() {
+    if (!activeTrip) return;
+    setFormError(undefined);
+    setAiNotice(undefined);
+    try {
+      const photo = await captureReceiptPhoto(Platform.OS === 'web' ? 'library' : 'camera');
+      if (photo.status === 'canceled') return;
+      if (photo.status !== 'ok') return reportPhotoProblem(photo.status);
+      setReceipt(photo.receipt);
+      setBusyAction('parse');
+      applyAiDraft(await parseExpenseImage({ tripId: activeTrip.id, imageBase64: photo.receipt.base64, imageMimeType: 'image/jpeg', memberIds }));
+      setAiNotice((notice) => [notice, tx('小票照片已附上，保存时一起上传。', 'The receipt photo is attached and uploads when you save.')].join(' '));
+    } catch (caught) {
+      setFormError([
+        toUserMessage(caught, tx('没能读懂这张小票。', 'Could not read that receipt.'), locale),
+        tx('照片已附上，可以手动填写。', 'The photo is attached; enter the details manually.'),
+      ].join(' '));
     } finally {
       setBusyAction(undefined);
     }
@@ -661,6 +661,7 @@ export default function LedgerScreen() {
           members={members}
           names={names}
           parseVoiceExpense={parseVoiceExpense}
+          scanReceipt={scanReceipt}
           parseWithAi={parseWithAi}
           participantIds={participantIds}
           payerAmounts={payerAmounts}
