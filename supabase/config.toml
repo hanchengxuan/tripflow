@@ -9,3 +9,6 @@ verify_jwt = false
 
 [functions.parse-booking]
 verify_jwt = false
+
+[functions.ask-trip]
+verify_jwt = false
