@@ -1,21 +1,19 @@
-/* eslint-disable react-hooks/immutability -- Reanimated shared values are intentionally mutable in worklets. */
 import worldMap from '@svg-maps/world';
 import { useEffect, useMemo, useState } from 'react';
 import { Animated, Pressable, StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Reanimated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import { useSharedValue } from 'react-native-reanimated';
 import Svg, { Line, Path, Polyline, Rect } from 'react-native-svg';
 
+import { BottomSheet } from '@/components/bottom-sheet';
 import { SectionHeading } from '@/components/section-heading';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Size, Spacing } from '@/constants/theme';
 import type { ItineraryItem } from '@/domain/models';
+import { cameraHeight, clampCamera, fitCamera, MAP_HEIGHT, MAP_WIDTH, pointInView, zoomCamera, type AtlasCamera } from '@/features/destinations/atlas-camera';
 import { projectDestination } from '@/features/destinations/destination-search';
 import { formatZonedDateTimeRange } from '@/lib/trip-time';
 import { useTheme } from '@/hooks/use-theme';
-
-const MAP_WIDTH = 1010;
-const MAP_HEIGHT = 666;
 
 type DestinationStatus = 'visited' | 'current' | 'planned';
 
@@ -74,79 +72,11 @@ export function DestinationAtlas({
 }) {
   const theme = useTheme();
   const [selectedKey, setSelectedKey] = useState<string>();
+  const [listKey, setListKey] = useState<string>();
   const [now, setNow] = useState(() => Date.now());
   const [mapOpacity] = useState(() => new Animated.Value(0));
   const [mapOffset] = useState(() => new Animated.Value(10));
   const [pulse] = useState(() => new Animated.Value(1));
-  const mapScale = useSharedValue(1);
-  const savedScale = useSharedValue(1);
-  const mapTranslateX = useSharedValue(0);
-  const mapTranslateY = useSharedValue(0);
-  const panStartX = useSharedValue(0);
-  const panStartY = useSharedValue(0);
-  const viewportWidth = useSharedValue(0);
-  const viewportHeight = useSharedValue(0);
-
-  const mapTransformStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: mapTranslateX.value },
-      { translateY: mapTranslateY.value },
-      { scale: mapScale.value },
-    ],
-  }));
-
-  const panGesture = Gesture.Pan()
-    .minDistance(8)
-    .onStart(() => {
-      panStartX.value = mapTranslateX.value;
-      panStartY.value = mapTranslateY.value;
-    })
-    .onUpdate((event) => {
-      const maxX = Math.max(0, (viewportWidth.value * (mapScale.value - 1)) / 2);
-      const maxY = Math.max(0, (viewportHeight.value * (mapScale.value - 1)) / 2);
-      mapTranslateX.value = Math.max(-maxX, Math.min(maxX, panStartX.value + event.translationX));
-      mapTranslateY.value = Math.max(-maxY, Math.min(maxY, panStartY.value + event.translationY));
-    })
-    .onEnd(() => {
-      mapTranslateX.value = withSpring(mapTranslateX.value);
-      mapTranslateY.value = withSpring(mapTranslateY.value);
-    });
-
-  const pinchGesture = Gesture.Pinch()
-    .onStart(() => {
-      savedScale.value = mapScale.value;
-    })
-    .onUpdate((event) => {
-      const nextScale = Math.max(1, Math.min(3, savedScale.value * event.scale));
-      const maxX = Math.max(0, (viewportWidth.value * (nextScale - 1)) / 2);
-      const maxY = Math.max(0, (viewportHeight.value * (nextScale - 1)) / 2);
-      mapScale.value = nextScale;
-      mapTranslateX.value = Math.max(-maxX, Math.min(maxX, mapTranslateX.value));
-      mapTranslateY.value = Math.max(-maxY, Math.min(maxY, mapTranslateY.value));
-    })
-    .onEnd(() => {
-      mapScale.value = withSpring(mapScale.value);
-      mapTranslateX.value = withSpring(mapTranslateX.value);
-      mapTranslateY.value = withSpring(mapTranslateY.value);
-    });
-
-  const mapGesture = Gesture.Simultaneous(panGesture, pinchGesture);
-
-  function zoomMap(delta: number) {
-    const nextScale = Math.max(1, Math.min(3, mapScale.value + delta));
-    mapScale.value = withSpring(nextScale);
-    if (nextScale === 1) {
-      mapTranslateX.value = withSpring(0);
-      mapTranslateY.value = withSpring(0);
-    }
-  }
-
-  function resetMap() {
-    mapScale.value = withSpring(1);
-    mapTranslateX.value = withSpring(0);
-    mapTranslateY.value = withSpring(0);
-  }
-
   useEffect(() => {
     const clock = setInterval(() => setNow(Date.now()), 60_000);
     return () => clearInterval(clock);
@@ -179,6 +109,32 @@ export function DestinationAtlas({
   }, [items, now]);
 
   const selected = destinations.find(({ key }) => key === selectedKey) ?? destinations[0];
+  const listDestination = destinations.find(({ key }) => key === listKey);
+
+  const fitKey = destinations.map(({ key }) => key).join('|');
+  const fittedCamera = useMemo(() => fitCamera(destinations), [destinations]);
+  const [cameraState, setCameraState] = useState<{ fitKey: string; camera: AtlasCamera }>();
+  const camera = cameraState?.fitKey === fitKey ? cameraState.camera : fittedCamera;
+  const setCamera = (next: AtlasCamera) => setCameraState({ fitKey, camera: clampCamera(next) });
+  const viewportWidth = useSharedValue(1);
+  const panStart = useSharedValue(camera);
+  const pinchStart = useSharedValue(camera);
+
+  // Zooming redraws the SVG viewBox instead of scaling a rendered layer, so outlines stay sharp and pins keep their size.
+  const panGesture = Gesture.Pan()
+    .runOnJS(true)
+    .minDistance(8)
+    .maxPointers(1)
+    .onStart(() => { panStart.value = camera; })
+    .onUpdate(({ translationX, translationY }) => {
+      const unitsPerPixel = panStart.value.width / viewportWidth.value;
+      setCamera({ ...panStart.value, x: panStart.value.x - translationX * unitsPerPixel, y: panStart.value.y - translationY * unitsPerPixel });
+    });
+  const pinchGesture = Gesture.Pinch()
+    .runOnJS(true)
+    .onStart(() => { pinchStart.value = camera; })
+    .onUpdate(({ scale }) => setCamera(zoomCamera(pinchStart.value, scale)));
+  const mapGesture = Gesture.Simultaneous(panGesture, pinchGesture);
 
   useEffect(() => {
     const entrance = Animated.parallel([
@@ -197,6 +153,23 @@ export function DestinationAtlas({
     };
   }, [mapOffset, mapOpacity, pulse]);
 
+  function planRow(item: ItineraryItem) {
+    return (
+      <Pressable
+        key={item.id}
+        accessibilityRole={onViewItem ? 'button' : undefined}
+        onPress={onViewItem ? () => onViewItem(item) : undefined}
+        style={({ pressed }) => [styles.planRow, pressed && styles.pressed]}>
+        <View style={[styles.planDot, { backgroundColor: theme.accent }]} />
+        <View style={styles.planCopy}>
+          <ThemedText type="smallBold" numberOfLines={1}>{item.title}</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">{formatZonedDateTimeRange(item.startsAt, item.endsAt, languageTag, item.destination?.timeZone ?? 'UTC')}</ThemedText>
+        </View>
+        {onViewItem ? <ThemedText type="smallBold" style={{ color: theme.link }}>{tx('查看', 'View')}</ThemedText> : null}
+      </Pressable>
+    );
+  }
+
   const orderedPoints = destinations.map(({ x, y }) => `${x},${y}`).join(' ');
   const selectedCountryCodes = new Set(destinations.map(({ countryCode }) => countryCode.toLowerCase()));
 
@@ -214,15 +187,14 @@ export function DestinationAtlas({
         <View
           style={styles.mapViewport}
           onLayout={({ nativeEvent }) => {
-            viewportWidth.value = nativeEvent.layout.width;
-            viewportHeight.value = nativeEvent.layout.height;
+            viewportWidth.value = Math.max(1, nativeEvent.layout.width);
           }}>
           <GestureDetector gesture={mapGesture}>
-            <Reanimated.View style={[styles.mapContent, mapTransformStyle]}>
-              <Svg width="100%" height="100%" viewBox={`0 0 ${MAP_WIDTH} ${MAP_HEIGHT}`}>
+            <View style={styles.mapContent}>
+              <Svg width="100%" height="100%" viewBox={`${camera.x} ${camera.y} ${camera.width} ${cameraHeight(camera)}`}>
                 <Rect width={MAP_WIDTH} height={MAP_HEIGHT} fill={theme.mapBackground} />
-                {[130, 250, 370, 490].map((y) => <Line key={`h-${y}`} x1="0" y1={y} x2={MAP_WIDTH} y2={y} stroke={theme.mapGrid} strokeWidth="1" opacity="0.45" />)}
-                {[150, 350, 550, 750, 950].map((x) => <Line key={`v-${x}`} x1={x} y1="0" x2={x} y2={MAP_HEIGHT} stroke={theme.mapGrid} strokeWidth="1" opacity="0.35" />)}
+                {[130, 250, 370, 490].map((y) => <Line key={`h-${y}`} x1="0" y1={y} x2={MAP_WIDTH} y2={y} stroke={theme.mapGrid} strokeWidth="1" vectorEffect="non-scaling-stroke" opacity="0.45" />)}
+                {[150, 350, 550, 750, 950].map((x) => <Line key={`v-${x}`} x1={x} y1="0" x2={x} y2={MAP_HEIGHT} stroke={theme.mapGrid} strokeWidth="1" vectorEffect="non-scaling-stroke" opacity="0.35" />)}
                 {(worldMap.locations as { id: string; path: string }[]).map((location) => (
                   <Path
                     key={location.id}
@@ -230,12 +202,15 @@ export function DestinationAtlas({
                     fill={selectedCountryCodes.has(location.id) ? theme.mapLandSelected : theme.mapLand}
                     stroke={theme.mapGrid}
                     strokeWidth="0.7"
+                    vectorEffect="non-scaling-stroke"
                     opacity="0.86"
                   />
                 ))}
-                {orderedPoints ? <Polyline points={orderedPoints} fill="none" stroke={theme.mapRoute} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" opacity="0.86" /> : null}
+                {orderedPoints ? <Polyline points={orderedPoints} fill="none" stroke={theme.mapRoute} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" opacity="0.86" /> : null}
               </Svg>
               {destinations.map((destination, index) => {
+                const { left, top } = pointInView(camera, destination);
+                if (left < -0.05 || left > 1.05 || top < -0.05 || top > 1.05) return null;
                 const selectedMarker = destination.key === selected?.key;
                 const pinColor = statusColor(destination.status, theme);
                 return (
@@ -247,17 +222,22 @@ export function DestinationAtlas({
                     onPress={() => {
                       setSelectedKey(destination.key);
                       if (destination.items.length === 1) onViewItem?.(destination.items[0]);
+                      // On web the click that follows this press would land on the sheet row now under the pointer.
+                      else setTimeout(() => setListKey(destination.key), 0);
                     }}
-                    style={[styles.markerHit, { left: `${(destination.x / MAP_WIDTH) * 100}%`, top: `${(destination.y / MAP_HEIGHT) * 100}%` }]}
+                    style={[styles.markerHit, { left: `${left * 100}%`, top: `${top * 100}%` }]}
                     testID={`destination-marker-${index}`}>
                     <Animated.View style={[styles.markerGlow, { backgroundColor: pinColor, transform: [{ scale: selectedMarker || destination.status === 'current' ? pulse : 1 }] }]} />
                     <View style={[styles.marker, { backgroundColor: pinColor, borderColor: theme.mapBackground }, selectedMarker && styles.markerSelected]}>
                       <ThemedText style={{ color: destination.status === 'visited' ? theme.mapBackground : theme.textOnAccent, fontSize: 10, lineHeight: 12, fontWeight: '800' }}>{destination.items.length}</ThemedText>
                     </View>
+                    <View pointerEvents="none" style={[styles.markerLabel, { backgroundColor: theme.mapBackground }]}>
+                      <ThemedText numberOfLines={1} style={[styles.markerLabelText, { color: theme.text }]}>{destination.cityName}</ThemedText>
+                    </View>
                   </Pressable>
                 );
               })}
-            </Reanimated.View>
+            </View>
           </GestureDetector>
         </View>
       </Animated.View>
@@ -270,21 +250,21 @@ export function DestinationAtlas({
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={tx('缩小地图', 'Zoom out map')}
-            onPress={() => zoomMap(-0.5)}
+            onPress={() => setCamera(zoomCamera(camera, 1 / 1.6))}
             style={({ pressed }) => [styles.mapControl, { backgroundColor: theme.backgroundElement, borderColor: theme.border, shadowColor: theme.shadow }, pressed && styles.pressed]}>
             <ThemedText type="subtitle" style={{ color: theme.text }}>−</ThemedText>
           </Pressable>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={tx('放大地图', 'Zoom in map')}
-            onPress={() => zoomMap(0.5)}
+            onPress={() => setCamera(zoomCamera(camera, 1.6))}
             style={({ pressed }) => [styles.mapControl, { backgroundColor: theme.backgroundElement, borderColor: theme.border, shadowColor: theme.shadow }, pressed && styles.pressed]}>
             <ThemedText type="subtitle" style={{ color: theme.text }}>＋</ThemedText>
           </Pressable>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={tx('重置地图', 'Reset map')}
-            onPress={resetMap}
+            onPress={() => setCameraState(undefined)}
             style={({ pressed }) => [styles.mapControl, { backgroundColor: theme.backgroundElement, borderColor: theme.border, shadowColor: theme.shadow }, pressed && styles.pressed]}>
             <ThemedText type="smallBold" style={{ color: theme.text }}>1:1</ThemedText>
           </Pressable>
@@ -304,20 +284,7 @@ export function DestinationAtlas({
             </View>
           </View>
           <View style={styles.planList}>
-            {selected.items.slice(0, 4).map((item) => (
-              <Pressable
-                key={item.id}
-                accessibilityRole={onViewItem ? 'button' : undefined}
-                onPress={onViewItem ? () => onViewItem(item) : undefined}
-                style={({ pressed }) => [styles.planRow, pressed && styles.pressed]}>
-                <View style={[styles.planDot, { backgroundColor: theme.accent }]} />
-                <View style={styles.planCopy}>
-                  <ThemedText type="smallBold" numberOfLines={1}>{item.title}</ThemedText>
-                  <ThemedText type="small" themeColor="textSecondary">{formatZonedDateTimeRange(item.startsAt, item.endsAt, languageTag, item.destination?.timeZone ?? 'UTC')}</ThemedText>
-                </View>
-                {onViewItem ? <ThemedText type="smallBold" style={{ color: theme.link }}>{tx('查看', 'View')}</ThemedText> : null}
-              </Pressable>
-            ))}
+            {selected.items.slice(0, 4).map(planRow)}
             {selected.items.length > 4 ? <ThemedText type="small" themeColor="textSecondary">{tx(`还有 ${selected.items.length - 4} 项安排`, `${selected.items.length - 4} more plans`)}</ThemedText> : null}
           </View>
         </View>
@@ -327,6 +294,9 @@ export function DestinationAtlas({
           <ThemedText type="small" themeColor="textSecondary">{tx('在添加安排时搜索城市即可，时区和币种会自动带入。', 'Search a city while adding a plan; timezone and currency will be suggested automatically.')}</ThemedText>
         </View>
       )}
+      <BottomSheet onDismiss={() => setListKey(undefined)} title={listDestination?.cityName ?? ''} visible={Boolean(listDestination)}>
+        <View style={styles.planList}>{listDestination?.items.map(planRow)}</View>
+      </BottomSheet>
       <ThemedText type="small" themeColor="textMuted" style={styles.attribution}>{tx('城市坐标：Open-Meteo · 世界轮廓：SVG Maps', 'City coordinates: Open-Meteo · World outline: SVG Maps')}</ThemedText>
     </View>
   );
@@ -343,6 +313,8 @@ const styles = StyleSheet.create({
   markerHit: { position: 'absolute', width: 44, height: 44, marginLeft: -22, marginTop: -22, alignItems: 'center', justifyContent: 'center' },
   markerGlow: { position: 'absolute', width: 30, height: 30, borderRadius: 15, opacity: 0.28 },
   marker: { minWidth: 25, height: 25, borderRadius: 13, borderWidth: 2, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 3 } },
+  markerLabel: { position: 'absolute', left: 38, borderRadius: Radius.pill, paddingHorizontal: 6, paddingVertical: 1, opacity: 0.9 },
+  markerLabelText: { fontSize: 11, lineHeight: 15, fontWeight: '600' },
   markerSelected: { minWidth: 31, height: 31, borderRadius: 16, borderWidth: 3 },
   mapCaption: { flex: 1, minWidth: 0, gap: Spacing.half },
   detail: { borderWidth: 1, borderRadius: 20, padding: 16, gap: 14 },
