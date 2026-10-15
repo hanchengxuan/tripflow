@@ -2,9 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ActionButton, InlineNotice } from '@/components/form-controls';
+import { HealthFixSuggestion } from '@/components/health-fix-suggestion';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing, Radius } from '@/constants/theme';
-import type { ItineraryItem } from '@/domain/models';
+import type { ItineraryItem, Trip } from '@/domain/models';
+import { suggestHealthFix, type HealthFix } from '@/features/ai/itinerary-health-fix';
 import { useI18n } from '@/features/i18n/i18n-provider';
 import { analyzeItineraryHealth, hasItineraryHealthIssues, type ItineraryHealthIssue, type ItineraryHealthReport } from '@/features/ai/itinerary-health';
 import { useTheme } from '@/hooks/use-theme';
@@ -13,6 +15,8 @@ import { toUserMessage } from '@/lib/user-error';
 interface ItineraryHealthCardProps {
   items: ItineraryItem[];
   onEditItem?: (item: ItineraryItem) => void;
+  /** Enables one-tap fixes for timing issues. Absent for view-only travellers. */
+  fixes?: { trip: Pick<Trip, 'startsOn' | 'endsOn' | 'defaultTimeZone'>; onApply: (fix: HealthFix) => Promise<void> };
 }
 
 function issueLabel(issue: ItineraryHealthIssue, tx: (zh: string, en: string) => string) {
@@ -33,7 +37,7 @@ function severityLabel(severity: ItineraryHealthIssue['severity'], tx: (zh: stri
   }[severity];
 }
 
-export function ItineraryHealthCard({ items, onEditItem }: ItineraryHealthCardProps) {
+export function ItineraryHealthCard({ items, onEditItem, fixes }: ItineraryHealthCardProps) {
   const theme = useTheme();
   const { locale, tx } = useI18n();
   const [reportState, setReportState] = useState<{ signature: string; report: ItineraryHealthReport }>();
@@ -109,6 +113,7 @@ export function ItineraryHealthCard({ items, onEditItem }: ItineraryHealthCardPr
             const issueItems = issue.itemIds
               .map((itemId) => itemById.get(itemId))
               .filter((item): item is ItineraryItem => Boolean(item));
+            const fix = fixes ? suggestHealthFix(issue, items, fixes.trip) : undefined;
             return (
               <View key={issue.id} style={[styles.issue, { borderColor: theme.border }]}>
                 <View style={styles.issueHeader}>
@@ -123,6 +128,7 @@ export function ItineraryHealthCard({ items, onEditItem }: ItineraryHealthCardPr
                 <ThemedText type="smallBold">{issue.title}</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">{issue.reason}</ThemedText>
                 {issue.question ? <ThemedText type="small" style={{ color: theme.info }}>{issue.question}</ThemedText> : null}
+                {fix && fixes ? <HealthFixSuggestion fix={fix} timeZone={fixes.trip.defaultTimeZone} onApply={fixes.onApply} /> : null}
                 {onEditItem && issueItems.length > 0 ? (
                   <View style={styles.issueActions}>
                     {issueItems.map((item) => (

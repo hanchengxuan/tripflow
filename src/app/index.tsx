@@ -17,6 +17,7 @@ import { ThemedText } from '@/components/themed-text';
 import { itineraryKindLabels, itineraryKindLabelsEn } from '@/constants/options';
 import type { ThemeColor } from '@/constants/theme';
 import type { ItineraryItem, ItineraryKind, RouteTravelMode } from '@/domain/models';
+import type { HealthFix } from '@/features/ai/itinerary-health-fix';
 import { destinationLabel } from '@/features/destinations/destination-search';
 import { useI18n } from '@/features/i18n/i18n-provider';
 import { useMvp } from '@/features/mvp/mvp-provider';
@@ -183,6 +184,19 @@ export default function TodayScreen() {
       && Boolean(previousPlaceFor(item)?.locationLabel)
       && Boolean(item.locationLabel)
       && !itineraryItems.some(({ linkedStayId }) => linkedStayId === item.id);
+  }
+
+  async function applyHealthFix({ candidate }: HealthFix) {
+    await saveItineraryItem({
+      itemId: candidate.id,
+      title: candidate.title,
+      locationLabel: candidate.locationLabel,
+      googlePlaceId: candidate.googlePlaceId,
+      destination: candidate.destination,
+      startsAt: candidate.startsAt,
+      endsAt: candidate.endsAt,
+    });
+    setSuccess(tx(`已调整“${candidate.title}”的时间。`, `Updated the time of “${candidate.title}”.`));
   }
 
   function beginEdit(item: ItineraryItem) {
@@ -463,7 +477,13 @@ export default function TodayScreen() {
         </InfoCard>
       )}
 
-      {activeTrip ? <ItineraryHealthCard items={upcomingItems.slice(0, 30)} onEditItem={canEdit ? beginEdit : undefined} /> : null}
+      {activeTrip ? (
+        <ItineraryHealthCard
+          items={upcomingItems.slice(0, 30)}
+          onEditItem={canEdit ? beginEdit : undefined}
+          fixes={canEdit ? { trip: activeTrip, onApply: applyHealthFix } : undefined}
+        />
+      ) : null}
 
       {activeTrip && !canEdit ? (
         <View style={[styles.readOnlyBadge, { backgroundColor: theme.backgroundSelected }]}>
