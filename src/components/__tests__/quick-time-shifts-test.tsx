@@ -10,7 +10,6 @@ jest.mock('react-native-safe-area-context', () => ({ useSafeAreaInsets: () => ({
 jest.mock('@/features/i18n/i18n-provider', () => ({ useI18n: () => ({ locale: 'en', languageTag: 'en-US', tx: (_zh: string, en: string) => en, formatDateTime: (value: string) => value }) }));
 jest.mock('@/components/location-field', () => ({ LocationField: () => null }));
 jest.mock('@/components/destination-field', () => ({ DestinationField: () => null }));
-jest.mock('@/components/itinerary-edit-assistant', () => ({ ItineraryEditAssistant: () => null }));
 
 const trip: Trip = { id: 'trip-1', createdBy: 'owner-1', name: 'Tokyo', startsOn: '2026-10-20', endsOn: '2026-10-25', homeCurrency: 'JPY', defaultTimeZone: 'Asia/Tokyo' };
 const dinner = {
