@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Linking, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Linking, StyleSheet, View } from 'react-native';
 
 import { BookingDraftFields } from '@/components/booking-draft-fields';
 import { BottomSheet } from '@/components/bottom-sheet';
@@ -7,6 +7,7 @@ import { ConfirmSheet } from '@/components/confirm-sheet';
 import { ActionButton, InlineNotice } from '@/components/form-controls';
 import { SettingsGroup, SettingsRow } from '@/components/settings-list';
 import { ThemedText } from '@/components/themed-text';
+import { useTheme } from '@/hooks/use-theme';
 import { Spacing } from '@/constants/theme';
 import { deleteBookingDocument, getBookingDocumentUrl, type BookingDocument } from '@/data/booking-repository';
 import type { Trip } from '@/domain/models';
@@ -16,6 +17,7 @@ import { useI18n } from '@/features/i18n/i18n-provider';
 export function BookingImportSheet({ trip, userId, canEdit, onDismiss, onImported }: {
   trip: Trip; userId: string; canEdit: boolean; onDismiss: () => void; onImported: (message: string) => void;
 }) {
+  const theme = useTheme();
   const { tx, locale } = useI18n();
   const flow = useBookingImport(trip, userId, locale, tx);
   const [deleting, setDeleting] = useState<BookingDocument>();
@@ -52,8 +54,15 @@ export function BookingImportSheet({ trip, userId, canEdit, onDismiss, onImporte
 
   if (deleting) return <ConfirmSheet visible title={tx('删除订单原件？', 'Delete booking original?')} detail={deleting.file_name} consequence={tx('已加入的安排会保留。原件删除后无法恢复。', 'Imported plans remain. The original cannot be recovered.')} confirmLabel={tx('删除原件', 'Delete original')} onConfirm={() => void removeOriginal()} onDismiss={() => { if (!documentBusy) setDeleting(undefined); }} busy={documentBusy} error={flow.error} />;
 
-  return <BottomSheet visible title={tx('导入订单', 'Import bookings')} onDismiss={onDismiss} dismissDisabled={Boolean(flow.busy) || documentBusy}>
-    <View style={[styles.content, flow.busy && styles.disabledContent]}>
+  return <BottomSheet visible title={tx('导入订单', 'Import bookings')} onDismiss={() => { flow.cancelRecognition(); onDismiss(); }} dismissDisabled={flow.busy === 'saving' || documentBusy}>
+    <View style={styles.content}>
+      {flow.busy ? <View style={styles.content}>
+        <ActivityIndicator color={theme.accent} />
+        <ThemedText accessibilityLiveRegion="polite" type="smallBold">{flow.busy === 'recognizing' ? tx('正在识别订单…', 'Recognizing booking…') : tx('正在保存订单和安排…', 'Saving booking and plans…')}</ThemedText>
+        <ThemedText type="small" themeColor="textSecondary">{flow.busy === 'recognizing' ? tx('可以取消等待；确认前不会保存原件或安排。', 'You can stop waiting. Originals and plans are saved only after confirmation.') : tx('请等待保存结果。若连接中断，预览会保留，可安全重试。', 'Wait for confirmation. If the connection fails, the preview stays available for a safe retry.')}</ThemedText>
+        {flow.busy === 'recognizing' ? <ActionButton tone="secondary" onPress={flow.cancelRecognition}>{tx('取消等待', 'Stop waiting')}</ActionButton> : null}
+      </View> : null}
+      <View style={[styles.content, flow.busy && styles.disabledContent]}>
       {canEdit ? <>
         <ThemedText themeColor="textSecondary">{tx('机票或酒店 PDF／截图 · 每个文件不超过 5 MB', 'Flight or hotel PDF / screenshot · up to 5 MB per file')}</ThemedText>
         <ActionButton tone="secondary" disabled={Boolean(flow.busy)} onPress={() => void flow.chooseFile()}>{flow.file ? tx('更换文件', 'Change file') : tx('选择文件', 'Choose file')}</ActionButton>
@@ -66,7 +75,7 @@ export function BookingImportSheet({ trip, userId, canEdit, onDismiss, onImporte
         {flow.drafts.length ? <>
           <ThemedText type="smallBold">{tx('检查后加入行程', 'Review before adding')}</ThemedText>
           <ThemedText type="small" themeColor="textSecondary">{tx(`请核对原订单。时间线将按 ${trip.defaultTimeZone} 显示；日期需在 ${trip.startsOn} 至 ${trip.endsOn} 内。`, `Check against the original. The timeline uses ${trip.defaultTimeZone}; bookings must fit ${trip.startsOn} to ${trip.endsOn}.`)}</ThemedText>
-          {flow.drafts.map((draft, index) => <BookingDraftFields key={index} draft={draft} index={index} selected={flow.selected[index]} onToggle={() => flow.toggle(index)} onChange={(patch) => flow.update(index, patch)} />)}
+          {flow.drafts.map((draft, index) => <BookingDraftFields key={index} draft={draft} index={index} error={flow.issues[index]} selected={flow.selected[index]} onToggle={() => flow.toggle(index)} onChange={(patch) => flow.update(index, patch)} />)}
           <ActionButton busy={flow.busy === 'saving'} disabled={!count} onPress={() => void save()}>{tx(`确认加入 ${count} 项安排`, `Confirm and add ${count} ${count === 1 ? 'plan' : 'plans'}`)}</ActionButton>
         </> : null}
       </> : null}
@@ -78,8 +87,9 @@ export function BookingImportSheet({ trip, userId, canEdit, onDismiss, onImporte
           <SettingsRow label={tx('删除原件', 'Delete original')} labelColor="danger" onPress={() => { flow.setError(undefined); setDeleting(document); }} disabled={documentBusy} />
         </SettingsGroup>)}
       </> : null}
+      </View>
     </View>
   </BottomSheet>;
 }
 
-const styles = StyleSheet.create({ content: { width: '100%', gap: Spacing.md }, disabledContent: { pointerEvents: 'none' } });
+const styles = StyleSheet.create({ content: { width: '100%', gap: Spacing.md }, disabledContent: { display: 'none' } });

@@ -25,3 +25,8 @@ To roll the client back, deploy the previous web commit; the additive table, nul
 ## Confirmed map destinations
 
 In each selected preview, **Edit details → Destination (optional)** reuses the city picker. A selected city contributes country, city, coordinates, time zone and optional currency to the saved itinerary item. Typing without selecting a suggestion does not set a map destination. The choice never changes the booking's departure/check-in or arrival/check-out local times. The optional payload is validated atomically by `booking_import_destination`; older clients without it remain compatible. Existing imported plans can use the normal plan editor to choose a destination; there is no automatic backfill from private originals or address text.
+## Progress and recovery
+
+Recognition shows a live status and permits **Stop waiting** or closing the sheet. This aborts the client request and ignores late responses; it does not claim to stop processing already running at the provider. It creates no saved original or plan. A fresh request can begin immediately without an old completion clearing its busy state.
+
+Confirmation validates every selected row before uploading. Missing fields, invalid/DST local times, invalid zones, reversed intervals and trip-date boundaries produce localized row errors. Saving shows a separate status and keeps dismissal locked until the result is known. An unconfirmed save preserves the preview for an idempotent retry and never exposes raw provider details.

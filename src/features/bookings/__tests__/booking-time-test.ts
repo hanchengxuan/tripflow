@@ -1,3 +1,4 @@
+import { InputError } from '@/domain/input-error';
 import { bookingLocalToIso, bookingToPlan } from '../booking-time';
 import { decodeBookingFile, sanitizeBookings } from '../../../../supabase/functions/parse-booking/contract';
 
@@ -34,6 +35,20 @@ test('unsupported types, oversized output and spoofed file MIME are rejected', (
   expect(() => decodeBookingFile(btoa('fake'), 'application/pdf')).toThrow();
   expect(() => decodeBookingFile(btoa('%PDF-1.7\n'), 'image/png')).toThrow();
   expect(decodeBookingFile(btoa('%PDF-1.7\n'), 'application/pdf').bytes.length).toBe(9);
+});
+
+test('validation names the field and explains trip-date and timezone failures in both languages', () => {
+  const messageFor = (patch: Partial<typeof draft>) => {
+    try { bookingToPlan({ ...draft, ...patch }, trip); throw new Error('Expected invalid booking'); }
+    catch (caught) {
+      if (!(caught instanceof InputError)) throw caught;
+      return [caught.message, caught.english];
+    }
+  };
+  expect(messageFor({ title: '' })[1]).toMatch(/^Plan title:/);
+  expect(messageFor({ location: '' })[1]).toMatch(/^Place:/);
+  expect(messageFor({ endTimeZone: 'Invalid/Zone' })).toEqual(['到达时间：请选择有效时区。', 'Arrival time: Choose a valid time zone.']);
+  expect(messageFor({ endLocal: '2026-10-26 10:00' })[1]).toContain('outside 2026-10-20 to 2026-10-25');
 });
 
 test('only an explicitly selected destination reaches the map payload without changing booking times', () => {
