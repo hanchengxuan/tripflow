@@ -41,18 +41,35 @@ function ActiveTripName() {
   return <Text>{mvp.loading ? 'loading' : mvp.activeTrip?.name ?? 'none'}</Text>;
 }
 
+let mounted: ReactTestRenderer[] = [];
+
+async function settle() {
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+}
+
 async function mount() {
   let renderer!: ReactTestRenderer;
   await act(async () => {
     renderer = create(<MvpProvider><ActiveTripName /></MvpProvider>);
   });
-  await act(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  });
+  mounted.push(renderer);
+  await settle();
   return renderer;
 }
 
+async function unmount(renderer: ReactTestRenderer) {
+  await settle();
+  await act(async () => renderer.unmount());
+  mounted = mounted.filter((entry) => entry !== renderer);
+}
+
 const shownTrip = (renderer: ReactTestRenderer) => renderer.root.findByType(Text).props.children;
+
+afterEach(async () => {
+  for (const renderer of mounted) await unmount(renderer);
+});
 
 beforeEach(async () => {
   mockUserId = 'user-1';
@@ -67,7 +84,7 @@ test('a reload reopens the trip the traveller last selected', async () => {
     await selectTrip('trip-b');
   });
   expect(shownTrip(first)).toBe('Bravo');
-  await act(async () => first.unmount());
+  await unmount(first);
 
   const reloaded = await mount();
   expect(shownTrip(reloaded)).toBe('Bravo');
@@ -78,7 +95,7 @@ test('another account on the same device does not inherit the selection', async 
   await act(async () => {
     await selectTrip('trip-b');
   });
-  await act(async () => first.unmount());
+  await unmount(first);
 
   mockUserId = 'user-2';
   const other = await mount();
