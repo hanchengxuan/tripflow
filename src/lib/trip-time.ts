@@ -65,3 +65,30 @@ export function stayNightsInZone(startsAt: string, endsAt: string | undefined, t
   };
   return Math.max(1, Math.round((localDate(endsAt) - localDate(startsAt)) / 86_400_000));
 }
+
+export interface PlanTimes {
+  date: string;
+  startTime: string;
+  endDate: string;
+  endTime: string;
+}
+
+export interface PlanTimeShift {
+  kind: 'move' | 'extend';
+  minutes: number;
+}
+
+function addWallClockMinutes(date: string, time: string, minutes: number) {
+  const [year, month, day] = date.split('-').map(Number);
+  const [hour, minute] = time.split(':').map(Number);
+  const shifted = new Date(Date.UTC(year, month - 1, day, hour, minute + minutes)).toISOString();
+  return { date: shifted.slice(0, 10), time: shifted.slice(11, 16) };
+}
+
+/** Shifts wall-clock form values, so "an hour later" means the same thing in any time zone. */
+export function shiftPlanTimes(times: PlanTimes, shift: PlanTimeShift): PlanTimes {
+  const end = addWallClockMinutes(times.endDate, times.endTime, shift.minutes);
+  if (shift.kind === 'extend') return { ...times, endDate: end.date, endTime: end.time };
+  const start = addWallClockMinutes(times.date, times.startTime, shift.minutes);
+  return { date: start.date, startTime: start.time, endDate: end.date, endTime: end.time };
+}

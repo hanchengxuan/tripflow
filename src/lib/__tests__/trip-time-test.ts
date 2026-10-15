@@ -1,4 +1,4 @@
-import { formatZonedDateTimeRange, isoToZonedDateTime, stayNightsInZone, zonedDateTimeToIso } from '@/lib/trip-time';
+import { formatZonedDateTimeRange, isoToZonedDateTime, shiftPlanTimes, stayNightsInZone, zonedDateTimeToIso } from '@/lib/trip-time';
 
 describe('trip time helpers', () => {
   it('stores wall-clock hotel time in the trip time zone', () => {
@@ -12,5 +12,27 @@ describe('trip time helpers', () => {
     expect(stayNightsInZone(start, end, 'Asia/Tokyo')).toBe(5);
     expect(formatZonedDateTimeRange(start, end, 'en-US', 'Asia/Tokyo')).toContain('Aug 10');
     expect(formatZonedDateTimeRange(start, end, 'en-US', 'Asia/Tokyo')).toContain('Aug 15');
+  });
+});
+
+describe('shiftPlanTimes', () => {
+  const evening = { date: '2026-10-21', startTime: '18:30', endDate: '2026-10-21', endTime: '20:00' };
+
+  test('moving a plan shifts its start and end together', () => {
+    expect(shiftPlanTimes(evening, { kind: 'move', minutes: 30 })).toEqual({ date: '2026-10-21', startTime: '19:00', endDate: '2026-10-21', endTime: '20:30' });
+    expect(shiftPlanTimes(evening, { kind: 'move', minutes: -30 })).toEqual({ date: '2026-10-21', startTime: '18:00', endDate: '2026-10-21', endTime: '19:30' });
+  });
+
+  test('moving across midnight and month ends rolls the dates over', () => {
+    const late = { date: '2026-10-31', startTime: '23:30', endDate: '2026-10-31', endTime: '23:50' };
+    expect(shiftPlanTimes(late, { kind: 'move', minutes: 60 })).toEqual({ date: '2026-11-01', startTime: '00:30', endDate: '2026-11-01', endTime: '00:50' });
+  });
+
+  test('moving to the next day keeps the clock times', () => {
+    expect(shiftPlanTimes(evening, { kind: 'move', minutes: 24 * 60 })).toEqual({ date: '2026-10-22', startTime: '18:30', endDate: '2026-10-22', endTime: '20:00' });
+  });
+
+  test('extending a plan changes only its end', () => {
+    expect(shiftPlanTimes(evening, { kind: 'extend', minutes: 30 })).toEqual({ date: '2026-10-21', startTime: '18:30', endDate: '2026-10-21', endTime: '20:30' });
   });
 });
