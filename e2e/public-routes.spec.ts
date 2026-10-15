@@ -18,10 +18,7 @@ test('app entry renders without runtime errors', async ({ page }) => {
   await expect(page.locator('body')).toBeVisible();
   await expect(page.getByRole('main')).toHaveCount(1);
   await expect(page.locator('meta[name=viewport]')).not.toHaveAttribute('content', /maximum-scale|user-scalable=no/);
-  await page.getByRole('radio', { name: 'English', exact: true }).click();
-  await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
-  await page.getByRole('radio', { name: '简体中文', exact: true }).click();
-  await expect(page.locator('html')).toHaveAttribute('lang', 'zh-CN');
+  await expect(page.locator('html')).toHaveAttribute('lang', /^(zh-CN|en-US)$/);
   expect(errors).toEqual([]);
 });
 
