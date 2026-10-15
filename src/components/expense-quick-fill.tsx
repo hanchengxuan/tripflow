@@ -6,11 +6,12 @@ import { VoiceRecordingControl } from '@/components/voice-recording-control';
 import { Radius, Size, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
-export function ExpenseQuickFill({ text, onChangeText, onFill, onAudioReady, busy, processing = false, tx }: {
+export function ExpenseQuickFill({ text, onChangeText, onFill, onAudioReady, onScanReceipt, busy, processing = false, tx }: {
   text: string;
   onChangeText: (value: string) => void;
   onFill: () => Promise<void>;
   onAudioReady: (audioBase64: string, audioMimeType: string) => Promise<void>;
+  onScanReceipt: () => Promise<void>;
   busy: boolean;
   processing?: boolean;
   tx: (zh: string, en: string) => string;
@@ -45,6 +46,15 @@ export function ExpenseQuickFill({ text, onChangeText, onFill, onAudioReady, bus
                 onSubmitEditing={() => { if (canFill) void onFill(); }}
                 style={[styles.input, { color: theme.text }]}
               />
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={tx('拍小票自动填入', 'Snap a receipt to fill')}
+                accessibilityState={{ disabled: busy || voiceActive }}
+                disabled={busy || voiceActive}
+                onPress={() => void onScanReceipt()}
+                style={({ pressed }) => [styles.fillButton, { backgroundColor: theme.backgroundSubtle }, (busy || voiceActive || pressed) && styles.dimmed]}>
+                <SymbolView name={{ ios: 'camera', android: 'photo_camera', web: 'photo_camera' }} size={18} tintColor={theme.text} />
+              </Pressable>
               {voiceButton}
               <Pressable
                 accessibilityRole="button"

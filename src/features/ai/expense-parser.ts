@@ -43,44 +43,35 @@ export function validateAiExpenseDraft(value: unknown, memberIds: string[]): AiE
   };
 }
 
-export async function parseExpenseText(input: { tripId: string; text: string; memberIds: string[] }) {
-  const description = input.text.trim();
-  if (!description || description.length > 500) throw new Error('请输入 1 到 500 个字符的记账描述。');
-
-  const { data, error } = await getSupabaseClient().functions.invoke('parse-expense', {
-    body: { tripId: input.tripId, text: description },
-  });
+async function requestExpenseDraft(body: Record<string, string>, memberIds: string[]) {
+  const { data, error } = await getSupabaseClient().functions.invoke('parse-expense', { body });
   if (error) {
     const response = (error as { context?: Response }).context;
     if (response) {
       try {
-        const body = await response.clone().json() as { error?: unknown };
-        if (typeof body.error === 'string') throw new Error(body.error);
+        const payload = await response.clone().json() as { error?: unknown };
+        if (typeof payload.error === 'string') throw new Error(payload.error);
       } catch (caught) {
         if (caught instanceof Error && /[㐀-鿿]/u.test(caught.message)) throw caught;
       }
     }
     throw error;
   }
-  return validateAiExpenseDraft(data?.draft, input.memberIds);
+  return validateAiExpenseDraft(data?.draft, memberIds);
+}
+
+export async function parseExpenseText(input: { tripId: string; text: string; memberIds: string[] }) {
+  const description = input.text.trim();
+  if (!description || description.length > 500) throw new Error('请输入 1 到 500 个字符的记账描述。');
+  return requestExpenseDraft({ tripId: input.tripId, text: description }, input.memberIds);
 }
 
 export async function parseExpenseAudio(input: { tripId: string; audioBase64: string; audioMimeType: string; memberIds: string[] }) {
   if (!input.audioBase64 || input.audioBase64.length > 8_000_000) throw new Error('录音过大，请控制在 60 秒内。');
-  const { data, error } = await getSupabaseClient().functions.invoke('parse-expense', {
-    body: { tripId: input.tripId, audioBase64: input.audioBase64, audioMimeType: input.audioMimeType },
-  });
-  if (error) {
-    const response = (error as { context?: Response }).context;
-    if (response) {
-      try {
-        const body = await response.clone().json() as { error?: unknown };
-        if (typeof body.error === 'string') throw new Error(body.error);
-      } catch (caught) {
-        if (caught instanceof Error && /[㐀-鿿]/u.test(caught.message)) throw caught;
-      }
-    }
-    throw error;
-  }
-  return validateAiExpenseDraft(data?.draft, input.memberIds);
+  return requestExpenseDraft({ tripId: input.tripId, audioBase64: input.audioBase64, audioMimeType: input.audioMimeType }, input.memberIds);
+}
+
+export async function parseExpenseImage(input: { tripId: string; imageBase64: string; imageMimeType: string; memberIds: string[] }) {
+  if (!input.imageBase64 || input.imageBase64.length > 8_000_000) throw new Error('小票照片过大，请重新拍摄。');
+  return requestExpenseDraft({ tripId: input.tripId, imageBase64: input.imageBase64, imageMimeType: input.imageMimeType }, input.memberIds);
 }
