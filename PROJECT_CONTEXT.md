@@ -384,3 +384,10 @@ Temporary acceptance fixtures are removed after each test; production may contai
 - Migration `20261015120000_trip_polls` adds `trip_polls`, `trip_poll_options` and `trip_poll_votes` with member-only read policies and no direct writes; `create_trip_poll`, `vote_trip_poll`, `close_trip_poll` and `delete_trip_poll` enforce the rules. `supabase/tests/poll-acceptance.sql` covers roles, outsiders, duplicate and foreign options, deadline, decide and delete.
 - The migration must be applied to production before the app change deploys; otherwise Today shows a "polls could not load" notice.
 - Not yet: polls scoped to a branch's members, realtime updates (others' votes appear after Refresh or the next vote), turning a result into a plan, and AI ranking of options.
+
+## October 15 automatic settlement after expense changes
+
+- An expense that needs no transfer (for example paid by and for the same traveller) stayed "待结清" because `refresh_expense_settlement_flags` only ran from the `settlements` trigger. Migration `20261015130000_auto_settle_on_expense_change` adds deferred constraint triggers on `expenses` (insert, delete, and edits to trip, currency or amounts), `expense_payers` and `expense_shares`, so the existing ledger-wide check re-runs once the expense is complete. The triggers ignore the `settled_*` columns the check writes, so they cannot loop.
+- Settlement stays ledger-wide by design: nothing auto-settles while any member balance is open, and manual marks are never changed.
+- The migration backfills every trip once, so already-balanced ledgers (such as single-member test trips) become settled on apply.
+- `supabase/tests/auto-settle-acceptance.sql` covers self-paid, shared debt, ledger-wide status, transfer, new debt, an edit that removes the debt, manual marks, and delete.
