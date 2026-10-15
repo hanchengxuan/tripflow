@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
-import type { BookingDraft } from '../../../supabase/functions/parse-booking/contract';
+import type { BookingPreview } from './booking-preview';
 import { importBookingFile, listBookingDocuments, parseBookingFile, type BookingDocument } from '@/data/booking-repository';
 import type { Trip } from '@/domain/models';
 import { pickBookingFile, type BookingFile } from './booking-file';
@@ -10,7 +10,7 @@ type Translate = (zh: string, en: string) => string;
 
 export function useBookingImport(trip: Trip, userId: string, locale: string, tx: Translate) {
   const [file, setFile] = useState<BookingFile>();
-  const [drafts, setDrafts] = useState<BookingDraft[]>([]);
+  const [drafts, setDrafts] = useState<BookingPreview[]>([]);
   const [selected, setSelected] = useState<boolean[]>([]);
   const [documents, setDocuments] = useState<BookingDocument[]>([]);
   const [busy, setBusy] = useState<'recognizing' | 'saving'>();
@@ -81,7 +81,7 @@ export function useBookingImport(trip: Trip, userId: string, locale: string, tx:
     }
   }
 
-  function update(index: number, patch: Partial<BookingDraft>) {
+  function update(index: number, patch: Partial<BookingPreview>) {
     setDrafts((rows) => rows.map((row, position) => position === index ? { ...row, ...patch } : row));
   }
 

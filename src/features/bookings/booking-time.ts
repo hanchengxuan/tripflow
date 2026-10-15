@@ -1,4 +1,4 @@
-import type { BookingDraft } from '../../../supabase/functions/parse-booking/contract';
+import type { BookingPreview } from './booking-preview';
 import { isoToZonedDateTime, zonedDateTimeToIso } from '@/lib/trip-time';
 import type { Trip } from '@/domain/models';
 
@@ -17,7 +17,7 @@ export function bookingLocalToIso(local: string, timeZone: string) {
   return iso;
 }
 
-export function bookingToPlan(draft: BookingDraft, trip: Trip) {
+export function bookingToPlan(draft: BookingPreview, trip: Trip) {
   if (!draft.title.trim() || draft.title.trim().length > 180 || !draft.location.trim()) throw new Error('Complete the booking title and location.');
   const startsAt = bookingLocalToIso(draft.startLocal, draft.startTimeZone);
   const endsAt = bookingLocalToIso(draft.endLocal, draft.endTimeZone);
@@ -31,5 +31,6 @@ export function bookingToPlan(draft: BookingDraft, trip: Trip) {
     startsAt,
     endsAt,
     locationLabel: draft.location.trim(),
+    destination: draft.destination ? { ...draft.destination } : undefined,
   };
 }

@@ -46,5 +46,32 @@ do $$ begin
  if (select count(*) from public.booking_documents) <> 1 then raise exception 'Original metadata is not private'; end if;
 end $$;
 reset role;
-select 'passed: batch, idempotency, semantic dedupe, atomic rollback, dates, owner/editor authorization, viewer/outsider rejection, uploader-only RLS' as acceptance;
+do $$
+declare
+ t uuid := (select trip_id from booking_fixture);
+ result jsonb;
+ destination jsonb := '{"cityName":"Tokyo","countryName":"Japan","countryCode":"JP","timeZone":"Asia/Tokyo","currency":"JPY","latitude":35.68,"longitude":139.69}';
+ payload jsonb := '{"title":"Mapped hotel","kind":"lodging","startsAt":"2026-10-21T06:00:00Z","endsAt":"2026-10-24T02:00:00Z","locationLabel":"Synthetic Tokyo hotel"}';
+ before_count integer;
+ invalid jsonb;
+begin
+ perform set_config('request.jwt.claim.sub',(select owner_id::text from booking_fixture),true);
+ result := public.import_booking_document(t,repeat('8',64),'mapped.pdf','application/pdf',jsonb_build_array(payload || jsonb_build_object('destination',destination)));
+ if result->>'added' <> '1' or not exists (select 1 from public.itinerary_items where trip_id=t and title='Mapped hotel' and destination_country_code='JP' and destination_city_name='Tokyo' and destination_time_zone='Asia/Tokyo' and destination_currency='JPY' and destination_latitude=35.68 and destination_longitude=139.69) then raise exception 'Map destination was lost'; end if;
+ select count(*) into before_count from public.itinerary_items where trip_id=t;
+ for invalid in select value from jsonb_array_elements(jsonb_build_array(
+   destination || '{"latitude":91}', destination || '{"longitude":"139.69"}', destination || '{"timeZone":"Not/AZone"}',
+   destination - 'countryCode', destination || '{"countryCode":"JPN"}', destination || '{"cityName":""}', destination || '{"currency":"yen"}'
+ )) loop
+  begin
+   perform public.import_booking_document(t,repeat('7',64),'invalid-map.pdf','application/pdf',jsonb_build_array(
+     payload || '{"title":"Atomic map first"}', payload || jsonb_build_object('destination',invalid)));
+   raise exception 'Invalid destination was accepted';
+  exception when others then
+   if sqlerrm not like 'Invalid booking destination%' then raise; end if;
+  end;
+ end loop;
+ if (select count(*) from public.itinerary_items where trip_id=t) <> before_count or exists (select 1 from public.booking_documents where trip_id=t and fingerprint=repeat('7',64)) then raise exception 'Invalid map batch escaped rollback'; end if;
+end $$;
+select 'passed: map persistence, invalid metadata atomic rejection, batch, idempotency, semantic dedupe, atomic rollback, dates, owner/editor authorization, viewer/outsider rejection, uploader-only RLS' as acceptance;
 rollback;

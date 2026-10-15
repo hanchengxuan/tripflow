@@ -35,3 +35,13 @@ test('unsupported types, oversized output and spoofed file MIME are rejected', (
   expect(() => decodeBookingFile(btoa('%PDF-1.7\n'), 'image/png')).toThrow();
   expect(decodeBookingFile(btoa('%PDF-1.7\n'), 'application/pdf').bytes.length).toBe(9);
 });
+
+test('only an explicitly selected destination reaches the map payload without changing booking times', () => {
+  const destination = { cityName: 'Tokyo', countryName: 'Japan', countryCode: 'JP', timeZone: 'Asia/Tokyo', currency: 'JPY', latitude: 35.68, longitude: 139.69 };
+  const plain = bookingToPlan(draft, trip);
+  expect(plain.destination).toBeUndefined();
+  const mapped = bookingToPlan({ ...draft, destination }, trip);
+  expect(mapped.destination).toEqual(destination);
+  expect(mapped.startsAt).toBe(plain.startsAt);
+  expect(mapped.endsAt).toBe(plain.endsAt);
+});

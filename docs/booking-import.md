@@ -21,3 +21,7 @@ Two fictional Loom samples are under `output/pdf/`. Dates fit a 2026-10-20 to 20
 Apply the additive `booking_document_import` and `guard_booking_import_actor` migrations, deploy `parse-booking` and the updated `delete-trip`, then deploy the client. `parse-booking` uses custom bearer validation (`verify_jwt=false`), matching existing authenticated functions. `GEMINI_API_KEY` remains server-side; `BOOKING_GEMINI_MODEL` is an optional server-only override. No secret belongs in public Expo variables.
 
 To roll the client back, deploy the previous web commit; the additive table, nullable key column and bucket can remain. Do not drop populated booking tables or storage objects during rollback. Pause the importer separately if a provider issue requires it.
+
+## Confirmed map destinations
+
+In each selected preview, **Edit details → Destination (optional)** reuses the city picker. A selected city contributes country, city, coordinates, time zone and optional currency to the saved itinerary item. Typing without selecting a suggestion does not set a map destination. The choice never changes the booking's departure/check-in or arrival/check-out local times. The optional payload is validated atomically by `booking_import_destination`; older clients without it remain compatible. Existing imported plans can use the normal plan editor to choose a destination; there is no automatic backfill from private originals or address text.
