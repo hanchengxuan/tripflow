@@ -82,7 +82,7 @@ export function ChoiceChip({
   disabled = false,
   role = 'checkbox',
   onPress,
-}: PropsWithChildren<{ selected: boolean; disabled?: boolean; role?: 'checkbox' | 'radio' | 'tab'; onPress: () => void }>) {
+}: PropsWithChildren<{ selected: boolean; disabled?: boolean; role?: 'checkbox' | 'radio' | 'tab' | 'button'; onPress: () => void }>) {
   const theme = useTheme();
   return (
     <Pressable

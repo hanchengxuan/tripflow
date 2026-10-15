@@ -9,6 +9,7 @@ import { DestinationSettings } from '@/components/destination-settings';
 import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/form-controls';
 import { ItineraryEditAssistant } from '@/components/itinerary-edit-assistant';
 import { LocationField } from '@/components/location-field';
+import { QuickTimeShifts } from '@/components/quick-time-shifts';
 import { SettingsDivider, SettingsGroup, SettingsRow } from '@/components/settings-list';
 import { ThemedText } from '@/components/themed-text';
 import { getCurrencyOptions, getTimeZoneOptions, itineraryKindLabels, itineraryKindLabelsEn, itineraryKinds } from '@/constants/options';
@@ -17,7 +18,7 @@ import type { ItineraryDestination, ItineraryItem, ItineraryKind, Trip } from '@
 import { destinationLabel, type DestinationSuggestion } from '@/features/destinations/destination-search';
 import { useI18n } from '@/features/i18n/i18n-provider';
 import { toUserMessage } from '@/lib/user-error';
-import { formatZonedDateTimeRange, isoToZonedDateTime, zonedDateTimeToIso } from '@/lib/trip-time';
+import { formatZonedDateTimeRange, isoToZonedDateTime, shiftPlanTimes, zonedDateTimeToIso, type PlanTimeShift } from '@/lib/trip-time';
 import { useTheme } from '@/hooks/use-theme';
 
 function formatLocalizedDateRange(startsOn: string, endsOn: string, locale: string) {
@@ -171,6 +172,15 @@ export function ItineraryComposerSheet({
 
   function updatePlanEndDate(value: string) {
     setEndDate(value);
+    setPendingTripRange(undefined);
+  }
+
+  function applyTimeShift(shift: PlanTimeShift) {
+    const next = shiftPlanTimes({ date, startTime, endDate, endTime }, shift);
+    setDate(next.date);
+    setStartTime(next.startTime);
+    setEndDate(next.endDate);
+    setEndTime(next.endTime);
     setPendingTripRange(undefined);
   }
 
@@ -398,6 +408,7 @@ export function ItineraryComposerSheet({
             <DateTimePairField label={tx('结束', 'End')} dateLabel={tx('结束日期', 'End date')} dateValue={endDate} timeLabel={tx('结束时间', 'End time')} timeValue={endTime} onDateChange={updatePlanEndDate} onTimeChange={setEndTime} stacked={stackDates} />
           </View>
         )}
+        {editingItem && !editingItem.linkedStayId ? <QuickTimeShifts allowExtend={kind !== 'lodging'} onShift={applyTimeShift} /> : null}
         {editingItem ? (
           <ItineraryEditAssistant
             key={editingItem.id}
