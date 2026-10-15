@@ -2,6 +2,7 @@ export type UserId = string;
 export type TripId = string;
 export type SegmentId = string;
 export type ExpenseId = string;
+export type PollId = string;
 
 export type TripRole = 'owner' | 'editor' | 'viewer';
 export type SegmentVisibility = 'members_only' | 'trip_read_only';
@@ -138,4 +139,22 @@ export interface Settlement {
   exchangeRateSource?: string;
   settledAt: string;
   recordedBy: UserId;
+}
+
+export interface TripPollOption {
+  id: string;
+  label: string;
+}
+
+export interface TripPoll {
+  id: PollId;
+  tripId: TripId;
+  createdBy: UserId;
+  question: string;
+  /** In display order. */
+  options: TripPollOption[];
+  votes: { userId: UserId; optionId: string }[];
+  closesAt?: string;
+  selectedOptionId?: string;
+  createdAt: string;
 }
