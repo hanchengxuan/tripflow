@@ -974,6 +974,133 @@ export type Database = {
           },
         ]
       }
+      trip_poll_options: {
+        Row: {
+          id: string
+          label: string
+          poll_id: string
+          position: number
+        }
+        Insert: {
+          id?: string
+          label: string
+          poll_id: string
+          position: number
+        }
+        Update: {
+          id?: string
+          label?: string
+          poll_id?: string
+          position?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_poll_options_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "trip_polls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trip_poll_votes: {
+        Row: {
+          option_id: string
+          poll_id: string
+          user_id: string
+          voted_at: string
+        }
+        Insert: {
+          option_id: string
+          poll_id: string
+          user_id: string
+          voted_at?: string
+        }
+        Update: {
+          option_id?: string
+          poll_id?: string
+          user_id?: string
+          voted_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_poll_votes_option_id_fkey"
+            columns: ["option_id"]
+            isOneToOne: false
+            referencedRelation: "trip_poll_options"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trip_poll_votes_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "trip_polls"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trip_poll_votes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trip_polls: {
+        Row: {
+          closed_at: string | null
+          closes_at: string | null
+          created_at: string
+          created_by: string
+          id: string
+          question: string
+          selected_option_id: string | null
+          trip_id: string
+        }
+        Insert: {
+          closed_at?: string | null
+          closes_at?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          question: string
+          selected_option_id?: string | null
+          trip_id: string
+        }
+        Update: {
+          closed_at?: string | null
+          closes_at?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          question?: string
+          selected_option_id?: string | null
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_polls_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trip_polls_selected_option_fkey"
+            columns: ["selected_option_id"]
+            isOneToOne: false
+            referencedRelation: "trip_poll_options"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trip_polls_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trips: {
         Row: {
           created_at: string
@@ -1028,6 +1155,10 @@ export type Database = {
       can_read_segment: {
         Args: { requested_segment_id: string }
         Returns: boolean
+      }
+      close_trip_poll: {
+        Args: { requested_option_id: string; requested_poll_id: string }
+        Returns: undefined
       }
       complete_profile_onboarding: { Args: never; Returns: undefined }
       create_custom_expense: {
@@ -1128,12 +1259,25 @@ export type Database = {
           invite_token: string
         }[]
       }
+      create_trip_poll: {
+        Args: {
+          option_labels: string[]
+          poll_closes_at?: string
+          poll_question: string
+          requested_trip_id: string
+        }
+        Returns: string
+      }
       delete_current_account: { Args: never; Returns: undefined }
       delete_itinerary_item: {
         Args: { requested_item_id: string }
         Returns: undefined
       }
       delete_trip: { Args: { requested_trip_id: string }; Returns: undefined }
+      delete_trip_poll: {
+        Args: { requested_poll_id: string }
+        Returns: undefined
+      }
       dissolve_trip_segment: {
         Args: { requested_segment_id: string }
         Returns: undefined
@@ -1371,6 +1515,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      vote_trip_poll: {
+        Args: { requested_option_id: string; requested_poll_id: string }
+        Returns: undefined
       }
     }
     Enums: {

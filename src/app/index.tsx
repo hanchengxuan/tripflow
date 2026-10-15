@@ -6,6 +6,7 @@ import { ChoiceChip, InlineNotice } from '@/components/form-controls';
 import { InfoCard } from '@/components/info-card';
 import { ItineraryComposerSheet } from '@/components/itinerary-composer-sheet';
 import { ItineraryHealthHint, ItineraryHealthSheet } from '@/components/itinerary-health-card';
+import { TripPollsCard } from '@/components/trip-polls-card';
 import { MoveItineraryCard } from '@/components/move-itinerary-card';
 import { NextUpCard } from '@/components/next-up-card';
 import { StayCard } from '@/components/stay-card';
@@ -501,6 +502,8 @@ export default function TodayScreen() {
       )}
 
       {activeTrip && health.error ? <InlineNotice tone="error">{health.error}</InlineNotice> : null}
+
+      {activeTrip ? <TripPollsCard trip={activeTrip} currentUserId={currentUserId} role={currentMember?.role} /> : null}
 
       {activeTrip && !canEdit ? (
         <View style={[styles.readOnlyBadge, { backgroundColor: theme.backgroundSelected }]}>
