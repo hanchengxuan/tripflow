@@ -24,6 +24,7 @@ import {
   listTripMembers,
   listTrips,
   moveItineraryItem as moveItineraryItemRepository,
+  shiftItineraryItems,
   recordSettlement,
   removeTripMember,
   unrecordSettlement,
@@ -67,6 +68,7 @@ interface MvpContextValue {
   addItineraryItem: (input: { title: string; kind: Database['public']['Enums']['itinerary_kind']; startsAt: string; endsAt?: string; locationLabel?: string; googlePlaceId?: string; destination?: ItineraryDestination }) => Promise<void>;
   addStayTransfer: (input: { stayId: string; sourceItemId: string; title: string }) => Promise<void>;
   saveItineraryItem: (input: { itemId: string; title: string; startsAt: string; endsAt: string; locationLabel?: string; googlePlaceId?: string; destination?: ItineraryDestination }) => Promise<void>;
+  shiftItineraryItems: (shifts: { item: ItineraryItem; startsAt: string; endsAt: string }[]) => Promise<void>;
   setItineraryRouteMode: (itemId: string, travelMode: RouteTravelMode) => Promise<void>;
   moveItineraryItem: (itemId: string, targetTripId: string) => Promise<void>;
   removeItineraryItem: (itemId: string) => Promise<void>;
@@ -255,6 +257,15 @@ export function MvpProvider({ children }: PropsWithChildren) {
     setItineraryItems(await listItineraryItems(activeTrip.id));
   }, [activeTrip]);
 
+  const shiftItineraryItemsAction = useCallback(async (shifts: { item: ItineraryItem; startsAt: string; endsAt: string }[]) => {
+    if (!activeTrip) throw new Error('请先创建或加入一个行程。');
+    try {
+      await shiftItineraryItems(activeTrip.id, shifts);
+    } finally {
+      setItineraryItems(await listItineraryItems(activeTrip.id));
+    }
+  }, [activeTrip]);
+
   const setItineraryRouteMode = useCallback(async (itemId: string, travelMode: RouteTravelMode) => {
     if (!activeTrip) throw new Error('请先创建或加入一个行程。');
     await updateItineraryRouteMode(itemId, travelMode);
@@ -393,6 +404,7 @@ export function MvpProvider({ children }: PropsWithChildren) {
     addItineraryItem,
     addStayTransfer,
     saveItineraryItem,
+    shiftItineraryItems: shiftItineraryItemsAction,
     setItineraryRouteMode,
     moveItineraryItem: moveItineraryItemAction,
     removeItineraryItem,
@@ -405,7 +417,7 @@ export function MvpProvider({ children }: PropsWithChildren) {
     attachExpenseReceipt,
     markSettlement,
     unmarkSettlement,
-  }), [loading, error, trips, activeTrip, members, ledgerMembers, itineraryItems, segments, segmentMembers, expenses, settlements, profile, currentUserId, selectTrip, refresh, createTripAction, joinTrip, createInvite, saveTrip, deleteTripAction, setMemberRole, removeMember, saveProfile, addItineraryItem, addStayTransfer, saveItineraryItem, setItineraryRouteMode, moveItineraryItemAction, removeItineraryItem, splitTripSegmentAction, dissolveTripSegmentAction, addEqualExpense, addCustomExpense, updateCustomExpenseAction, setExpenseSettledAction, attachExpenseReceipt, markSettlement, unmarkSettlement]);
+  }), [loading, error, trips, activeTrip, members, ledgerMembers, itineraryItems, segments, segmentMembers, expenses, settlements, profile, currentUserId, selectTrip, refresh, createTripAction, joinTrip, createInvite, saveTrip, deleteTripAction, setMemberRole, removeMember, saveProfile, addItineraryItem, addStayTransfer, saveItineraryItem, shiftItineraryItemsAction, setItineraryRouteMode, moveItineraryItemAction, removeItineraryItem, splitTripSegmentAction, dissolveTripSegmentAction, addEqualExpense, addCustomExpense, updateCustomExpenseAction, setExpenseSettledAction, attachExpenseReceipt, markSettlement, unmarkSettlement]);
 
   return <MvpContext.Provider value={value}>{children}</MvpContext.Provider>;
 }
