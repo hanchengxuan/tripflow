@@ -34,6 +34,7 @@ describe('itinerary health checks', () => {
 
   it('finds overlap and a missing location locally', async () => {
     const report = await analyzeItineraryHealth({
+      locale: 'zh-CN',
       items: [
         item({ id: 'item-a', title: '早餐', locationLabel: '餐厅' }),
         item({ id: 'item-b', title: '博物馆', startsAt: '2026-08-14T09:45:00.000Z', endsAt: '2026-08-14T11:00:00.000Z' }),
@@ -75,5 +76,47 @@ describe('itinerary health checks', () => {
     }, ['item-a']);
 
     expect(report).toEqual({ summary: 'ok', issues: [] });
+  });
+});
+
+
+describe('localized local reports', () => {
+  const plans = [
+    item({ id: 'a', title: 'Breakfast', locationLabel: 'Cafe' }),
+    item({ id: 'b', title: 'Museum', locationLabel: 'Museum', startsAt: '2026-08-14T10:10:00.000Z', endsAt: '2026-08-14T11:00:00.000Z' }),
+    item({ id: 'c', title: 'Lunch', locationLabel: 'Cafe', startsAt: '2026-08-14T10:30:00.000Z', endsAt: '2026-08-14T11:30:00.000Z' }),
+    item({ id: 'd', title: '', startsAt: '2026-08-14T12:00:00.000Z', endsAt: '2026-08-14T13:00:00.000Z' }),
+    item({ id: 'e', title: 'Walk', locationLabel: 'Park', startsAt: '2026-08-14T14:00:00.000Z', endsAt: '2026-08-14T15:00:00.000Z' }),
+  ];
+
+  it('renders every issue type and summary in English', async () => {
+    const report = await analyzeItineraryHealth({ items: plans, locale: 'en' });
+    expect(report.issues.map(({ type }) => type).sort()).toEqual(['BUFFER', 'CONFLICT', 'DENSE_DAY', 'MISSING_LOCATION']);
+    expect(JSON.stringify(report)).not.toMatch(/[㐀-鿿]/u);
+    expect(report.summary).toBe('4 itinerary issues need attention.');
+    expect(report.issues.find(({ type }) => type === 'BUFFER')?.reason).toContain('fewer than 30 minutes');
+    expect(report.issues.find(({ type }) => type === 'CONFLICT')?.reason).toBe('“Museum” and “Lunch” overlap.');
+  });
+
+  it('switches the same plans back to Chinese without changing findings', async () => {
+    const en = await analyzeItineraryHealth({ items: plans, locale: 'en' });
+    const zh = await analyzeItineraryHealth({ items: plans, locale: 'zh-CN' });
+    expect(zh.issues.map(({ id }) => id)).toEqual(en.issues.map(({ id }) => id));
+    expect(zh.summary).toBe('发现 4 个需要处理的行程问题。');
+    expect(zh.issues.find(({ type }) => type === 'BUFFER')?.title).toBe('衔接时间较短');
+  });
+
+  it('uses singular and empty English summaries while preserving user titles', async () => {
+    const report = await analyzeItineraryHealth({ items: [item({ title: '用户原名' })], locale: 'en' });
+    expect(report.summary).toBe('1 itinerary issue needs attention.');
+    expect(report.issues[0].title).toBe('用户原名');
+    expect(report.issues[0].reason).toBe('This plan has no location. Add one before you leave.');
+    expect((await analyzeItineraryHealth({ items: [], locale: 'en' })).summary).toBe('No itinerary issues need attention right now.');
+  });
+
+  it('localizes malformed-field fallbacks in Chinese', () => {
+    const report = validateItineraryHealthReport({ issues: [{ type: 'BUFFER', severity: 'warning', itemIds: ['a'] }] }, ['a'], 'zh-CN');
+    expect(report.summary).toBe('行程目前没有需要处理的问题。');
+    expect(report.issues[0]).toMatchObject({ title: '请检查这项安排', reason: '这项安排可能需要检查。' });
   });
 });
