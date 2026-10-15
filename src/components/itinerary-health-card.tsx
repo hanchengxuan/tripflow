@@ -171,6 +171,6 @@ const styles = StyleSheet.create({
   issueLabel: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs },
   statusDot: { width: 8, height: 8, borderRadius: 4 },
   issueActions: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginTop: Spacing.xs },
-  editAction: { minHeight: 44, justifyContent: 'center' },
+  editAction: { minHeight: 44, maxWidth: '100%', flexShrink: 1, justifyContent: 'center' },
   pressed: { opacity: 0.62 },
 });
