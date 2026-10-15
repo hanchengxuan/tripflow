@@ -16,6 +16,9 @@ test('app entry renders without runtime errors', async ({ page }) => {
 
   await expect(page).toHaveTitle(/TripFlow/);
   await expect(page.locator('body')).toBeVisible();
+  await expect(page.getByRole('main')).toHaveCount(1);
+  await expect(page.locator('meta[name=viewport]')).not.toHaveAttribute('content', /maximum-scale|user-scalable=no/);
+  await expect(page.locator('html')).toHaveAttribute('lang', /^(zh-CN|en-US)$/);
   expect(errors).toEqual([]);
 });
 
@@ -55,6 +58,8 @@ test('unknown routes show the localized recovery page and return home', async ({
   await expect(page.getByText(/邀请码有有效期|invite codes expire/i)).toBeVisible();
   await page.getByRole('link', { name: /回到 TripFlow|Back to TripFlow/i }).click();
   await expect(page).toHaveURL(/\/$/);
-  const expectedRouteMiss = `console: Failed to load resource: the server responded with a status of 404 (Not Found) (${new URL('/expired-invite-example', page.url()).toString()})`;
-  expect(errors.filter((error) => error !== expectedRouteMiss)).toEqual([]);
+  const routeMiss = new URL('/expired-invite-example', page.url()).toString();
+  const expectedRouteMisses = ['', 'Not Found'].map((reason) =>
+    `console: Failed to load resource: the server responded with a status of 404 (${reason}) (${routeMiss})`);
+  expect(errors.filter((error) => !expectedRouteMisses.includes(error))).toEqual([]);
 });

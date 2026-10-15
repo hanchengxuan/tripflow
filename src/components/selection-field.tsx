@@ -54,7 +54,7 @@ export function SelectionField<T extends string>({
             onPress={(event) => event.stopPropagation()}>
             <View style={styles.sheetHeader}>
               <ThemedText type="smallBold">{label}</ThemedText>
-              <Pressable accessibilityRole="button" onPress={() => setOpen(false)}>
+              <Pressable accessibilityRole="button" style={styles.done} onPress={() => setOpen(false)}>
                 <ThemedText type="link">{tx('完成', 'Done')}</ThemedText>
               </Pressable>
             </View>
@@ -108,6 +108,7 @@ const styles = StyleSheet.create({
   backdrop: { flex: 1, justifyContent: 'flex-end' },
   sheet: { maxHeight: '72%', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, gap: 12 },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  done: { minWidth: Size.touchMin, minHeight: Size.touchMin, alignItems: 'center', justifyContent: 'center' },
   optionList: { gap: 8, paddingBottom: 24 },
   option: {
     minHeight: 48,

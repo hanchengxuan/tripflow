@@ -174,3 +174,5 @@ anything.
   every kind pill carries its label.
 - Touch targets are 44pt minimum (`--size-touch-min`); controls are 48px (`--size-control`).
 - The floating nav sits 16px above the safe area and the FAB 86px up, so neither covers the other.
+
+Muted text now uses light `#5F6B67` and dark `#97A49F` in both the design tokens and app. Both clear 4.5:1 on the four neutral text surfaces, including selected rows. Stay night labels and spoken labels follow the active language; shared selector Done actions retain the 44pt minimum.

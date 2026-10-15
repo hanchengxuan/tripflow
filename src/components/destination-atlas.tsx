@@ -206,7 +206,7 @@ export function DestinationAtlas({
         detail={destinations.length > 0
           ? tx('点一下标记，查看这个地点的安排。', 'Tap a pin to see the plans for that place.')
           : tx('选择安排的目的地后，轨迹会在这里出现。', 'Choose destinations on your plans to build the map.')}
-        trailing={destinations.length > 0 ? <ThemedText type="small" themeColor="textSecondary">{tx(`${destinations.length} 个地点`, `${destinations.length} places`)}</ThemedText> : null}
+        trailing={destinations.length > 0 ? <ThemedText type="small" themeColor="textSecondary">{tx(`${destinations.length} 个地点`, `${destinations.length} ${destinations.length === 1 ? 'place' : 'places'}`)}</ThemedText> : null}
       />
 
       <Animated.View style={[styles.mapShell, { backgroundColor: theme.mapBackground, opacity: mapOpacity, transform: [{ translateY: mapOffset }] }]}>
