@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, type PropsWithChildren, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 import {
@@ -82,6 +83,8 @@ interface MvpContextValue {
 
 const MvpContext = createContext<MvpContextValue | null>(null);
 
+const activeTripStorageKey = (userId: string) => `tripflow.activeTrip.${userId}`;
+
 export function MvpProvider({ children }: PropsWithChildren) {
   const { session } = useAuth();
   const currentUserId = session?.user.id ?? '';
@@ -127,6 +130,7 @@ export function MvpProvider({ children }: PropsWithChildren) {
     setSettlements(nextSettlements);
   }, []);
 
+  const activeTripId = activeTrip?.id;
   const refresh = useCallback(async () => {
     setLoading(true);
     setError(undefined);
@@ -134,14 +138,19 @@ export function MvpProvider({ children }: PropsWithChildren) {
       const [nextTrips, nextProfile] = await Promise.all([listTrips(), getProfile(currentUserId)]);
       setTrips(nextTrips);
       setProfile(nextProfile);
-      const nextActive = nextTrips.find(({ id }) => id === activeTrip?.id) ?? nextTrips[0];
+      const preferredTripId = activeTripId ?? await AsyncStorage.getItem(activeTripStorageKey(currentUserId));
+      const nextActive = nextTrips.find(({ id }) => id === preferredTripId) ?? nextTrips[0];
       await loadTripDetails(nextActive);
     } catch (caught) {
       setError(toUserMessage(caught));
     } finally {
       setLoading(false);
     }
-  }, [activeTrip?.id, currentUserId, loadTripDetails]);
+  }, [activeTripId, currentUserId, loadTripDetails]);
+
+  useEffect(() => {
+    if (currentUserId && activeTripId) void AsyncStorage.setItem(activeTripStorageKey(currentUserId), activeTripId);
+  }, [activeTripId, currentUserId]);
 
   useEffect(() => {
     if (!currentUserId) return;
