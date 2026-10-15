@@ -16,6 +16,7 @@ import { ThemedText } from '@/components/themed-text';
 import { TripFormSheet, type TripDraft } from '@/components/trip-form-sheet';
 import { TripManageSheet } from '@/components/trip-manage-sheet';
 import { TripOverviewCard } from '@/components/trip-overview-card';
+import { TripPollsCard } from '@/components/trip-polls-card';
 import { getCurrencyOptions, getTimeZoneOptions, tripRoleLabels, tripRoleLabelsEn } from '@/constants/options';
 import { Spacing } from '@/constants/theme';
 import type { Trip, TripRole } from '@/domain/models';
@@ -266,6 +267,8 @@ export default function TripsScreen() {
           title={activeTrip.name}
         />
       ) : null}
+
+      {activeTrip ? <TripPollsCard trip={activeTrip} currentUserId={currentUserId} role={currentMember?.role} members={members} /> : null}
 
       {/* Neither button renames itself according to a panel below it. */}
       <View style={styles.quickActions}>

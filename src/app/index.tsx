@@ -6,7 +6,7 @@ import { ChoiceChip, InlineNotice } from '@/components/form-controls';
 import { InfoCard } from '@/components/info-card';
 import { ItineraryComposerSheet } from '@/components/itinerary-composer-sheet';
 import { ItineraryHealthHint, ItineraryHealthSheet } from '@/components/itinerary-health-card';
-import { TripPollsCard } from '@/components/trip-polls-card';
+import { PollNudge } from '@/components/poll-nudge';
 import { MoveItineraryCard } from '@/components/move-itinerary-card';
 import { NextUpCard } from '@/components/next-up-card';
 import { StayCard } from '@/components/stay-card';
@@ -412,6 +412,8 @@ export default function TodayScreen() {
       {actionError ? <InlineNotice tone="error">{actionError}</InlineNotice> : null}
       {success ? <InlineNotice>{success}</InlineNotice> : null}
 
+      {activeTrip ? <PollNudge tripId={activeTrip.id} currentUserId={currentUserId} /> : null}
+
       {!activeTrip ? (
         <InfoCard label={tx('暂无行程', 'No trip yet')} title={tx('创建或加入共享行程', 'Create or join a shared trip')}>
           <ThemedText themeColor="textSecondary">{tx('加入后，所有成员都可以在这里查看下一项已确认的安排。', 'Once joined, everyone can see the next confirmed plan here.')}</ThemedText>
@@ -503,7 +505,6 @@ export default function TodayScreen() {
 
       {activeTrip && health.error ? <InlineNotice tone="error">{health.error}</InlineNotice> : null}
 
-      {activeTrip ? <TripPollsCard trip={activeTrip} currentUserId={currentUserId} role={currentMember?.role} /> : null}
 
       {activeTrip && !canEdit ? (
         <View style={[styles.readOnlyBadge, { backgroundColor: theme.backgroundSelected }]}>

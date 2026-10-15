@@ -380,7 +380,7 @@ Temporary acceptance fixtures are removed after each test; production may contai
 
 ## October 15 trip polls
 
-- Today has a Polls card: editors start a poll (question, 2–6 options, optional deadline in the trip time zone), every trip member casts one changeable vote, and the poll creator or an editor picks the final result, which locks voting. A passed deadline also stops voting until someone decides. Viewers see the card only when a poll exists.
+- Polls live on the Trips tab under the current-trip card (moved from Today on 2026-10-16); Today shows only a one-line "投票等你" link when an open poll still needs the traveller's vote. Each option shows its voters' avatars (three plus "+N" past four) and names them in the option's accessible label. Editors start a poll (question, 2–6 options, optional deadline in the trip time zone), every trip member casts one changeable vote, and the poll creator or an editor picks the final result, which locks voting. A passed deadline also stops voting until someone decides. Viewers see the card only when a poll exists.
 - Migration `20261015120000_trip_polls` adds `trip_polls`, `trip_poll_options` and `trip_poll_votes` with member-only read policies and no direct writes; `create_trip_poll`, `vote_trip_poll`, `close_trip_poll` and `delete_trip_poll` enforce the rules. `supabase/tests/poll-acceptance.sql` covers roles, outsiders, duplicate and foreign options, deadline, decide and delete.
 - The migration must be applied to production before the app change deploys; otherwise Today shows a "polls could not load" notice.
 - Not yet: polls scoped to a branch's members, realtime updates (others' votes appear after Refresh or the next vote), turning a result into a plan, and AI ranking of options.
