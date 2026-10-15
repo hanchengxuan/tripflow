@@ -1,4 +1,6 @@
+import { InputError } from '@/domain/input-error';
 import type { ItineraryItem } from '@/domain/models';
+import type { AppLocale } from '@/features/i18n/i18n-provider';
 
 export type ItineraryHealthIssueType = 'CONFLICT' | 'BUFFER' | 'DENSE_DAY' | 'MISSING_LOCATION';
 export type ItineraryHealthSeverity = 'info' | 'warning' | 'critical';
@@ -32,8 +34,9 @@ function boundedText(value: unknown, fallback: string, maxLength: number) {
   return text ? text.slice(0, maxLength) : fallback;
 }
 
-export function validateItineraryHealthReport(value: unknown, itemIds: string[]): ItineraryHealthReport {
-  if (!value || typeof value !== 'object') throw new Error('AI 返回的行程检查格式无效。');
+export function validateItineraryHealthReport(value: unknown, itemIds: string[], locale: AppLocale = 'en'): ItineraryHealthReport {
+  const tx = (zh: string, en: string) => locale === 'zh-CN' ? zh : en;
+  if (!value || typeof value !== 'object') throw new InputError('行程检查格式无效。', 'The itinerary check returned an invalid report.');
 
   const payload = value as { summary?: unknown; issues?: unknown };
   const allowedItemIds = new Set(itemIds);
@@ -60,8 +63,8 @@ export function validateItineraryHealthReport(value: unknown, itemIds: string[])
       type: type as ItineraryHealthIssueType,
       severity: severity as ItineraryHealthSeverity,
       itemIds: scopedItemIds,
-      title: boundedText(issue.title, 'Review this itinerary item', 160),
-      reason: boundedText(issue.reason, 'The plan may need a quick review.', 360),
+      title: boundedText(issue.title, tx('请检查这项安排', 'Review this itinerary item'), 160),
+      reason: boundedText(issue.reason, tx('这项安排可能需要检查。', 'The plan may need a quick review.'), 360),
       confidence: Math.max(0, Math.min(1, confidenceValue)),
       ...(typeof issue.question === 'string' && issue.question.trim()
         ? { question: issue.question.trim().slice(0, 220) }
@@ -70,7 +73,7 @@ export function validateItineraryHealthReport(value: unknown, itemIds: string[])
   });
 
   return {
-    summary: boundedText(payload.summary, 'No obvious itinerary issues found.', 240),
+    summary: boundedText(payload.summary, tx('行程目前没有需要处理的问题。', 'No obvious itinerary issues found.'), 240),
     issues,
   };
 }
@@ -79,7 +82,8 @@ function dateKey(value: string) {
   return value.slice(0, 10);
 }
 
-function localHealthReport(items: ItineraryItem[]): ItineraryHealthReport {
+function localHealthReport(items: ItineraryItem[], locale: AppLocale): ItineraryHealthReport {
+  const tx = (zh: string, en: string) => locale === 'zh-CN' ? zh : en;
   const scopedItems = [...items].sort((left, right) => left.startsAt.localeCompare(right.startsAt)).slice(0, 30);
   const issues: ItineraryHealthIssue[] = [];
   const requiredLocationKinds = new Set(['transport', 'lodging', 'food', 'activity']);
@@ -91,8 +95,8 @@ function localHealthReport(items: ItineraryItem[]): ItineraryHealthReport {
         type: 'MISSING_LOCATION',
         severity: 'warning',
         itemIds: [item.id],
-        title: item.title || '安排缺少地点',
-        reason: '这项安排没有地点，出发前可能需要补充。',
+        title: item.title || tx('安排缺少地点', 'Missing location'),
+        reason: tx('这项安排没有地点，出发前可能需要补充。', 'This plan has no location. Add one before you leave.'),
         confidence: 1,
       });
     }
@@ -107,8 +111,8 @@ function localHealthReport(items: ItineraryItem[]): ItineraryHealthReport {
         type: 'CONFLICT',
         severity: 'critical',
         itemIds: [previous.id, item.id],
-        title: '时间安排重叠',
-        reason: `${previous.title} 与 ${item.title} 的时间有重叠。`,
+        title: tx('时间安排重叠', 'Overlapping plans'),
+        reason: tx(`${previous.title} 与 ${item.title} 的时间有重叠。`, `“${previous.title}” and “${item.title}” overlap.`),
         confidence: 1,
       });
     } else if (dateKey(previous.startsAt) === dateKey(item.startsAt) && currentStart - previousEnd < 30 * 60 * 1000) {
@@ -117,8 +121,8 @@ function localHealthReport(items: ItineraryItem[]): ItineraryHealthReport {
         type: 'BUFFER',
         severity: 'warning',
         itemIds: [previous.id, item.id],
-        title: '衔接时间较短',
-        reason: `${previous.title} 结束后到 ${item.title} 开始不足 30 分钟。`,
+        title: tx('衔接时间较短', 'Short gap between plans'),
+        reason: tx(`${previous.title} 结束后到 ${item.title} 开始不足 30 分钟。`, `There are fewer than 30 minutes between the end of “${previous.title}” and the start of “${item.title}”.`),
         confidence: 0.92,
       });
     }
@@ -136,8 +140,8 @@ function localHealthReport(items: ItineraryItem[]): ItineraryHealthReport {
       type: 'DENSE_DAY',
       severity: 'info',
       itemIds: dayItems.slice(0, 4).map((item) => item.id),
-      title: `${day} 有 ${dayItems.length} 项安排`,
-      reason: '当天安排较多，建议预留休息或临时变更的空间。',
+      title: tx(`${day} 有 ${dayItems.length} 项安排`, `${dayItems.length} plans on ${day}`),
+      reason: tx('当天安排较多，建议预留休息或临时变更的空间。', 'This day has several plans. Leave room for breaks or unexpected changes.'),
       confidence: 0.84,
     });
   });
@@ -145,13 +149,13 @@ function localHealthReport(items: ItineraryItem[]): ItineraryHealthReport {
   const uniqueIssues = [...new Map(issues.map((issue) => [issue.id, issue])).values()].slice(0, 8);
   return {
     summary: uniqueIssues.length === 0
-      ? '行程目前没有需要处理的问题。'
-      : `发现 ${uniqueIssues.length} 个需要处理的行程问题。`,
+      ? tx('行程目前没有需要处理的问题。', 'No itinerary issues need attention right now.')
+      : tx(`发现 ${uniqueIssues.length} 个需要处理的行程问题。`, `${uniqueIssues.length} itinerary ${uniqueIssues.length === 1 ? 'issue needs' : 'issues need'} attention.`),
     issues: uniqueIssues,
   };
 }
 
-export async function analyzeItineraryHealth(input: { items: ItineraryItem[] }) {
+export async function analyzeItineraryHealth(input: { items: ItineraryItem[]; locale: AppLocale }) {
   const itemIds = input.items.map((item) => item.id).slice(0, 30);
-  return validateItineraryHealthReport(localHealthReport(input.items), itemIds);
+  return validateItineraryHealthReport(localHealthReport(input.items, input.locale), itemIds, input.locale);
 }

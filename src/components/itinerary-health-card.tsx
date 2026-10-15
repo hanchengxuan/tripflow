@@ -8,6 +8,7 @@ import type { ItineraryItem } from '@/domain/models';
 import { useI18n } from '@/features/i18n/i18n-provider';
 import { analyzeItineraryHealth, hasItineraryHealthIssues, type ItineraryHealthIssue, type ItineraryHealthReport } from '@/features/ai/itinerary-health';
 import { useTheme } from '@/hooks/use-theme';
+import { toUserMessage } from '@/lib/user-error';
 
 interface ItineraryHealthCardProps {
   items: ItineraryItem[];
@@ -34,14 +35,14 @@ function severityLabel(severity: ItineraryHealthIssue['severity'], tx: (zh: stri
 
 export function ItineraryHealthCard({ items, onEditItem }: ItineraryHealthCardProps) {
   const theme = useTheme();
-  const { tx } = useI18n();
+  const { locale, tx } = useI18n();
   const [reportState, setReportState] = useState<{ signature: string; report: ItineraryHealthReport }>();
   const [busy, setBusy] = useState(false);
   const [errorState, setErrorState] = useState<{ signature: string; message: string }>();
   const latestItems = useRef(items);
   const itinerarySignature = useMemo(
-    () => items.map(({ id, startsAt, endsAt, title, locationLabel, googlePlaceId }) => [id, startsAt, endsAt, title, locationLabel, googlePlaceId].join(':')).join('|'),
-    [items],
+    () => locale + ':' + items.map(({ id, startsAt, endsAt, title, locationLabel, googlePlaceId }) => [id, startsAt, endsAt, title, locationLabel, googlePlaceId].join(':')).join('|'),
+    [items, locale],
   );
 
   const report = reportState?.signature === itinerarySignature ? reportState.report : undefined;
@@ -54,17 +55,18 @@ export function ItineraryHealthCard({ items, onEditItem }: ItineraryHealthCardPr
     try {
       const nextReport = await analyzeItineraryHealth({
         items: latestItems.current,
+        locale,
       });
       setReportState({ signature, report: nextReport });
     } catch (caught) {
       setErrorState({
         signature,
-        message: caught instanceof Error ? caught.message : tx('行程检查暂时不可用，请稍后重试。', 'The itinerary check is unavailable. Try again later.'),
+        message: toUserMessage(caught, tx('行程检查暂时不可用，请稍后重试。', 'The itinerary check is unavailable. Try again later.'), locale),
       });
     } finally {
       setBusy(false);
     }
-  }, [itinerarySignature, tx]);
+  }, [itinerarySignature, locale, tx]);
 
   useEffect(() => {
     latestItems.current = items;
