@@ -5,7 +5,7 @@ import { BottomSheet } from '@/components/bottom-sheet';
 import { ChoiceChip, InlineNotice } from '@/components/form-controls';
 import { InfoCard } from '@/components/info-card';
 import { ItineraryComposerSheet } from '@/components/itinerary-composer-sheet';
-import { ItineraryHealthCard } from '@/components/itinerary-health-card';
+import { ItineraryHealthHint, ItineraryHealthSheet } from '@/components/itinerary-health-card';
 import { MoveItineraryCard } from '@/components/move-itinerary-card';
 import { NextUpCard } from '@/components/next-up-card';
 import { StayCard } from '@/components/stay-card';
@@ -18,6 +18,7 @@ import { itineraryKindLabels, itineraryKindLabelsEn } from '@/constants/options'
 import type { ThemeColor } from '@/constants/theme';
 import type { ItineraryItem, ItineraryKind, RouteTravelMode } from '@/domain/models';
 import type { HealthFix } from '@/features/ai/itinerary-health-fix';
+import { useItineraryHealth } from '@/features/ai/use-itinerary-health';
 import { destinationLabel } from '@/features/destinations/destination-search';
 import { useI18n } from '@/features/i18n/i18n-provider';
 import { useMvp } from '@/features/mvp/mvp-provider';
@@ -87,6 +88,13 @@ export default function TodayScreen() {
     () => upcomingItems.slice(1).filter((item) => item.kind !== 'lodging' || !visibleStays.some((stay) => stay.id === item.id)),
     [upcomingItems, visibleStays],
   );
+  const healthItems = useMemo(() => upcomingItems.slice(0, 30), [upcomingItems]);
+  const health = useItineraryHealth(healthItems);
+  const [healthItemId, setHealthItemId] = useState<string>();
+  const healthHint = (item: ItineraryItem) => {
+    const issues = health.issuesByItemId.get(item.id);
+    return issues ? <ItineraryHealthHint issues={issues} onPress={() => setHealthItemId(item.id)} /> : null;
+  };
   const tripRange = activeTrip ? formatTripDates(activeTrip.startsOn, activeTrip.endsOn, languageTag) : undefined;
   const tripTimeZone = activeTrip?.defaultTimeZone ?? 'UTC';
   const editingItem = itineraryItems.find(({ id }) => id === editingItemId);
@@ -413,6 +421,7 @@ export default function TodayScreen() {
             travellersMetaLabel={tx('同行 WHO', 'WHO')}
             travellersLabel={tx(`${members.length} 人可见`, `${members.length} ${members.length === 1 ? 'traveller can' : 'travellers can'} see this`)}
           />
+          {healthHint(upcomingItems[0])}
 
           {visibleStays.length > 0 ? (
             <View style={styles.staySection}>
@@ -423,15 +432,18 @@ export default function TodayScreen() {
               {visibleStays.map((stay) => {
                 const nights = stayNightsInZone(stay.startsAt, stay.endsAt, itemTimeZoneFor(stay));
                 return (
-                  <View key={stay.id} style={styles.stayRow}>
-                    <StayCard
-                      dateRange={formatZonedDateTimeRange(stay.startsAt, stay.endsAt, languageTag, itemTimeZoneFor(stay))}
-                      location={itemPlace(stay) ?? tx('还没设置地点', 'No place yet')}
-                      nights={nights}
-                      onPress={canEdit ? () => beginEdit(stay) : undefined}
-                      style={styles.stayCard}
-                      title={stay.title}
-                    />
+                  <View key={stay.id} style={styles.stayGroup}>
+                    <View style={styles.stayRow}>
+                      <StayCard
+                        dateRange={formatZonedDateTimeRange(stay.startsAt, stay.endsAt, languageTag, itemTimeZoneFor(stay))}
+                        location={itemPlace(stay) ?? tx('还没设置地点', 'No place yet')}
+                        nights={nights}
+                        onPress={canEdit ? () => beginEdit(stay) : undefined}
+                        style={styles.stayCard}
+                        title={stay.title}
+                      />
+                    </View>
+                    {healthHint(stay)}
                   </View>
                 );
               })}
@@ -464,6 +476,7 @@ export default function TodayScreen() {
                       kindLabel={kindLabel(item.kind)}
                       last={index === laterItems.length - 1}
                       onPress={canEdit ? () => beginEdit(item) : undefined}
+                      accessory={healthHint(item)}
                     />
                   </Fragment>
                 );
@@ -477,13 +490,7 @@ export default function TodayScreen() {
         </InfoCard>
       )}
 
-      {activeTrip ? (
-        <ItineraryHealthCard
-          items={upcomingItems.slice(0, 30)}
-          onEditItem={canEdit ? beginEdit : undefined}
-          fixes={canEdit ? { trip: activeTrip, onApply: applyHealthFix } : undefined}
-        />
-      ) : null}
+      {activeTrip && health.error ? <InlineNotice tone="error">{health.error}</InlineNotice> : null}
 
       {activeTrip && !canEdit ? (
         <View style={[styles.readOnlyBadge, { backgroundColor: theme.backgroundSelected }]}>
@@ -491,6 +498,17 @@ export default function TodayScreen() {
         </View>
       ) : null}
       </Screen>
+
+      {activeTrip ? (
+        <ItineraryHealthSheet
+          health={health}
+          items={healthItems}
+          itemId={healthItemId}
+          onDismiss={() => setHealthItemId(undefined)}
+          onEditItem={canEdit ? (item) => { setHealthItemId(undefined); beginEdit(item); } : undefined}
+          fixes={canEdit ? { trip: activeTrip, onApply: applyHealthFix } : undefined}
+        />
+      ) : null}
 
       <BottomSheet
         onDismiss={cancelMove}
@@ -557,6 +575,7 @@ const styles = StyleSheet.create({
   timelineSection: { paddingTop: 8 },
   routeModeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
   staySection: { gap: 10, paddingVertical: 8 },
+  stayGroup: { gap: 6 },
   stayRow: { flexDirection: 'row', alignItems: 'stretch', gap: 14 },
   stayCard: { flex: 1 },
   readOnlyBadge: { alignSelf: 'flex-start', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 },

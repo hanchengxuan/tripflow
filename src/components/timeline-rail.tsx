@@ -42,6 +42,7 @@ export function TimelineRow({
   kindSoftColor,
   last = false,
   onPress,
+  accessory,
   children,
 }: PropsWithChildren<{
   startLabel: string;
@@ -53,6 +54,8 @@ export function TimelineRow({
   kindLabel: string;
   last?: boolean;
   onPress?: () => void;
+  /** Interactive content below the row, kept outside its pressable so buttons never nest. */
+  accessory?: ReactNode;
 }>) {
   const theme = useTheme();
   const body = (
@@ -76,9 +79,12 @@ export function TimelineRow({
         <View style={[styles.dot, { backgroundColor: kindColor }]} />
         {last ? null : <View style={[styles.spineLine, { backgroundColor: theme.border }]} />}
       </View>
-      {onPress ? (
-        <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.content, pressed && styles.pressed]}>{body}</Pressable>
-      ) : <View style={styles.content}>{body}</View>}
+      <View style={styles.column}>
+        {onPress ? (
+          <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.content, pressed && styles.pressed]}>{body}</Pressable>
+        ) : <View style={styles.content}>{body}</View>}
+        {accessory}
+      </View>
     </View>
   );
 }
@@ -118,7 +124,8 @@ const styles = StyleSheet.create({
   spineLine: { width: 2, flex: 1, minHeight: 12, borderRadius: 1 },
   spineLineRoute: { opacity: 0.7 },
 
-  content: { flex: 1, minWidth: 0, gap: 3, paddingBottom: 18 },
+  column: { flex: 1, minWidth: 0, gap: 8, paddingBottom: 18 },
+  content: { gap: 3 },
   head: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   title: { flex: 1, minWidth: 0, fontSize: 17, lineHeight: 24, fontWeight: '600' },
   place: { fontSize: 13, lineHeight: 18 },
