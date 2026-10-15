@@ -373,3 +373,7 @@ Temporary acceptance fixtures are removed after each test; production may contai
 
 - The full-width "Itinerary needs attention" card at the bottom of Today is gone. `useItineraryHealth` runs the same on-device check; each flagged plan shows a compact hint (worst issue label, plus a count when there are more), and tapping it opens the itinerary-check sheet scoped to that plan. A check failure still shows as an inline notice.
 - `TimelineRow` gained an `accessory` slot rendered outside its pressable so the hint button never nests inside the row button on web.
+
+## October 15 route estimate labels
+
+- "Route estimate pending" was shown for every leg without an estimate, so it never resolved. A lookup only runs when both ends have a Google Place ID; typed or imported addresses (the Loom Demo trip) never produce one. `routeEstimateState` now separates four cases: no places picked ("Pick places to see the route"), loading, Google found no route for that mode ("No route for this mode", e.g. driving inside Osaka Castle Park where walking works), and a failed lookup ("Route estimate unavailable").

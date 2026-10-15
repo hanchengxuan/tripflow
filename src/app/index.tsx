@@ -22,7 +22,7 @@ import { useItineraryHealth } from '@/features/ai/use-itinerary-health';
 import { destinationLabel } from '@/features/destinations/destination-search';
 import { useI18n } from '@/features/i18n/i18n-provider';
 import { useMvp } from '@/features/mvp/mvp-provider';
-import { getRouteEstimate, type RouteEstimate } from '@/features/routes/route-estimate';
+import { getRouteEstimate, routeEstimateState, type RouteEstimate, type RouteEstimateState, type RouteLookup } from '@/features/routes/route-estimate';
 import { toUserMessage } from '@/lib/user-error';
 import { formatZonedDateTimeRange, isoToZonedDateTime, stayNightsInZone } from '@/lib/trip-time';
 import { useTheme } from '@/hooks/use-theme';
@@ -72,7 +72,7 @@ export default function TodayScreen() {
   const [currentTimestamp, setCurrentTimestamp] = useState(0);
   const [editingItemId, setEditingItemId] = useState<string>();
   const [composerOpen, setComposerOpen] = useState(false);
-  const [routeEstimates, setRouteEstimates] = useState<Record<string, RouteEstimate>>({});
+  const [routeEstimates, setRouteEstimates] = useState<Record<string, RouteLookup>>({});
   const [movingItemId, setMovingItemId] = useState<string>();
   const [moveTargetTripId, setMoveTargetTripId] = useState('');
   const [moveBusy, setMoveBusy] = useState(false);
@@ -138,10 +138,11 @@ export default function TodayScreen() {
     let cancelled = false;
     void Promise.all(pairs.map(async (pair) => ({
       ...pair,
-      estimate: await getRouteEstimate(activeTrip.id, pair.origin, pair.destination, pair.travelMode, pair.departureTime).catch(() => null),
+      estimate: await getRouteEstimate(activeTrip.id, pair.origin, pair.destination, pair.travelMode, pair.departureTime)
+        .then((estimate): RouteLookup => estimate ?? 'no-route', (): RouteLookup => 'failed'),
     })))
       .then((results) => {
-        if (!cancelled) setRouteEstimates(Object.fromEntries(results.flatMap(({ key, estimate }) => estimate ? [[key, estimate]] : [])));
+        if (!cancelled) setRouteEstimates(Object.fromEntries(results.map(({ key, estimate }) => [key, estimate])));
       })
       .catch(() => { if (!cancelled) setRouteEstimates({}); });
     return () => { cancelled = true; };
@@ -269,8 +270,7 @@ export default function TodayScreen() {
   const kindAccent = (itemKind: ItineraryKind) => theme[kindColorKeys[itemKind]];
   const kindSoftAccent = (itemKind: ItineraryKind) => theme[kindSoftColorKeys[itemKind]];
 
-  function formatRouteEstimate(estimate?: RouteEstimate) {
-    if (!estimate) return undefined;
+  function formatRouteEstimate(estimate: RouteEstimate) {
     const distance = estimate.distanceMeters >= 1000 ? `${(estimate.distanceMeters / 1000).toFixed(1)} km` : `${estimate.distanceMeters} m`;
     const minutes = Math.max(1, Math.round(estimate.durationSeconds / 60));
     return tx(`${distance} · 约 ${minutes} 分钟`, `${distance} · about ${minutes} min`);
@@ -307,7 +307,7 @@ export default function TodayScreen() {
     if (!item.locationLabel || !previous?.locationLabel) return null;
     const travelMode = item.routeTravelMode === 'TRANSIT' ? 'transit' : item.routeTravelMode === 'WALK' ? 'walking' : item.routeTravelMode === 'BICYCLE' ? 'bicycling' : 'driving';
     return {
-      estimate: formatRouteEstimate(routeEstimates[item.id]),
+      estimate: routeEstimateState(previous, item, routeEstimates),
       mapsUrl: `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(previous.locationLabel)}${previous.googlePlaceId ? `&origin_place_id=${encodeURIComponent(previous.googlePlaceId)}` : ''}&destination=${encodeURIComponent(item.locationLabel)}${item.googlePlaceId ? `&destination_place_id=${encodeURIComponent(item.googlePlaceId)}` : ''}&travelmode=${travelMode}`,
     };
   }
@@ -330,8 +330,17 @@ export default function TodayScreen() {
     );
   }
 
-  function routeSummary(item: ItineraryItem, estimate?: string) {
-    const detail = busyTravelModeId === item.id ? tx('正在重新计算…', 'Recalculating…') : estimate ?? tx('路线详情待生成', 'Route estimate pending');
+  function routeEstimateLabel(state: RouteEstimateState) {
+    switch (state.status) {
+      case 'needs-places': return tx('选择地点后可显示路线', 'Pick places to see the route');
+      case 'loading': return tx('正在估算路线…', 'Estimating route…');
+      case 'no-route': return tx('没有找到这种方式的路线', 'No route for this mode');
+      case 'failed': return tx('暂时无法估算路线', 'Route estimate unavailable');
+      case 'ready': return formatRouteEstimate(state.estimate);
+    }
+  }
+  function routeSummary(item: ItineraryItem, state: RouteEstimateState) {
+    const detail = busyTravelModeId === item.id ? tx('正在重新计算…', 'Recalculating…') : routeEstimateLabel(state);
     const modeLabel = routeTravelModeLabel(item.routeTravelMode, tx);
     return (
       <RouteEstimateChip
@@ -345,7 +354,8 @@ export default function TodayScreen() {
   }
 
   function transitPlan(item: ItineraryItem) {
-    const transit = routeEstimates[item.id]?.transit;
+    const lookup = routeEstimates[item.id];
+    const transit = typeof lookup === 'object' ? lookup.transit : undefined;
     if (item.routeTravelMode !== 'TRANSIT' || busyTravelModeId === item.id || !transit) return null;
     return <TransitPlan transit={transit} compact={compact} tx={tx} formatTime={(isoTime, localizedTime) => formatTransitTime(isoTime, localizedTime, itemTimeZoneFor(item))} />;
   }
