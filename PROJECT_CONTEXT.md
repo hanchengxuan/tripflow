@@ -1,6 +1,6 @@
 # TripFlow project context
 
-Last verified: 2026-09-23 UTC (SDK compatibility patch aligned with current Expo Doctor)
+Last verified: 2026-10-15 (UI review repair slices; see exact release evidence below)
 
 This file is the durable, version-controlled source of truth for engineering continuity. It contains only project-safe context. Product detail belongs in `planning.md`; implementation history belongs in Git.
 
@@ -330,3 +330,8 @@ Temporary acceptance fixtures are removed after each test; production may contai
 
 - The focused ui-accessibility-language slice removes the mobile zoom restriction, adds one Web main landmark, synchronizes document language with the selected locale, raises muted-text contrast on both palettes, and gives the shared selector Done action a 44px target. Stay labels/accessibility and traveller/person/currency counts follow the selected language and English singular/plural rules. The two legacy screens stay at their prior line counts with no new state concerns. No migration.
 - Local verification: TypeScript, scoped lint, 137 tests, Web/iOS exports and eight mobile/desktop public browser tests passed. The public-route recovery assertion now accepts only its own requested 404 URL with either HTTP wording, retaining all other error checks. Signed-in Today/Trips/Ledger checks at 390/1280px confirmed localized content, one main landmark, no horizontal overflow, and a measured 44x44 Done button. Login Lighthouse accessibility improved from 88/92 to 100 in light mobile and dark desktop snapshots; automated checks do not replace device acceptance. Review found no blocking issue. Next: exact-head gates, merge and production smoke; physical-device zoom/picker acceptance remains open.
+## October 15 booking import progress and recovery
+
+- Ledger PR #104 is verified live at `cbeeff1a1198d78f34f4ec5fa1b300d1fd228a6c`: production CD `38656632263` succeeded and `dpl_6AzQi9zGumPbNSE4Py6hU4z4MkJb` is READY for that SHA. Signed-in Chinese/English blank-title and JPY decimal preflight messages passed on production; no expense was saved. Place-search PR #106 production CD `38657353972` succeeded with READY deployment `dpl_M5BvSBDEMK5bf3dQxYrFHoisBkgi` for `1c042fd9c7025981c1834f0b2120d2c4bfd367c7`.
+- The focused booking-import-recovery slice adds visible recognizing/saving status, transport cancellation and stale-response rejection for recognition, and localized per-row preflight errors before upload. Saving stays locked because a transaction may commit before a response fails; previews remain available for safe idempotent retry. Closing recognition does not claim to cancel provider-side processing. No new migration or provider contract change.
+- Local checks: 156 tests, TypeScript, scoped lint, Web/iOS exports and eight public browser checks passed. Deferred-request regressions cover cancel/retry races, duplicate requests, unmount, field correction and save retry/commit lock. Actual PDF recognition at 390px supported stop/retry, named missing check-in time without saving, and closed cleanly; desktop 1280px recognition status and header cancellation also passed without horizontal overflow. Review found no blocking issue. Next: rebase with the map/accessible-UI slices, exact-head gates, merge and integrated production smoke. Physical-device file picking and keyboard/zoom remain open.

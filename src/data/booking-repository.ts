@@ -14,9 +14,10 @@ export async function listBookingDocuments(tripId?: string) {
   return data;
 }
 
-export async function parseBookingFile(tripId: string, file: BookingFile, locale: string) {
+export async function parseBookingFile(tripId: string, file: BookingFile, locale: string, signal?: AbortSignal) {
   const { data, error } = await getSupabaseClient().functions.invoke('parse-booking', {
     body: { tripId, base64: file.base64, mimeType: file.mimeType, locale, consent: true },
+    signal,
   });
   if (error) throw error;
   return sanitizeBookings(data?.bookings);

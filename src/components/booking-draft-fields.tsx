@@ -12,8 +12,8 @@ import { Spacing } from '@/constants/theme';
 import { useI18n } from '@/features/i18n/i18n-provider';
 import { useTheme } from '@/hooks/use-theme';
 
-export function BookingDraftFields({ draft, index, selected, onToggle, onChange }: {
-  draft: BookingPreview; index: number; selected: boolean; onToggle: () => void; onChange: (patch: Partial<BookingPreview>) => void;
+export function BookingDraftFields({ draft, index, selected, error, onToggle, onChange }: {
+  draft: BookingPreview; index: number; selected: boolean; error?: string; onToggle: () => void; onChange: (patch: Partial<BookingPreview>) => void;
 }) {
   const { locale, tx } = useI18n();
   const theme = useTheme();
@@ -31,6 +31,7 @@ export function BookingDraftFields({ draft, index, selected, onToggle, onChange 
         <ChoiceChip selected={selected} onPress={onToggle}>{tx('加入', 'Include')}</ChoiceChip>
       </View>
       {draft.kind === 'flight' && draft.flightNumber && !draft.title.includes(draft.flightNumber) ? <ThemedText type="small" themeColor="textSecondary">{[draft.flightNumber, draft.departureAirport && draft.arrivalAirport ? `${draft.departureAirport} → ${draft.arrivalAirport}` : ''].filter(Boolean).join(' · ')}</ThemedText> : null}
+      {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
       {missing ? <InlineNotice>{tx('有信息未识别，请补全后加入。', 'Some details are missing. Complete them before adding.')}</InlineNotice> : null}
       {draft.warnings.map((warning, position) => <ThemedText key={position} type="small" themeColor="textSecondary">{warning}</ThemedText>)}
       <ThemedText type="smallBold">{draft.title || tx('未命名订单', 'Untitled booking')}</ThemedText>
