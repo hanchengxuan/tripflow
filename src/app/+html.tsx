@@ -14,7 +14,7 @@ export default function RootHtml({ children }: PropsWithChildren) {
         <link href="/apple-touch-icon-180.png" rel="apple-touch-icon" />
         <ScrollViewStyleReset />
       </head>
-      <body><main style={{ display: 'flex', flex: 1, height: '100%' }}>{children}</main></body>
+      <body><main style={{ display: 'flex', flexDirection: 'column', flex: 1, height: '100%' }}>{children}</main></body>
     </html>
   );
 }
