@@ -8,6 +8,7 @@ import Svg, { Line, Path, Polyline, Rect } from 'react-native-svg';
 
 import { SectionHeading } from '@/components/section-heading';
 import { ThemedText } from '@/components/themed-text';
+import { Radius, Size, Spacing } from '@/constants/theme';
 import type { ItineraryItem } from '@/domain/models';
 import { projectDestination } from '@/features/destinations/destination-search';
 import { formatZonedDateTimeRange } from '@/lib/trip-time';
@@ -258,37 +259,37 @@ export function DestinationAtlas({
               })}
             </Reanimated.View>
           </GestureDetector>
-          <View style={styles.mapOverlay} pointerEvents="box-none">
-            <View style={styles.mapControls}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={tx('缩小地图', 'Zoom out map')}
-                onPress={() => zoomMap(-0.5)}
-                style={({ pressed }) => [styles.mapControl, { backgroundColor: theme.backgroundElement, borderColor: theme.border }, pressed && styles.pressed]}>
-                <ThemedText type="subtitle" style={{ color: theme.text }}>−</ThemedText>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={tx('放大地图', 'Zoom in map')}
-                onPress={() => zoomMap(0.5)}
-                style={({ pressed }) => [styles.mapControl, { backgroundColor: theme.backgroundElement, borderColor: theme.border }, pressed && styles.pressed]}>
-                <ThemedText type="subtitle" style={{ color: theme.text }}>＋</ThemedText>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={tx('重置地图', 'Reset map')}
-                onPress={resetMap}
-                style={({ pressed }) => [styles.mapControl, styles.resetControl, { backgroundColor: theme.backgroundElement, borderColor: theme.border }, pressed && styles.pressed]}>
-                <ThemedText type="smallBold" style={{ color: theme.text }}>1:1</ThemedText>
-              </Pressable>
-            </View>
-            <View style={styles.mapCaption} pointerEvents="none">
-              <ThemedText type="small" style={{ color: theme.mapMarker }}>{tx('旅途轨迹', 'TRIP TRACE')}</ThemedText>
-              <ThemedText type="small" style={{ color: theme.mapMarker, opacity: 0.72 }}>{tx('拖动浏览 · 双指缩放', 'Drag to explore · pinch to zoom')}</ThemedText>
-            </View>
-          </View>
         </View>
       </Animated.View>
+      <View style={styles.mapToolbar}>
+        <View style={styles.mapCaption} pointerEvents="none">
+          <ThemedText type="small" themeColor="textSecondary">{tx('旅途轨迹', 'TRIP TRACE')}</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">{tx('拖动浏览 · 双指缩放', 'Drag to explore · pinch to zoom')}</ThemedText>
+        </View>
+        <View style={styles.mapControls}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={tx('缩小地图', 'Zoom out map')}
+            onPress={() => zoomMap(-0.5)}
+            style={({ pressed }) => [styles.mapControl, { backgroundColor: theme.backgroundElement, borderColor: theme.border, shadowColor: theme.shadow }, pressed && styles.pressed]}>
+            <ThemedText type="subtitle" style={{ color: theme.text }}>−</ThemedText>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={tx('放大地图', 'Zoom in map')}
+            onPress={() => zoomMap(0.5)}
+            style={({ pressed }) => [styles.mapControl, { backgroundColor: theme.backgroundElement, borderColor: theme.border, shadowColor: theme.shadow }, pressed && styles.pressed]}>
+            <ThemedText type="subtitle" style={{ color: theme.text }}>＋</ThemedText>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={tx('重置地图', 'Reset map')}
+            onPress={resetMap}
+            style={({ pressed }) => [styles.mapControl, { backgroundColor: theme.backgroundElement, borderColor: theme.border, shadowColor: theme.shadow }, pressed && styles.pressed]}>
+            <ThemedText type="smallBold" style={{ color: theme.text }}>1:1</ThemedText>
+          </Pressable>
+        </View>
+      </View>
 
       {selected ? (
         <View style={[styles.detail, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
@@ -336,15 +337,14 @@ const styles = StyleSheet.create({
   mapShell: { position: 'relative', width: '100%', aspectRatio: MAP_WIDTH / MAP_HEIGHT, borderRadius: 24, overflow: 'hidden' },
   mapViewport: { position: 'relative', width: '100%', height: '100%', overflow: 'hidden' },
   mapContent: { width: '100%', height: '100%' },
-  mapOverlay: StyleSheet.absoluteFill,
-  mapControls: { position: 'absolute', right: 14, top: 14, gap: 8 },
-  mapControl: { width: 42, height: 42, borderRadius: 13, borderWidth: 1, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOpacity: 0.16, shadowRadius: 8, shadowOffset: { width: 0, height: 3 } },
-  resetControl: { width: 42 },
+  mapToolbar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.xs },
+  mapControls: { flexDirection: 'row', gap: Spacing.xs },
+  mapControl: { width: Size.touchMin, height: Size.touchMin, borderRadius: Radius.sm, borderWidth: 1, alignItems: 'center', justifyContent: 'center', shadowOpacity: 0.16, shadowRadius: 8, shadowOffset: { width: 0, height: 3 } },
   markerHit: { position: 'absolute', width: 44, height: 44, marginLeft: -22, marginTop: -22, alignItems: 'center', justifyContent: 'center' },
   markerGlow: { position: 'absolute', width: 30, height: 30, borderRadius: 15, opacity: 0.28 },
   marker: { minWidth: 25, height: 25, borderRadius: 13, borderWidth: 2, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 3 } },
   markerSelected: { minWidth: 31, height: 31, borderRadius: 16, borderWidth: 3 },
-  mapCaption: { position: 'absolute', left: 16, bottom: 14, gap: 1 },
+  mapCaption: { flex: 1, minWidth: 0, gap: Spacing.half },
   detail: { borderWidth: 1, borderRadius: 20, padding: 16, gap: 14 },
   detailHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   detailCopy: { flex: 1, gap: 2 },
