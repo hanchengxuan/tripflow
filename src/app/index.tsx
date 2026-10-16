@@ -5,6 +5,7 @@ import { Linking, Pressable, StyleSheet, useWindowDimensions, View } from 'react
 import { BottomSheet } from '@/components/bottom-sheet';
 import { EmptyState } from '@/components/empty-state';
 import { ChoiceChip, InlineNotice } from '@/components/form-controls';
+import { DayBriefingCard } from '@/components/day-briefing-card';
 import { ItineraryComposerSheet } from '@/components/itinerary-composer-sheet';
 import { ItineraryHealthHint, ItineraryHealthSheet } from '@/components/itinerary-health-card';
 import { PollNudge } from '@/components/poll-nudge';
@@ -431,6 +432,7 @@ export default function TodayScreen() {
         />
       ) : upcomingItems.length > 0 ? (
         <>
+          {currentTimestamp ? <DayBriefingCard items={upcomingItems} timeZone={tripTimeZone} now={currentTimestamp} /> : null}
           <NextUpCard
             countdownLabel={countdownLabel(upcomingItems[0])}
             kindColor={kindAccent(upcomingItems[0].kind)}
