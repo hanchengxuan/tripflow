@@ -39,7 +39,12 @@
       "favicon": "./assets/images/tripflow-favicon.png"
     },
     "plugins": [
-      "expo-router",
+      [
+        "expo-router",
+        {
+          "origin": "https://tripflow.fun"
+        }
+      ],
       [
         "expo-localization",
         {
