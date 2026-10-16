@@ -82,8 +82,20 @@ export function validateTripChatReply(value: unknown, planIds: string[], memberI
   return { answer, actions };
 }
 
-export async function sendTripChat(input: { tripId: string; messages: TripChatMessage[]; planIds: string[]; memberIds: string[]; locale: 'zh-CN' | 'en' }) {
-  const data = await invokeEdgeFunction<unknown>('ask-trip', { tripId: input.tripId, messages: input.messages.slice(-12), locale: input.locale });
+export async function sendTripChat(input: {
+  tripId: string;
+  messages: TripChatMessage[];
+  planIds: string[];
+  memberIds: string[];
+  locale: 'zh-CN' | 'en';
+  image?: { base64: string; mimeType: string };
+}) {
+  const data = await invokeEdgeFunction<unknown>('ask-trip', {
+    tripId: input.tripId,
+    messages: input.messages.slice(-12),
+    locale: input.locale,
+    ...(input.image ? { imageBase64: input.image.base64, imageMimeType: input.image.mimeType } : {}),
+  });
   return validateTripChatReply(data, input.planIds, input.memberIds);
 }
 

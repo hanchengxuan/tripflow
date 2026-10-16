@@ -1,5 +1,5 @@
 import type { ItineraryItem } from '@/domain/models';
-import { planChangeFromAction, proposalsFromReply, transcribeTripChat, validateTripChatReply } from '@/features/ai/trip-chat';
+import { planChangeFromAction, proposalsFromReply, sendTripChat, transcribeTripChat, validateTripChatReply } from '@/features/ai/trip-chat';
 import { invokeEdgeFunction } from '@/lib/edge-function';
 
 jest.mock('@/lib/edge-function', () => ({ invokeEdgeFunction: jest.fn() }));
@@ -87,5 +87,22 @@ describe('transcribeTripChat', () => {
   test('rejects an empty transcript so the recorder shows its retry message', async () => {
     mockInvoke.mockResolvedValueOnce({ transcript: ' ' });
     await expect(transcribeTripChat({ tripId: 't', audioBase64: 'AAA', audioMimeType: 'audio/webm' })).rejects.toThrow();
+  });
+});
+
+describe('sendTripChat', () => {
+  const base = { tripId: 't', messages: [{ role: 'user' as const, text: 'Add this booking' }], planIds: [], memberIds: ['me'], locale: 'en' as const };
+
+  test('sends an attached photo with the latest message and keeps the proposals it returns', async () => {
+    mockInvoke.mockResolvedValueOnce({ answer: 'Added your hotel?', actions: [{ type: 'add_plan', kind: 'lodging', title: 'Hotel', startLocal: '2026-11-14 15:00', endLocal: '2026-11-16 11:00', place: 'Namba' }] });
+    const reply = await sendTripChat({ ...base, image: { base64: 'IMG', mimeType: 'image/jpeg' } });
+    expect(mockInvoke).toHaveBeenLastCalledWith('ask-trip', { tripId: 't', messages: base.messages, locale: 'en', imageBase64: 'IMG', imageMimeType: 'image/jpeg' });
+    expect(reply.actions).toHaveLength(1);
+  });
+
+  test('leaves the image fields out when no photo is attached', async () => {
+    mockInvoke.mockResolvedValueOnce({ answer: 'OK', actions: [] });
+    await sendTripChat(base);
+    expect(mockInvoke).toHaveBeenLastCalledWith('ask-trip', { tripId: 't', messages: base.messages, locale: 'en' });
   });
 });
