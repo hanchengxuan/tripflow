@@ -15,7 +15,7 @@
 import { mkdirSync, writeFileSync as write, rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { chromium } from 'playwright';
+import { chromium } from '@playwright/test';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const out = join(root, 'out');
