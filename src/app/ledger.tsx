@@ -11,33 +11,25 @@ import { SegmentedControl } from '@/components/segmented-control';
 import {
   SettlementWorkspace,
   amountInputFromMinor,
-  type BalanceSnapshot as SettlementWorkspaceBalanceSnapshot,
   type SettlementDraft,
 } from '@/components/settlement-workspace';
 import { getCurrencyOptions } from '@/constants/options';
-import {
-  calculateBalancesByCurrency,
-  calculateOutstandingBalancesByCurrency,
-  calculateBalancesInCurrency,
-  convertMinorAmount,
-  parseExchangeRate,
-  parseAmountToMinor,
-} from '@/domain/ledger';
-import { minimizeSettlementTransfers, splitByExactAmounts, splitByPercentages, splitByWeights, splitEqually, type SettlementTransfer } from '@/domain/money';
+import { parseAmountToMinor } from '@/domain/ledger';
+import { splitByExactAmounts, splitByPercentages, splitByWeights, splitEqually, type SettlementTransfer } from '@/domain/money';
 import type { Expense, Settlement } from '@/domain/models';
+import { buildSettlementPlan } from '@/domain/settlement-plan';
 import { type AiExpenseDraft, parseExpenseAudio, parseExpenseImage, parseExpenseText, validateAiExpenseDraft } from '@/features/ai/expense-parser';
 import { formatExchangeRate } from '@/features/currency/exchange-rate';
 import { useExchangeRate, type ExchangeRateLoadState } from '@/features/currency/use-exchange-rate';
 import { useI18n } from '@/features/i18n/i18n-provider';
 import { defaultAllocationValueFor } from '@/features/ledger/default-allocation';
 import { captureReceiptPhoto } from '@/features/ledger/receipt-photo';
+import { settlementPayment } from '@/features/ledger/settlement-payment';
 import { useMvp } from '@/features/mvp/mvp-provider';
-import { InputError } from '@/domain/input-error';
 import { validateExpenseDraft } from '@/features/ledger/validate-expense-draft';
 import { useTheme } from '@/hooks/use-theme';
 import { toUserMessage } from '@/lib/user-error';
 
-type BalanceSnapshot = SettlementWorkspaceBalanceSnapshot;
 
 export default function LedgerScreen() {
   const theme = useTheme();
@@ -161,32 +153,10 @@ export default function LedgerScreen() {
     if (currency.toUpperCase() !== baseCurrency.toUpperCase()) setExchangeRateSource('manual');
   }
 
-  const balanceSnapshots = useMemo<BalanceSnapshot[]>(() => {
-    const gross = calculateBalancesByCurrency(expenses, memberIds);
-    const outstanding = calculateOutstandingBalancesByCurrency(expenses, settlements, memberIds);
-    const outstandingByCurrency = new Map(outstanding.map((item) => [item.currency, item.balances]));
-    return gross.map(({ currency: balanceCurrency, balances }) => ({
-      currency: balanceCurrency,
-      outstandingTransfers: minimizeSettlementTransfers(outstandingByCurrency.get(balanceCurrency) ?? balances),
-    }));
-  }, [expenses, settlements, memberIds]);
-
-  const sourcePendingTransfers = balanceSnapshots.flatMap(({ currency: itemCurrency, outstandingTransfers }) =>
-    outstandingTransfers.map((transfer) => ({ ...transfer, currency: itemCurrency })),
+  const { balanceSnapshots, pendingTransfers, hasCompleteConversions, needsReconciliation } = useMemo(
+    () => buildSettlementPlan(expenses, settlements, memberIds, baseCurrency),
+    [baseCurrency, expenses, memberIds, settlements],
   );
-  const normalizedBalance = useMemo(
-    () => activeTrip ? calculateBalancesInCurrency(expenses, memberIds, settlements, baseCurrency) : undefined,
-    [activeTrip, baseCurrency, expenses, memberIds, settlements],
-  );
-  const normalizedPendingTransfers = useMemo(
-    () => normalizedBalance
-      ? minimizeSettlementTransfers(normalizedBalance.balances).map((transfer) => ({ ...transfer, currency: baseCurrency }))
-      : [],
-    [baseCurrency, normalizedBalance],
-  );
-  const hasCompleteConversions = normalizedBalance?.unconvertedExpenseIds.length === 0
-    && normalizedBalance?.unconvertedSettlementIds.length === 0;
-  const pendingTransfers = hasCompleteConversions ? normalizedPendingTransfers : sourcePendingTransfers;
   const myPendingTransfers = pendingTransfers.filter(({ fromParticipantId }) => fromParticipantId === currentUserId);
   const myIncomingTransfers = pendingTransfers.filter(({ toParticipantId }) => toParticipantId === currentUserId);
   const currentMember = ledgerMembers.find(({ userId }) => userId === currentUserId);
@@ -506,24 +476,12 @@ export default function LedgerScreen() {
 
   async function completeTransfer(transfer: SettlementTransfer & { currency: string }): Promise<boolean> {
     const transferKey = `${transfer.currency}-${transfer.fromParticipantId}-${transfer.toParticipantId}`;
-    const draft = settlementDrafts[transferKey] ?? { currency: baseCurrency, amount: amountInputFromMinor(transfer.amountMinor, baseCurrency), rate: '1' };
+    const draft = settlementDrafts[transferKey];
     setBusySettlementId(transferKey);
     setFormError(undefined);
     setSuccess(undefined);
     try {
-      const amountMinor = parseAmountToMinor(draft.amount, draft.currency);
-      const exchangeRate = draft.currency.toUpperCase() === baseCurrency.toUpperCase() ? 1 : parseExchangeRate(draft.rate);
-      const baseAmountMinor = convertMinorAmount(amountMinor, draft.currency, baseCurrency, exchangeRate);
-      if (baseAmountMinor > transfer.amountMinor) throw new InputError('折算金额不能超过待转余额。', 'The converted amount cannot exceed the amount due.');
-      await markSettlement({
-        toUserId: transfer.toParticipantId,
-        currency: draft.currency,
-        amountMinor,
-        baseCurrency,
-        baseAmountMinor,
-        exchangeRate,
-        exchangeRateSource: 'manual',
-      });
+      await markSettlement(settlementPayment({ transfer, draft, baseCurrency, hasCompleteConversions, needsReconciliation }));
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setSettlementDrafts((current) => {
         const next = { ...current };
@@ -621,7 +579,8 @@ export default function LedgerScreen() {
           currencyOptions={currencyOptions}
           currentUserId={currentUserId}
           expenses={expenses}
-          hasCompleteConversions={Boolean(hasCompleteConversions)}
+          hasCompleteConversions={hasCompleteConversions}
+          needsReconciliation={needsReconciliation}
           memberById={memberById}
           myIncomingTransfers={myIncomingTransfers}
           myPendingTransfers={myPendingTransfers}
@@ -630,7 +589,6 @@ export default function LedgerScreen() {
           settlementDrafts={settlementDrafts}
           settlements={settlements}
           setSettlementDrafts={setSettlementDrafts}
-          summaryTransfers={normalizedPendingTransfers}
           undoTransfer={undoTransfer}
           onAddExpense={toggleComposer}
         />

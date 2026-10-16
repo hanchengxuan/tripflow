@@ -117,3 +117,16 @@ describe('ledger helpers', () => {
     expect(calculateBalancesInCurrency([expense], ['a', 'b'], [], 'CNY').unconvertedExpenseIds).toEqual(['legacy-hkd']);
   });
 });
+
+test('uses source amounts when a stored base belongs to a different currency', () => {
+  const expense: Expense = {
+    id: 'moved', tripId: 'trip', title: 'Historical bill', currency: 'HKD', totalMinor: 10000,
+    baseCurrency: 'CNY', baseAmountMinor: 9200, exchangeRate: 0.92,
+    occurredAt: '2026-10-16T00:00:00Z', source: 'manual',
+    payers: [{ userId: 'a', amountMinor: 10000, baseAmountMinor: 9200 }],
+    shares: [{ userId: 'b', amountMinor: 10000, baseAmountMinor: 9200 }],
+  };
+  expect(calculateBalancesInCurrency([expense], ['a', 'b'], [], 'HKD').balances).toEqual([
+    { participantId: 'a', netMinor: 10000 }, { participantId: 'b', netMinor: -10000 },
+  ]);
+});

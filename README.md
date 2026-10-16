@@ -60,6 +60,16 @@ The MVP screens read and write live Supabase data. Never commit Supabase secrets
 
 The natural-language expense parser and the opt-in itinerary smart-edit preview run only in Supabase Edge Functions. Configure `GEMINI_API_KEY` in Supabase Edge Function Secrets; never expose it through an `EXPO_PUBLIC_*` variable or commit it to Git. Smart edit sends only the one itinerary item the traveller explicitly selects, returns a reviewable proposal, and never writes without confirmation.
 
+## Verify Ledger currency settlement
+
+Start a local server with synthetic backend settings:
+
+```bash
+EXPO_PUBLIC_SUPABASE_URL=https://ledger-fixture.supabase.co EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_fixture npm run web -- --port 4209
+```
+
+In another terminal, run `node scripts/verify-ledger-currency.mjs`. The check intercepts all synthetic backend requests and exercises currency totals, Mark sent, undo, and incomplete-rate protection at mobile and desktop widths in both themes. It makes no real payment or database writes. Screenshots and accessibility snapshots are saved in `.expo/ledger-currency-qa/`.
+
 ## Deploy the web MVP
 
 The repository includes `vercel.json` for a static Expo web deployment.

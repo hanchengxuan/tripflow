@@ -72,6 +72,7 @@ export function SettlementWorkspace({
   currentUserId,
   expenses,
   hasCompleteConversions,
+  needsReconciliation,
   memberById,
   myIncomingTransfers,
   myPendingTransfers,
@@ -80,7 +81,6 @@ export function SettlementWorkspace({
   settlementDrafts,
   settlements,
   setSettlementDrafts,
-  summaryTransfers,
   undoTransfer,
   onAddExpense,
 }: {
@@ -92,6 +92,7 @@ export function SettlementWorkspace({
   currentUserId: string;
   expenses: Expense[];
   hasCompleteConversions: boolean;
+  needsReconciliation: boolean;
   memberById: Map<string, TripMember>;
   myIncomingTransfers: Transfer[];
   myPendingTransfers: Transfer[];
@@ -100,7 +101,6 @@ export function SettlementWorkspace({
   settlementDrafts: Record<string, SettlementDraft>;
   settlements: Settlement[];
   setSettlementDrafts: React.Dispatch<React.SetStateAction<Record<string, SettlementDraft>>>;
-  summaryTransfers: Transfer[];
   undoTransfer: (settlement: Settlement) => Promise<void>;
   onAddExpense: () => void;
 }) {
@@ -110,20 +110,23 @@ export function SettlementWorkspace({
   const [currencyKey, setCurrencyKey] = useState<string>();
 
   const mySettlements = settlements.filter(({ fromUserId, toUserId }) => fromUserId === currentUserId || toUserId === currentUserId);
-  const pendingOut = sumTransfers(summaryTransfers, 'from', currentUserId);
-  const pendingIn = sumTransfers(summaryTransfers, 'to', currentUserId);
-  const settled = pendingOut === 0 && pendingIn === 0 && myPendingTransfers.length === 0 && myIncomingTransfers.length === 0;
+  const summaries = balanceSnapshots.map(({ currency, outstandingTransfers }) => ({
+    currency, out: sumTransfers(outstandingTransfers, 'from', currentUserId), incoming: sumTransfers(outstandingTransfers, 'to', currentUserId),
+  })).filter(({ out, incoming }) => out > 0 || incoming > 0);
+  const settled = myPendingTransfers.length === 0 && myIncomingTransfers.length === 0;
   const spentMinor = expenses.reduce((sum, expense) => sum + (
     expense.currency === baseCurrency ? expense.totalMinor : expense.baseCurrency === baseCurrency ? expense.baseAmountMinor ?? 0 : 0
   ), 0);
   const currencyTransfer = myPendingTransfers.find((transfer) => transferKey(transfer) === currencyKey);
   const draftFor = (transfer: Transfer) =>
     settlementDrafts[transferKey(transfer)]
-    ?? { currency: baseCurrency, amount: amountInputFromMinor(transfer.amountMinor, baseCurrency), rate: '1' };
+    ?? { currency: transfer.currency, amount: amountInputFromMinor(transfer.amountMinor, transfer.currency), rate: '1' };
 
   return (
     <View style={styles.workspace}>
-      {balanceSnapshots.length === 0 ? (
+      {needsReconciliation ? (
+        <InlineNotice>{tx('已有换算后的转账记录；请先在明细中补全当前本位币汇率，再继续结算。', 'Earlier payments used converted amounts. Complete the current home-currency rates in Activity before settling again.')}</InlineNotice>
+      ) : balanceSnapshots.length === 0 ? (
         <EmptyState
           symbol={{ ios: 'receipt', android: 'receipt_long', web: 'receipt_long' }}
           title={tx('还没有支出', 'No expenses yet')}
@@ -137,34 +140,36 @@ export function SettlementWorkspace({
           <View style={styles.settledText}>
             <ThemedText type="smallBold">{pendingTransfers.length === 0 ? tx('全部结清', 'All settled') : tx('你已结清', 'You are settled')}</ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
-              {tx(`${expenses.length} 笔支出 · 合计 ${formatMinorAmount(spentMinor, baseCurrency)}`, `${expenses.length} ${expenses.length === 1 ? 'expense' : 'expenses'} · ${formatMinorAmount(spentMinor, baseCurrency)} total`)}
+              {hasCompleteConversions
+                ? tx(`${expenses.length} 笔支出 · 合计 ${formatMinorAmount(spentMinor, baseCurrency)}`, `${expenses.length} ${expenses.length === 1 ? 'expense' : 'expenses'} · ${formatMinorAmount(spentMinor, baseCurrency)} total`)
+                : tx(`${expenses.length} 笔支出`, `${expenses.length} ${expenses.length === 1 ? 'expense' : 'expenses'}`)}
             </ThemedText>
           </View>
         </View>
       ) : (
         <View style={styles.summary}>
-          <BalanceBar
-            outLabel={tx('你要付', 'To send')}
-            outAmount={formatMinorAmount(pendingOut, baseCurrency)}
-            outValue={pendingOut}
-            inLabel={tx('该收', 'To receive')}
-            inAmount={formatMinorAmount(pendingIn, baseCurrency)}
-            inValue={pendingIn}
-            footnote={[
-              tx(`净额 ${formatMinorAmount(pendingIn - pendingOut, baseCurrency)}`, `Net ${formatMinorAmount(pendingIn - pendingOut, baseCurrency)}`),
-              mySettlements.length > 0 ? tx(`${mySettlements.length} 笔已完成`, `${mySettlements.length} completed`) : '',
-            ].filter(Boolean).join(' · ')}
-          />
+          {summaries.map(({ currency, out, incoming }) => (
+            <BalanceBar
+              key={currency}
+              outLabel={tx('你要付', 'To send')}
+              outAmount={formatMinorAmount(out, currency)}
+              outValue={out}
+              inLabel={tx('该收', 'To receive')}
+              inAmount={formatMinorAmount(incoming, currency)}
+              inValue={incoming}
+              footnote={`${currency} · ${tx(`净额 ${formatMinorAmount(incoming - out, currency)}`, `Net ${formatMinorAmount(incoming - out, currency)}`)}`}
+            />
+          ))}
           {!hasCompleteConversions ? (
             <InlineNotice>
-              {tx('部分外币支出缺少汇率；上方仅汇总已换算金额。', 'Some foreign-currency expenses need a rate; the summary includes converted amounts only.')}
+              {tx('部分账单缺少当前本位币汇率；按原币种分别结算。', 'Some bills need a rate for the current home currency; settle each original currency separately.')}
             </InlineNotice>
           ) : null}
         </View>
       )}
       {settled && balanceSnapshots.length > 0 && !hasCompleteConversions ? (
         <InlineNotice>
-          {tx('部分外币支出缺少汇率；上方仅汇总已换算金额。', 'Some foreign-currency expenses need a rate; the summary includes converted amounts only.')}
+          {tx('部分账单缺少当前本位币汇率；按原币种分别结算。', 'Some bills need a rate for the current home currency; settle each original currency separately.')}
         </InlineNotice>
       ) : null}
 
@@ -190,7 +195,7 @@ export function SettlementWorkspace({
                     <SettingsRow
                       leading={<MemberAvatar avatarUrl={memberById.get(transfer.fromParticipantId)?.avatarUrl} displayName={memberById.get(transfer.fromParticipantId)?.displayName ?? name} size={38} />}
                       label={tx(`${name} 待转给你`, `${name} owes you`)}
-                      value={formatMinorAmount(transfer.amountMinor, baseCurrency)}
+                      value={formatMinorAmount(transfer.amountMinor, transfer.currency)}
                       valueColor={theme.moneyIn}
                     />
                   </View>
@@ -210,7 +215,7 @@ export function SettlementWorkspace({
                 <SettingsRow
                   leading={<MemberAvatar avatarUrl={recipient?.avatarUrl} displayName={recipient?.displayName ?? name} size={38} />}
                   label={tx(`转给 ${name}`, `Pay ${name}`)}
-                  subtitle={formatMinorAmount(transfer.amountMinor, baseCurrency)}
+                  subtitle={formatMinorAmount(transfer.amountMinor, transfer.currency)}
                   subtitleColor={theme.moneyOut}
                   control={
                     <ActionButton
@@ -234,7 +239,7 @@ export function SettlementWorkspace({
         {myPendingTransfers.length > 0 ? (
           <>
             <SettingsRow
-              label={tx('用其他币种付款', 'Pay in another currency')}
+              label={hasCompleteConversions ? tx('用其他币种付款', 'Pay in another currency') : tx('转账金额', 'Payment amount')}
               value={tx(`${myPendingTransfers.length} 笔`, `${myPendingTransfers.length}`)}
               onPress={() => { setCurrencyKey(transferKey(myPendingTransfers[0])); setPanel('currency'); }}
             />
@@ -258,7 +263,7 @@ export function SettlementWorkspace({
         />
       </SettingsGroup>
 
-      <BottomSheet onDismiss={() => setPanel(undefined)} title={tx('用其他币种付款', 'Pay in another currency')} visible={panel === 'currency'}>
+      <BottomSheet onDismiss={() => setPanel(undefined)} title={hasCompleteConversions ? tx('用其他币种付款', 'Pay in another currency') : tx('转账金额', 'Payment amount')} visible={panel === 'currency'}>
         <View style={styles.panel}>
           {myPendingTransfers.length > 1 ? (
             <SelectionField
@@ -266,7 +271,7 @@ export function SettlementWorkspace({
               value={currencyKey ?? ''}
               options={myPendingTransfers.map((transfer) => ({
                 value: transferKey(transfer),
-                label: `${tx('转给', 'Pay')} ${names.get(transfer.toParticipantId) ?? tx('同行者', 'Traveller')} · ${formatMinorAmount(transfer.amountMinor, baseCurrency)}`,
+                label: `${tx('转给', 'Pay')} ${names.get(transfer.toParticipantId) ?? tx('同行者', 'Traveller')} · ${formatMinorAmount(transfer.amountMinor, transfer.currency)}`,
               }))}
               onChange={setCurrencyKey}
             />
@@ -274,8 +279,8 @@ export function SettlementWorkspace({
           {currencyTransfer ? (
             <>
               <SettlementPaymentEditor
-                baseCurrency={baseCurrency}
-                currencyOptions={currencyOptions}
+                baseCurrency={currencyTransfer.currency}
+                currencyOptions={hasCompleteConversions ? currencyOptions : currencyOptions.filter(({ value }) => value === currencyTransfer.currency)}
                 draft={draftFor(currencyTransfer)}
                 setDraft={(next) => setSettlementDrafts((current) => ({ ...current, [transferKey(currencyTransfer)]: next }))}
                 transfer={currencyTransfer}
@@ -411,8 +416,8 @@ function SettlementPaymentEditor({
       const rate = sameCurrency ? 1 : parseExchangeRate(draft.rate);
       const value = convertMinorAmount(parseAmountToMinor(draft.amount, draft.currency), draft.currency, baseCurrency, rate);
       return tx(
-        `记入 ${baseCurrency}：${formatMinorAmount(value, baseCurrency)} · 待转 ${formatMinorAmount(transfer.amountMinor, baseCurrency)}`,
-        `Books ${formatMinorAmount(value, baseCurrency)} in ${baseCurrency} · due ${formatMinorAmount(transfer.amountMinor, baseCurrency)}`,
+        `记入 ${baseCurrency}：${formatMinorAmount(value, baseCurrency)} · 待转 ${formatMinorAmount(transfer.amountMinor, transfer.currency)}`,
+        `Books ${formatMinorAmount(value, baseCurrency)} in ${baseCurrency} · due ${formatMinorAmount(transfer.amountMinor, transfer.currency)}`,
       );
     } catch {
       return tx('请输入金额和有效汇率。', 'Enter an amount and a valid rate.');

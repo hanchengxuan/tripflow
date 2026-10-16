@@ -659,11 +659,14 @@ export async function recordSettlement(input: {
   exchangeRate?: number;
   exchangeRateSource?: string;
 }) {
-  const { error } = await getSupabaseClient().rpc('record_settlement', {
+  const args = {
     requested_trip_id: input.tripId,
     recipient_user_id: input.toUserId,
     settlement_currency: input.currency,
     settlement_amount_minor: input.amountMinor,
+  };
+  const { error } = await getSupabaseClient().rpc('record_settlement', input.baseCurrency === undefined ? args : {
+    ...args,
     settlement_base_currency: input.baseCurrency,
     settlement_base_amount_minor: input.baseAmountMinor,
     settlement_exchange_rate: input.exchangeRate,
