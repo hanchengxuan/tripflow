@@ -1,3 +1,4 @@
+import type { SymbolViewProps } from 'expo-symbols';
 import type { PropsWithChildren, ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
@@ -40,6 +41,7 @@ export function TimelineRow({
   kindColor,
   kindLabel,
   kindSoftColor,
+  kindSymbol,
   last = false,
   onPress,
   accessory,
@@ -52,6 +54,8 @@ export function TimelineRow({
   kindColor: string;
   kindSoftColor: string;
   kindLabel: string;
+  /** When given, the kind shows as this icon alone; the label is kept for screen readers. */
+  kindSymbol?: SymbolViewProps['name'];
   last?: boolean;
   onPress?: () => void;
   /** Interactive content below the row, kept outside its pressable so buttons never nest. */
@@ -62,7 +66,7 @@ export function TimelineRow({
     <>
       <View style={styles.head}>
         <ThemedText type="smallBold" style={styles.title}>{title}</ThemedText>
-        <KindPill color={kindColor} softColor={kindSoftColor} label={kindLabel} />
+        <KindPill color={kindColor} softColor={kindSoftColor} label={kindLabel} symbol={kindSymbol} iconOnly={Boolean(kindSymbol)} />
       </View>
       {place ? <ThemedText type="small" themeColor="textSecondary" style={styles.place}>{place}</ThemedText> : null}
       {children}

@@ -1,4 +1,4 @@
-import { formatZonedDateTimeRange, isoToZonedDateTime, shiftPlanTimes, stayNightsInZone, zonedDateTimeToIso } from '@/lib/trip-time';
+import { formatZonedDateTimeRange, isoToZonedDateTime, planCountdown, shiftPlanTimes, stayNightsInZone, tripProgress, zonedDateTimeToIso } from '@/lib/trip-time';
 
 describe('trip time helpers', () => {
   it('stores wall-clock hotel time in the trip time zone', () => {
@@ -34,5 +34,27 @@ describe('shiftPlanTimes', () => {
 
   test('extending a plan changes only its end', () => {
     expect(shiftPlanTimes(evening, { kind: 'extend', minutes: 30 })).toEqual({ date: '2026-10-21', startTime: '18:30', endDate: '2026-10-21', endTime: '20:30' });
+  });
+});
+
+describe('planCountdown', () => {
+  const now = Date.parse('2026-10-20T07:00:00Z');
+  it('rounds to minutes, hours, then days', () => {
+    expect(planCountdown('2026-10-20T07:25:00Z', undefined, now)).toEqual({ status: 'upcoming', unit: 'minute', value: 25 });
+    expect(planCountdown('2026-10-20T09:30:00Z', undefined, now)).toEqual({ status: 'upcoming', unit: 'hour', value: 3 });
+    expect(planCountdown('2026-10-23T07:00:00Z', undefined, now)).toEqual({ status: 'upcoming', unit: 'day', value: 3 });
+  });
+  it('says a plan is happening until it ends, then past', () => {
+    expect(planCountdown('2026-10-20T06:00:00Z', '2026-10-20T08:00:00Z', now)).toEqual({ status: 'now' });
+    expect(planCountdown('2026-10-20T05:00:00Z', '2026-10-20T06:00:00Z', now)).toEqual({ status: 'past' });
+  });
+});
+
+describe('tripProgress', () => {
+  it('counts down to the trip, numbers its days, and marks it ended', () => {
+    expect(tripProgress('2026-10-20', '2026-10-25', '2026-10-15')).toEqual({ status: 'upcoming', daysUntil: 5, totalDays: 6 });
+    expect(tripProgress('2026-10-20', '2026-10-25', '2026-10-20')).toEqual({ status: 'active', day: 1, totalDays: 6 });
+    expect(tripProgress('2026-10-20', '2026-10-25', '2026-10-25')).toEqual({ status: 'active', day: 6, totalDays: 6 });
+    expect(tripProgress('2026-10-20', '2026-10-25', '2026-10-26')).toEqual({ status: 'ended', totalDays: 6 });
   });
 });

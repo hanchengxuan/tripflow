@@ -92,3 +92,36 @@ export function shiftPlanTimes(times: PlanTimes, shift: PlanTimeShift): PlanTime
   const start = addWallClockMinutes(times.date, times.startTime, shift.minutes);
   return { date: start.date, startTime: start.time, endDate: end.date, endTime: end.time };
 }
+
+export type PlanCountdown =
+  | { status: 'now' }
+  | { status: 'past' }
+  | { status: 'upcoming'; unit: 'minute' | 'hour' | 'day'; value: number };
+
+/** How far away a plan is, rounded to the unit a traveller would say out loud. */
+export function planCountdown(startsAt: string, endsAt: string | undefined, now: number): PlanCountdown {
+  const start = new Date(startsAt).getTime();
+  if (now >= start) return now <= new Date(endsAt ?? startsAt).getTime() ? { status: 'now' } : { status: 'past' };
+  const minutes = Math.ceil((start - now) / 60_000);
+  if (minutes < 60) return { status: 'upcoming', unit: 'minute', value: minutes };
+  const hours = Math.round(minutes / 60);
+  if (hours < 48) return { status: 'upcoming', unit: 'hour', value: hours };
+  return { status: 'upcoming', unit: 'day', value: Math.round(hours / 24) };
+}
+
+export type TripProgress =
+  | { status: 'upcoming'; daysUntil: number; totalDays: number }
+  | { status: 'active'; day: number; totalDays: number }
+  | { status: 'ended'; totalDays: number };
+
+/** Where `today` (a trip-local `YYYY-MM-DD`) falls in an inclusive trip date range. */
+export function tripProgress(startsOn: string, endsOn: string, today: string): TripProgress {
+  const dayIndex = (date: string) => {
+    const [year, month, day] = date.split('-').map(Number);
+    return Date.UTC(year, month - 1, day) / 86_400_000;
+  };
+  const totalDays = dayIndex(endsOn) - dayIndex(startsOn) + 1;
+  if (today < startsOn) return { status: 'upcoming', daysUntil: dayIndex(startsOn) - dayIndex(today), totalDays };
+  if (today > endsOn) return { status: 'ended', totalDays };
+  return { status: 'active', day: dayIndex(today) - dayIndex(startsOn) + 1, totalDays };
+}
