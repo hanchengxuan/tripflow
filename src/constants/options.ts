@@ -1,3 +1,5 @@
+import type { SymbolViewProps } from 'expo-symbols';
+
 import type { ItineraryKind, TripRole } from '@/domain/models';
 
 const currencyNames: Record<string, [string, string]> = {
@@ -77,6 +79,15 @@ export const itineraryKindLabels: Record<ItineraryKind, string> = {
 
 export const itineraryKindLabelsEn: Record<ItineraryKind, string> = {
   transport: 'Transport', lodging: 'Stay', food: 'Food', activity: 'Activity', note: 'Note', task: 'Task',
+};
+
+export const itineraryKindSymbols: Record<ItineraryKind, SymbolViewProps['name']> = {
+  transport: { ios: 'car.fill', android: 'commute', web: 'commute' },
+  lodging: { ios: 'bed.double.fill', android: 'hotel', web: 'hotel' },
+  food: { ios: 'fork.knife', android: 'restaurant', web: 'restaurant' },
+  activity: { ios: 'ticket.fill', android: 'local_activity', web: 'local_activity' },
+  note: { ios: 'note.text', android: 'sticky_note_2', web: 'sticky_note_2' },
+  task: { ios: 'checklist', android: 'checklist', web: 'checklist' },
 };
 
 export const tripRoleLabels: Record<TripRole, string> = {

@@ -1,12 +1,10 @@
-import { Image } from 'expo-image';
-import { Fragment, useMemo, useState } from 'react';
-import { LayoutAnimation, Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { LayoutAnimation, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { InlineNotice } from '@/components/form-controls';
 import { ExpenseComposer, type ReceiptDraft } from '@/components/expense-composer';
 import { BottomSheet } from '@/components/bottom-sheet';
-import { MemberAvatar } from '@/components/member-avatar';
-import { ListDivider, ListSurface } from '@/components/list-surface';
+import { ExpenseActivity } from '@/components/expense-activity';
 import { Screen } from '@/components/screen';
 import { SegmentedControl } from '@/components/segmented-control';
 import {
@@ -15,19 +13,17 @@ import {
   type BalanceSnapshot as SettlementWorkspaceBalanceSnapshot,
   type SettlementDraft,
 } from '@/components/settlement-workspace';
-import { ThemedText } from '@/components/themed-text';
 import { getCurrencyOptions } from '@/constants/options';
 import {
   calculateBalancesByCurrency,
   calculateOutstandingBalancesByCurrency,
   calculateBalancesInCurrency,
   convertMinorAmount,
-  formatMinorAmount,
   parseExchangeRate,
   parseAmountToMinor,
 } from '@/domain/ledger';
 import { minimizeSettlementTransfers, splitByExactAmounts, splitByPercentages, splitByWeights, splitEqually, type SettlementTransfer } from '@/domain/money';
-import type { Expense, ItineraryItem, Settlement, TripMember } from '@/domain/models';
+import type { Expense, Settlement } from '@/domain/models';
 import { type AiExpenseDraft, parseExpenseAudio, parseExpenseImage, parseExpenseText } from '@/features/ai/expense-parser';
 import { formatExchangeRate } from '@/features/currency/exchange-rate';
 import { useExchangeRate, type ExchangeRateLoadState } from '@/features/currency/use-exchange-rate';
@@ -600,6 +596,7 @@ export default function LedgerScreen() {
           completeTransfer={completeTransfer}
           currencyOptions={currencyOptions}
           currentUserId={currentUserId}
+          expenses={expenses}
           hasCompleteConversions={Boolean(hasCompleteConversions)}
           memberById={memberById}
           myIncomingTransfers={myIncomingTransfers}
@@ -614,11 +611,10 @@ export default function LedgerScreen() {
         />
       ) : (
         <ExpenseActivity
-          tx={tx}
           expenses={expenses}
+          timeZone={activeTrip.defaultTimeZone}
           names={names}
           memberById={memberById}
-          formatDateTime={formatDateTime}
           expandedExpenseId={expandedExpenseId}
           setExpandedExpenseId={setExpandedExpenseId}
           onEditExpense={startEditingExpense}
@@ -690,170 +686,11 @@ export default function LedgerScreen() {
   );
 }
 
-function ExpenseActivity(props: {
-  tx: (zh: string, en: string) => string;
-  expenses: Expense[];
-  itineraryItems: ItineraryItem[];
-  names: Map<string, string>;
-  memberById: Map<string, TripMember>;
-  formatDateTime: (value: string) => string;
-  expandedExpenseId?: string;
-  setExpandedExpenseId: (expenseId?: string) => void;
-  onEditExpense: (expense: Expense) => void;
-  canEditExpense: (expense: Expense) => boolean;
-  settlementStatusByUser: Map<string, { label: string; color?: string }>;
-  onToggleExpenseSettled: (expense: Expense) => Promise<void>;
-  busyExpenseId?: string;
-  pickReceipt: (source: 'camera' | 'library', expenseId?: string) => Promise<void>;
-  receiptBusy: boolean;
-  themeSelected: string;
-  positiveColor: string;
-}) {
-  const { tx } = props;
-  const theme = useTheme();
-  if (props.expenses.length === 0) {
-    return (
-      <View style={[styles.quietEmpty, { borderTopColor: theme.border }]}>
-        <ThemedText style={styles.sectionTitle}>{tx('还没有支出', 'No expenses yet')}</ThemedText>
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.activityWorkspace}>
-      <ListSurface>
-      {props.expenses.map((expense, index) => {
-        const expanded = props.expandedExpenseId === expense.id;
-        const linkedItem = props.itineraryItems.find((item) => item.id === expense.itineraryItemId);
-        const primaryPayer = props.memberById.get(expense.payers[0]?.userId);
-        const payerNames = expense.payers.map(({ userId }) => props.names.get(userId) ?? tx('同行者', 'Traveller')).join(tx('、', ', '));
-        const shareText = expense.shares
-          .map((share) => `${props.names.get(share.userId) ?? tx('同行者', 'Traveller')} ${formatMinorAmount(share.amountMinor, expense.currency)}`)
-          .join(tx(' · ', ' · '));
-        return (
-          <Fragment key={expense.id}>
-          {index > 0 ? <ListDivider /> : null}
-          <View style={styles.expenseItem}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityState={{ expanded }}
-              onPress={() => props.setExpandedExpenseId(expanded ? undefined : expense.id)}
-              style={({ pressed }) => [styles.expenseSummary, pressed && styles.pressed]}>
-              <MemberAvatar avatarUrl={primaryPayer?.avatarUrl} displayName={primaryPayer?.displayName ?? tx('同行者', 'Traveller')} size={38} />
-              <View style={styles.grow}>
-                <ThemedText type="smallBold">{expense.title}</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  {props.formatDateTime(expense.occurredAt)} · {tx(`${payerNames} 付款`, `Paid by ${payerNames}`)}
-                </ThemedText>
-              </View>
-              <View style={styles.expenseAmountBlock}>
-                <ThemedText type="smallBold">{formatMinorAmount(expense.totalMinor, expense.currency)}</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">{expense.baseCurrency && expense.baseCurrency !== expense.currency ? tx(`记入 ${expense.baseCurrency} ${formatMinorAmount(expense.baseAmountMinor ?? 0, expense.baseCurrency)}`, `Books ${formatMinorAmount(expense.baseAmountMinor ?? 0, expense.baseCurrency)}`) : tx('本位币', 'Base currency')}</ThemedText>
-                {(expense.receipts?.length ?? 0) > 0 ? <ThemedText type="small" style={{ color: props.positiveColor }}>{tx('有小票', 'Receipt')}</ThemedText> : null}
-                <ThemedText type="smallBold" style={{ color: expense.settledAt ? props.positiveColor : undefined }}>
-                  {expense.settledAt ? tx('已结清', 'Settled') : tx('待结清', 'Unsettled')}
-                </ThemedText>
-              </View>
-            </Pressable>
-            {expanded ? (
-              <View style={styles.expenseDetails}>
-                <View style={styles.detailLine}><ThemedText type="smallBold">{tx('分摊', 'Split')}</ThemedText><ThemedText type="small" themeColor="textSecondary" style={styles.grow}>{shareText}</ThemedText></View>
-                <View style={styles.detailLine}><ThemedText type="smallBold">{tx('结算', 'Settlement')}</ThemedText><ThemedText type="small" themeColor="textSecondary" style={styles.grow}>{tx('按当前账本合并显示每位同行者的转账状态。', 'Status is calculated across the current trip ledger.')}</ThemedText></View>
-                <View style={styles.detailLine}>
-                  <ThemedText type="smallBold">{tx('这笔状态', 'Expense status')}</ThemedText>
-                  <View style={styles.grow}>
-                    <ThemedText type="small" themeColor="textSecondary">
-                      {expense.settledAt
-                        ? expense.settlementSource === 'automatic'
-                          ? tx('所有待转款项完成后自动结清', 'Automatically settled after all transfers completed')
-                          : tx('手动标记为已结清', 'Marked settled manually')
-                        : tx('仍有待结算金额', 'Transfers are still outstanding')}
-                    </ThemedText>
-                    {props.canEditExpense(expense) ? (
-                      <Pressable
-                        accessibilityRole="button"
-                        disabled={Boolean(props.busyExpenseId)}
-                        onPress={() => void props.onToggleExpenseSettled(expense)}
-                        style={({ pressed }) => [styles.textButton, pressed && styles.pressed, Boolean(props.busyExpenseId) && styles.disabled]}>
-                        <ThemedText type="smallBold" style={{ color: props.positiveColor }}>
-                          {expense.settledAt ? tx('恢复未结清', 'Mark unsettled') : tx('标记已结清', 'Mark settled')}
-                        </ThemedText>
-                      </Pressable>
-                    ) : null}
-                  </View>
-                </View>
-                {linkedItem ? (
-                  <View style={styles.detailLine}>
-                    <ThemedText type="smallBold">{tx('关联安排', 'Linked plan')}</ThemedText>
-                    <ThemedText type="small" themeColor="textSecondary" style={styles.grow}>
-                      {linkedItem.title} · {props.formatDateTime(linkedItem.startsAt)}
-                    </ThemedText>
-                  </View>
-                ) : null}
-                <View style={styles.sharePeople}>{expense.shares.map((share) => { const member = props.memberById.get(share.userId); const status = props.settlementStatusByUser.get(share.userId); return <View key={share.userId} style={styles.sharePerson}><MemberAvatar avatarUrl={member?.avatarUrl} displayName={member?.displayName ?? tx('同行者', 'Traveller')} size={30} /><ThemedText type="small" style={styles.grow}>{member?.displayName ?? tx('同行者', 'Traveller')}</ThemedText><View style={styles.shareAmount}><ThemedText type="smallBold">{formatMinorAmount(share.amountMinor, expense.currency)}</ThemedText><ThemedText type="smallBold" style={status?.color ? { color: status.color } : undefined}>{status?.label ?? tx('待结算', 'Pending')}</ThemedText></View></View>; })}</View>
-                {(expense.receipts?.length ?? 0) > 0 ? (
-                  <View style={styles.receiptGallery}>
-                    {expense.receipts?.map((item, index) => item.signedUrl ? (
-                      <Pressable
-                        key={item.id}
-                        accessibilityRole="link"
-                        accessibilityLabel={tx(`查看 ${expense.title} 的第 ${index + 1} 张小票`, `View receipt ${index + 1} for ${expense.title}`)}
-                        onPress={() => void Linking.openURL(item.signedUrl!)}
-                        style={({ pressed }) => pressed && styles.pressed}>
-                        <Image source={item.signedUrl} style={[styles.receiptLarge, { backgroundColor: theme.backgroundSelected }]} contentFit="contain" />
-                      </Pressable>
-                    ) : null)}
-                  </View>
-                ) : (
-                  <ThemedText type="small" themeColor="textSecondary">{tx('这笔支出还没有小票。', 'No receipt has been attached yet.')}</ThemedText>
-                )}
-                <View style={styles.receiptActions}>
-                  <Pressable disabled={props.receiptBusy} accessibilityRole="button" onPress={() => void props.pickReceipt('camera', expense.id)} style={({ pressed }) => [styles.secondaryAction, { backgroundColor: props.themeSelected }, pressed && styles.pressed, props.receiptBusy && styles.disabled]}>
-                    <ThemedText type="smallBold">{tx('拍照补充', 'Take photo')}</ThemedText>
-                  </Pressable>
-                  <Pressable disabled={props.receiptBusy} accessibilityRole="button" onPress={() => void props.pickReceipt('library', expense.id)} style={({ pressed }) => [styles.secondaryAction, { backgroundColor: props.themeSelected }, pressed && styles.pressed, props.receiptBusy && styles.disabled]}>
-                    <ThemedText type="smallBold">{tx('相册补充', 'Choose photo')}</ThemedText>
-                  </Pressable>
-                </View>
-                {props.canEditExpense(expense) ? (
-                  <Pressable accessibilityRole="button" onPress={() => props.onEditExpense(expense)} style={({ pressed }) => [styles.editExpenseButton, { backgroundColor: theme.accentSoft }, pressed && styles.pressed]}>
-                    <ThemedText type="smallBold">{tx('编辑这笔支出', 'Edit expense')}</ThemedText>
-                  </Pressable>
-                ) : null}
-              </View>
-            ) : null}
-          </View>
-          </Fragment>
-        );
-      })}
-      </ListSurface>
-      <ThemedText type="small" themeColor="textSecondary">{tx('展开任意一笔，可查看分摊金额和小票。', 'Open any expense to see split amounts and receipts.')}</ThemedText>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  quietEmpty: { gap: 4, paddingVertical: 22, borderTopWidth: StyleSheet.hairlineWidth },
-  sectionTitle: { fontSize: 20, lineHeight: 26, letterSpacing: -0.2 },
-  activityWorkspace: { gap: 12 },
   toolbar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   floatingAdd: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', shadowOpacity: 0.2, shadowRadius: 14, shadowOffset: { width: 0, height: 6 } },
   plusIcon: { width: 20, height: 20, alignItems: 'center', justifyContent: 'center' },
   plusHorizontal: { position: 'absolute', width: 18, height: 2, borderRadius: 1 },
   plusVertical: { position: 'absolute', width: 2, height: 18, borderRadius: 1 },
-  receiptActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  secondaryAction: { minHeight: 44, flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14, borderRadius: 12 },
-  textButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 4 },
-  expenseItem: {},
-  expenseSummary: { minHeight: 68, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14 },
-  expenseAmountBlock: { alignItems: 'flex-end', gap: 2 },
-  expenseDetails: { gap: 14, paddingBottom: 18 },
-  editExpenseButton: { minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 12, paddingHorizontal: 14 },
-  detailLine: { flexDirection: 'row', alignItems: 'flex-start', gap: 16 },
-  sharePeople: { gap: 6 }, sharePerson: { minHeight: 38, flexDirection: 'row', alignItems: 'center', gap: 10 }, shareAmount: { alignItems: 'flex-end', gap: 1 },
-  receiptGallery: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  receiptLarge: { width: 160, height: 190, borderRadius: 12 },
-  grow: { flex: 1 },
   pressed: { opacity: 0.72 },
-  disabled: { opacity: 0.5 },
 });
