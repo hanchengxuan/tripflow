@@ -1,4 +1,4 @@
-import type { TripPoll, UserId } from '@/domain/models';
+import type { TripPoll, TripRole, UserId } from '@/domain/models';
 
 export type PollStatus = 'open' | 'expired' | 'decided';
 
@@ -6,6 +6,10 @@ export function pollStatus(poll: TripPoll, now: Date): PollStatus {
   if (poll.selectedOptionId) return 'decided';
   if (poll.closesAt && new Date(poll.closesAt).getTime() <= now.getTime()) return 'expired';
   return 'open';
+}
+
+export function canManagePoll(poll: TripPoll, currentUserId: UserId, role?: TripRole) {
+  return role === 'owner' || role === 'editor' || poll.createdBy === currentUserId;
 }
 
 export function tallyPoll(poll: TripPoll, currentUserId: UserId) {
