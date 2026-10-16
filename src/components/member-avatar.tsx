@@ -14,7 +14,8 @@ export function MemberAvatar({
   size?: number;
 }) {
   const theme = useTheme();
-  const initials = displayName.trim().slice(0, 2).toUpperCase() || 'TF';
+  const compact = size < 28;
+  const initials = displayName.trim().slice(0, compact ? 1 : 2).toUpperCase() || 'TF';
 
   return (
     <View
@@ -37,7 +38,7 @@ export function MemberAvatar({
           transition={160}
         />
       ) : (
-        <ThemedText type="smallBold" style={{ color: theme.accentOnSoft }}>{initials}</ThemedText>
+        <ThemedText type="smallBold" style={[{ color: theme.accentOnSoft }, compact && { fontSize: Math.round(size * 0.5), lineHeight: size }]}>{initials}</ThemedText>
       )}
     </View>
   );

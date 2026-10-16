@@ -1,5 +1,6 @@
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 
+import { AvatarStack } from '@/components/avatar-stack';
 import { ActionButton } from '@/components/form-controls';
 import { TripPollsCard } from '@/components/trip-polls-card';
 import type { TripPoll } from '@/domain/models';
@@ -15,6 +16,10 @@ jest.mock('@/features/polls/use-trip-polls', () => ({
 }));
 
 const trip = { id: 'trip', defaultTimeZone: 'Asia/Tokyo' };
+const mockMembers = [
+  { tripId: 'trip', userId: 'me', displayName: 'Me', role: 'owner' as const },
+  { tripId: 'trip', userId: 'sam', displayName: 'Sam', role: 'editor' as const },
+];
 const open: TripPoll = {
   id: 'open', tripId: 'trip', createdBy: 'owner', question: 'Dinner?', createdAt: '2026-10-15T00:00:00Z',
   options: [{ id: 'ramen', label: 'Ramen' }, { id: 'sushi', label: 'Sushi' }], votes: [],
@@ -25,7 +30,7 @@ const decided: TripPoll = {
 };
 
 let tree: ReactTestRenderer;
-const render = (role: 'owner' | 'viewer', userId = 'me') => act(() => { tree = create(<TripPollsCard trip={trip} currentUserId={userId} role={role} />); });
+const render = (role: 'owner' | 'viewer', userId = 'me') => act(() => { tree = create(<TripPollsCard trip={trip} currentUserId={userId} role={role} members={mockMembers} />); });
 const pressables = () => tree.root.findAll((node) => typeof node.type !== 'string' && typeof node.props.onPress === 'function');
 const optionRows = () => [...new Map(pressables()
   .filter((node) => /votes?/.test(node.props.accessibilityLabel ?? ''))
@@ -67,4 +72,11 @@ it('stays hidden for a viewer when the trip has no polls', () => {
   mockPolls = [];
   render('viewer');
   expect(tree.toJSON()).toBeNull();
+});
+
+it('names who voted for each option and stacks their avatars', () => {
+  mockPolls = [{ ...open, votes: [{ userId: 'me', optionId: 'sushi' }, { userId: 'sam', optionId: 'sushi' }] }];
+  render('viewer');
+  expect(optionRows()[1].props.accessibilityLabel).toBe('Sushi, 2 votes: Me, Sam, your vote');
+  expect(tree.root.findAllByType(AvatarStack).map((stack) => stack.props.people.length)).toEqual([0, 2]);
 });
