@@ -1,4 +1,4 @@
-import { chromium } from 'playwright';
+import { chromium } from '@playwright/test';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 const dir=process.env.LEDGER_QA_OUTPUT ?? '.expo/ledger-currency-qa'; await mkdir(dir,{recursive:true});
