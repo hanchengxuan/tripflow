@@ -10,12 +10,13 @@ import { PollNudge } from '@/components/poll-nudge';
 import { MoveItineraryCard } from '@/components/move-itinerary-card';
 import { NextUpCard } from '@/components/next-up-card';
 import { StayCard } from '@/components/stay-card';
+import { TripProgress } from '@/components/trip-progress';
 import { MapsLink, RouteEstimateChip, routeTravelModeLabel, routeTravelModes, TransitPlan } from '@/components/route-plan';
 import { DaySeparator, RouteSegment, TimelineRow } from '@/components/timeline-rail';
 import { Screen } from '@/components/screen';
 import { SectionHeading } from '@/components/section-heading';
 import { ThemedText } from '@/components/themed-text';
-import { itineraryKindLabels, itineraryKindLabelsEn } from '@/constants/options';
+import { itineraryKindLabels, itineraryKindLabelsEn, itineraryKindSymbols } from '@/constants/options';
 import type { ThemeColor } from '@/constants/theme';
 import type { ItineraryItem, ItineraryKind, RouteTravelMode } from '@/domain/models';
 import type { HealthFix } from '@/features/ai/itinerary-health-fix';
@@ -25,7 +26,7 @@ import { useI18n } from '@/features/i18n/i18n-provider';
 import { useMvp } from '@/features/mvp/mvp-provider';
 import { getRouteEstimate, routeEstimateState, type RouteEstimate, type RouteEstimateState, type RouteLookup } from '@/features/routes/route-estimate';
 import { toUserMessage } from '@/lib/user-error';
-import { formatZonedDateTimeRange, isoToZonedDateTime, stayNightsInZone } from '@/lib/trip-time';
+import { formatZonedDateTimeRange, isoToZonedDateTime, planCountdown, stayNightsInZone } from '@/lib/trip-time';
 import { useTheme } from '@/hooks/use-theme';
 
 function formatTripDates(startsOn: string, endsOn: string, locale: string) {
@@ -98,6 +99,17 @@ export default function TodayScreen() {
   };
   const tripRange = activeTrip ? formatTripDates(activeTrip.startsOn, activeTrip.endsOn, languageTag) : undefined;
   const tripTimeZone = activeTrip?.defaultTimeZone ?? 'UTC';
+  const deviceTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  function countdownLabel(item: ItineraryItem) {
+    if (!currentTimestamp) return undefined;
+    const countdown = planCountdown(item.startsAt, item.endsAt, currentTimestamp);
+    if (countdown.status === 'now') return tx('进行中', 'Happening now');
+    if (countdown.status === 'past') return undefined;
+    const { unit, value } = countdown;
+    if (unit === 'minute') return tx(`${value} 分钟后`, `In ${value} min`);
+    if (unit === 'hour') return tx(`${value} 小时后`, `In ${value} ${value === 1 ? 'hour' : 'hours'}`);
+    return tx(`${value} 天后`, `In ${value} ${value === 1 ? 'day' : 'days'}`);
+  }
   const editingItem = itineraryItems.find(({ id }) => id === editingItemId);
   const movingItem = itineraryItems.find(({ id }) => id === movingItemId);
   const moveTripOptions = useMemo(
@@ -123,6 +135,11 @@ export default function TodayScreen() {
     }, 0);
     return () => clearTimeout(timeout);
   }, [activeTrip]);
+
+  useEffect(() => {
+    const clock = setInterval(() => setCurrentTimestamp(Date.now()), 60_000);
+    return () => clearInterval(clock);
+  }, []);
 
   useEffect(() => {
     if (!activeTrip) return;
@@ -381,7 +398,7 @@ export default function TodayScreen() {
     <>
       <Screen
       context={activeTrip
-        ? [tripRange ?? '', tx(`${members.length} 人同行`, `${members.length} ${members.length === 1 ? 'traveller' : 'travellers'}`), tx(`${activeTrip.homeCurrency} 本位币`, `Home currency ${activeTrip.homeCurrency}`), tx(`默认时区 ${tripTimeZone}`, `Default time zone ${tripTimeZone}`)]
+        ? [tripRange ?? '', ...(tripTimeZone === deviceTimeZone ? [] : [tx(`时间按 ${tripTimeZone}`, `Times in ${tripTimeZone}`)])]
         : [tx('还没有进行中的行程', 'No active trip yet')]}
       title={activeTrip?.name ?? tx('今天', 'Today')}
       floatingAction={activeTrip && canEdit ? (
@@ -414,6 +431,10 @@ export default function TodayScreen() {
 
       {activeTrip ? <PollNudge tripId={activeTrip.id} currentUserId={currentUserId} /> : null}
 
+      {activeTrip && currentTimestamp ? (
+        <TripProgress startsOn={activeTrip.startsOn} endsOn={activeTrip.endsOn} timeZone={tripTimeZone} now={currentTimestamp} members={members} />
+      ) : null}
+
       {!activeTrip ? (
         <InfoCard label={tx('暂无行程', 'No trip yet')} title={tx('创建或加入共享行程', 'Create or join a shared trip')}>
           <ThemedText themeColor="textSecondary">{tx('加入后，所有成员都可以在这里查看下一项已确认的安排。', 'Once joined, everyone can see the next confirmed plan here.')}</ThemedText>
@@ -421,17 +442,18 @@ export default function TodayScreen() {
       ) : upcomingItems.length > 0 ? (
         <>
           <NextUpCard
+            countdownLabel={countdownLabel(upcomingItems[0])}
             kindColor={kindAccent(upcomingItems[0].kind)}
-            kindLabel={tx(`${kindLabel(upcomingItems[0].kind)} ${itineraryKindLabelsEn[upcomingItems[0].kind].toUpperCase()}`, itineraryKindLabelsEn[upcomingItems[0].kind].toUpperCase())}
+            kindLabel={kindLabel(upcomingItems[0].kind)}
+            kindSymbol={itineraryKindSymbols[upcomingItems[0].kind]}
             location={upcomingItems[0].locationLabel ?? tx('还没设置地点', 'No place yet')}
-            mapLabel={tx('打开地图 Open map', 'Open map')}
-            nextLabel={tx('下一步 UP NEXT', 'UP NEXT')}
+            mapLabel={tx('打开地图', 'Open map')}
+            nextLabel={tx('下一步', 'Up next')}
             onMapPress={upcomingItems[0].locationLabel ? () => void Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(upcomingItems[0].locationLabel ?? '')}`) : undefined}
             onPress={canEdit ? () => beginEdit(upcomingItems[0]) : undefined}
             timeLabel={formatZonedDateTimeRange(upcomingItems[0].startsAt, upcomingItems[0].endsAt, languageTag, tripTimeZone)}
-            timeMetaLabel={tx('时间 WHEN', 'WHEN')}
             title={upcomingItems[0].title}
-            travellersMetaLabel={tx('同行 WHO', 'WHO')}
+            travellerCount={members.length}
             travellersLabel={tx(`${members.length} 人可见`, `${members.length} ${members.length === 1 ? 'traveller can' : 'travellers can'} see this`)}
           />
           {healthHint(upcomingItems[0])}
@@ -487,6 +509,7 @@ export default function TodayScreen() {
                       kindColor={kindAccent(item.kind)}
                       kindSoftColor={kindSoftAccent(item.kind)}
                       kindLabel={kindLabel(item.kind)}
+                      kindSymbol={itineraryKindSymbols[item.kind]}
                       last={index === laterItems.length - 1}
                       onPress={canEdit ? () => beginEdit(item) : undefined}
                       accessory={healthHint(item)}

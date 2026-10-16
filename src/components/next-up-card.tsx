@@ -1,3 +1,4 @@
+import { SymbolView, type SymbolViewProps } from 'expo-symbols';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Chevron } from '@/components/chevron';
@@ -7,35 +8,40 @@ import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 export function NextUpCard({
+  countdownLabel,
   kindColor,
   kindLabel,
+  kindSymbol,
   location,
   mapLabel,
   nextLabel,
   onMapPress,
   onPress,
   timeLabel,
-  timeMetaLabel,
   title,
-  travellersMetaLabel,
+  travellerCount,
   travellersLabel,
 }: {
+  /** "In 2 hours" style lead; absent until the clock has been read. */
+  countdownLabel?: string;
   kindColor: string;
   kindLabel: string;
+  kindSymbol: SymbolViewProps['name'];
   location: string;
   mapLabel: string;
   nextLabel: string;
   onMapPress?: () => void;
   onPress?: () => void;
   timeLabel: string;
-  timeMetaLabel: string;
   title: string;
-  travellersMetaLabel: string;
+  travellerCount: number;
+  /** Spoken form of the traveller count, e.g. "4 travellers can see this". */
   travellersLabel: string;
 }) {
   const theme = useTheme();
   const place = (
     <>
+      <SymbolView name={{ ios: 'mappin.and.ellipse', android: 'location_on', web: 'location_on' }} size={18} tintColor={theme.textSecondary} />
       <View style={styles.placeCopy}>
         <ThemedText style={styles.placeTitle}>{location}</ThemedText>
         <ThemedText style={styles.placeMeta} themeColor="textSecondary">{mapLabel}</ThemedText>
@@ -47,18 +53,16 @@ export function NextUpCard({
   const summary = (
     <>
       <View style={styles.heading}>
-        <KindPill color={kindColor} label={kindLabel} softColor={kindColor} solid />
+        <KindPill color={kindColor} label={kindLabel} softColor={kindColor} symbol={kindSymbol} solid />
         <ThemedText style={styles.eyebrow} themeColor="textSecondary">{nextLabel}</ThemedText>
       </View>
       <ThemedText style={styles.title}>{title}</ThemedText>
-      <View style={styles.metaGrid}>
-        <View style={[styles.metaTile, { backgroundColor: theme.backgroundSubtle }]}>
-          <ThemedText style={styles.metaLabel}>{timeMetaLabel}</ThemedText>
-          <ThemedText style={styles.metaValue} themeColor="textSecondary">{timeLabel}</ThemedText>
-        </View>
-        <View style={[styles.metaTile, { backgroundColor: theme.backgroundSubtle }]}>
-          <ThemedText style={styles.metaLabel}>{travellersMetaLabel}</ThemedText>
-          <ThemedText style={styles.metaValue} themeColor="textSecondary">{travellersLabel}</ThemedText>
+      {countdownLabel ? <ThemedText style={[styles.countdown, { color: kindColor }]}>{countdownLabel}</ThemedText> : null}
+      <View style={styles.metaRow}>
+        <ThemedText style={styles.metaValue} themeColor="textSecondary">{timeLabel}</ThemedText>
+        <View accessible accessibilityLabel={travellersLabel} style={styles.travellers}>
+          <SymbolView name={{ ios: 'person.2.fill', android: 'group', web: 'group' }} size={16} tintColor={theme.textSecondary} />
+          <ThemedText style={styles.metaValue} themeColor="textSecondary">{travellerCount}</ThemedText>
         </View>
       </View>
     </>
@@ -92,9 +96,9 @@ const styles = StyleSheet.create({
   summary: { gap: Spacing.md },
   eyebrow: { fontSize: 11, lineHeight: 14, fontWeight: '600', letterSpacing: 0.8 },
   title: { fontSize: 30, lineHeight: 36, fontWeight: '600' },
-  metaGrid: { flexDirection: 'row', gap: Spacing.sm },
-  metaTile: { flex: 1, minWidth: 0, gap: 4, borderRadius: Radius.sm, padding: Spacing.sm },
-  metaLabel: { fontSize: 10, lineHeight: 14, fontWeight: '600', letterSpacing: 0.8 },
+  countdown: { fontSize: 22, lineHeight: 28, fontWeight: '700', marginTop: -Spacing.xs },
+  metaRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.sm },
+  travellers: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   metaValue: { fontSize: 14, lineHeight: 18, fontWeight: '600' },
   place: {
     minHeight: 64,
