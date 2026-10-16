@@ -1,0 +1,25 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": [
+    "src/**/*.web.{ts,tsx}",
+    "scripts/*.mjs",
+    "supabase/functions/*/index.ts",
+    "assets/brand/build.mjs",
+    ".design/*/build.mjs"
+  ],
+  "ignore": [
+    "vendor/**",
+    "src/types/database.ts"
+  ],
+  "ignoreDependencies": [
+    "braces",
+    "node-forge",
+    "sprintf-js",
+    "expo-glass-effect",
+    "expo-updates",
+    "@jest/globals"
+  ],
+  "rules": {
+    "types": "off"
+  }
+}

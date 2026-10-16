@@ -84,7 +84,7 @@ Before a release, run:
 npm run validate
 ```
 
-`npm run validate` runs lint, TypeScript, Jest, Expo Doctor, web and iOS exports, and the Playwright browser smoke suite. Use `npm run test:e2e:ui` to debug the browser flows interactively. Set `PLAYWRIGHT_BASE_URL` to test an existing Preview or production deployment instead of starting local Expo Web.
+`npm run validate` runs lint, TypeScript, the knip unused-code check, Jest, Expo Doctor, web and iOS exports, and the Playwright browser smoke suite. Use `npm run test:e2e:ui` to debug the browser flows interactively. Set `PLAYWRIGHT_BASE_URL` to test an existing Preview or production deployment instead of starting local Expo Web.
 
 ### CI/CD
 

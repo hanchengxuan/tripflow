@@ -70,11 +70,12 @@
     "doctor": "expo-doctor",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
+    "deadcode": "npx --yes knip@5.88.1 --no-progress",
     "test": "jest --runInBand",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:watch": "jest --watch",
-    "validate": "npm run lint && npm run typecheck && npm test && npm run doctor && npm run build:web && npm run build:ios && npm run test:e2e"
+    "validate": "npm run lint && npm run typecheck && npm run deadcode && npm test && npm run doctor && npm run build:web && npm run build:ios && npm run test:e2e"
   },
   "jest": {
     "preset": "jest-expo",
