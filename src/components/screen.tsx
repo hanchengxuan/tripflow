@@ -9,6 +9,12 @@ import { useTheme } from '@/hooks/use-theme';
 const WEB_NAV_CLEARANCE = 112;
 const WEB_ACTION_OFFSET = 92;
 
+/** Distance from the bottom edge to a screen's floating action, shared so stacked floating buttons line up. */
+export function floatingActionBottom(insetBottom: number, width: number) {
+  const desktop = Platform.OS === 'web' && width >= Size.desktopBreakpoint;
+  return insetBottom + (desktop ? 24 : Platform.OS === 'web' ? WEB_ACTION_OFFSET : Size.fabClearance);
+}
+
 interface ScreenProps extends PropsWithChildren {
   context: readonly string[];
   floatingAction?: ReactNode;
@@ -39,7 +45,7 @@ export function Screen({ context, floatingAction, title, children }: ScreenProps
         </View>
         {children}
       </ScrollView>
-      {floatingAction ? <View style={[styles.floatingAction, { bottom: insets.bottom + (desktop ? 24 : Platform.OS === 'web' ? WEB_ACTION_OFFSET : Size.fabClearance) }]}>{floatingAction}</View> : null}
+      {floatingAction ? <View style={[styles.floatingAction, { bottom: floatingActionBottom(insets.bottom, width) }]}>{floatingAction}</View> : null}
     </View>
   );
 }

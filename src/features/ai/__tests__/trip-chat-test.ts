@@ -1,5 +1,5 @@
 import type { ItineraryItem } from '@/domain/models';
-import { planChangeFromAction, validateTripChatReply } from '@/features/ai/trip-chat';
+import { planChangeFromAction, proposalsFromReply, validateTripChatReply } from '@/features/ai/trip-chat';
 
 const trip = { defaultTimeZone: 'Asia/Tokyo' };
 const lunch = { id: 'lunch', tripId: 't', kind: 'food', title: 'Lunch', startsAt: '2026-11-14T03:00:00Z', endsAt: '2026-11-14T04:00:00Z', routeTravelMode: 'WALK', locationLabel: 'Dotonbori' } as ItineraryItem;
@@ -59,5 +59,16 @@ describe('planChangeFromAction', () => {
 
   test('an end before the start is refused', () => {
     expect(() => planChangeFromAction({ type: 'update_plan', itemId: 'lunch', endLocal: '2026-11-14 11:00' }, lunch, trip)).toThrow();
+  });
+});
+
+describe('proposalsFromReply', () => {
+  test('snapshots the plan as it was when proposed, so a later save cannot make before and after look the same', () => {
+    const [proposal] = proposalsFromReply([{ type: 'update_plan', itemId: 'lunch', startLocal: '2026-11-14 13:00' }], [lunch]);
+    expect(proposal).toEqual({
+      action: { type: 'update_plan', itemId: 'lunch', startLocal: '2026-11-14 13:00' },
+      before: { title: 'Lunch', startsAt: lunch.startsAt, endsAt: lunch.endsAt },
+      status: 'pending',
+    });
   });
 });

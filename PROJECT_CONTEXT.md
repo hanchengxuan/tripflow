@@ -416,3 +416,9 @@ Temporary acceptance fixtures are removed after each test; production may contai
 
 - Today reads at a glance instead of in sentences. Plan kinds show as icons (`itineraryKindSymbols`; icon-only on timeline rows in Today and 安排, with the kind kept as the accessibility label). The Up Next card leads with a countdown (`planCountdown`: minutes, hours, then days; "happening now" while it runs) and drops the WHEN/WHO tiles for one time line and a traveller-count icon. The header keeps only the date range, plus the trip time zone when it differs from the device; a `TripProgress` bar shows "Day X of Y" or days to go, with member avatars.
 - Bilingual duplicates on Today (下一步 UP NEXT, 时间 WHEN, 同行 WHO, 打开地图 Open map, kind labels in caps) now show only the active language. The ledger gets the same treatment in its own PR.
+
+## October 16 小途 (Tabi)
+
+- The trip assistant is named 小途 in Chinese and Tabi in English. It opens from a floating ✨ button in the tab layout (`TabiButton`), so one conversation follows the traveller across tabs; it stacks above a screen's own "+" button or takes that spot when the screen has none. The Today text row was removed, and the sheet uses a short greeting, icon suggestion chips and proposal cards with the old time struck through and the new time highlighted.
+- Each proposal stores the plan as it was when proposed and its confirmed status with the conversation, so closing and reopening the sheet keeps "已保存" and the true before → after (previously a reopened card re-offered Confirm and showed identical times).
+- `ask-trip` now replies in the language of the traveller's latest message, falling back to the app language sent by the client. Redeploy the function with this change.
