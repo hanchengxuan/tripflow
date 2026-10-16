@@ -4,6 +4,7 @@ import { Platform, StyleSheet, View } from 'react-native';
 import { BottomSheet } from '@/components/bottom-sheet';
 import { ConfirmSheet } from '@/components/confirm-sheet';
 import { DateTimePairField } from '@/components/date-time-pair-field';
+import { DelayShiftSheet } from '@/components/delay-shift-sheet';
 import { DestinationField } from '@/components/destination-field';
 import { DestinationSettings } from '@/components/destination-settings';
 import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/form-controls';
@@ -116,6 +117,7 @@ export function ItineraryComposerSheet({
   const [formError, setFormError] = useState<string>();
   const [pendingTripRange, setPendingTripRange] = useState<{ startsOn: string; endsOn: string }>();
   const [confirmDeleteItem, setConfirmDeleteItem] = useState(false);
+  const [delaying, setDelaying] = useState(false);
 
   const destinationCurrencyOptions = getCurrencyOptions(locale === 'en');
   const destinationTimeZoneOptions = getTimeZoneOptions(locale === 'en');
@@ -162,6 +164,11 @@ export function ItineraryComposerSheet({
     }, 0);
     return () => clearTimeout(timeout);
   }, [activeTrip.defaultTimeZone, activeTrip.homeCurrency, activeTrip.id, activeTrip.startsOn, editingItem, visible]);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => setDelaying(false), 0);
+    return () => clearTimeout(timeout);
+  }, [activeTrip.id, editingItem?.id, visible]);
 
   function updatePlanDate(value: string) {
     setDate(value);
@@ -298,6 +305,7 @@ export function ItineraryComposerSheet({
     onAddStayTransfer
       ? { key: 'transfer', title: addingStayTransfer ? tx('正在添加…', 'Adding…') : tx('添加前往酒店', 'Add hotel transfer'), onPress: onAddStayTransfer, busy: addingStayTransfer, inPlace: true }
       : undefined,
+    editingItem.kind !== 'lodging' ? { key: 'delay', title: tx('延误了？顺延后面的安排', 'Delayed? Move later plans'), onPress: () => setDelaying(true) } : undefined,
     onMove ? { key: 'move', title: tx('移动到其他行程', 'Move to another trip'), onPress: onMove } : undefined,
     onSplitFromHere ? { key: 'split', title: tx('从这里分开走', 'Split off from here'), onPress: onSplitFromHere } : undefined,
     { key: 'delete', title: tx('删除这项安排', 'Delete this plan'), onPress: () => setConfirmDeleteItem(true), danger: true },
@@ -308,6 +316,21 @@ export function ItineraryComposerSheet({
   // been, so edits already typed had no way out; here 取消 restores the form
   // with every field intact, and the destructive action is prominent with
   // 取消 below it and separated.
+  if (delaying && editingItem) {
+    return (
+      <DelayShiftSheet
+        item={editingItem}
+        visible={visible}
+        onDismiss={() => setDelaying(false)}
+        onDone={(message) => {
+          setDelaying(false);
+          onSuccess?.(message);
+          onDismiss();
+        }}
+      />
+    );
+  }
+
   if (confirmDeleteItem && editingItem) {
     const when = formatZonedDateTimeRange(
       editingItem.startsAt,

@@ -321,6 +321,20 @@ export async function createStayTransfer(input: { stayId: string; sourceItemId: 
   if (error) throw error;
 }
 
+export async function shiftItineraryItems(tripId: string, shifts: { item: ItineraryItem; startsAt: string; endsAt: string }[]) {
+  const { error } = await getSupabaseClient().rpc('shift_itinerary_items', {
+    requested_trip_id: tripId,
+    shifts: shifts.map(({ item, startsAt, endsAt }) => ({
+      itemId: item.id,
+      fromStartsAt: item.startsAt,
+      fromEndsAt: item.endsAt ?? null,
+      startsAt,
+      endsAt: item.endsAt ? endsAt : null,
+    })),
+  });
+  if (error) throw error;
+}
+
 export async function updateItineraryItem(input: {
   itemId: string;
   title: string;

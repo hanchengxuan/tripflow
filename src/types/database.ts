@@ -1347,6 +1347,10 @@ export type Database = {
         Args: { requested_expense_id: string; requested_settled: boolean }
         Returns: undefined
       }
+      shift_itinerary_items: {
+        Args: { requested_trip_id: string; shifts: Json }
+        Returns: number
+      }
       split_trip_segment: {
         Args: {
           member_ids: string[]
