@@ -10,7 +10,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import type { Trip, TripMember, TripPoll, TripRole } from '@/domain/models';
 import { useI18n } from '@/features/i18n/i18n-provider';
-import { pollStatus, tallyPoll } from '@/features/polls/poll-state';
+import { canManagePoll, pollStatus, pollVoteAction, tallyPoll } from '@/features/polls/poll-state';
 import { useTripPolls } from '@/features/polls/use-trip-polls';
 import { useTheme } from '@/hooks/use-theme';
 import { formatZonedDateTimeRange } from '@/lib/trip-time';
@@ -26,22 +26,23 @@ interface TripPollsCardProps {
 export function TripPollsCard({ trip, currentUserId, role, members }: TripPollsCardProps) {
   const theme = useTheme();
   const { languageTag, locale, tx } = useI18n();
-  const { polls, loadError, refreshing, reload, create, vote, decide, remove } = useTripPolls(trip.id);
+  const { polls, loadError, refreshing, reload, create, vote, withdraw, decide, reopen, remove } = useTripPolls(trip.id);
   const [composerOpen, setComposerOpen] = useState(false);
   const [decidingPollId, setDecidingPollId] = useState<string>();
   const [votingOptionId, setVotingOptionId] = useState<string>();
   const [voteError, setVoteError] = useState<string>();
   const [now] = useState(() => new Date());
   const isEditor = role === 'owner' || role === 'editor';
-  const canManage = (poll: TripPoll) => isEditor || poll.createdBy === currentUserId;
 
   if (!polls?.length && !isEditor) return null;
 
-  const castVote = async (pollId: string, optionId: string) => {
+  const castVote = async (poll: TripPoll, optionId: string) => {
+    const action = pollVoteAction(poll, currentUserId, optionId, now);
+    if (!action) return;
     setVotingOptionId(optionId);
     setVoteError(undefined);
     try {
-      await vote(pollId, optionId);
+      await (action === 'withdraw' ? withdraw(poll.id) : vote(poll.id, optionId));
     } catch (caught) {
       setVoteError(toUserMessage(caught, tx('投票失败，请稍后重试。', 'Could not save your vote. Try again later.'), locale));
     } finally {
@@ -77,7 +78,7 @@ export function TripPollsCard({ trip, currentUserId, role, members }: TripPollsC
             ? tx('已截止，等待选定结果', 'Closed, waiting for a result')
             : poll.closesAt
               ? tx(`截止 ${formatZonedDateTimeRange(poll.closesAt, undefined, languageTag, trip.defaultTimeZone)}`, `Closes ${formatZonedDateTimeRange(poll.closesAt, undefined, languageTag, trip.defaultTimeZone)}`)
-              : tx('点一个选项投票，可随时改', 'Tap an option to vote; you can change it');
+              : tx('点选项投票，可改投；再点一次撤回', 'Tap to vote or switch; tap your vote again to take it back');
         return (
           <View key={poll.id} style={[styles.poll, { borderColor: theme.border }]}>
             <ThemedText type="smallBold">{poll.question}</ThemedText>
@@ -105,7 +106,8 @@ export function TripPollsCard({ trip, currentUserId, role, members }: TripPollsC
                     `${option.label}, ${option.count} ${option.count === 1 ? 'vote' : 'votes'}${voterNames ? `: ${voterNames}` : ''}${mine ? ', your vote' : ''}`,
                   )}
                   disabled={status !== 'open' || Boolean(votingOptionId)}
-                  onPress={() => void castVote(poll.id, option.id)}
+                  accessibilityHint={status === 'open' && mine ? tx('再点一次撤回投票', 'Tap again to take back your vote') : undefined}
+                  onPress={() => void castVote(poll, option.id)}
                   style={({ pressed }) => [styles.option, { backgroundColor: mine || winner ? theme.accentSoft : theme.backgroundSubtle, borderColor: mine || winner ? theme.accent : 'transparent' }, pressed && styles.pressed]}>
                   <View style={styles.optionHead}>
                     {winner ? <SymbolView name={{ ios: 'checkmark.circle.fill', android: 'check_circle', web: 'check_circle' }} size={16} tintColor={theme.accent} /> : null}
@@ -123,9 +125,9 @@ export function TripPollsCard({ trip, currentUserId, role, members }: TripPollsC
                 </Pressable>
               );
             })}
-            {status !== 'decided' && canManage(poll) ? (
+            {canManagePoll(poll, currentUserId, role) ? (
               <Pressable accessibilityRole="button" onPress={() => setDecidingPollId(poll.id)} style={styles.textAction}>
-                <ThemedText type="smallBold" themeColor="link">{tx('选定结果', 'Pick the result')}</ThemedText>
+                <ThemedText type="smallBold" themeColor="link">{status === 'decided' ? tx('更改结果', 'Change the result') : tx('选定结果', 'Pick the result')}</ThemedText>
               </Pressable>
             ) : null}
           </View>
@@ -142,6 +144,7 @@ export function TripPollsCard({ trip, currentUserId, role, members }: TripPollsC
         currentUserId={currentUserId}
         onDismiss={() => setDecidingPollId(undefined)}
         onDecide={decide}
+        onReopen={reopen}
         onDelete={remove}
       />
     </View>

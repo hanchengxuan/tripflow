@@ -79,7 +79,7 @@ Product rules
 6. Fix Supabase performance-advisor warnings before data grows; enable leaked-password protection before a wider password-login beta.
 7. Set conservative Google Places/Routes quotas and budget alerts, then watch usage.
 8. Itinerary: Place details, participant/status controls, booking essentials, lodging notes (confirmation, room, check-in instructions, checkout-to-next-stop), and import from shared links.
-9. Polls: realtime updates, turning a result into a plan, AI ranking of options.
+9. Polls (votes can be switched or withdrawn while open; expired and decided polls are locked; the creator or an editor can reopen a decided poll, keeping votes and any passed deadline): realtime updates, turning a result into a plan, AI ranking of options.
 10. Add commit-bound Vercel Preview browser smoke once CI can resolve the public Preview URL (today the GitHub `Vercel` status exposes only the dashboard link and there is no scoped Vercel credential).
 11. If AI editing returns, build it trip-wide behind one preview; decide then whether to retire `suggest-itinerary-edit` and its privacy-policy mention.
 12. Replace Open-Meteo for destination search, or stop relying on it for Chinese input. Its CJK index is partial (2026-08-17: `东京` returns a town in China, `伦敦` returns London, Ontario, `清邁`, `大阪` and `首尔` return nothing), so every alias-table entry is debt. Google Places already resolves these through `places-autocomplete`, but switching needs a time-zone source (Google Time Zone API or a coordinate table) and a quota decision.
@@ -90,7 +90,7 @@ Product rules
 - Supabase Auth leaked-password protection is off (the only standing security-advisor warning).
 - The Supabase Auth redirect allowlist must include `https://tripflow.fun/reset-password`.
 - Run `scripts/shrink-existing-avatars.mjs --apply` against production (dry run by default; needs the service-role key in the environment). The CDN may serve old bytes for up to an hour.
-- No apply record in this file for `split_trip_segment`, `allow_verified_identity_onboarding`, `trip_polls`, or `auto_settle_on_expense_change`; check the live migration list before relying on them.
+- No apply record in this file for `split_trip_segment`, `allow_verified_identity_onboarding`, `trip_polls`, `auto_settle_on_expense_change`, `withdraw_trip_poll_vote`, or `reopen_trip_poll`; check the live migration list before relying on them.
 - Maintainer acceptance of the ledger currency-settlement recovery (#141) on real data.
 
 ## Known verification gaps
