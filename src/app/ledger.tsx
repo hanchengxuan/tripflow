@@ -1,5 +1,6 @@
 import { Image } from 'expo-image';
-import { Fragment, useMemo, useState } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { LayoutAnimation, Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { InlineNotice } from '@/components/form-controls';
@@ -28,7 +29,7 @@ import {
 } from '@/domain/ledger';
 import { minimizeSettlementTransfers, splitByExactAmounts, splitByPercentages, splitByWeights, splitEqually, type SettlementTransfer } from '@/domain/money';
 import type { Expense, ItineraryItem, Settlement, TripMember } from '@/domain/models';
-import { type AiExpenseDraft, parseExpenseAudio, parseExpenseImage, parseExpenseText } from '@/features/ai/expense-parser';
+import { type AiExpenseDraft, parseExpenseAudio, parseExpenseImage, parseExpenseText, validateAiExpenseDraft } from '@/features/ai/expense-parser';
 import { formatExchangeRate } from '@/features/currency/exchange-rate';
 import { useExchangeRate, type ExchangeRateLoadState } from '@/features/currency/use-exchange-rate';
 import { useI18n } from '@/features/i18n/i18n-provider';
@@ -104,6 +105,8 @@ export default function LedgerScreen() {
   const names = useMemo(() => new Map(ledgerMembers.map(({ userId, displayName }) => [userId, displayName])), [ledgerMembers]);
   const memberById = useMemo(() => new Map(ledgerMembers.map((member) => [member.userId, member])), [ledgerMembers]);
   const memberIds = useMemo(() => ledgerMembers.map(({ userId }) => userId), [ledgerMembers]);
+  const router = useRouter();
+  const { chatDraft } = useLocalSearchParams<{ chatDraft?: string }>();
   const currencyOptions = getCurrencyOptions(locale === 'en');
   const itineraryOptions = useMemo(
     () => [
@@ -206,6 +209,25 @@ export default function LedgerScreen() {
     }
     return statuses;
   }, [ledgerMembers, moneyOutColor, names, pendingTransfers, positiveColor, settlements, tx]);
+
+  // The trip assistant hands over an expense as a route param; open it prefilled so the traveller reviews and saves it here.
+  useEffect(() => {
+    if (!chatDraft || !activeTrip || memberIds.length === 0) return;
+    const timeout = setTimeout(() => {
+      router.setParams({ chatDraft: undefined });
+      try {
+        const draft = validateAiExpenseDraft(JSON.parse(chatDraft), memberIds);
+        resetExpenseForm();
+        setActiveView('activity');
+        setComposerOpen(true);
+        applyAiDraft(draft);
+        setAiNotice(tx('行程助手已填好这笔账，请核对后保存。', 'The trip assistant filled this in. Review it, then save.'));
+      } catch {
+        setFormError(tx('行程助手给的记账信息无效，请手动填写。', 'The assistant’s expense details were invalid. Enter them manually.'));
+      }
+    }, 0);
+    return () => clearTimeout(timeout);
+  });
 
   function resetExpenseForm() {
     setEditingExpenseId(undefined);
