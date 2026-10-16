@@ -1,43 +1,24 @@
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { BookingImportEntry } from '@/components/booking-import-entry';
+import { EmptyState } from '@/components/empty-state';
 import { ItineraryComposerSheet } from '@/components/itinerary-composer-sheet';
 import { SegmentList } from '@/components/segment-list';
 import { SplitSegmentSheet } from '@/components/split-segment-sheet';
-import { FormField, InlineNotice } from '@/components/form-controls';
-import { InfoCard } from '@/components/info-card';
+import { InlineNotice, SearchField } from '@/components/form-controls';
 import { DaySeparator, TimelineRow } from '@/components/timeline-rail';
 import { Screen } from '@/components/screen';
 import { SectionHeading } from '@/components/section-heading';
 import { ThemedText } from '@/components/themed-text';
-import { itineraryKindLabels, itineraryKindLabelsEn, itineraryKindSymbols } from '@/constants/options';
-import type { ThemeColor } from '@/constants/theme';
+import { itineraryKindLabels, itineraryKindLabelsEn, itineraryKindColorKeys, itineraryKindSoftColorKeys, itineraryKindSymbols } from '@/constants/options';
 import type { ItineraryItem, ItineraryKind } from '@/domain/models';
 import { useI18n } from '@/features/i18n/i18n-provider';
 import { useMvp } from '@/features/mvp/mvp-provider';
 import { toUserMessage } from '@/lib/user-error';
 import { isoToZonedDateTime } from '@/lib/trip-time';
 import { useTheme } from '@/hooks/use-theme';
-
-const kindColorKeys: Record<ItineraryKind, ThemeColor> = {
-  transport: 'kindTransport',
-  lodging: 'kindLodging',
-  food: 'kindFood',
-  activity: 'kindActivity',
-  task: 'kindTask',
-  note: 'kindNote',
-};
-
-const kindSoftColorKeys: Record<ItineraryKind, ThemeColor> = {
-  transport: 'kindTransportSoft',
-  lodging: 'kindLodgingSoft',
-  food: 'kindFoodSoft',
-  activity: 'kindActivitySoft',
-  task: 'kindTaskSoft',
-  note: 'kindNoteSoft',
-};
 
 function formatDayLabel(date: string, locale: string) {
   return new Date(date + 'T12:00:00').toLocaleDateString(locale, {
@@ -59,9 +40,11 @@ function searchableText(item: ItineraryItem) {
 
 export default function ItineraryScreen() {
   const params = useLocalSearchParams<{ itemId?: string | string[] }>();
+  const router = useRouter();
   const { languageTag, locale, tx } = useI18n();
   const theme = useTheme();
   const {
+    loading,
     activeTrip,
     refresh,
     addItineraryItem,
@@ -150,13 +133,14 @@ export default function ItineraryScreen() {
     ? [
         activeTrip.name,
         tx(String(itineraryItems.length) + ' 项安排', String(itineraryItems.length) + (itineraryItems.length === 1 ? ' plan' : ' plans')),
-        tx('默认时区 ' + activeTrip.defaultTimeZone, 'Default time zone ' + activeTrip.defaultTimeZone),
+        ...(activeTrip.defaultTimeZone === Intl.DateTimeFormat().resolvedOptions().timeZone ? [] : [tx(`时间按 ${activeTrip.defaultTimeZone}`, `Times in ${activeTrip.defaultTimeZone}`)]),
       ]
     : [tx('还没有选择行程', 'No trip selected')];
 
   return (
     <>
       <Screen
+        loading={loading && !activeTrip}
         title={tx('安排', 'Plans')}
         context={context}
         floatingAction={activeTrip && canEdit ? (
@@ -178,9 +162,6 @@ export default function ItineraryScreen() {
         {success ? <InlineNotice>{success}</InlineNotice> : null}
         <SectionHeading
           title={tx('全部安排', 'All plans')}
-          detail={canEdit
-            ? tx('按时间查看完整安排；点按任意一项可编辑，使用右下角按钮添加。', 'Scan the full timeline; tap any plan to edit, or use the button to add one.')
-            : tx('按时间查看这趟行程的完整安排，包括已经结束的项目。', 'Scan the complete trip timeline, including plans that have already ended.')}
           trailing={activeTrip ? (
             <ThemedText type="small" themeColor="textSecondary">
               {String(filteredItems.length) + '/' + String(allItems.length)}
@@ -189,7 +170,7 @@ export default function ItineraryScreen() {
         />
         {activeTrip ? (
           <>
-            <FormField
+            <SearchField
               label={tx('查找安排', 'Find a plan')}
               value={query}
               onChangeText={setQuery}
@@ -232,8 +213,8 @@ export default function ItineraryScreen() {
                         endLabel={end && end.date === start.date ? end.time : undefined}
                         title={item.title}
                         place={itemPlace(item)}
-                        kindColor={theme[kindColorKeys[item.kind]]}
-                        kindSoftColor={theme[kindSoftColorKeys[item.kind]]}
+                        kindColor={theme[itineraryKindColorKeys[item.kind]]}
+                        kindSoftColor={theme[itineraryKindSoftColorKeys[item.kind]]}
                         kindLabel={kindLabel(item.kind)}
                         kindSymbol={itineraryKindSymbols[item.kind]}
                         last={index === filteredItems.length - 1}
@@ -257,21 +238,26 @@ export default function ItineraryScreen() {
                 })}
               </View>
             ) : (
-              <InfoCard title={tx('没有匹配的安排', 'No matching plans')}>
-                <ThemedText themeColor="textSecondary">
-                  {query.trim()
-                    ? tx('试试搜索城市、地点或安排标题。', 'Try a city, place, or plan title.')
-                    : tx('点击“添加安排”开始。', 'Choose Add plan to start.')}
-                </ThemedText>
-              </InfoCard>
+              query.trim() ? (
+                <EmptyState symbol={{ ios: 'magnifyingglass', android: 'search_off', web: 'search_off' }} title={tx('没有匹配的安排', 'No matching plans')} body={tx('试试搜索城市、地点或安排标题。', 'Try a city, place, or plan title.')} />
+              ) : (
+                <EmptyState
+                  symbol={{ ios: 'calendar.badge.plus', android: 'edit_calendar', web: 'edit_calendar' }}
+                  title={tx('还没有安排', 'Nothing planned yet')}
+                  actionLabel={canEdit ? tx('添加安排', 'Add plan') : undefined}
+                  onAction={canEdit ? openNewComposer : undefined}
+                />
+              )
             )}
           </>
         ) : (
-          <InfoCard title={tx('还没有行程', 'No trip yet')}>
-            <ThemedText themeColor="textSecondary">
-              {tx('创建或加入一个行程后，所有安排会集中显示在这里。', 'Create or join a trip to see every plan in one place.')}
-            </ThemedText>
-          </InfoCard>
+          <EmptyState
+            symbol={{ ios: 'suitcase.fill', android: 'luggage', web: 'luggage' }}
+            title={tx('还没有行程', 'No trip yet')}
+            body={tx('创建或加入行程后，所有安排都在这里。', 'Create or join a trip to see every plan here.')}
+            actionLabel={tx('去行程', 'Go to Trips')}
+            onAction={() => router.push('/explore')}
+          />
         )}
       </Screen>
       {activeTrip ? (

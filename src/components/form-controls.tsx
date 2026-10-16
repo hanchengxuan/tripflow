@@ -1,3 +1,4 @@
+import { SymbolView, type SymbolViewProps } from 'expo-symbols';
 import type { PropsWithChildren } from 'react';
 import {
   ActivityIndicator,
@@ -32,6 +33,17 @@ export function FormField({ label, prominent = false, ...props }: TextInputProps
   );
 }
 
+/** A search input whose magnifier says what it is, so it needs no visible label. */
+export function SearchField({ label, ...props }: TextInputProps & { label: string }) {
+  const theme = useTheme();
+  return (
+    <View style={[styles.searchBox, { backgroundColor: theme.backgroundElement, borderColor: theme.borderField }]}>
+      <SymbolView name={{ ios: 'magnifyingglass', android: 'search', web: 'search' }} size={18} tintColor={theme.textMuted} />
+      <TextInput accessibilityLabel={label} accessibilityRole="search" placeholderTextColor={theme.textMuted} {...props} style={[styles.searchInput, { color: theme.text }, props.style]} />
+    </View>
+  );
+}
+
 export function ActionButton({
   children,
   onPress,
@@ -39,12 +51,15 @@ export function ActionButton({
   disabled = false,
   tone = 'primary',
   size = 'regular',
+  symbol,
 }: PropsWithChildren<{
   onPress: () => void;
   busy?: boolean;
   disabled?: boolean;
   tone?: 'primary' | 'secondary' | 'danger';
   size?: 'regular' | 'compact';
+  /** Leading icon; the label stays the accessible name. */
+  symbol?: SymbolViewProps['name'];
 }>) {
   const isDisabled = busy || disabled;
   const theme = useTheme();
@@ -68,9 +83,12 @@ export function ActionButton({
       {busy ? (
         <ActivityIndicator color={labelColor} />
       ) : (
-        <ThemedText style={[styles.buttonLabel, size === 'compact' && styles.compactLabel, { color: labelColor }]}>
-          {children}
-        </ThemedText>
+        <View style={styles.buttonContent}>
+          {symbol ? <SymbolView name={symbol} size={18} tintColor={labelColor} /> : null}
+          <ThemedText style={[styles.buttonLabel, size === 'compact' && styles.compactLabel, { color: labelColor }]}>
+            {children}
+          </ThemedText>
+        </View>
       )}
     </Pressable>
   );
@@ -82,7 +100,17 @@ export function ChoiceChip({
   disabled = false,
   role = 'checkbox',
   onPress,
-}: PropsWithChildren<{ selected: boolean; disabled?: boolean; role?: 'checkbox' | 'radio' | 'tab' | 'button'; onPress: () => void }>) {
+  symbol,
+  symbolColor,
+}: PropsWithChildren<{
+  selected: boolean;
+  disabled?: boolean;
+  role?: 'checkbox' | 'radio' | 'tab' | 'button';
+  onPress: () => void;
+  symbol?: SymbolViewProps['name'];
+  /** Icon colour while unselected, e.g. the plan kind's colour. */
+  symbolColor?: string;
+}>) {
   const theme = useTheme();
   return (
     <Pressable
@@ -93,7 +121,8 @@ export function ChoiceChip({
       disabled={disabled}
       hitSlop={4}
       onPress={onPress}
-      style={[styles.chip, { backgroundColor: selected ? theme.accent : theme.backgroundSubtle }, disabled && styles.dimmed]}>
+      style={[styles.chip, symbol && styles.chipWithSymbol, { backgroundColor: selected ? theme.accent : theme.backgroundSubtle }, disabled && styles.dimmed]}>
+      {symbol ? <SymbolView name={symbol} size={16} tintColor={selected ? theme.textOnAccent : symbolColor ?? theme.textSecondary} /> : null}
       <ThemedText style={[styles.chipLabel, selected && styles.chipLabelSelected, { color: selected ? theme.textOnAccent : theme.text }]}>
         {children}
       </ThemedText>
@@ -138,8 +167,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   buttonLabel: { fontSize: 16, lineHeight: 22, fontWeight: '500' },
+  buttonContent: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs },
+  searchBox: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, borderWidth: 1, borderRadius: Radius.sm, minHeight: Size.control, paddingHorizontal: 14 },
+  searchInput: { flex: 1, minWidth: 0, fontSize: 16, lineHeight: 24, paddingVertical: 10 },
   dimmed: { opacity: 0.58 },
   chip: { height: 36, borderRadius: Radius.pill, paddingHorizontal: 14, justifyContent: 'center' },
+  chipWithSymbol: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingLeft: 11 },
   chipLabel: { fontSize: 14, lineHeight: 18, fontWeight: '500' },
   chipLabelSelected: { fontWeight: '600' },
   notice: {

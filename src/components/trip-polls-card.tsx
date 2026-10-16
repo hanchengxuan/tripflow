@@ -1,3 +1,4 @@
+import { SymbolView } from 'expo-symbols';
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
@@ -53,11 +54,11 @@ export function TripPollsCard({ trip, currentUserId, role, members }: TripPollsC
       <View style={styles.header}>
         <View style={styles.grow}>
           <ThemedText type="smallBold">{tx('投票', 'Polls')}</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">{tx('一起决定去哪、吃什么。', 'Decide together where to go and what to eat.')}</ThemedText>
+          {polls?.length ? null : <ThemedText type="small" themeColor="textSecondary">{tx('一起决定去哪、吃什么。', 'Decide together where to go and what to eat.')}</ThemedText>}
         </View>
         {polls?.length ? (
-          <Pressable accessibilityRole="button" disabled={refreshing} onPress={() => void reload()} style={styles.textAction}>
-            <ThemedText type="smallBold" themeColor="link">{tx('刷新', 'Refresh')}</ThemedText>
+          <Pressable accessibilityRole="button" accessibilityLabel={tx('刷新投票', 'Refresh polls')} disabled={refreshing} onPress={() => void reload()} style={({ pressed }) => [styles.iconAction, pressed && styles.pressed]}>
+            <SymbolView name={{ ios: 'arrow.clockwise', android: 'refresh', web: 'refresh' }} size={20} tintColor={theme.link} />
           </Pressable>
         ) : null}
         {isEditor ? <ActionButton tone="secondary" onPress={() => setComposerOpen(true)}>{tx('发起投票', 'Start a poll')}</ActionButton> : null}
@@ -105,11 +106,20 @@ export function TripPollsCard({ trip, currentUserId, role, members }: TripPollsC
                   )}
                   disabled={status !== 'open' || Boolean(votingOptionId)}
                   onPress={() => void castVote(poll.id, option.id)}
-                  style={({ pressed }) => [styles.option, { backgroundColor: theme.backgroundSubtle, borderColor: mine || winner ? theme.accent : 'transparent' }, pressed && styles.pressed]}>
-                  <View style={[styles.bar, { width: `${Math.round(share * 100)}%`, backgroundColor: theme.accentSoft }]} />
-                  <ThemedText style={styles.grow} type={mine || winner ? 'smallBold' : 'small'}>{winner ? '✓ ' : ''}{option.label}</ThemedText>
-                  <AvatarStack people={voters} />
-                  <ThemedText type="smallBold">{votingOptionId === option.id ? '…' : option.count}</ThemedText>
+                  style={({ pressed }) => [styles.option, { backgroundColor: mine || winner ? theme.accentSoft : theme.backgroundSubtle, borderColor: mine || winner ? theme.accent : 'transparent' }, pressed && styles.pressed]}>
+                  <View style={styles.optionHead}>
+                    {winner ? <SymbolView name={{ ios: 'checkmark.circle.fill', android: 'check_circle', web: 'check_circle' }} size={16} tintColor={theme.accent} /> : null}
+                    <ThemedText style={styles.grow} type={mine || winner ? 'smallBold' : 'small'}>{option.label}</ThemedText>
+                    <AvatarStack people={voters} size={24} />
+                  </View>
+                  <View style={styles.optionFoot}>
+                    <View style={[styles.track, { backgroundColor: theme.backgroundSelected }]}>
+                      <View style={[styles.fill, { width: `${Math.round(share * 100)}%`, backgroundColor: winner || mine ? theme.accent : theme.textMuted }]} />
+                    </View>
+                    <ThemedText type="small" themeColor="textSecondary" style={styles.count}>
+                      {votingOptionId === option.id ? '…' : tx(`${option.count} 票`, `${option.count}`)}
+                    </ThemedText>
+                  </View>
                 </Pressable>
               );
             })}
@@ -143,8 +153,13 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   grow: { flex: 1 },
   poll: { borderWidth: 1, borderRadius: Radius.md, padding: Spacing.md, gap: Spacing.sm },
-  option: { minHeight: 44, borderRadius: Radius.md, borderWidth: 1.5, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingHorizontal: Spacing.md, overflow: 'hidden' },
-  bar: { position: 'absolute', left: 0, top: 0, bottom: 0 },
+  option: { minHeight: 44, borderRadius: Radius.md, borderWidth: 1.5, gap: Spacing.xs, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm },
+  optionHead: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, minHeight: 24 },
+  optionFoot: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  track: { flex: 1, height: 6, borderRadius: Radius.pill, overflow: 'hidden' },
+  fill: { height: '100%', borderRadius: Radius.pill },
+  count: { minWidth: 36, textAlign: 'right' },
+  iconAction: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   textAction: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' },
   pressed: { opacity: 0.75 },
 });

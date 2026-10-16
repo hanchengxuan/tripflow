@@ -15,7 +15,7 @@ import { SectionHeading } from '@/components/section-heading';
 import { ThemedText } from '@/components/themed-text';
 import { TripFormSheet, type TripDraft } from '@/components/trip-form-sheet';
 import { TripManageSheet } from '@/components/trip-manage-sheet';
-import { TripOverviewCard } from '@/components/trip-overview-card';
+import { TripDateBadge, TripOverviewCard } from '@/components/trip-overview-card';
 import { TripPollsCard } from '@/components/trip-polls-card';
 import { getCurrencyOptions, getTimeZoneOptions, tripRoleLabels, tripRoleLabelsEn } from '@/constants/options';
 import { Spacing } from '@/constants/theme';
@@ -43,6 +43,10 @@ function tripPhaseLabel(phase: TripPhase, tx: (zh: string, en: string) => string
   return tx('进行中', 'In progress');
 }
 
+function tripDays(trip: Trip) {
+  return Math.round((Date.parse(`${trip.endsOn}T00:00:00Z`) - Date.parse(`${trip.startsOn}T00:00:00Z`)) / 86_400_000) + 1;
+}
+
 function formatTripRange(trip: Trip, locale: string) {
   const format = (value: string) => {
     const date = new Date(`${value}T12:00:00`);
@@ -65,6 +69,7 @@ export default function TripsScreen() {
   const theme = useTheme();
   const { locale, formatDateTime, tx } = useI18n();
   const {
+    loading,
     trips, activeTrip, members, currentUserId, error,
     selectTrip, createTrip, joinTrip, createInvite, saveTrip, deleteTrip, setMemberRole, removeMember,
   } = useMvp();
@@ -238,17 +243,15 @@ export default function TripsScreen() {
     }, tx('同行者已移出此行程。', 'Traveller removed from this trip.'));
   }
 
-  // Who you are on this trip, rather than a list of the sections below.
+  // The current trip's name and people are on the card right below.
   const context = activeTrip
     ? [
-        activeTrip.name,
-        tx(`${members.length} 位同行者`, `${members.length} travelling`),
         tx(`共 ${trips.length} 个行程`, `${trips.length} ${trips.length === 1 ? 'trip' : 'trips'}`),
       ]
     : [tx('还没有行程', 'No trips yet')];
 
   return (
-    <Screen context={context} title={tx('行程', 'Trips')}>
+    <Screen loading={loading && trips.length === 0} context={context} title={tx('行程', 'Trips')}>
       {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
       {success ? <InlineNotice>{success}</InlineNotice> : null}
       {tripOpener.openingTripId ? <ThemedText accessibilityLiveRegion="polite" type="small" themeColor="textSecondary">{tx('正在切换行程…', 'Switching trips…')}</ThemedText> : null}
@@ -257,13 +260,12 @@ export default function TripsScreen() {
       {activeTrip ? (
         <TripOverviewCard
           activeLabel={tripPhaseLabel(tripPhase(activeTrip, openedAt), tx)}
-          currentLabel={tx('当前行程 Active', 'Current trip')}
-          dateLabel={tx('日期 Dates', 'Dates')}
+          currentLabel={tx('当前行程', 'Current trip')}
           dateRange={formatTripRange(activeTrip, locale)}
           manageLabel={tx('管理当前行程', 'Manage current trip')}
+          members={members}
           onManage={() => void openTrip(activeTrip)}
-          peopleCount={tx(`${members.length} 人`, `${members.length} ${members.length === 1 ? 'person' : 'people'}`)}
-          peopleLabel={tx('同行 People', 'People')}
+          peopleLabel={tx(`${members.length} 人同行`, `${members.length} ${members.length === 1 ? 'person' : 'people'}`)}
           title={activeTrip.name}
         />
       ) : null}
@@ -292,7 +294,8 @@ export default function TripsScreen() {
                 <ListRow
                   disabled={Boolean(tripOpener.openingTripId)}
                   onPress={() => void openTrip(trip)}
-                  subtitle={`${formatTripRange(trip, locale)} · ${trip.homeCurrency}`}
+                  leading={<TripDateBadge startsOn={trip.startsOn} locale={locale} active={trip.id === activeTrip?.id} />}
+                  subtitle={`${formatTripRange(trip, locale)} · ${tx(`${tripDays(trip)} 天`, `${tripDays(trip)} ${tripDays(trip) === 1 ? 'day' : 'days'}`)} · ${trip.homeCurrency}`}
                   title={trip.name}
                   trailing={
                     <View style={styles.rowTrailing}>

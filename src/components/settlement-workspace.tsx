@@ -4,6 +4,7 @@ import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { BalanceBar } from '@/components/balance-bar';
 import { BottomSheet } from '@/components/bottom-sheet';
+import { EmptyState } from '@/components/empty-state';
 import { ActionButton, FormField, InlineNotice } from '@/components/form-controls';
 import { ListDivider, ListRow, ListSurface } from '@/components/list-surface';
 import { MemberAvatar } from '@/components/member-avatar';
@@ -11,6 +12,7 @@ import { SectionHeading } from '@/components/section-heading';
 import { SelectionField } from '@/components/selection-field';
 import { SettingsDivider, SettingsGroup, SettingsRow } from '@/components/settings-list';
 import { ThemedText } from '@/components/themed-text';
+import { TransferPair } from '@/components/transfer-pair';
 import { Spacing } from '@/constants/theme';
 import { convertMinorAmount, currencyAmountPlaceholder, currencyMinorDigits, formatMinorAmount, parseAmountToMinor, parseExchangeRate } from '@/domain/ledger';
 import type { SettlementTransfer } from '@/domain/money';
@@ -80,6 +82,7 @@ export function SettlementWorkspace({
   setSettlementDrafts,
   summaryTransfers,
   undoTransfer,
+  onAddExpense,
 }: {
   balanceSnapshots: BalanceSnapshot[];
   baseCurrency: string;
@@ -99,6 +102,7 @@ export function SettlementWorkspace({
   setSettlementDrafts: React.Dispatch<React.SetStateAction<Record<string, SettlementDraft>>>;
   summaryTransfers: Transfer[];
   undoTransfer: (settlement: Settlement) => Promise<void>;
+  onAddExpense: () => void;
 }) {
   const theme = useTheme();
   const { tx } = useI18n();
@@ -120,9 +124,13 @@ export function SettlementWorkspace({
   return (
     <View style={styles.workspace}>
       {balanceSnapshots.length === 0 ? (
-        <ThemedText themeColor="textSecondary">
-          {tx('记录第一笔共同支出后，这里会生成结算待办。', 'Add the first shared expense to create settlement tasks.')}
-        </ThemedText>
+        <EmptyState
+          symbol={{ ios: 'receipt', android: 'receipt_long', web: 'receipt_long' }}
+          title={tx('还没有支出', 'No expenses yet')}
+          body={tx('记下第一笔共同支出，这里会算出谁该付给谁。', 'Add the first shared expense and this shows who pays whom.')}
+          actionLabel={tx('记一笔', 'Add expense')}
+          onAction={onAddExpense}
+        />
       ) : settled ? (
         <View style={styles.settled}>
           <SymbolView name={{ ios: 'checkmark.circle.fill', android: 'check_circle', web: 'check_circle' }} size={28} tintColor={theme.moneyIn} />
@@ -173,9 +181,22 @@ export function SettlementWorkspace({
         <View style={styles.empty}>
           <ThemedText type="smallBold">{tx('待转出已清空', 'Nothing to send')}</ThemedText>
           {myIncomingTransfers.length > 0 ? (
-            <ThemedText type="small" themeColor="textSecondary">
-              {tx(`仍有 ${myIncomingTransfers.length} 笔款项待他人转给你。`, `${myIncomingTransfers.length} incoming payment${myIncomingTransfers.length === 1 ? '' : 's'} still pending.`)}
-            </ThemedText>
+            <SettingsGroup>
+              {myIncomingTransfers.map((transfer, index) => {
+                const name = names.get(transfer.fromParticipantId) ?? tx('同行者', 'Traveller');
+                return (
+                  <View key={transferKey(transfer)}>
+                    {index > 0 ? <SettingsDivider /> : null}
+                    <SettingsRow
+                      leading={<TransferPair from={memberById.get(transfer.fromParticipantId)} to={memberById.get(currentUserId)} fromName={name} toName={tx('你', 'You')} />}
+                      label={tx(`${name} 待转给你`, `${name} owes you`)}
+                      value={formatMinorAmount(transfer.amountMinor, baseCurrency)}
+                      valueColor={theme.moneyIn}
+                    />
+                  </View>
+                );
+              })}
+            </SettingsGroup>
           ) : null}
         </View>
       ) : (
@@ -187,7 +208,7 @@ export function SettlementWorkspace({
               <View key={transferKey(transfer)}>
                 {index > 0 ? <SettingsDivider /> : null}
                 <SettingsRow
-                  leading={<MemberAvatar avatarUrl={recipient?.avatarUrl} displayName={recipient?.displayName ?? name} size={38} />}
+                  leading={<TransferPair from={memberById.get(currentUserId)} to={recipient} fromName={tx('你', 'You')} toName={name} />}
                   label={tx(`转给 ${name}`, `Pay ${name}`)}
                   value={formatMinorAmount(transfer.amountMinor, baseCurrency)}
                   valueColor={theme.moneyOut}
@@ -349,6 +370,7 @@ export function SettlementWorkspace({
                   <View key={transferKey(transfer)}>
                     {index > 0 ? <SettingsDivider /> : null}
                     <SettingsRow
+                      leading={<TransferPair from={memberById.get(transfer.fromParticipantId)} to={memberById.get(transfer.toParticipantId)} fromName={names.get(transfer.fromParticipantId) ?? tx('同行者', 'Traveller')} toName={names.get(transfer.toParticipantId) ?? tx('同行者', 'Traveller')} size={26} />}
                       label={`${names.get(transfer.fromParticipantId) ?? tx('同行者', 'Traveller')} → ${names.get(transfer.toParticipantId) ?? tx('同行者', 'Traveller')}`}
                       value={formatMinorAmount(transfer.amountMinor, transfer.currency)}
                     />

@@ -1,9 +1,10 @@
+import { useRouter } from 'expo-router';
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { Linking, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { BottomSheet } from '@/components/bottom-sheet';
+import { EmptyState } from '@/components/empty-state';
 import { ChoiceChip, InlineNotice } from '@/components/form-controls';
-import { InfoCard } from '@/components/info-card';
 import { ItineraryComposerSheet } from '@/components/itinerary-composer-sheet';
 import { ItineraryHealthHint, ItineraryHealthSheet } from '@/components/itinerary-health-card';
 import { PollNudge } from '@/components/poll-nudge';
@@ -11,13 +12,12 @@ import { MoveItineraryCard } from '@/components/move-itinerary-card';
 import { NextUpCard } from '@/components/next-up-card';
 import { StayCard } from '@/components/stay-card';
 import { TripProgress } from '@/components/trip-progress';
-import { MapsLink, RouteEstimateChip, routeTravelModeLabel, routeTravelModes, TransitPlan } from '@/components/route-plan';
+import { MapsLink, RouteEstimateChip, routeTravelModeLabel, routeTravelModes, routeTravelModeSymbols, TransitPlan } from '@/components/route-plan';
 import { DaySeparator, RouteSegment, TimelineRow } from '@/components/timeline-rail';
 import { Screen } from '@/components/screen';
 import { SectionHeading } from '@/components/section-heading';
 import { ThemedText } from '@/components/themed-text';
-import { itineraryKindLabels, itineraryKindLabelsEn, itineraryKindSymbols } from '@/constants/options';
-import type { ThemeColor } from '@/constants/theme';
+import { itineraryKindLabels, itineraryKindLabelsEn, itineraryKindColorKeys, itineraryKindSoftColorKeys, itineraryKindSymbols } from '@/constants/options';
 import type { ItineraryItem, ItineraryKind, RouteTravelMode } from '@/domain/models';
 import type { HealthFix } from '@/features/ai/itinerary-health-fix';
 import { useItineraryHealth } from '@/features/ai/use-itinerary-health';
@@ -35,34 +35,17 @@ function formatTripDates(startsOn: string, endsOn: string, locale: string) {
   return `${start.toLocaleDateString(locale, { month: 'short', day: 'numeric' })} — ${end.toLocaleDateString(locale, { month: 'short', day: 'numeric' })}`;
 }
 
-const kindColorKeys: Record<ItineraryKind, ThemeColor> = {
-  transport: 'kindTransport',
-  lodging: 'kindLodging',
-  food: 'kindFood',
-  activity: 'kindActivity',
-  task: 'kindTask',
-  note: 'kindNote',
-};
-
-const kindSoftColorKeys: Record<ItineraryKind, ThemeColor> = {
-  transport: 'kindTransportSoft',
-  lodging: 'kindLodgingSoft',
-  food: 'kindFoodSoft',
-  activity: 'kindActivitySoft',
-  task: 'kindTaskSoft',
-  note: 'kindNoteSoft',
-};
-
 function formatDayLabel(date: string, locale: string) {
   return new Date(`${date}T12:00:00`).toLocaleDateString(locale, { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
 export default function TodayScreen() {
   const { locale, languageTag, tx } = useI18n();
+  const router = useRouter();
   const theme = useTheme();
   const { width } = useWindowDimensions();
   const compact = width < 520;
-  const { activeTrip, trips, members, itineraryItems, error, currentUserId, addItineraryItem, addStayTransfer, saveItineraryItem, saveTrip, setItineraryRouteMode, moveItineraryItem, removeItineraryItem } = useMvp();
+  const { loading, activeTrip, trips, members, itineraryItems, error, currentUserId, addItineraryItem, addStayTransfer, saveItineraryItem, saveTrip, setItineraryRouteMode, moveItineraryItem, removeItineraryItem } = useMvp();
   const [success, setSuccess] = useState<string>();
   // Failures from the timeline's own actions — route mode, hotel transfer.
   // They used to be written into the composer's error slot, which only renders
@@ -285,8 +268,8 @@ export default function TodayScreen() {
   }
 
   const kindLabel = (itemKind: ItineraryKind) => locale === 'zh-CN' ? itineraryKindLabels[itemKind] : itineraryKindLabelsEn[itemKind];
-  const kindAccent = (itemKind: ItineraryKind) => theme[kindColorKeys[itemKind]];
-  const kindSoftAccent = (itemKind: ItineraryKind) => theme[kindSoftColorKeys[itemKind]];
+  const kindAccent = (itemKind: ItineraryKind) => theme[itineraryKindColorKeys[itemKind]];
+  const kindSoftAccent = (itemKind: ItineraryKind) => theme[itineraryKindSoftColorKeys[itemKind]];
 
   function formatRouteEstimate(estimate: RouteEstimate) {
     const distance = estimate.distanceMeters >= 1000 ? `${(estimate.distanceMeters / 1000).toFixed(1)} km` : `${estimate.distanceMeters} m`;
@@ -340,6 +323,7 @@ export default function TodayScreen() {
             role="radio"
             selected={item.routeTravelMode === mode}
             disabled={Boolean(busyTravelModeId)}
+            symbol={routeTravelModeSymbols[mode]}
             onPress={() => void changeRouteMode(item, mode)}>
             {routeTravelModeLabel(mode, tx)}
           </ChoiceChip>
@@ -362,6 +346,7 @@ export default function TodayScreen() {
     const modeLabel = routeTravelModeLabel(item.routeTravelMode, tx);
     return (
       <RouteEstimateChip
+        mode={item.routeTravelMode}
         accessibilityLabel={tx(`当前为${modeLabel}，${detail}。点按切换出行方式`, `${modeLabel} selected. ${detail}. Choose travel mode`)}
         expanded={expandedRouteModeId === item.id}
         modeLabel={modeLabel}
@@ -397,6 +382,7 @@ export default function TodayScreen() {
   return (
     <>
       <Screen
+      loading={loading && !activeTrip}
       context={activeTrip
         ? [tripRange ?? '', ...(tripTimeZone === deviceTimeZone ? [] : [tx(`时间按 ${tripTimeZone}`, `Times in ${tripTimeZone}`)])]
         : [tx('还没有进行中的行程', 'No active trip yet')]}
@@ -436,9 +422,13 @@ export default function TodayScreen() {
       ) : null}
 
       {!activeTrip ? (
-        <InfoCard label={tx('暂无行程', 'No trip yet')} title={tx('创建或加入共享行程', 'Create or join a shared trip')}>
-          <ThemedText themeColor="textSecondary">{tx('加入后，所有成员都可以在这里查看下一项已确认的安排。', 'Once joined, everyone can see the next confirmed plan here.')}</ThemedText>
-        </InfoCard>
+        <EmptyState
+          symbol={{ ios: 'suitcase.fill', android: 'luggage', web: 'luggage' }}
+          title={tx('创建或加入共享行程', 'Create or join a shared trip')}
+          body={tx('加入后，所有成员都能在这里看到下一项安排。', 'Once you join, everyone sees the next plan here.')}
+          actionLabel={tx('去行程', 'Go to Trips')}
+          onAction={() => router.push('/explore')}
+        />
       ) : upcomingItems.length > 0 ? (
         <>
           <NextUpCard
@@ -521,9 +511,12 @@ export default function TodayScreen() {
           ) : null}
         </>
       ) : (
-        <InfoCard label={tx('时间线已就绪', 'Timeline ready')} title={tx('还没有安排', 'Nothing planned yet')}>
-          <ThemedText themeColor="textSecondary">{tx('点击“添加安排”开始。', 'Choose Add plan to start.')}</ThemedText>
-        </InfoCard>
+        <EmptyState
+          symbol={{ ios: 'calendar.badge.plus', android: 'edit_calendar', web: 'edit_calendar' }}
+          title={tx('还没有安排', 'Nothing planned yet')}
+          actionLabel={canEdit ? tx('添加安排', 'Add plan') : undefined}
+          onAction={canEdit ? openNewComposer : undefined}
+        />
       )}
 
       {activeTrip && health.error ? <InlineNotice tone="error">{health.error}</InlineNotice> : null}

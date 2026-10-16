@@ -4,7 +4,9 @@ import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { Chevron } from '@/components/chevron';
 import { ExpenseQuickFill } from '@/components/expense-quick-fill';
-import { ActionButton, ChoiceChip, FormField, InlineNotice } from '@/components/form-controls';
+import { MemberChip, SplitModePicker } from '@/components/expense-pickers';
+import { ActionButton, FormField, InlineNotice } from '@/components/form-controls';
+import { MemberAvatar } from '@/components/member-avatar';
 import { SelectionField } from '@/components/selection-field';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
@@ -140,7 +142,7 @@ export function ExpenseComposer(props: {
           ) : null}
           <FieldGroup label={tx('谁付款？可多选', 'Who paid? You can choose more than one')}>
             {props.members.map((member) => (
-              <ChoiceChip key={member.userId} selected={props.selectedPayerIds.includes(member.userId)} onPress={() => props.togglePayer(member.userId)}>{member.displayName}</ChoiceChip>
+              <MemberChip key={member.userId} member={member} selected={props.selectedPayerIds.includes(member.userId)} onPress={() => props.togglePayer(member.userId)} />
             ))}
           </FieldGroup>
           {props.selectedPayerIds.length > 1 ? (
@@ -160,19 +162,13 @@ export function ExpenseComposer(props: {
           ) : null}
           <FieldGroup label={tx('谁参与分摊？', 'Who shares it?')}>
             {props.members.map((member) => (
-              <ChoiceChip key={member.userId} selected={props.participantIds.includes(member.userId)} onPress={() => props.toggleParticipant(member.userId)}>{member.displayName}</ChoiceChip>
+              <MemberChip key={member.userId} member={member} selected={props.participantIds.includes(member.userId)} onPress={() => props.toggleParticipant(member.userId)} />
             ))}
           </FieldGroup>
-          <FieldGroup label={tx('怎么分？', 'How should it split?')}>
-            {([
-              ['equal', tx('均分', 'Equal')],
-              ['exact', tx('指定金额', 'Exact')],
-              ['percentage', tx('按比例', 'Percent')],
-              ['shares', tx('按份数', 'Shares')],
-            ] as const).map(([mode, label]) => (
-              <ChoiceChip role="radio" key={mode} selected={props.splitMode === mode} onPress={() => props.changeSplitMode(mode)}>{label}</ChoiceChip>
-            ))}
-          </FieldGroup>
+          <View style={styles.fieldGroup}>
+            <ThemedText type="smallBold">{tx('怎么分？', 'How should it split?')}</ThemedText>
+            <SplitModePicker value={props.splitMode} onChange={props.changeSplitMode} tx={tx} />
+          </View>
           {props.splitMode !== 'equal' ? (
             <View style={[styles.splitFields, { backgroundColor: props.themeSelected }]}>
               <ThemedText type="small" themeColor="textSecondary">
@@ -194,9 +190,11 @@ export function ExpenseComposer(props: {
             <View style={[styles.splitPreview, { backgroundColor: props.themeSelected }]}>
               <ThemedText type="smallBold">{tx('分摊预览', 'Split preview')}</ThemedText>
               {props.allocationPreview.map(({ participantId, amountMinor }) => (
-                <ThemedText key={participantId} type="small" themeColor="textSecondary">
-                  {props.names.get(participantId) ?? tx('同行者', 'Traveller')} · {formatMinorAmount(amountMinor, props.currency)}
-                </ThemedText>
+                <View key={participantId} style={styles.previewRow}>
+                  <MemberAvatar avatarUrl={props.members.find(({ userId }) => userId === participantId)?.avatarUrl} displayName={props.names.get(participantId) ?? tx('同行者', 'Traveller')} size={22} />
+                  <ThemedText type="small" themeColor="textSecondary" style={styles.grow}>{props.names.get(participantId) ?? tx('同行者', 'Traveller')}</ThemedText>
+                  <ThemedText type="smallBold">{formatMinorAmount(amountMinor, props.currency)}</ThemedText>
+                </View>
               ))}
             </View>
           ) : null}
@@ -278,7 +276,8 @@ const styles = StyleSheet.create({
   fieldGroup: { gap: 8 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   splitFields: { gap: 10, padding: 12, borderRadius: 12 },
-  splitPreview: { gap: 4, padding: 12, borderRadius: 12 },
+  splitPreview: { gap: 6, padding: 12, borderRadius: 12 },
+  previewRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs },
   receiptGroup: { gap: 10, paddingTop: 4 },
   receiptCopy: { gap: 2 },
   receiptActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
