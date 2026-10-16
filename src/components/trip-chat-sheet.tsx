@@ -6,8 +6,9 @@ import { BottomSheet } from '@/components/bottom-sheet';
 import { ChatActionCard } from '@/components/chat-action-card';
 import { InlineNotice } from '@/components/form-controls';
 import { ThemedText } from '@/components/themed-text';
+import { VoiceRecordingControl } from '@/components/voice-recording-control';
 import { Radius, Size, Spacing } from '@/constants/theme';
-import { proposalsFromReply, sendTripChat, type TripChatMessage, type TripChatProposal } from '@/features/ai/trip-chat';
+import { proposalsFromReply, sendTripChat, transcribeTripChat, type TripChatMessage, type TripChatProposal } from '@/features/ai/trip-chat';
 import { useI18n } from '@/features/i18n/i18n-provider';
 import { useMvp } from '@/features/mvp/mvp-provider';
 import { useTheme } from '@/hooks/use-theme';
@@ -100,29 +101,60 @@ export function TripChatSheet({ visible, onDismiss }: { visible: boolean; onDism
         {busy ? <ThemedText type="small" themeColor="textSecondary" accessibilityLiveRegion="polite">{tx('小途在想…', 'Tabi is thinking…')}</ThemedText> : null}
         {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
 
-        <View style={[styles.inputBar, { backgroundColor: theme.backgroundElement, borderColor: theme.borderField }]}>
-          <TextInput
-            accessibilityLabel={tx('给小途发消息', 'Message Tabi')}
-            value={draft}
-            onChangeText={setDraft}
-            editable={!busy}
-            placeholder={tx('跟小途说…', 'Message Tabi…')}
-            placeholderTextColor={theme.textMuted}
-            maxLength={600}
-            returnKeyType="send"
-            onSubmitEditing={() => void send(draft)}
-            style={[styles.input, { color: theme.text }]}
-          />
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={tx('发送', 'Send')}
-            accessibilityState={{ disabled: busy || !draft.trim() }}
-            disabled={busy || !draft.trim()}
-            onPress={() => void send(draft)}
-            style={({ pressed }) => [styles.send, { backgroundColor: theme.accent }, (busy || !draft.trim() || pressed) && styles.dimmed]}>
-            <SymbolView name={{ ios: 'arrow.up', android: 'arrow_upward', web: 'arrow_upward' }} size={18} tintColor={theme.textOnAccent} />
-          </Pressable>
-        </View>
+        <VoiceRecordingControl
+          disabled={busy}
+          label={tx('语音输入', 'Dictate')}
+          recordingLabel={tx('正在听', 'Listening')}
+          processingLabel={tx('正在转文字…', 'Transcribing…')}
+          cancelLabel={tx('取消录音', 'Cancel recording')}
+          permissionMessage={tx('需要麦克风权限才能语音输入。', 'Allow microphone access to dictate.')}
+          failureMessage={tx('没听清，请再说一次或直接打字。', "Didn't catch that. Try again or type instead.")}
+          onAudioReady={async (audioBase64, audioMimeType) => {
+            if (!activeTrip) return;
+            const transcript = await transcribeTripChat({ tripId: activeTrip.id, audioBase64, audioMimeType });
+            setDraft((current) => [current.trim(), transcript].filter(Boolean).join(' '));
+          }}
+          render={(micButton, feedback, voiceActive, cancel) => (
+            <>
+              {voiceActive ? (
+                <View style={[styles.inputBar, { backgroundColor: theme.backgroundElement, borderColor: theme.danger }]}>
+                  {cancel}
+                  <View style={styles.listening}>
+                    {cancel ? <View style={[styles.dot, { backgroundColor: theme.danger }]} /> : null}
+                    {feedback}
+                  </View>
+                  {micButton}
+                </View>
+              ) : (
+                <View style={[styles.inputBar, { backgroundColor: theme.backgroundElement, borderColor: theme.borderField }]}>
+                  <TextInput
+                    accessibilityLabel={tx('给小途发消息', 'Message Tabi')}
+                    value={draft}
+                    onChangeText={setDraft}
+                    editable={!busy}
+                    placeholder={tx('跟小途说…', 'Message Tabi…')}
+                    placeholderTextColor={theme.textMuted}
+                    maxLength={600}
+                    returnKeyType="send"
+                    onSubmitEditing={() => void send(draft)}
+                    style={[styles.input, { color: theme.text }]}
+                  />
+                  {micButton}
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={tx('发送', 'Send')}
+                    accessibilityState={{ disabled: busy || !draft.trim() }}
+                    disabled={busy || !draft.trim()}
+                    onPress={() => void send(draft)}
+                    style={({ pressed }) => [styles.send, { backgroundColor: theme.accent }, (busy || !draft.trim() || pressed) && styles.dimmed]}>
+                    <SymbolView name={{ ios: 'arrow.up', android: 'arrow_upward', web: 'arrow_upward' }} size={18} tintColor={theme.textOnAccent} />
+                  </Pressable>
+                </View>
+              )}
+              {voiceActive ? null : feedback}
+            </>
+          )}
+        />
       </View>
     </BottomSheet>
   );
@@ -140,5 +172,7 @@ const styles = StyleSheet.create({
   inputBar: { minHeight: Size.control, flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, borderWidth: 1, borderRadius: Radius.pill, padding: Spacing['2xs'], paddingLeft: Spacing.sm },
   input: { flex: 1, minWidth: 0, minHeight: Size.touchMin, paddingHorizontal: Spacing.xs, fontSize: 16 },
   send: { width: Size.touchMin, height: Size.touchMin, borderRadius: Size.touchMin / 2, alignItems: 'center', justifyContent: 'center' },
+  listening: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.xs },
+  dot: { width: 8, height: 8, borderRadius: 4 },
   dimmed: { opacity: 0.55 },
 });

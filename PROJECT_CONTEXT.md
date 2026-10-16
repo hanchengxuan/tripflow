@@ -423,6 +423,12 @@ Temporary acceptance fixtures are removed after each test; production may contai
 - Each proposal stores the plan as it was when proposed and its confirmed status with the conversation, so closing and reopening the sheet keeps "已保存" and the true before → after (previously a reopened card re-offered Confirm and showed identical times).
 - `ask-trip` decides the reply language on the server from the traveller's latest message (kana → Japanese, Han → Simplified Chinese, Latin → English, otherwise the app language the client sends) and states it at the start and end of the instructions. Asking the model to "match the user's language" was not enough: it copied the Chinese of its own rules, so English refusals came back in Chinese. Verified on production (function v3) with English and Chinese questions, refusals and follow-ups.
 
+### 小途 voice input
+
+- The chat input bar has a 🎤 button next to send. Tapping it swaps the bar for a recording bar (✕ discard · red dot and timer · stop). Stop sends the audio to `ask-trip` with `mode: 'transcribe'`; Gemini returns a verbatim transcript, biased toward the trip's plan titles, places and member names for spelling. The transcript fills the text box so the traveller can edit before sending; nothing is sent automatically.
+- `VoiceRecordingControl` gained an optional `cancelLabel` that adds the discard button to its `render` callback. Audio limits match `parse-expense` (mp4/m4a/webm/aac/mpeg, 8 MB base64).
+- Next: deploy `ask-trip` (function v4) before or with the merge; real transcription is only verifiable after deploy.
+
 ## October 16 small avatar uploads
 
 - Avatars were stored as the original upload (one was 3648px wide, about 3.3 MB) and every 22–48pt avatar downloaded that file. On web `expo-image-picker` ignores `allowsEditing`, so the 1:1 crop never happened there. `updateProfile` now runs every new avatar through `lib/avatar-image.ts`: centre square crop, at most 256px; JPEG quality 0.8, or PNG when the source is PNG/WebP so transparency is not filled black. Local acceptance: a 3,268,878-byte 3648px original became an 8,737-byte 256px file, rendered at 22, 32, 40 and 48px with no console errors.
