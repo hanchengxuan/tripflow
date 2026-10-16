@@ -6,7 +6,7 @@ import { BookingImportEntry } from '@/components/booking-import-entry';
 import { ItineraryComposerSheet } from '@/components/itinerary-composer-sheet';
 import { SegmentList } from '@/components/segment-list';
 import { SplitSegmentSheet } from '@/components/split-segment-sheet';
-import { FormField, InlineNotice } from '@/components/form-controls';
+import { InlineNotice, SearchField } from '@/components/form-controls';
 import { InfoCard } from '@/components/info-card';
 import { DaySeparator, TimelineRow } from '@/components/timeline-rail';
 import { Screen } from '@/components/screen';
@@ -150,7 +150,7 @@ export default function ItineraryScreen() {
     ? [
         activeTrip.name,
         tx(String(itineraryItems.length) + ' 项安排', String(itineraryItems.length) + (itineraryItems.length === 1 ? ' plan' : ' plans')),
-        tx('默认时区 ' + activeTrip.defaultTimeZone, 'Default time zone ' + activeTrip.defaultTimeZone),
+        ...(activeTrip.defaultTimeZone === Intl.DateTimeFormat().resolvedOptions().timeZone ? [] : [tx(`时间按 ${activeTrip.defaultTimeZone}`, `Times in ${activeTrip.defaultTimeZone}`)]),
       ]
     : [tx('还没有选择行程', 'No trip selected')];
 
@@ -178,9 +178,6 @@ export default function ItineraryScreen() {
         {success ? <InlineNotice>{success}</InlineNotice> : null}
         <SectionHeading
           title={tx('全部安排', 'All plans')}
-          detail={canEdit
-            ? tx('按时间查看完整安排；点按任意一项可编辑，使用右下角按钮添加。', 'Scan the full timeline; tap any plan to edit, or use the button to add one.')
-            : tx('按时间查看这趟行程的完整安排，包括已经结束的项目。', 'Scan the complete trip timeline, including plans that have already ended.')}
           trailing={activeTrip ? (
             <ThemedText type="small" themeColor="textSecondary">
               {String(filteredItems.length) + '/' + String(allItems.length)}
@@ -189,7 +186,7 @@ export default function ItineraryScreen() {
         />
         {activeTrip ? (
           <>
-            <FormField
+            <SearchField
               label={tx('查找安排', 'Find a plan')}
               value={query}
               onChangeText={setQuery}
