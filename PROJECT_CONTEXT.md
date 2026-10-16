@@ -450,7 +450,6 @@ Temporary acceptance fixtures are removed after each test; production may contai
 - Polls: each option shows a 6px vote-share bar (accent for the winner or your pick) with "N 票", larger voter avatars, and a check icon on the decided option. Refresh is an icon button; the tagline only shows before the first poll.
 - Trips: the current-trip card shows a calendar icon with the dates and an avatar stack instead of the DATES/PEOPLE tiles, with no English duplicates (当前行程 ACTIVE). Each trip in 我的行程 has a calendar-leaf start-date badge (`TripDateBadge`) and "range · N 天 · currency". The header keeps only the trip count.
 - Plans: the instruction sentence under 全部安排 is gone, search is a `SearchField` with a magnifier and no visible label, the booking import button has an icon (`ActionButton` gained an optional `symbol`), and the header shows the trip time zone only when it differs from the device.
-- Avatar photos are served at full upload size (one is 3648 px wide), so small avatars load slowly; resizing on upload or using a storage image transform is a separate follow-up.
 
 ## October 16 icons, transfers, empty states, and loading
 
