@@ -80,3 +80,11 @@ it('names who voted for each option and stacks their avatars', () => {
   expect(optionRows()[1].props.accessibilityLabel).toBe('Sushi, 2 votes: Me, Sam, your vote');
   expect(tree.root.findAllByType(AvatarStack).map((stack) => stack.props.people.length)).toEqual([0, 2]);
 });
+
+it('draws each option as a share of the votes', () => {
+  mockPolls = [{ ...open, votes: [{ userId: 'me', optionId: 'ramen' }, { userId: 'sam', optionId: 'ramen' }, { userId: 'x', optionId: 'sushi' }] } as TripPoll];
+  render('viewer');
+  const fills = tree.root.findAll((node) => typeof node.type === 'string' && typeof node.props.style === 'object' && JSON.stringify(node.props.style).includes('"width":"'))
+    .map((node) => JSON.stringify(node.props.style).match(/"width":"(\d+)%"/)?.[1]);
+  expect(fills).toEqual(['67', '33']);
+});
