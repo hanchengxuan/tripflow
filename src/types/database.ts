@@ -1524,6 +1524,10 @@ export type Database = {
         Args: { requested_option_id: string; requested_poll_id: string }
         Returns: undefined
       }
+      withdraw_trip_poll_vote: {
+        Args: { requested_poll_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       expense_source: "manual" | "text" | "voice" | "receipt"

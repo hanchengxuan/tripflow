@@ -36,6 +36,11 @@ export async function voteTripPoll(pollId: string, optionId: string) {
   if (error) throw error;
 }
 
+export async function withdrawTripPollVote(pollId: string) {
+  const { error } = await getSupabaseClient().rpc('withdraw_trip_poll_vote', { requested_poll_id: pollId });
+  if (error) throw error;
+}
+
 export async function closeTripPoll(pollId: string, optionId: string) {
   const { error } = await getSupabaseClient().rpc('close_trip_poll', { requested_poll_id: pollId, requested_option_id: optionId });
   if (error) throw error;

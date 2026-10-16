@@ -1,5 +1,5 @@
 import type { TripPoll } from '@/domain/models';
-import { cleanPollDraft, pollStatus, tallyPoll } from '@/features/polls/poll-state';
+import { cleanPollDraft, pollStatus, pollVoteAction, tallyPoll } from '@/features/polls/poll-state';
 
 const poll: TripPoll = {
   id: 'poll', tripId: 'trip', createdBy: 'a', question: '晚饭吃什么？', createdAt: '2026-10-15T00:00:00Z',
@@ -34,6 +34,20 @@ test('a tie reports every leading option and no votes reports no leader', () => 
   expect(tied.leaderIds).toEqual(['ramen', 'sushi']);
   expect(tied.myOptionId).toBeUndefined();
   expect(tallyPoll({ ...poll, votes: [] }, 'a').leaderIds).toEqual([]);
+});
+
+test('an open poll lets a traveller vote, switch, and take the vote back', () => {
+  expect(pollVoteAction(poll, 'z', 'bbq', now)).toBe('vote');
+  expect(pollVoteAction(poll, 'c', 'sushi', now)).toBe('vote');
+  expect(pollVoteAction(poll, 'c', 'ramen', now)).toBe('withdraw');
+});
+
+test('an expired or decided poll keeps every vote as it is', () => {
+  for (const closed of [{ ...poll, closesAt: '2026-10-15T12:00:00Z' }, { ...poll, selectedOptionId: 'sushi' }]) {
+    expect(pollVoteAction(closed, 'z', 'bbq', now)).toBeUndefined();
+    expect(pollVoteAction(closed, 'c', 'sushi', now)).toBeUndefined();
+    expect(pollVoteAction(closed, 'c', 'ramen', now)).toBeUndefined();
+  }
 });
 
 describe('cleanPollDraft', () => {

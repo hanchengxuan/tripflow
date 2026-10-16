@@ -19,6 +19,12 @@ export function tallyPoll(poll: TripPoll, currentUserId: UserId) {
   };
 }
 
+// Votes move freely while a poll is open; tapping your own choice takes it back. Expired and decided polls are a fixed record.
+export function pollVoteAction(poll: TripPoll, currentUserId: UserId, optionId: string, now: Date): 'vote' | 'withdraw' | undefined {
+  if (pollStatus(poll, now) !== 'open') return undefined;
+  return tallyPoll(poll, currentUserId).myOptionId === optionId ? 'withdraw' : 'vote';
+}
+
 export const maxPollOptions = 6;
 
 export function cleanPollDraft(draft: { question: string; options: string[] }, tx: (zh: string, en: string) => string): { question: string; options: string[] } | { error: string } {

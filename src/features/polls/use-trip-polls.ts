@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { closeTripPoll, createTripPoll, deleteTripPoll, listTripPolls, voteTripPoll } from '@/data/poll-repository';
+import { closeTripPoll, createTripPoll, deleteTripPoll, listTripPolls, voteTripPoll, withdrawTripPollVote } from '@/data/poll-repository';
 import type { TripPoll } from '@/domain/models';
 
 export function useTripPolls(tripId: string) {
@@ -37,6 +37,7 @@ export function useTripPolls(tripId: string) {
     reload,
     create: thenReload(createTripPoll),
     vote: thenReload(voteTripPoll),
+    withdraw: thenReload(withdrawTripPollVote),
     decide: thenReload(closeTripPoll),
     remove: thenReload(deleteTripPoll),
   };

@@ -10,9 +10,10 @@ jest.mock('react-native-safe-area-context', () => ({ useSafeAreaInsets: () => ({
 jest.mock('@/features/i18n/i18n-provider', () => ({ useI18n: () => ({ locale: 'en', languageTag: 'en-US', tx: (_zh: string, en: string) => en }) }));
 
 const mockVote = jest.fn(async () => {});
+const mockWithdraw = jest.fn(async () => {});
 let mockPolls: TripPoll[] = [];
 jest.mock('@/features/polls/use-trip-polls', () => ({
-  useTripPolls: () => ({ polls: mockPolls, refreshing: false, reload: jest.fn(), create: jest.fn(), vote: mockVote, decide: jest.fn(), remove: jest.fn() }),
+  useTripPolls: () => ({ polls: mockPolls, refreshing: false, reload: jest.fn(), create: jest.fn(), vote: mockVote, withdraw: mockWithdraw, decide: jest.fn(), remove: jest.fn() }),
 }));
 
 const trip = { id: 'trip', defaultTimeZone: 'Asia/Tokyo' };
@@ -48,6 +49,18 @@ it('lets any traveller vote on an open poll in one tap', async () => {
   expect(sushi.props.accessibilityLabel).toBe('Sushi, 0 votes');
   await act(async () => sushi?.props.onPress());
   expect(mockVote).toHaveBeenCalledWith('open', 'sushi');
+});
+
+it('moves a vote to another option or takes it back on a second tap', async () => {
+  mockPolls = [{ ...open, votes: [{ userId: 'me', optionId: 'ramen' }] }];
+  render('viewer');
+  const [ramen, sushi] = optionRows();
+  expect(ramen.props.accessibilityHint).toBe('Tap again to take back your vote');
+  await act(async () => sushi.props.onPress());
+  expect(mockVote).toHaveBeenCalledWith('open', 'sushi');
+  await act(async () => ramen.props.onPress());
+  expect(mockWithdraw).toHaveBeenCalledWith('open');
+  expect(mockVote).toHaveBeenCalledTimes(1);
 });
 
 it('locks the options of a decided poll', () => {
