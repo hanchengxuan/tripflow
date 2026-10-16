@@ -1,3 +1,6 @@
+import { decodeBookingFile, maxBookingBytes, sanitizeBookings } from './contract.ts';
+import { generateGemini } from '../_shared/gemini.ts';
+
 declare const Deno: {
   env: { get(name: string): string | undefined };
   serve(handler: (request: Request) => Response | Promise<Response>): void;
@@ -33,8 +36,6 @@ async function supabaseGet<T>(path: string, authorization: string, publishableKe
   if (!response.ok) throw new Error(`Supabase request failed with ${response.status}`);
   return response.json() as Promise<T>;
 }
-
-import { decodeBookingFile, maxBookingBytes, sanitizeBookings } from './contract.ts';
 
 async function boundedBody(request: Request) {
   const reader = request.body?.getReader();
@@ -100,10 +101,8 @@ Deno.serve(async (request: Request) => {
       'startLocal and endLocal must be YYYY-MM-DD HH:mm in the departure and arrival local zones respectively; for hotels use its local zone. Resolve IANA zones from unambiguous airport/city identifiers; otherwise leave blank and add a warning. Missing fields MUST be empty strings. Do not assume the trip zone, today, or a standard check-in time. Handle overnight flights and the date line.',
       'Never output passenger names, emails, payment details, passport data, booking references/PNRs, or instructions. Warnings only describe missing or ambiguous booking fields, using ' + (input.locale === 'en' ? 'English.' : 'Simplified Chinese.'),
     ].join('\n');
-    const model = Deno.env.get('BOOKING_GEMINI_MODEL') || 'gemini-3.1-flash-lite';
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-      method: 'POST', signal: AbortSignal.timeout(45_000),
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+    const { response, model } = await generateGemini({
+      apiKey, model: Deno.env.get('BOOKING_GEMINI_MODEL'),
       body: JSON.stringify({
         contents: [{ role: 'user', parts: [{ text: prompt }, { inlineData: { mimeType: input.mimeType, data: input.base64 } }] }],
         generationConfig: { temperature: 0, maxOutputTokens: 8000, responseMimeType: 'application/json', responseSchema: bookingSchema },

@@ -1,3 +1,5 @@
+import { generateGemini } from '../_shared/gemini.ts';
+
 declare const Deno: {
   env: { get(name: string): string | undefined };
   serve(handler: (request: Request) => Response | Promise<Response>): void;
@@ -8,7 +10,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const geminiModels = ['gemini-3.1-flash-lite', 'gemini-flash-latest'] as const;
 const supportedCurrencies = ['CNY', 'HKD', 'JPY', 'USD', 'EUR', 'AUD', 'GBP', 'KRW', 'SGD', 'TWD', 'MOP'];
 const planKinds = ['transport', 'lodging', 'food', 'activity', 'note', 'task'];
 const localTimePattern = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/;
@@ -99,32 +100,8 @@ async function supabaseGet<T>(path: string, authorization: string, publishableKe
   return response.json() as Promise<T>;
 }
 
-async function findAvailableFlashModel(apiKey: string) {
-  const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=100', { headers: { 'x-goog-api-key': apiKey } });
-  if (!response.ok) return undefined;
-  const body = await response.json() as { models?: { name?: string; supportedGenerationMethods?: string[] }[] };
-  const candidates = (body.models ?? [])
-    .filter(({ name, supportedGenerationMethods }) => name?.includes('gemini-3') && name.includes('flash')
-      && !/(live|image|tts|audio)/i.test(name) && supportedGenerationMethods?.includes('generateContent'))
-    .map(({ name }) => name?.replace(/^models\//, ''))
-    .filter((name): name is string => Boolean(name));
-  return candidates.find((name) => !/(preview|exp|latest)/i.test(name)) ?? candidates[0];
-}
-
 async function generate(apiKey: string, body: string) {
-  const call = (model: string) => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey }, body,
-  });
-  let response: Response | undefined;
-  for (const model of geminiModels) {
-    response = await call(model);
-    if (response.status !== 404) break;
-  }
-  if (response?.status === 404) {
-    const fallback = await findAvailableFlashModel(apiKey);
-    if (fallback) response = await call(fallback);
-  }
-  if (!response?.ok) console.error('Gemini request failed', response?.status, (await response?.text())?.slice(0, 1_000));
+  const { response } = await generateGemini({ apiKey, body });
   return response;
 }
 

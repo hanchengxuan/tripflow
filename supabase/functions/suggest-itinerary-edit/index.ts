@@ -1,3 +1,5 @@
+import { generateGemini } from '../_shared/gemini.ts';
+
 declare const Deno: {
   env: { get(name: string): string | undefined };
   serve(handler: (request: Request) => Response | Promise<Response>): void;
@@ -7,8 +9,6 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
-
-const geminiModels = ['gemini-3.1-flash-lite', 'gemini-flash-latest'] as const;
 
 interface AuthUser { id: string }
 interface TripRow { id: string; starts_on: string; ends_on: string; default_time_zone: string }
@@ -59,19 +59,6 @@ async function supabaseGet<T>(path: string, authorization: string, publishableKe
   });
   if (!response.ok) throw new Error(`Supabase request failed with ${response.status}`);
   return response.json() as Promise<T>;
-}
-
-async function findAvailableFlashModel(apiKey: string) {
-  const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=100', {
-    headers: { 'x-goog-api-key': apiKey },
-  });
-  if (!response.ok) return undefined;
-  const body = await response.json() as { models?: { name?: string; supportedGenerationMethods?: string[] }[] };
-  const candidates = (body.models ?? [])
-    .filter(({ name, supportedGenerationMethods }) => name?.includes('gemini-3') && name.includes('flash') && !/(live|image|tts|audio)/i.test(name) && supportedGenerationMethods?.includes('generateContent'))
-    .map(({ name }) => name?.replace(/^models\//, ''))
-    .filter((name): name is string => Boolean(name));
-  return candidates.find((name) => !/(preview|exp|latest)/i.test(name)) ?? candidates[0];
 }
 
 function boundedText(value: unknown, fallback: string, maxLength: number) {
@@ -159,31 +146,12 @@ async function generateProposal(apiKey: string, prompt: string, audio?: { audioB
     ] }],
     generationConfig: { temperature: 0.1, responseMimeType: 'application/json', responseSchema },
   };
-  const models = [...geminiModels, await findAvailableFlashModel(apiKey)].filter((model, index, all): model is string => Boolean(model) && all.indexOf(model) === index);
-  let lastError = 'Gemini request failed';
-  for (const model of models) {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-      body: JSON.stringify(body),
-    });
-    if (!response.ok) {
-      lastError = `Gemini request failed with ${response.status}`;
-      continue;
-    }
-    const result = await response.json() as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
-    const text = result.candidates?.[0]?.content?.parts?.map((part) => part.text ?? '').join('').trim();
-    if (!text) {
-      lastError = 'Gemini returned an empty response';
-      continue;
-    }
-    try {
-      return { value: JSON.parse(text) as unknown, model };
-    } catch {
-      lastError = 'Gemini returned invalid JSON';
-    }
-  }
-  throw new Error(lastError);
+  const { response, model } = await generateGemini({ apiKey, body: JSON.stringify(body) });
+  if (!response.ok) throw new Error(`Gemini request failed with ${response.status}`);
+  const result = await response.json() as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
+  const text = result.candidates?.[0]?.content?.parts?.map((part) => part.text ?? '').join('').trim();
+  if (!text) throw new Error('Gemini returned an empty response');
+  return { value: JSON.parse(text) as unknown, model };
 }
 
 Deno.serve(async (request: Request) => {

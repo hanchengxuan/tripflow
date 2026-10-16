@@ -63,8 +63,20 @@ test('recognized unknown fields stay empty; output is a preview with no database
   expect(mockFetch.mock.calls.every(([url, init]) => !String(url).includes('/rpc/') && (!init?.method || init.method === 'POST'))).toBe(true);
 });
 test('provider and malformed structured-output failures are recoverable', async () => {
-  auth(); mockFetch.mockResolvedValueOnce(respond({}, 503));
+  auth(); mockFetch.mockImplementation(async () => respond({}, 503));
   expect((await handler(request(body))).status).toBe(502);
   mockFetch.mockReset(); auth(); mockFetch.mockResolvedValueOnce(respond({ candidates: [{ content: { parts: [{ text: 'not JSON' }] } }] }));
   expect((await handler(request(body))).status).toBe(502);
+});
+
+test('an overloaded booking model falls back and returns a reviewable draft', async () => {
+  auth();
+  mockFetch.mockResolvedValueOnce(respond({}, 503)).mockResolvedValueOnce(respond({ candidates: [{ content: { parts: [{ text: '{"bookings":[]}' }] } }] }));
+  const response = await handler(request(body));
+  expect(response.status).toBe(200);
+  expect(await response.json()).toEqual({ bookings: [], model: 'gemini-2.5-flash-lite' });
+  expect(mockFetch.mock.calls.slice(2).map(([url]) => String(url))).toEqual([
+    'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent',
+    'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent',
+  ]);
 });
