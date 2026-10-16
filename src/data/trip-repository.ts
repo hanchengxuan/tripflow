@@ -216,11 +216,12 @@ export async function updateProfile(
   let avatarPath = input.currentAvatarPath;
 
   if (input.avatar) {
-    const nextPath = `${userId}/avatar-${Date.now()}.jpg`;
-    const file = await fetch(await shrinkAvatar(input.avatar.uri));
+    const avatar = await shrinkAvatar(input.avatar.uri, input.avatar.mimeType);
+    const nextPath = `${userId}/avatar-${Date.now()}.${avatar.extension}`;
+    const file = await fetch(avatar.uri);
     const body = await file.arrayBuffer();
     const { error: uploadError } = await client.storage.from('avatars').upload(nextPath, body, {
-      contentType: 'image/jpeg',
+      contentType: avatar.mimeType,
       upsert: false,
     });
     if (uploadError) throw uploadError;

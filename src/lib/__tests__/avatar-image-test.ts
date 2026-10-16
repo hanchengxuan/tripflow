@@ -3,7 +3,7 @@ import { AVATAR_PIXELS, avatarCrop, shrinkAvatar } from '@/lib/avatar-image';
 const mockCalls: { crop?: unknown; resize?: unknown; save?: unknown } = {};
 
 jest.mock('expo-image-manipulator', () => ({
-  SaveFormat: { JPEG: 'jpeg' },
+  SaveFormat: { JPEG: 'jpeg', PNG: 'png' },
   ImageManipulator: {
     manipulate: (source: unknown) => ({
       crop(rect: unknown) { mockCalls.crop = rect; return this; },
@@ -34,9 +34,14 @@ describe('avatarCrop', () => {
 
 describe('shrinkAvatar', () => {
   it('saves a square JPEG no larger than the avatar size', async () => {
-    await expect(shrinkAvatar('file://original.jpg')).resolves.toBe('file://small.jpg');
+    await expect(shrinkAvatar('file://original.jpg', 'image/jpeg')).resolves.toEqual({ uri: 'file://small.jpg', mimeType: 'image/jpeg', extension: 'jpg' });
     expect(mockCalls.crop).toEqual({ originX: 456, originY: 0, width: 2736, height: 2736 });
     expect(mockCalls.resize).toEqual({ width: AVATAR_PIXELS, height: AVATAR_PIXELS });
     expect(mockCalls.save).toEqual({ format: 'jpeg', compress: 0.8 });
+  });
+
+  it('keeps PNG and WebP avatars as PNG so transparency survives', async () => {
+    await expect(shrinkAvatar('file://logo.webp', 'image/webp')).resolves.toEqual({ uri: 'file://small.jpg', mimeType: 'image/png', extension: 'png' });
+    expect(mockCalls.save).toEqual({ format: 'png' });
   });
 });
