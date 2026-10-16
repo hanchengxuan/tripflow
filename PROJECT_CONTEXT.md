@@ -1,502 +1,100 @@
 # TripFlow project context
 
-Last verified: 2026-10-15 (UI review repair slices; see exact release evidence below)
-
-This file is the durable, version-controlled source of truth for engineering continuity. It contains only project-safe context. Product detail belongs in `planning.md`; implementation history belongs in Git.
+Current state only: what is true now, standing decisions, what comes next, and what is blocked. Git history records what each PR did; do not log changes here. Edit this file only when current state, a decision, or a blocker changes. Product scope lives in `planning.md`. Never record credentials, tokens, service-role keys, personal data, or private conversation details.
 
 ## Locations
 
-- GitHub: `https://github.com/hanchengxuan/tripflow` (private)
-- Default branch: `main`
-- Local checkout: `/data/openclaw/workspace/tripflow`
+- GitHub: `https://github.com/hanchengxuan/tripflow` (private), default branch `main`
+- Maintainer checkout: `/data/openclaw/workspace/tripflow`
 - Discord: `#tripflow`, channel ID `1536353393176608799`
 - Supabase project: `TripFlow`, region `ap-northeast-2`
-- Production web: `https://tripflow.fun` (the `tripflow-liart.vercel.app` alias also serves the app)
+- Production web: `https://tripflow.fun` (canonical; `tripflow-liart.vercel.app` also serves the app)
 - Vercel project: `liamhans-projects/tripflow`
 
 ## Product direction
 
-TripFlow is a group travel operating system for travelers who split into parallel branches and later reunite. The MVP centers on:
+TripFlow is a group travel operating system for travellers who split into parallel branches and later reunite: shared trips and executable itineraries, branches with privacy boundaries, Today/Next Step coordination, multi-payer multi-currency expense splitting and settlement, and offline travel information. See `planning.md` for scope, non-goals, and the Definition of Done.
 
-- shared trips, roles, invitations, and executable itineraries;
-- dynamic segments/branches with privacy boundaries and reunion;
-- Today/Next Step coordination, status, tasks, votes, and material-change acknowledgement;
-- voice/text/manual multi-payer, multi-currency expense splitting and settlement;
-- cross-region offline travel information and reliable offline synchronization.
-
-See `planning.md` for the complete P0/P1 scope, non-goals, architecture, milestones, risks, and Definition of Done.
+Live today: email-OTP/password auth with onboarding; trips, roles, QR/link invites, trip and member management; Today (Up Next countdown, day briefing, time rail, stays, inline health hints, delay shift); Plans and Map tabs; trip branches (split from the plan editor); polls on Trips; booking import (flight/hotel PDF or image); Ledger with multi-payer/custom splits, multi-currency, receipts, receipt-photo and text/voice quick fill, settlement tasks; the 小途/Tabi assistant on every tab; Chinese (primary) and English.
 
 ## Technical baseline
 
-- Expo SDK 57, React Native, Expo Router, TypeScript, React 19
-- Supabase Postgres, Auth, and Row Level Security
-- Jest with `jest-expo`, ESLint, TypeScript checks, GitHub Actions CI/CD
-- Amounts use integer minor units with deterministic remainder allocation
+- Expo SDK 57, React Native, Expo Router, TypeScript, React 19. Jest (`jest-expo`), ESLint, Playwright.
+- Supabase Postgres, Auth, Storage, RLS, and Edge Functions: `ask-trip`, `parse-expense`, `parse-booking`, `places-autocomplete`, `route-estimate`, `delete-trip`, and `suggest-itinerary-edit` (deployed but no longer called by the app).
+- Gemini calls share one bounded request: primary `gemini-3.1-flash-lite`, fallbacks `gemini-2.5-flash-lite` then `gemini-2.5-flash`, at most three requests. Invalid-request, credential, and billing errors are not retried; database writes are never retried.
+- Google Places and Routes keys stay server-side in the Edge Functions; route estimates need a Google Place ID at both ends.
+- Destination search uses the keyless Open-Meteo geocoder (it returns an IANA time zone) plus a hand-kept alias table in `destination-search.ts`.
+- Exchange rates come from Frankfurter (reference rates, not intraday), cached per pair for offline use, with manual override; edits keep an expense's recorded rate.
+- Design: UI 2.0 "Rail & Ledger" system in `.design/tripflow-ui-2.0/` (editable sources in `src/`; generated pages are untracked; README has the design-vs-shipped table). The `$tripflow-ui` skill holds its rules. A Figma mirror (file key `6sfc9nypJzKHRHYwqtOjgu`) is stale and not a source of truth; the Figma Starter plan allows only 20 MCP calls a month.
+- Schema truth is `supabase/migrations/` plus the live migration list; `src/types/database.ts` keeps deliberate explicit nullable RPC-argument corrections when regenerated.
 
-## Verified completed work
+## CI/CD
 
-- Milestone 0 application skeleton for Today, Trips/branches, and Ledger
-- Trip/Segment/Member/Expense domain models
-- Equal and weighted allocation, remainder handling, validation, and minimal-transfer settlement
-- Six core ledger tests
-- Web static build and GitHub Actions CI
-- Initial Supabase schema deployed with 14 public tables, all with RLS enabled
-- RLS bootstrap and privilege escalation issues fixed before production data
-- Security-definer authorization implementations moved behind the unexposed `private` schema
-- Supabase database security advisor reports no RLS/RPC findings; Auth still warns that leaked-password protection must be enabled now that password login is supported
-- Supabase JavaScript client installed with AsyncStorage session persistence and lazy environment validation
-- Generated TypeScript database types match the deployed schema
-- Open registration, password login, and email OTP login use normalized input, six-digit token validation, and a required profile onboarding gate
-- First deployable MVP UI connected end to end to live Supabase data
-- Session routing separates unauthenticated login/registration, incomplete onboarding, and the authenticated product
-- Automatic profile provisioning on Auth user creation
-- Atomic trip creation with owner membership, hashed expiring invite codes, and confirmation-gated invite acceptance from QR, HTTPS link, app deep link, or pasted code
-- Live trip switching, member list, profile editing, and shared itinerary creation
-- Atomic equal-split expense creation, per-currency balances, and settlement suggestions
-- Vercel-ready Expo static web configuration
-- First production deployment is live on Vercel and passes HTTP/browser smoke tests with no console errors
-- Transactional two-user backend smoke test covers trip creation, invite acceptance, and an exact expense split without leaving test data
-- Simplified Chinese is now the primary interface and native app locale, including safe Chinese translations for backend errors
-- Trip dates, itinerary date/time, home currency, expense currency, timezone, and invite role use controlled selectors instead of free-form entry
-- An independent Profile tab lets each signed-in user edit their display name and review account/trip information
-- App Store identity is prepared with bundle ID `com.hanchengxuan.tripflow`, an original 1024px RGB icon, and EAS build/submit profiles
-- Web and iOS exports, Expo Doctor, lint, TypeScript, and 26 automated tests pass for the current mobile-readiness milestone; web document language/title are Chinese-aware
-- In-app account deletion is deployed end to end: auth credentials are removed, the profile is anonymized, memberships are revoked, sole-owned trips are deleted, and shared trips transfer to another member
-- Public Chinese privacy and support pages are live at `/privacy` and `/support`, and the login/Profile screens link to them
-- A Simplified Chinese App Store metadata and review-notes draft is maintained in `docs/app-store-metadata-zh-CN.md`
-- Account-deletion backend behavior passed transactional shared-trip, sole-trip, ownership-transfer, and stale-JWT tests with all fixture data rolled back
-- A protected Supabase Edge Function and editable confirmation flow implement Gemini text and voice expense parsing; production currently resolves to `gemini-3.1-flash-lite`, the key stays server-side, recordings are not persisted, and parsed drafts never auto-save
-- Itinerary items now support explicit start/end times, whole-field date/time controls, richer travel cards, trip/member summaries, and one-tap Google Maps search links
-- The visual foundation now uses a brighter coastal travel palette, softer cards, and clearer information hierarchy
-- Simplified Chinese and English can be switched from login or Profile, persist on device, and cover navigation, core forms, validation fallbacks, privacy, and support pages
-- Today now prioritizes one “Up next” destination followed by a flat shared timeline, start/end ranges, and quick duration controls
-- Today now includes a compact, read-only on-device itinerary health check. It reports deterministic time conflicts, tight same-day buffers, dense days, and missing locations through a bounded bilingual report contract; the issue surface stays hidden when the report is clean; a flagged plan carries a small severity hint on its timeline row, stay card, or Up Next card, and tapping it opens a sheet with that plan's issues, one-tap fixes, and direct edit actions for owners/editors (viewers are told to ask an editor). It makes no itinerary writes and sends no itinerary details to Gemini by default. A future Gemini enhancement must be explicitly opt-in.
-- Authenticated `places-autocomplete` and `route-estimate` Edge Functions keep the Google keys server-side. Selected Google Place IDs persist on itinerary items; each leg can persist Drive, Transit, Walk, or Cycle and show its corresponding distance/duration. Transit additionally shows scheduled boarding/arrival times, lines or vehicles, stops, stop count, ride duration, headsign, transfers, and aggregate walking. Manual place entry remains available, and route calls require trip membership. Production acceptance passed all four modes, persistence, invalid-mode rejection, Places, authorization, and real transit service details on 2026-08-12
-- `PRODUCT.md`, `DESIGN.md`, and `.impeccable/design.json` record the product and current visual system for future design continuity
-- Trips now uses a task-based information architecture: the active trip is the workspace anchor, create/join are always-visible top actions, trip switching is a flat list, and invite management lives inside Travellers
-- Trip owners can render and share an HTTPS invite QR code; travellers can scan it in-app with on-device QR recognition or open it from a system camera. Only trusted TripFlow links are accepted, and joining still requires explicit confirmation
-- Profile now uses an explicit edit state for display name and avatar, with language, trip context, account actions, and destructive actions separated by frequency and risk
-- Profile avatars are stored in a dedicated 5 MB image-only Supabase bucket with per-user write policies; account deletion removes the object and clears its database reference
-- Ledger now presents one focused expense-entry surface at a time and flat balance/history rows instead of a stack of equal-weight cards
-- Ledger visual pass (2026-10-16): when you owe and are owed nothing, 结算 shows one "全部结清 / 你已结清" line with the expense count and total instead of zero rows; the balance bar stays for open balances without bilingual captions. 明细 groups expenses by trip-local day (`groupExpensesByDay`), shows the linked plan's kind icon (receipt icon when unlinked), HH:mm, payer avatars, and a check icon when settled; the full status stays in each row's accessibility label. The list lives in `src/components/expense-activity.tsx`. Icons are neutral-tinted because the kind colour maps are still duplicated in Today and 安排
-- Ledger settlement is now task-first: each traveler sees explicit “pay whom how much” actions, four personal pending/completed incoming/outgoing totals, per-member group status, and sender-owned sent/undo controls
-- Expense receipts can be captured with the camera or selected from the photo library during entry or attached later; files are normalized client-side and stored privately with expense-scoped access policies
-- Settlement status is stored independently from immutable expense evidence, recalculates remaining transfer routes after every payment, and is serialized by trip/currency to prevent concurrent overpayment
-- The ledger UI now asks for a source currency and explicit source-to-home-currency rate when they differ; settlement tasks can record the actual payment currency and amount while showing the converted bookkeeping amount. Unconverted legacy cross-currency rows remain flagged in the normalized calculation instead of receiving a guessed rate.
-- The `multicurrency_base_amounts` migration is applied to the live Supabase project, adding auditable home-currency amounts/rates to expenses, payer/share rows, and settlements plus normalized settlement RPC overloads.
-- Ledger expense entry now supports multiple payers, exact/percentage/share allocations, deterministic remainder handling, and idempotent retries. The `custom_expense_splits` migration is applied to the live Supabase project; custom expenses validate membership and source/base totals server-side and persist proportional base-currency allocations.
-- Today, Trips, and Ledger use a shared compact section-heading pattern, flatter overview surfaces, shorter utility copy, and progressive payment-currency controls so the next action is visually primary.
-- Today itinerary editing now uses a closed-by-default quick-add composer: the timeline stays visible first, editors open a compact Add plan action when needed, and existing item edits reuse the same surface. Summary labels and helper copy were shortened to keep the next action visually primary.
-- Ledger expense entry now presents voice capture as a compact microphone control with accessible state labels; recording duration or processing status appears only while active, and the previous long voice guidance copy is removed.
-- Trips management now keeps the hero focused on the selected trip and action buttons; panel captions and redundant helper sentences are optional, so create/join/manage surfaces reveal only the information needed for the current task.
-- Mobile web shell now keeps the top tab navigation in document flow instead of overlaying scroll content; Screen reserves a smaller, explicit web inset, compact stays actions wrap below their copy, and shared controls use theme-aware surfaces/text in dark mode.
-- Web navigation now floats in a compact bottom glass surface with translucent inactive tabs, a restrained active state, and blur/shadow treatment; Screen reserves bottom clearance for the nav and lifts fixed web actions above it.
-- Today now uses a persistent, accessible add-plan action; opening the composer scrolls to the form instead of the document end, and plans outside the trip dates require explicit confirmation before extending the trip
-- Auth/session loading uses a single neutral compact status state for the auth/profile gate, while the shared Screen supports fixed contextual actions without covering content
-- The authenticated product mounts the shell immediately after session/onboarding checks; `MvpProvider` hydrates trip/profile data behind the tabs, so the first refresh no longer blocks Today, Trips, or Ledger behind a full-screen trip-recovery state
-- Today’s fixed add-plan action clears stale anchor measurements and uses a two-frame target scroll so opening a new or edited plan lands on the composer instead of the document end
-- The overall UI redesign is documented in `.design/tripflow-ui-redesign/`: Open Coast Itinerary remains the visual world, while the shared shell now uses a compact title/context row, InfoCard titles no longer repeat eyebrow copy, and the login entry is a focused mobile-first form with a desktop split layout
-- Today’s next-step map action now uses a compact affordance, empty-place copy is reduced, later-item type pills move above content on narrow screens, stays use a two-column desktop/action stack with a full-width mobile fallback, and viewer access is a compact status badge rather than a page-ending paragraph
-- Today’s add-plan form now uses compact type selection instead of space-heavy template/duration chips, keeps separate start and end date-time fields for cross-day plans, and exposes route modes plus a Google Maps directions hand-off for consecutive located items even when a live estimate is unavailable
-- Today’s add-plan composer now has an explicit Cancel action in new-plan and trip-range confirmation states, while the persistent floating action changes from plus to close when the form is open.
-- Ledger now keeps “Add expense” available as a persistent compact action; mobile expense and settlement controls stack at narrow widths, and refresh state no longer inserts redundant inline copy
-- Ledger settlement now keeps personal payment tasks in the open state while completed history and group status sit behind compact disclosures; AI/receipt helper copy is reduced and split panels follow the active theme in dark mode
-- Trips and Profile now use shorter operational labels, remove redundant sync notices, and switch forms/settings to vertical mobile layouts before controls can collide
-- Trips management now keeps invite generation behind a compact disclosure, while Profile keeps sign-in method linking collapsed until requested and uses radio semantics for the language switcher
-- Final browser audit found and fixed missing checked-state semantics on radio chips and selection-sheet options; production route smoke tests remain green across the authenticated shell entry and public pages
-- Profile avatars now propagate through the shared trip roster and ledger settlement identities, with an initials fallback and dark-mode-aware presentation
-- Every trip in My Trips opens a focused management workspace instead of only switching context; owners and editors can edit name, dates, home currency, and timezone
-- Trip owners can progressively manage another traveller's owner/editor/viewer role or remove them after their balance is fully settled, while preserving historical ledger evidence; direct membership mutation is revoked in favor of validated RPCs
-- Transactional three-account acceptance verifies editor trip editing, owner role management/removal, and self-membership protection without leaving fixture data
-- Removed travellers retain a read-only trip-scoped name/avatar snapshot for historical ledger auditability, and expense creation shares a membership lock with removal to prevent concurrent stranded balances
-- Lodging is modeled as one multi-day check-in/check-out interval in the trip timezone rather than repeated daily itinerary rows; Today surfaces a compact Stays rail and can atomically add one transfer from the latest valid prior placed item to the saved hotel
-- Owners/editors can edit or delete timeline items through validated RPCs; lodging changes remove stale generated transfers. The trip creator can permanently delete a trip through an explicit confirmation flow, while the protected `delete-trip` Edge Function removes database data before best-effort cleanup of private receipt objects.
-- CI runs formatting boundaries, lint, TypeScript, Jest, the web export, and an exact reviewed npm-audit GHSA allowlist that hard-fails critical or newly unreviewed high advisories.
-- Production CD waits for the exact `main` commit's Vercel Git Integration status, then smoke-tests `/`, `/ledger`, `/explore`, `/privacy`, and `/support` on `https://tripflow.fun`; the 2026-08-13 run passed for deployment `61ZgGMyXP6hzAoJYsmwXWGahZSKp`.
-- Project-local `$tripflow-review`, `$tripflow-qa`, and `$tripflow-ship` skills now encode evidence-based pre-landing review, diff-aware safe browser QA, and the full rebase-to-production delivery workflow. `AGENTS.md` also records focused-diff, component-boundary, type-safety, platform-parity, and verification rules.
-- CI is split into parallel static, Jest, Expo health/export, and Playwright gates behind the existing stable `validate` result name. Expo Doctor, web export, iOS export, and six mobile/desktop Chromium smoke cases are covered; browser failures upload reports and traces. An advisory PR-size workflow excludes lockfile and generated database-type churn.
-- CI standards hardening now checks the actual PR/push commit range for whitespace errors, treats incomplete or failed npm-audit reports as execution failures, and keeps the web tab glass style fully typed. `validate` remains the stable merge gate. GitHub branch protection/rulesets cannot currently be enabled or inspected because this private repository plan returns 403; until that external constraint changes, exact-commit CI/Preview verification is an explicit manual merge gate.
-- The new browser gate found a real public-route transition failure: returning from Support to the app could render Today outside `MvpProvider`. The Web back link now performs an explicit same-tab document navigation, and the mobile/desktop regression flow passes without runtime console errors.
-- Ledger clarity slice is complete on this branch: settlement rows now label trip-base versus payment currency, and activity details expose base-currency conversion plus per-traveller settlement status. A protected `update_custom_expense` RPC preserves the expense id/receipts while atomically replacing payer and share allocations; the UI opens the existing composer in edit mode for the creator, a payer, or a trip editor. The live RPC migration is applied and Supabase advisors show only existing baseline warnings; browser QA is limited to the configured local shell because this isolated worktree has no public Supabase variables.
-- Mobile layout correction is complete: stacked Trips actions no longer inherit the desktop flex basis, and Ledger currency summaries use a stable two-column metric grid below the currency identity at narrow widths. Lint, TypeScript, 32 Jest tests, Expo Doctor 20/20, web/iOS exports, and six public-route Chromium checks passed on 2026-08-13.
-- Ledger settlement follow-up is implemented on `codex/ledger-settlement`: expense edits now preserve save/link state, each expense has an explicit manual or automatic settled marker with a reversible RPC, settlement inserts/deletes refresh automatic flags when normalized balances reach zero, and expenses can link to a specific itinerary item for review. The live migration `expense_settlement_and_itinerary_links` is applied; new Supabase advisor output contains only the existing auth/performance baseline plus the expected new foreign-key/index notices. Local Expo shell QA reaches the configured-Supabase notice without runtime console errors because this isolated worktree has no public Supabase variables.
-- The first-trip recovery gate was removed after its transient full-screen loading state caused unreliable return behavior; session authentication loading remains protected, while product data refreshes in the mounted shell. Lint, TypeScript, 32 Jest tests, Expo Doctor 20/20, web/iOS exports, and six mobile/desktop Chromium checks passed on 2026-08-13.
-- The remaining auth gate now uses an accessible spinner without visible “恢复行程 / Restoring your trip” copy; it describes a session check in code and design context while preserving the pre-auth/profile boundary.
-- Today’s trip overview no longer shows the home-currency badge beside the section heading; currency remains available in the trip and ledger contexts where it supports a decision. Lint, TypeScript, web export, and six mobile/desktop Chromium checks passed on 2026-08-14.
-- Cross-trip itinerary moves are now atomic: owners/editors can move a plan from Today into another trip without recreating it, with lodging, its generated transfer, and linked ledger expenses moved together, source-trip segment references cleared, compatible participants preserved, and financial evidence retained. The live `move_itinerary_between_trips` and `move_linked_expenses_with_itinerary` migrations are applied as remote versions `20260814045150` and `20260814051826`; function privilege introspection and security advisors show no new findings beyond the existing baseline. Lint, TypeScript, Jest, Expo Doctor, web/iOS exports, and public-route smoke checks pass; authenticated move acceptance still needs a configured fixture account.
-- Ledger expense entry now keeps manual fields and optional text/voice quick fill in one composer; smart input fills the same editable fields and never bypasses review or save. Lint, TypeScript, 34 Jest tests, Expo Doctor 20/20, web/iOS exports, and six public-route Chromium checks pass on 2026-08-14; authenticated composer QA still needs a configured fixture account.
-- Ledger cross-currency expense entry now auto-fills the source-to-home-currency rate from Frankfurter's no-key latest working-day API, caches pair results locally for offline fallback, labels the rate date, and still allows a manual override. Existing expense edits preserve their recorded rate. This is client-only with no migration; focused exchange-rate/domain tests, lint, TypeScript, 51 Jest tests, Expo Doctor 20/20, web/iOS exports, and six Chromium checks pass on 2026-08-14. Authenticated composer interaction still needs a configured fixture account; Frankfurter provides reference rates rather than intraday trading quotes.
-- Auth focus recovery now preserves the mounted authenticated product when Supabase re-emits `SIGNED_IN` for the same user after session confirmation or tab focus; onboarding state resets only for a changed identity or sign-out, and the listener is registered before the initial session read. The identity transition helper has focused regression coverage; authenticated focus/return acceptance still needs a configured fixture account.
-- A full UI 2.0 system, "Rail & Ledger", is specified in `.design/tripflow-ui-2.0/`. The itinerary becomes one continuous time rail: times sit in a fixed 46pt gutter so every title aligns, and travel occupies the gap between two plans instead of nesting inside each row. Settlement becomes one bipolar balance bar instead of four equal-weight metrics. The palette moved to Neutral Ink & Pine — hueless neutral surfaces, a single pine primary action, and six itinerary hues muted into one matched-lightness family; `kind/activity` is deliberately lighter than `accent/primary` so a rail dot never reads as the primary action. Two rejected palette directions are preserved for reproducibility in `src/palette-options.html`. Editable sources live in `.design/tripflow-ui-2.0/src/`; the viewable pages are generated by `build.mjs` and are intentionally untracked. The system is also published to the Claude Design project "TripFlow UI 2.0 — Rail & Ledger". A partial Figma mirror exists at file key `6sfc9nypJzKHRHYwqtOjgu` but is not a source of truth: the Figma Starter plan allows 20 MCP tool calls per month and the token/component build consumed that quota, so its variables still hold the superseded coastal-teal values.
-
-- The UI 2.0 token layer is adopted in code on `codex/ui-2-tokens`: `src/constants/theme.ts` now holds 40 semantic tokens per scheme matching `.design/tripflow-ui-2.0/src/tokens.css` by name, and every color literal outside that file is gone except three deliberate ones — the invite QR pair, which must stay fixed dark-on-white for scanners, the camera viewport, and the splash overlay, which is still tied to the untouched `app.json` splash branding. Three components previously detected dark mode by comparing `theme.background` to the literal `'#0C1924'`; the `as const` palette turned that into a compile error, and they now read tokens instead. The ledger also stopped conflating money direction with severity: a pending outgoing transfer uses `moneyOut`, while `danger` is reserved for the destructive remove action. Lint, TypeScript, 32 Jest tests, Expo Doctor 20/20, and the web export pass; browser QA in this worktree reaches the setup notice and the public `/privacy` and `/support` routes at 375px and 1280px in light and dark with no console errors, because this checkout has no public Supabase variables.
-
-- Today's later-plan list is rebuilt as the shared time rail on `codex/ui-2-today-rail`. Start/end times moved into a fixed 46pt gutter so every title starts on one axis, a continuous spine carries the kind-coloured dot, a day separator appears whenever the date changes, and travel now renders in the gap *between* two plans instead of nesting mode chips, an estimate, a transit plan, and a Maps link inside each row. The rail lives in `src/components/timeline-rail.tsx` and the route presentation in `src/components/route-plan.tsx`, so `src/app/index.tsx` shrank rather than grew while gaining the new structure. Lint, TypeScript, 32 Jest tests, Expo Doctor 20/20, and the web export pass. The rail itself is still **unverified in a browser**: rendering it needs an authenticated trip with itinerary items, and this worktree has no public Supabase variables.
-
-- UI 2.0 is shipped through the Neutral Ink & Pine token layer, Today's time rail, the ledger's bipolar balance bar, a stacked-flex-basis layout fix, the notice accent bar, and the Stay card. `src/constants/theme.ts` carries `Spacing`, `Radius`, and `Size` scales matching the design's `--space-*`, `--radius-*`, and `--size-*` tokens, so a new screen no longer has to invent numbers; existing files still hold literals and should be converted only when touched. The `$tripflow-ui` skill encodes the design's non-negotiable rules, token discipline, component boundaries, the live-data verification loop, and the traps already hit. `.design/tripflow-ui-2.0/README.md` carries the current design-vs-shipped table. Four things remain unverifiable without richer fixture data — the balance bar's proportional fill, the day separator, a multi-leg transit plan, and any desktop-width claim.
-
-- `InlineNotice` now carries the design's 3px tone bar, stretched to the notice height so wrapped bilingual copy keeps it full-height; it is the first consumer of the `Spacing`/`Radius` scales.
-- Today stays now use the UI 2.0 Stay card: a 4pt lodging bar, stacked name/date/place copy, and a lodging-tint nights tile. The visual lives in `src/components/stay-card.tsx`; nights still come from `stayNightsInZone`, and `index.tsx` shrank from 816 to 814 lines. Three UI 2.0 gaps remain in `.design/tripflow-ui-2.0/README.md`: the single-row screen header, compact travel modes, and sheet composers.
-- `Screen` now accepts one ordered `context` fact list instead of separate `subtitle` and `meta` prose. It renders one wrapping context line with dot separators; every caller was rewritten deliberately. Today now matches the design with trip dates, traveller count, and home currency; Ledger uses trip, home currency, and expense count; empty, auth, legal, Trips, and Me states keep only short facts. Two UI 2.0 gaps remain: compact travel modes and sheet composers.
-- Travel modes now use progressive disclosure by product decision: the selected mode and route estimate stay visible as an accessible chip, pressing it reveals Drive, Transit, Walk, and Cycle in place, and selecting a mode collapses the choices while the estimate refreshes. This preserves the deliberate user-controlled mode selection while preventing four permanent controls from making a 375px route gap taller than its plan row. `index.tsx` shrank from 814 to 811 lines by moving route-mode constants and labels into `route-plan.tsx`. Sheet composers are the final UI 2.0 gap.
-- The Gemini smart-edit slice is implemented and deployed: Today no longer shows a page-level AI card; while editing an existing itinerary item, an editor can open a compact smart-suggestion button, request a structured title/time preview, review local trip-range and overlap validation, and explicitly apply the existing itinerary update RPC. The `suggest-itinerary-edit` Edge Function is ACTIVE in production with manual authenticated membership checks and sends Gemini only the selected item's minimum context; it never receives profile, ledger, or other itinerary rows, and it cannot write data. PR #59 merged as `96868b3`; its exact production CD run passed Vercel smoke tests, and an unauthenticated function smoke returned 401 as expected. Focused proposal/merge/validation tests, lint, TypeScript, Expo Doctor, web/iOS exports, and six public-route browser checks pass locally. Authenticated fixture acceptance remains pending a configured editor account.
-- Destination-aware itinerary work is implemented on `codex/destination-atlas`: every itinerary item can store a city/country, ISO country code, coordinates, timezone, and optional currency, so one trip can trace multiple countries and cities. Today uses the free no-key Open-Meteo geocoder for city search; selection quietly supplies timezone/currency defaults, exposes both as low-emphasis user-editable settings, persists overrides, and uses the selected timezone for local plan times. A new animated atlas uses `@svg-maps/world` country outlines, a route trace, visited/current/planned pins, and a selected-place plan list; pins remain useful to view-only members while editors can open the linked plan. The destination metadata migration and extended itinerary update/stay-transfer RPCs are applied remotely as `itinerary_destinations`; Supabase security advisors show no new security finding. Authenticated destination creation/editing still needs a configured fixture account, but lint, TypeScript, Jest, Expo Doctor 20/20, web/iOS exports, and the Open-Meteo Tokyo lookup pass locally.
-- The final UI 2.0 composer implementation is ready on `codex/ui-2-sheet-composers`: Today add/edit/delete confirmation, cross-trip move, and Ledger add/edit expense use the shared `BottomSheet`, with a tokenized scrim, 26pt top corners, 84% height cap, safe-area padding, keyboard avoidance, and an independently scrolling form. `Screen` no longer owns offsets, refs, animation frames, or scroll-to-anchor props. Local 390×844 and 1280×800 component previews, close/reopen interaction, lint, TypeScript, 49 Jest tests, Expo Doctor 20/20, web/iOS exports, and six mobile/desktop public-route Chromium checks pass. Do not merge until a physical phone verifies keyboard avoidance, long-form scrolling, dismissal, reopen state, and opening both composers from a scrolled page; no physical iOS/Android device or device tooling is connected to this Mac, and the local browser has no authenticated fixture session.
-- The Gemini smart-edit slice is implemented and deployed: Today keeps a compact, closed-by-default assistant; an editor selects exactly one existing itinerary item, requests a structured title/time preview, reviews local trip-range and overlap validation, and explicitly applies the existing itinerary update RPC. The `suggest-itinerary-edit` Edge Function is ACTIVE in production with manual authenticated membership checks and sends Gemini only the selected item's minimum context; it never receives profile, ledger, or other itinerary rows, and it cannot write data. PR #59 merged as `96868b3`; its exact production CD run passed Vercel smoke tests, and an unauthenticated function smoke returned 401 as expected. Focused proposal/merge/validation tests, lint, TypeScript, Expo Doctor, web/iOS exports, and six public-route browser checks pass locally. Authenticated fixture acceptance remains pending a configured editor account.
-- The final UI 2.0 composer implementation is ready on `codex/ui-2-sheet-composers`: Today add/edit/delete confirmation, cross-trip move, and Ledger add/edit expense use the shared `BottomSheet`, with a tokenized design-opacity scrim, 26pt top corners, 84% height cap, safe-area padding, keyboard avoidance, and an independently scrolling full-width form. iOS Simulator acceptance found native-only flex shrink in Today’s date/time controls and the same wrap/basis hazard in compact Ledger controls; start/end are now paired like `screens-today.html`, compact columns reset wrap/basis/width, and Today’s first viewport follows hero → stays → rail without the redundant overview strip. Native and Web now share the designed 54pt text-only floating navigation instead of iOS system icon tabs. Lint, TypeScript, 53 Jest tests, Expo Doctor 20/20, web/iOS exports, and six mobile/desktop public-route Chromium checks pass. The corrected authenticated UI still needs a Simulator recheck because the isolated worktree’s localhost Metro endpoint was not reachable from Expo Go, and the physical-phone gate remains keyboard avoidance, long-form scrolling, dismissal, reopen state, and opening both composers from a scrolled page.
-- The UI 2.0 fidelity pass now uses shared `NextUpCard`, `TripOverviewCard`, `KindPill`, `SegmentedControl`, and `ListSurface` components across Today, Trips, and Ledger. Today no longer places route controls or permanent edit/move/delete links inside the raised next-up card or timeline rows; tapping a plan opens the edit sheet, where those actions remain available. Trips now matches the designed current-trip hero, side-by-side secondary actions, and compact trip list. Ledger uses one segmented control, one normalized base-currency balance bar, a white activity row-list, and a compact manual/AI composer; missing exchange rates remain explicit rather than producing a false combined balance. Authenticated iOS Simulator screenshots cover Today, Trips, Ledger settlement/activity, and the expense sheet. Lint, TypeScript, 58 Jest tests, Expo Doctor 20/20, web/iOS exports, and six mobile/desktop Chromium checks pass on 2026-08-15. The remaining physical-phone gate is keyboard avoidance, long-form sheet scrolling, dismissal/reopen state, and opening both composers from a scrolled page.
-- Follow-up native QA fixed two Today editor regressions: the end timestamp now uses the selected end date for every non-linked plan, and the paired date/time controls force an explicit flex basis so iOS cannot collapse them to digit-width columns inside the sheet. Supabase/PostgREST error objects are now translated instead of falling through to the generic add-plan message. Trips keeps the design's month/day range format in Chinese (`3月12 — 3月16`) while preserving locale formatting elsewhere. TypeScript, 60 Jest tests, lint, Expo Doctor 20/20, and web/iOS exports pass on 2026-08-15; the authenticated physical-device flow remains pending because this environment could not expose localhost Metro to the simulator safely.
-- Ship candidate is rebased onto `origin/main` at `ba17f73` and includes the complete Today/Trips/Ledger UI 2.0 surface plus the follow-up editor/date-time/error fixes. Local typecheck, lint, 68 Jest tests, Expo Doctor 20/20, web/iOS exports, and six mobile/desktop public-route checks pass. Production deployment is still pending the PR merge; the remaining native gap is Simulator/physical-device sheet keyboard and long-form scrolling verification.
-- The atlas follow-up is implemented on `codex/atlas-and-itinerary-tabs`: Today no longer carries the large map; authenticated navigation now has dedicated Map and Plans tabs, with Plans showing every active-trip arrangement (including ended items) and local title/place/destination filtering. The Map tab adds drag/pan, pinch zoom, and accessible `−`/`＋`/`1:1` controls through the existing gesture dependencies. Destination lookup now queries high-confidence Chinese/English aliases such as `东京`/`Tokyo`, ranks country and city matches with trip-name/plan-title/selected-place context, deduplicates results, and falls back across Open-Meteo language queries without a schema change. Lint, TypeScript, 66 Jest tests, Expo Doctor 20/20, web/iOS exports, and six mobile/desktop public-route checks pass; authenticated map gestures and fixture-backed destination ranking still need a configured account for full visual acceptance.
-- Plans now supports direct itinerary maintenance for owners/editors: tap a timeline item to edit it, use the persistent add action to create a plan, and delete from the shared confirmation sheet. The composer reuses the existing destination, place, timezone, currency, date/time, trip-range, and CRUD paths without a migration; viewers remain read-only. Lint, TypeScript, 70 Jest tests, Expo Doctor 20/20, web/iOS exports, and six mobile/desktop public-route checks pass on 2026-08-16. Authenticated editor/viewer interaction still needs a configured fixture account for full browser acceptance.
-- The plans/map follow-up now routes atlas pins and destination plan rows to the matching Plans item; single-plan pins open the item directly, while grouped pins expose each plan for selection. The smart itinerary suggestion is embedded inside the active add/edit composer as a contextual preview prompt, with no page-level CTA. Lint, TypeScript, 78 Jest tests, Expo Doctor 20/20, web/iOS exports, and six mobile/desktop public-route checks pass on 2026-08-16. Authenticated marker navigation and editor smart-preview acceptance still need a configured fixture account.
-
-- `tripflow.fun` is the canonical production domain; `PROJECT_CONTEXT.md`, `README.md`, the App Store metadata draft, and the CD smoke-test target all named the Vercel alias instead. Invite links carried a real defect from this: `parseInviteToken` trusted exactly one host, so an invite naming the domain the traveller was not on was rejected as invalid. Both hosts plus the `www` form are now trusted, look-alike hosts and wrong paths are still rejected, and four regression tests cover it. Password recovery is unaffected — `authRedirectUrl` derives the origin from `window.location` on web — but the Supabase Auth allowlist must name `https://tripflow.fun/reset-password`.
-
-## Applied Supabase migrations
-
-- `initial_schema`
-- `harden_rls_helpers`
-- `mvp_foundation`
-- `fix_invite_crypto_path`
-- `account_deletion`
-- `profile_avatars`
-- `clear_avatar_on_account_deletion`
-- `ledger_receipts_and_settlement_tracking`
-- `harden_settlement_rpcs`
-- `serialize_settlements_and_bind_receipt_uploads`
-- `trip_details_and_member_management`
-- `guard_member_removal_with_balances`
-- `archive_removed_member_identity`
-- `lodging_intervals_and_atomic_transfers`
-- `harden_stay_transfer_rpc`
-- `itinerary_crud_and_trip_deletion`
-- `itinerary_place_ids`
-- `remove_legacy_itinerary_update`
-- `itinerary_route_modes`
-- `profile_onboarding`
-- `harden_profile_onboarding`
-- `multicurrency_base_amounts`
-- `custom_expense_splits`
-- `update_custom_expense`
-- `expense_settlement_and_itinerary_links`
-- `move_itinerary_between_trips`
-- `move_linked_expenses_with_itinerary`
-- `itinerary_destinations`
-- `remove_legacy_destination_update`
-
-The live migration list was rechecked after applying `itinerary_destinations`; no pending TripFlow migration remains.
-
-Temporary acceptance fixtures are removed after each test; production may contain real user-created rows.
-
-## Active next milestone
-
-- UI 2.3's SDK and deployment prerequisites are complete as of September 23. PR #88 refreshed Expo to 57.0.24 and Router to 57.0.22; main commit `57e0b6178bb6626b5592980e9c5241d55b1005d0` passed CI and production run 35856984648, including Expo Doctor, Web/iOS exports, and production route smoke checks. Authenticated and physical-device acceptance remain separate gates.
-- PR #85's initial Linux CI exposed missing optional WASM peer records in the macOS-generated lockfile (`@emnapi/core` and `@emnapi/runtime` 1.11.3). The lockfile was refreshed for Linux/x64 and checked using CI's npm 11.19.0; Linux-target clean-install resolution now passes. This is an install portability correction, with no advisory allowlist or workflow relaxation.
-- UI 2.3 foundation (PR #87) and Profile panels (PR #89) are merged. Profile's exact production run 35858645315 deployed main `5e9832c7af73ad7ec27fb3b3f664fad64e2c4f14` and passed route smoke. Desktop Web uses a 200pt sidebar and centered sheets; mobile keeps six-tab navigation and bottom sheets. Shared amount/currency controls are 64pt, the account deletion settings row is complete, secondary actions use neutral surfaces, and pending sheets can block dismissal. Browser component checks cover 12 foundation and 16 Profile/Auth fixture combinations. Real authenticated and physical-device acceptance remain separate gates.
-
-1. Resolve the Apple Developer Program enrollment hold; then sign into Expo/EAS, connect the EAS project, add the public Supabase variables, and produce the first iOS TestFlight build.
-2. Choose and configure the long-term public support email through `EXPO_PUBLIC_SUPPORT_EMAIL`, then finalize App Privacy disclosures, age rating, and Chinese screenshots.
-3. Run TestFlight acceptance on a current iPhone and human acceptance with real owner/editor/viewer accounts, including QR camera scanning, avatar propagation, and trip/member management.
-4. Add segment/branch creation and segment-scoped itinerary membership.
-5. Expand the validated ledger with exclusions, item-level sub-splits, partial transfers, and richer exchange-rate snapshots.
-6. Address performance-advisor warnings before the dataset grows, and enable Supabase leaked-password protection before broader password-login beta distribution.
-7. Configure conservative Google Places and Routes quotas/budget alerts, then monitor production usage before increasing limits.
-8. Continue the itinerary experience milestone with Place details, participant/status controls, booking essentials, and richer branch interactions.
-9. Add reviewable Gemini itinerary import from photos, files, and shared links; imported content must remain a draft until the traveler confirms it.
-10. Extend lodging anchors with booking confirmation, room notes, check-in instructions, and checkout-to-next-stop shortcuts.
-11. Add commit-bound Vercel Preview browser smoke once CI can resolve a public Preview URL. The current GitHub `Vercel` status exposes only the Vercel dashboard target and the repository has no GitHub deployment record or scoped Vercel API credential to resolve the public alias safely.
-12. If AI editing returns, build it trip-wide (one "what changed?" input that shifts every affected plan behind a single preview) rather than reviving the single-plan panel removed on 2026-10-15. Decide then whether to retire the unused `suggest-itinerary-edit` Edge Function and its privacy-policy mention.
-13. Replace Open-Meteo for destination search, or stop relying on it for Chinese input. Its CJK index is partial and inconsistent — measured 2026-08-17: `東京` resolves but `东京` returns a town in China, `倫敦` resolves but `伦敦` returns London, Ontario, `清迈` resolves but `清邁` returns nothing, and `大阪` and `首尔` return nothing in either script. No single transformation covers that, so `destination-search.ts` carries a hand-maintained alias table purely to compensate; every entry is maintenance debt. Open-Meteo was chosen because it is keyless and returns an IANA timezone, which the destination model needs. The app already runs an authenticated `places-autocomplete` Edge Function against Google Places, which resolves these names correctly in any script; adopting it here needs a timezone source (Google Time Zone API, or a coordinate-to-timezone table) and a quota decision, so it is a deliberate choice rather than a drop-in swap.
+- `validate` is the stable merge gate over parallel static (format, whitespace on the commit range, lint, TypeScript, npm audit), Jest, Expo Doctor plus web/iOS export, and Playwright public-route smoke at mobile and desktop widths. A PR-size workflow is advisory.
+- The npm-audit gate uses an exact reviewed GHSA allowlist and hard-fails on critical or new unreviewed high advisories or an incomplete report.
+- Production deploys only through the Vercel Git Integration from `main`. GitHub Actions waits for that commit's Vercel status, then smoke-tests `/`, `/ledger`, `/explore`, `/privacy`, and `/support` on `https://tripflow.fun`.
+- Expo SDK patch drift (Doctor recommending newer patches) can fail CI or halt the production run; fix it with a focused dependency-only PR.
+- The web export copies Expo's `+not-found.html` to `dist/404.html` so Vercel serves the branded 404.
+- Branch protection cannot be enabled on the current private-repo plan (API returns 403); see `AGENTS.md` for the manual merge gate.
 
 ## Standing decisions and safety boundaries
 
-- First beta targets iOS and Android via Expo development builds.
-- Authentication supports registration without an invite, password login, and email-code login. New users verify an email OTP and must set a password and basic profile before entering the product; scanned invite context survives this flow and still requires explicit acceptance. Apple and Google follow later.
-- Cross-branch information is private by default with optional trip-level read-only visibility.
-- Each trip selects a home currency while preserving original transaction currencies.
-- Never place a service-role key, database password, or signing secret in the Expo client or Git.
-- Client configuration uses only the project URL and a publishable key in ignored local/deployment environment variables.
-- Database migrations are reviewed before deployment and followed by RLS/security advisor checks.
-- Production deployment uses the Vercel Git Integration as the single deploy path from `main`; GitHub Actions verifies the provider status after the quality gate and performs public-route smoke tests.
-
-## Continuity workflow
-
-- Start: read this file, `planning.md`, recent Git history, and live migration state.
-- Recover: when Discord context is incomplete, read the latest 50 messages and expand to 100 only if needed.
-- Work: treat Git, tests, and live database introspection as evidence; do not rely on conversational recollection alone.
-- Finish: update this file, commit and push, then refresh the pinned Discord summary.
-- Secrets and personal context never enter this file or the channel summary.
-
-## September 23 Expo SDK patch drift
-
-- Initial production run 35855752172 correctly halted before deploy because Expo SDK metadata advanced after the September 15 PR check. PR #88 updated the compatible SDK patch set and merged as `57e0b6178bb6626b5592980e9c5241d55b1005d0`. Exact production run 35856984648 succeeded, including route smoke checks for `/`, `/ledger`, `/explore`, `/privacy`, and `/support`.
-- UI 2.3 Profile panels are deployed in PR #89 (`5e9832c7af73ad7ec27fb3b3f664fad64e2c4f14`); its CI/Preview and production smoke passed. It adds edit-profile, sign-in-methods, password, sign-out, and account-deletion sheets with inline recoverable error states. No database migration.
-- UI 2.3's Auth, Today, Trips, and Ledger screens are deployed. Real-account and native-device acceptance remain open. Keep home-currency redenomination out of UI-only work until an atomic backend operation and data-safety acceptance are designed.
-
-## September 15 SDK compatibility refresh
-
-- PR #85 is merged as e19cb889790f529c098ea6ca67e67a45999e6d05; exact production CD run 34305125191 passed.
-- Expo Doctor now requires the September patch set: Expo 57.0.22 and Router 57.0.21 with their compatible Expo modules. This branch updates only package manifests and the lockfile; native configuration and application behavior are unchanged.
-- Verified locally: lint, TypeScript, 97 Jest tests, Expo Doctor 20/20, web export (11 routes), iOS export, the reviewed audit gate, and six mobile/desktop public-route Playwright tests. Linux x64 clean-install dry run with npm 11.19.0 also passed. Review: CLEAR for this dependency-only diff.
-- Next: exact-head CI and Vercel Preview, merge, then exact production deployment verification; rebase the UI foundation slice afterward. Authenticated UI and physical-device acceptance remain separate from this compatibility check. No database migration.
-
-## September 23 UI 2.3 authentication slice
-
-- SDK alignment and foundation UI are live on main at `57e0b6178bb6626b5592980e9c5241d55b1005d0`; production run 35856984648 and smoke routes passed.
-- Auth design landed as PR #90 at merge commit `c5d789739c55da328c086284bfc93ff183fcf7f3`. Its exact-head CI, full validate, and Vercel Preview passed; production run 35860089377 deployed successfully and passed smoke tests for `/`, `/ledger`, `/explore`, `/privacy`, and `/support`. It makes email-code login primary, preserves password and registration alternatives, provides recoverable verification, restores controls after provider cancellation, and adds touch-sized legal links and a branded bilingual not-found page. No migration.
-- Today/plan editing landed as PR #91 at merge commit `1c84cae1232c0dd722c46012688f001469909fef`; exact-head CI, validate and Vercel Preview passed. Production run 35862209232 succeeded with smoke tests for `/`, `/ledger`, `/explore`, `/privacy`, and `/support`. Today now uses the shared itinerary composer instead of a second 13-state form; editing exposes map, hotel-transfer, move, split, and final destructive delete actions. Route errors are visible and deletion can be retried. Browser checks cover mobile/desktop actions, preserving drafts after cancelling deletion, and recovering after delete failure. No migration.
-
-## September 23 production 404 routing correction
-
-- Read-only production Playwright QA after PR #91 found `/expired-invite-example` returned Vercel's default `404: NOT_FOUND` page. Expo exports the bilingual route as `dist/+not-found.html`; Vercel static hosting expects `dist/404.html` for its custom 404 response. This did not affect the five deployed public-route smoke checks.
-- The isolated correction on `codex/fix-vercel-404` copies the Expo-generated page to `dist/404.html` after Web export. Local Web export confirms the two static page artifacts are identical. No app screen, authentication, or database behavior changes.
-- PR #92 merged as `54a8b82966205ee045e37a29baa822e14418e1a0`; exact production run 35863711330 succeeded. A direct read-only request to `/expired-invite-example` returned HTTP 404 with the branded “This page does not exist” page and expired-invite guidance. Production full-browser checks from the managed environment also could not resolve the configured Supabase hostname (`ERR_NAME_NOT_RESOLVED`), so authenticated UI runtime checks remain unavailable there; public routes are covered by CI smoke.
-- Trips management landed as PR #93 at merge commit `228cf141b5a257ad7df955a89d50a5bf0941544e`. Its exact-head static, unit, Expo Doctor/Web/iOS export, browser smoke, validate and Vercel Preview checks passed; production run 35865124514 and public-route smoke passed. Direct requests to `/`, `/ledger`, and `/explore` returned 200, while an unknown route retained the branded 404 and invite-expiry guidance. The UI moves create/edit/join/invite/traveller access/removal and trip deletion into focused panels; destructive removals use shared confirmation. It preserves the existing currency/time-zone controls. No migration. Real account, physical scanner-camera, and live invite acceptance remain separate device/data gates.
-- Ledger settlement UI landed as PR #94 at merge commit `91c285da0f968ff7c23a60b2dc5c652558307e17`. Exact-head static, unit, Expo Doctor/Web/iOS export, browser smoke, validate and Vercel Preview checks passed; production run 35866883155 completed successfully. Read-only production requests to `/`, `/ledger`, `/explore`, `/profile`, `/itinerary`, `/atlas`, `/privacy`, and `/support` returned 200; an unknown route returned the branded 404 with invite-expiry guidance. Currency payment, completed payments, and group status use focused panels; existing money calculations and repository actions remain in place. A failed mark-sent attempt keeps its panel open, while success closes it. Local lint, TypeScript, all 106 Jest tests, Web/iOS exports, and a 390px light/1440px dark browser fixture passed. No database migration. UI 2.3 screens are deployed; real-account settlement and native-device acceptance remain open.
-
-## October 14 Expo SDK 57 and dependency security patches
-
-- The fresh main branch had 12 Expo SDK patch mismatches. PR #96 aligned SDK 57 and its native/Jest package versions, fixed the shell-quote and brace-expansion findings, and added maintained backports for node-forge, braces, and sprintf-js without changing the audit allowlist.
-- Regression tests cover the nested RSA signature forgery, the 256/257 braces nesting boundary, and oversized numeric precision. Exact-head CI passed dependency audit, lint, TypeScript, Jest, Expo Doctor, Web/iOS exports, browser smoke, `validate`, and Vercel Preview. PR #96 merged as `64a0f511e755fb8c54c1454b8120544d4f8342bd`; production CD run `38518465764` completed successfully and Vercel deployment `dpl_BS95y8DowjfR5sScqNJKzQCafwv8` is READY for that SHA.
-- No database migration was required. Keep the local security patches and their regression coverage until upstream releases contain the fixes; do not add these advisories to the audit allowlist.
-
-## October 14 login, ledger, plan voice, and navigation corrections
-
-- The focused `codex/ui-input-navigation` branch implements the four requested UI changes: Google is visible on the sign-in screen even when provider discovery reports unavailable; Ledger keeps the manual form primary and folds AI text/voice into an optional helper; Smart edit accepts push-to-talk audio along with optional text and still requires review/apply; the bottom tabs now pair platform icons with short localized labels. The design README and plan/privacy documentation reflect these choices. No schema change.
-- Voice for Smart edit is sent only after the traveller records and stops a recording. The authenticated `suggest-itinerary-edit` function forwards it to Gemini as untrusted request content, returns an editable preview, and never writes the trip; recordings are not persisted.
-- PR #97 merged as `b697a0e463c4f944d05528e7d886bbfaf87d6dc5`. Its exact-head checks passed dependency audit, lint, TypeScript, 113 Jest tests, Expo Doctor, Web/iOS exports, eight mobile/desktop browser smoke checks, `validate`, and Vercel Preview (`dpl_8M4wbrEAfgCeMuJKnkPJ79gG1nms` for head `ace07836afff471effec12ee04b99af1e9bbfe84`). Production CD run `38519249388` succeeded; Vercel production deployment `dpl_9CaJAMtocvh71vMovkV74ZrDTykm` is READY for the merge SHA.
-- Production smoke returned 200 for `/`, `/ledger`, `/privacy`, `/support`, and `/atlas`, and the branded 404 for an unknown path. A browser check confirmed the Google sign-in button is visible and Supabase Auth settings load successfully. The live `suggest-itinerary-edit` Edge Function is active at version 2 with the change; a no-auth POST returned the expected 401. No database migration.
-- Authenticated OAuth, Ledger/plan editing, real Gemini audio preview, and native-device acceptance still need a configured test account and device. Next: verify those signed-in flows with approved test data; keep recordings ephemeral and require explicit review before applying a proposal.
-
-## October 14 Ledger layout and quick-fill polish
-
-- `codex/ledger-layout-polish` fixes the screenshot defects: segmented tabs have intrinsic widths and padding plus explicit web selected state; stacked amount/currency wrappers reset flex basis and retain their full content height before payer controls. AI expense assistance is now one 54px input bar with microphone and fill icons. Manual entry remains visible and saving still requires review.
-- The existing expense composer moved into a focused 290-line component; `src/app/ledger.tsx` shrank from 1176 to 870 lines. Money, allocation, conversion, parsing, and save callbacks retain their existing behavior. No backend, schema, or dependency change.
-- Verified locally: scoped ESLint, TypeScript, 115 Jest tests, Expo Doctor 20/20, Web/iOS exports, and eight mobile/desktop public-route browser checks. An isolated harness rendered the actual components with synthetic data at 390px/1280px in English light and Chinese dark. Tabs measured 88px each, currency controls 64px high, and the next payer group kept 16px clearance. Text draft filling, multi-payer fields, split changes, currency selection, and microphone-denial feedback passed with no runtime or network failures. The harness made no backend calls and is not part of the application.
-- Next: pass checks and Preview for the current PR commit, then merge and verify its exact production CD and public smoke. Live authenticated parsing/saving and physical-device acceptance still require an approved test account/device.
-
-## October 14 booking-document import MVP
-
-- Production Ledger polish is verified at merge `4f86d6306e79703029f9bcd8d6e831adb3def545` (PR #99); exact production CD run `38524847666` succeeded. Public route behavior, including the branded 404, was independently checked. Signed-in and physical-device acceptance remain separate gates.
-- The focused `codex/booking-import` branch adds flight/hotel PDF or image selection, explicit Gemini processing disclosure, compact editable previews, local-zone time validation, selection and atomic confirmation into existing itinerary items. Originals are uploader-private; confirmed plans use existing trip permissions. No activities, transfers or expenses are inferred. Saved timeline times use the trip zone, disclosed in the preview.
-- The additive live migration `20261014071459_booking_document_import` adds private document metadata, a 5 MB private Storage bucket, exact-content item deduplication and a validated atomic import RPC. Generated types were refreshed while preserving the existing nullable RPC argument corrections. `parse-booking` is ACTIVE at version 1 with custom bearer validation before owner/editor authorization; it creates previews only and logs no document content. The updated `delete-trip` cleanup was deployed and is ACTIVE; it also removes committed private booking originals when deleting a trip.
-- Verified: TypeScript, scoped ESLint, 133 Jest tests, Expo Doctor 20/20, Web/iOS exports, eight mobile/desktop public-route checks, dependency audit with the existing allowlist unchanged, and transactional backend acceptance for batch/idempotency/deduplication/rollback/date/role/private-metadata boundaries. Acceptance fixture data was rolled back. Security advisors report only the existing leaked-password-protection warning; performance advisors add only the expected unused new index notice.
-- Two clearly fictional Loom PDFs were authored and visually checked under `docs/booking-import-samples/`. The separate component fixture renders actual UI with synthetic parsing/storage results and performs no backend writes; it is not an auth bypass and is not shipped.
-- Next: pass CI/Preview for the final head, merge and verify the exact production commit. Mobile and desktop Plans/Today checks passed without horizontal overflow or runtime errors. The user supplied browser login. Live PDF and PNG recognition, editing a missing check-in time, confirmation, refresh persistence, duplicate-file interception and private original viewing passed on a disposable demo trip. Original deletion is waiting for the required browser action-time confirmation. Core signed-in acceptance passed; irreversible original deletion was cancelled pending optional approval. Physical-device file-picker acceptance is still open.
-
-- Live acceptance also exposed an unclear time-zone context after converting a Sydney departure into the Tokyo trip clock; Today and Plans now name the default trip zone. New import copy handles singular English counts, and deletion confirmation clears stale recognition errors. The Today screen stays at 544 lines with no new state concern; Plans is 328 lines and the import workflow remains in focused components/hooks. The two demo PDFs are explicitly binary Git assets so the whitespace gate does not interpret their required PDF xref spaces as source-code formatting errors.
-
-- Account cleanup now queries the verified actor profile explicitly before removing avatars/originals, so profiles readable through shared-trip membership cannot make the single-profile lookup ambiguous. The existing deletion-order regression also asserts the actor filter, and cleanup failure still prevents account/session deletion. Both production functions reject an unauthenticated POST with 401.
-
-- Native picker regression coverage now verifies cache-only cleanup, preserving externally owned original files, cancelled selection, oversized-file cleanup without reading, and MIME inference for providers that omit image metadata. File signatures remain validated before processing. Destructive original deletion acceptance remains an optional pending user confirmation; originals are preserved until that confirmation.
-
-- The backward-compatible `20261014085515_guard_booking_import_actor` migration rejects a changed login between file upload and import confirmation. Transactional regression passed with no metadata write; refreshed database types have no additional drift. Pre-landing review found no blocking correctness/security issue; physical-device picking and optional irreversible-original deletion remain disclosed acceptance gaps.
-
-## October 14 booking-import production verification
-
-- PR #100 merged as `f9dde4b757001b976ec44b436b276748288accd5`. Final head `a4e2914f415197b9fa95a8cfb772ec43c31a4f11` passed `validate` and Vercel Preview `dpl_DEN6CqUfcDUYWsWxdHDCtX8A1bbf`. Production CD run `38539308311` succeeded; production deployment `dpl_9de2CTRhJEq2527goMmMYaxPxaYY` is READY for the merge SHA and serves tripflow.fun. The production itinerary route returned 200.
-- Local final checks passed 133 tests, TypeScript, scoped lint, Expo Doctor 20/20, Web/iOS exports and eight browser tests. Live approved fixture acceptance used actual Gemini with flight PDF and hotel PNG; two plans persist after refresh, missing times block writes, duplicates are intercepted and private originals open. Plans/Today were verified at 390/1280px without overflow or console errors. The fictional demo trip is retained for Loom recording.
-- After explicit approval, formal-domain signed-in smoke passed: the import entry loaded, deleting the synthetic hotel original removed it from the private list while preserving both plans and the flight original, with no console errors. Physical-device picking remains open. This is a booking-fact import MVP, not generated daily activities or multi-item replanning. No credentials or account identifiers are recorded here.
-
-- Formal-domain public browser smoke passed six entry/privacy/support cases at mobile and desktop widths. Both recovery-page cases verified branded 404 and return navigation, but their console assertion rejected production HTTP/2 wording `404 ()` instead of the local `404 (Not Found)`. This is the existing test-filter mismatch; do not report production 8/8. No application runtime error was identified.
-
-## October 15 SDK 57 compatibility prerequisite
-
-- Before landing UI review fixes, live Expo Doctor changed its SDK 57 patch recommendations. The focused expo57-oct15-compat branch updates only Expo, @expo/ui, asset, constants, linking and router to SDK-compatible patches, preserving the existing audit allowlist and security patches. The trip-selection-race work is preserved separately.
-- Verified locally: Doctor 20/20, 133 tests, lint, TypeScript, Web/iOS exports, eight browser checks and the unchanged dependency audit gate. Review found no blocking issue in the SDK-only diff. Next: pass exact-head CI/Preview, merge and verify production before continuing the UI fixes.
-
-## October 15 UI review fixes — trip switching
-
-- The focused trip-selection-race change prevents pending trip selection from opening management after leaving Trips or opening a different panel. Duplicate row taps are serialized and switching progress is visible. Failed selection is propagated rather than opening management with stale details. Existing row-to-management behavior is preserved. No migration.
-- Verified locally: 137 tests, TypeScript, scoped lint, Web/iOS exports and eight public browser checks. The mobile signed-in reproduction completed trip loading on Ledger without a late dialog or console errors. The coordinated opener is a focused hook/controller; Trips is 417 lines versus 410 before. Desktop signed-in reproduction also passed with no late dialog or console errors. Review found no blocking issue. Next: exact-head CI/Preview, merge and production smoke.
-
-## October 15 ledger input validation
-
-- SDK prerequisite PR #102 is deployed at `b847bb761cfe4f67a088e79c22e8d25010f632d9`; exact production CD `38655087381` succeeded and deployment `dpl_FKRFJsBjnZFjyhiAQmCgMbcSn1os` is READY. The separate trip-navigation fix remains in PR #103.
-- The focused ledger-input-validation change makes all money examples follow currency precision, preserves safe bilingual local validation errors and uses localized generic fallbacks for untrusted provider errors. Validation was extracted from the legacy Ledger screen (870 to 858 lines); integer minor-unit, rate and allocation calculations retain their existing rules. No migration.
-- Verified locally: 142 tests, TypeScript, scoped lint, Web/iOS exports and eight browser checks. The signed-in English blank-title error names the missing field, JPY 860.00 produces an English whole-number message, and the Chinese blank-title message remains correct. Only rejected drafts were submitted; no expense was saved. Next: exact-head gates, merge and production verification.
-## October 15 place suggestion request lifecycle
-
-- Trip switching PR #103 is live at `25c36c0cce6ea07c5729b93d0793f11bc5c66790`: production CD `38655966594` succeeded and deployment `dpl_8vVXfe2KYhikcjsHrcQbLhuST6Bc` is READY for that SHA. Signed-in production switching followed immediately by Ledger/Today navigation did not open a late management dialog and produced no console errors.
-- The focused location-search-race slice searches only after traveller edits, debounces input and invalidates superseded requests on changes, selection and unmount. Older success/failure cannot replace the current result; selecting a suggestion does not query its filled label again. Transient failure keeps manual input available and editing retries. The shared field has an explicit localized label. No backend/schema change.
-- Local checks: 142 tests including five asynchronous request regressions, TypeScript, scoped lint, Doctor 20/20, Web/iOS exports and eight public browser checks. Signed-in mobile/desktop editing preserved a prefilled hotel without suggestions, fetched real Haneda suggestions after input, selected/cleared suggestions, and cancelled without saving. Review found no blocking issue. Next: exact-head gates, merge and production smoke. Physical native keyboard acceptance remains open.
-
-## October 15 booking import map destinations
-
-- The focused booking-map-destination change lets travellers confirm an optional city in each import preview, reusing the existing city picker and itinerary destination model. Confirmed metadata reaches existing map pins through the atomic import RPC; typing without choosing a city does not infer coordinates. Flight/hotel local times remain unchanged. Existing plans are not backfilled automatically.
-- Live migration `20261014235345_booking_import_destination` replaces only the private import implementation and preserves actor/editor guards, privileges, idempotency and old-client compatibility. Transactional synthetic acceptance passed map persistence, seven malformed destination cases, full-batch rollback, existing dedupe/date/authorization and uploader-only RLS checks; all fixtures rolled back. Generated types were refreshed with no drift beyond the preserved nullable RPC corrections. Anonymous execution remains denied and document RLS remains enabled. Security advisors show only the existing leaked-password warning; no new schema/index/policy performance changes.
-- Verified locally: 147 tests, TypeScript, scoped lint, Web/iOS exports and eight public browser checks. Actual Gemini PDF preview, city selection, explicit confirmation, and refresh persistence produced a Tokyo map pin with the confirmed stay. A clearly named fictional map-check stay and private PDF remain in the approved disposable Loom trip. Desktop preview and 390px map have no horizontal overflow. Review found no blocking issue; next: exact-head gates, merge and production smoke. Physical-device picking remains open.
-## October 15 shared UI accessibility and language
-
-- The focused ui-accessibility-language slice removes the mobile zoom restriction, adds one Web main landmark, synchronizes document language with the selected locale, raises muted-text contrast on both palettes, and gives the shared selector Done action a 44px target. Stay labels/accessibility and traveller/person/currency counts follow the selected language and English singular/plural rules. The two legacy screens stay at their prior line counts with no new state concerns. No migration.
-- Local verification: TypeScript, scoped lint, 137 tests, Web/iOS exports and eight mobile/desktop public browser tests passed. The public-route recovery assertion now accepts only its own requested 404 URL with either HTTP wording, retaining all other error checks. Signed-in Today/Trips/Ledger checks at 390/1280px confirmed localized content, one main landmark, no horizontal overflow, and a measured 44x44 Done button. Login Lighthouse accessibility improved from 88/92 to 100 in light mobile and dark desktop snapshots; automated checks do not replace device acceptance. Review found no blocking issue. Next: exact-head gates, merge and production smoke; physical-device zoom/picker acceptance remains open.
-## October 15 booking import progress and recovery
-
-- Ledger PR #104 is verified live at `cbeeff1a1198d78f34f4ec5fa1b300d1fd228a6c`: production CD `38656632263` succeeded and `dpl_6AzQi9zGumPbNSE4Py6hU4z4MkJb` is READY for that SHA. Signed-in Chinese/English blank-title and JPY decimal preflight messages passed on production; no expense was saved. Place-search PR #106 production CD `38657353972` succeeded with READY deployment `dpl_M5BvSBDEMK5bf3dQxYrFHoisBkgi` for `1c042fd9c7025981c1834f0b2120d2c4bfd367c7`.
-- The focused booking-import-recovery slice adds visible recognizing/saving status, transport cancellation and stale-response rejection for recognition, and localized per-row preflight errors before upload. Saving stays locked because a transaction may commit before a response fails; previews remain available for safe idempotent retry. Closing recognition does not claim to cancel provider-side processing. No new migration or provider contract change.
-- Local checks: 156 tests, TypeScript, scoped lint, Web/iOS exports and eight public browser checks passed. Deferred-request regressions cover cancel/retry races, duplicate requests, unmount, field correction and save retry/commit lock. Actual PDF recognition at 390px supported stop/retry, named missing check-in time without saving, and closed cleanly; desktop 1280px recognition status and header cancellation also passed without horizontal overflow. Review found no blocking issue. Next: rebase with the map/accessible-UI slices, exact-head gates, merge and integrated production smoke. Physical-device file picking and keyboard/zoom remain open.
-
-## October 15 integrated pre-landing verification
-
-- All twelve UI review findings are implemented across focused PRs #103–#108. Shared accessibility/language PR #105 passed its final exact-head `validate` and Vercel Preview and merged as `86d05870ddd3c7c814fe047e4ba814b56eb549d8`; production verification is next. Booking map PR #107 production CD `38658042856` succeeded with READY deployment `dpl_6g9cQGuASvz35wQ7ubkTjPGg8SRm` for merge `89c2480238448e6ae741568632392fed08f87dec`. Signed-in production map reload retained the confirmed Tokyo pin without console errors.
-- After rebasing the final recovery slice onto these changes, all 158 tests, TypeScript, Web/iOS exports and eight public browser cases passed. The importer also remounts for a changed trip/actor so old files, previews and in-flight state cannot be reused by a different login. Existing deferred-request/unmount and server actor guards remain intact. Review found no blocking issue. Next: final exact-head CI/Preview, merge, production CD and integrated browser smoke. Keep the physical-device picker/keyboard/zoom gap explicit.
-
-## October 15 UI review production closeout and map clearance
-
-- All twelve original findings are live through PR #108 merge `2c9aefcc8ed716e3ac3e0c95e38cd942d4b45df4`. Exact production CD `38684219655` succeeded; deployment `dpl_D4Np6s6ZzQ2TZxtAUHpbHhAfLRZR` is READY for that SHA and serves tripflow.fun. PR #105 production CD `38659065322` also succeeded with its matching READY deployment.
-- Production checks passed eight public mobile/desktop browser cases; signed-in core tabs at 390/1280px have one main landmark, correct document language and no horizontal overflow. Chinese/English stay counts and the 44x44 currency Done action passed. A temporary place-provider failure recovered after editing the query, then selection was cancelled without saving. Actual fictional PDF recognition supported stop/retry, then produced an editable preview; removing check-in time showed a specific Chinese error before any write. No additional plan, original or expense was saved during these recovery checks. Console inspection found no runtime errors; the known Web native-driver fallback warning remains.
-- Production anonymous login Lighthouse snapshots scored accessibility 100 in light mobile and dark desktop, with no failed audits. These scores do not cover the entire signed-in app. Physical-device file picking, soft keyboard and browser pinch zoom remain unverified.
-- Final mobile map inspection found an additional reproducible collision: the Tokyo pin sat underneath the reset control. The focused map-control-clearance slice moves caption/zoom/reset into an adjacent toolbar, preserves gestures and pin navigation, and uses 44px token-sized controls with semantic colors. No new state, domain, backend or migration change; the legacy component remains 361 lines. The twelve-finding release is otherwise complete.
-- Local map verification: 375/390/1280px layout, visible clickable Tokyo pin, zoom/reset, no horizontal overflow or console errors. TypeScript, scoped lint, 158 tests, Doctor 20/20, Web/iOS exports and eight public browser checks passed. Dark signed-in map and physical gestures remain device acceptance gaps. Review found no blocking issue. Next: pass the map patch exact-head validate/Preview, merge immediately, verify its production CD and pin/control geometry on the formal domain.
-
-## October 15 tab width regression
-
-- Production reproduction at 1280px showed the application root shrinking by tab content: Trips about 523px, Ledger 576px and Profile 563px while the main landmark/body stayed 1280px. The Web main wrapper introduced in PR #105 used the browser's default row flex direction, leaving the root sized by its content. Earlier no-overflow checks did not establish consistent width; this supersedes their implied layout completeness.
-- The focused tab-width-stability change gives the existing main landmark a column flex direction so its child stretches across the viewport. The 760px reading column and 200px desktop sidebar retain their intended limits. No native, data, auth, theme, navigation or database behavior changes.
-- Added a browser geometry regression requiring the root to fill the available document width. It failed on the previous production release in both mobile (24.5px short) and desktop (543.6px short), then passed locally with the fix. TypeScript, scoped lint, 158 Jest tests, Web export and eight public browser checks passed. Actual signed-in switching across all six tabs at 375/390/1280px kept root width equal to the viewport with no horizontal overflow or console errors. No business data was changed.
-- Pre-landing review: CLEAR. Next: exact-head validate and Preview, merge, verify production CD and repeat the six-tab width measurements on the formal domain. Physical-device acceptance and signed-in dark-mode testing remain outside this Web geometry check.
-
-## October 15 itinerary health report language
-
-- The screenshot's Chinese summary/title/reason came from the on-device deterministic itinerary checker: its report text was hardcoded in Chinese while the surrounding card used the selected locale. It is not Gemini-generated content. The focused health-report-language slice passes the active locale through report generation/validation and includes it in the report signature, immediately discarding stale-language results when switching languages. Safe error/fallback text also follows the locale. Long edit labels wrap within the card on narrow screens; the existing edit targets and saved names are preserved.
-- All four existing issue types, count summaries (including English singular/empty), malformed-field fallbacks and check-again use bilingual owned copy. Existing user/saved itinerary titles remain verbatim, including earlier Chinese transfer titles. No itinerary writes, server/provider calls, migration, permission or conflict/time-rule changes.
-- Verified locally: 164 tests, TypeScript, scoped lint, Doctor 20/20, Web/iOS exports and eight public browser cases passed. New tests cover every issue type, Chinese/English parity, preserved user titles, immediate stale-report rejection, language changes with unchanged items and check-again. Signed-in Loom Demo at 390/1280px reproduced the screenshot's tight-buffer finding with English summary/title/reason, switched back to Chinese correctly, and had no overflow or console errors.
-- Pre-landing review: CLEAR. Next: pass exact-head validate and Preview, merge, then verify exact production CD plus the same bilingual mobile/desktop report. Physical-device and signed-in dark-theme checks remain unverified for this text-only change.
-
-## October 15 single-plan AI edit panel removed
-
-- The "Describe the change" panel in the plan editor is removed. It could only change one plan's title or time, which the time fields, the one-tap time shifts (#114) and the health card's one-tap fixes (#115) now do faster and without an AI round trip. The owner found it neither useful nor easy to use.
-- Removed: `itinerary-edit-assistant.tsx`, the `itinerary-edit.ts` client (proposal parsing, merge, `suggestItineraryEdit`) and its test. The schedule check the health fix needs moved into `itinerary-health-fix.ts`.
-- Not changed: the deployed `suggest-itinerary-edit` Edge Function (now uncalled by the app) and the privacy policy's description of smart itinerary adjustment. `VoiceRecordingControl` stays for ledger quick fill.
-
-## October 15 itinerary health hints
-
-- The full-width "Itinerary needs attention" card at the bottom of Today is gone. `useItineraryHealth` runs the same on-device check; each flagged plan shows a compact hint (worst issue label, plus a count when there are more), and tapping it opens the itinerary-check sheet scoped to that plan. A check failure still shows as an inline notice.
-- `TimelineRow` gained an `accessory` slot rendered outside its pressable so the hint button never nests inside the row button on web.
-
-## October 15 route estimate labels
-
-- "Route estimate pending" was shown for every leg without an estimate, so it never resolved. A lookup only runs when both ends have a Google Place ID; typed or imported addresses (the Loom Demo trip) never produce one. `routeEstimateState` now separates four cases: no places picked ("Pick places to see the route"), loading, Google found no route for that mode ("No route for this mode", e.g. driving inside Osaka Castle Park where walking works), and a failed lookup ("Route estimate unavailable").
-
-## October 15 trip polls
-
-- Polls live on the Trips tab under the current-trip card (moved from Today on 2026-10-16); Today shows only a one-line "投票等你" link when an open poll still needs the traveller's vote. Each option shows its voters' avatars (three plus "+N" past four) and names them in the option's accessible label. Editors start a poll (question, 2–6 options, optional deadline in the trip time zone), every trip member casts one changeable vote, and the poll creator or an editor picks the final result, which locks voting. A passed deadline also stops voting until someone decides. Viewers see the card only when a poll exists.
-- Migration `20261015120000_trip_polls` adds `trip_polls`, `trip_poll_options` and `trip_poll_votes` with member-only read policies and no direct writes; `create_trip_poll`, `vote_trip_poll`, `close_trip_poll` and `delete_trip_poll` enforce the rules. `supabase/tests/poll-acceptance.sql` covers roles, outsiders, duplicate and foreign options, deadline, decide and delete.
-- The migration must be applied to production before the app change deploys; otherwise Today shows a "polls could not load" notice.
-- Not yet: polls scoped to a branch's members, realtime updates (others' votes appear after Refresh or the next vote), turning a result into a plan, and AI ranking of options.
-
-## October 15 automatic settlement after expense changes
-
-- An expense that needs no transfer (for example paid by and for the same traveller) stayed "待结清" because `refresh_expense_settlement_flags` only ran from the `settlements` trigger. Migration `20261015130000_auto_settle_on_expense_change` adds deferred constraint triggers on `expenses` (insert, delete, and edits to trip, currency or amounts), `expense_payers` and `expense_shares`, so the existing ledger-wide check re-runs once the expense is complete. The triggers ignore the `settled_*` columns the check writes, so they cannot loop.
-- Settlement stays ledger-wide by design: nothing auto-settles while any member balance is open, and manual marks are never changed.
-- The migration backfills every trip once, so already-balanced ledgers (such as single-member test trips) become settled on apply.
-- `supabase/tests/auto-settle-acceptance.sql` covers self-paid, shared debt, ledger-wide status, transfer, new debt, an edit that removes the debt, manual marks, and delete.
-
-## October 15 receipt photo to expense draft
-
-- The ledger quick-fill bar has a camera button: one tap takes a photo (camera on native, file picker on web), attaches it as the expense receipt, and asks `parse-expense` to read the paid total, currency and merchant into an editable draft. If reading fails, the photo stays attached and the traveller fills the form by hand.
-- `parse-expense` accepts exactly one of text, audio or `imageBase64` (`image/jpeg|png|webp`, at most 8,000,000 base64 characters). Photo capture and normalization moved from `ledger.tsx` into `features/ledger/receipt-photo.ts`, shared with the existing receipt buttons; the three client parsers share one request helper.
-- The privacy policy now names receipt photos among the content Gemini processes (effective date 2026-10-15).
-- Deploy `parse-expense` together with the app change: an old function rejects image requests with "请提供文字或语音记账内容". Real Gemini receipt reading is verified only after deploy; locally the image path was proven up to the Gemini call with a dummy key.
-
-## October 16 destination atlas fixes
-
-- Pins were drawn about 10.7° of longitude too far east (Tokyo sat in the ocean) and drifted further from the equator. `@svg-maps/world` is Mercator with its left edge near 169°W; `projectDestination` now uses constants measured against country outlines, and a test checks that city pins land inside their country.
-- Zoom used to scale a rendered layer up to 3×, so outlines blurred and pins grew and overlapped. The map now zooms by changing the SVG viewBox (`atlas-camera.ts`), opens fitted to the trip's destinations (a single-city trip shows its region), keeps pins a fixed size, and labels each pin with its city.
-- Tapping a pin with several plans did nothing visible: the first place was already selected and its details sat below the map. It now opens a sheet listing that place's plans; a single-plan pin still opens the plan directly. On web the sheet opens one tick later so the same click cannot land on the first row under the pointer.
-
-## October 16 trip assistant chat
-
-- Today has a "问行程，或让助手帮你改安排、记账" row that opens a chat sheet. The `ask-trip` Edge Function reads the trip, plans, members and recent expenses with the traveller's own token (row-level security applies), sends them with the last 12 messages to Gemini, and offers three tools: `update_plan` (title and/or local start/end), `add_plan`, and `add_expense`. The server and the client both validate every proposal (known plan and member IDs, `YYYY-MM-DD HH:mm` local times, amounts, currencies); unknown or malformed proposals are dropped.
-- Proposals are never applied automatically. Each shows as a card with a before → after preview and a confirm button that uses the existing save paths: plan changes and new plans need an owner or editor; expenses open the ledger prefilled through a `chatDraft` route param, so exchange rates and splits are reviewed and saved there.
-- Not included: deleting plans and the delay shift (#122). The privacy policy now covers the assistant (effective 2026-10-16). Deploy the `ask-trip` function with the app change; real Gemini tool calling is only verifiable after deploy.
-
-## October 16 Today visual pass
-
-- Today reads at a glance instead of in sentences. Plan kinds show as icons (`itineraryKindSymbols`; icon-only on timeline rows in Today and 安排, with the kind kept as the accessibility label). The Up Next card leads with a countdown (`planCountdown`: minutes, hours, then days; "happening now" while it runs) and drops the WHEN/WHO tiles for one time line and a traveller-count icon. The header keeps only the date range, plus the trip time zone when it differs from the device; a `TripProgress` bar shows "Day X of Y" or days to go, with member avatars.
-- Bilingual duplicates on Today (下一步 UP NEXT, 时间 WHEN, 同行 WHO, 打开地图 Open map, kind labels in caps) now show only the active language. The ledger gets the same treatment in its own PR.
-
-## October 16 小途 (Tabi)
-
-- The trip assistant is named 小途 in Chinese and Tabi in English. It opens from a floating ✨ button in the tab layout (`TabiButton`), so one conversation follows the traveller across tabs; it stacks above a screen's own "+" button or takes that spot when the screen has none. The Today text row was removed, and the sheet uses a short greeting, icon suggestion chips and proposal cards with the old time struck through and the new time highlighted.
-- Each proposal stores the plan as it was when proposed and its confirmed status with the conversation, so closing and reopening the sheet keeps "已保存" and the true before → after (previously a reopened card re-offered Confirm and showed identical times).
-- `ask-trip` decides the reply language on the server from the traveller's latest message (kana → Japanese, Han → Simplified Chinese, Latin → English, otherwise the app language the client sends) and states it at the start and end of the instructions. Asking the model to "match the user's language" was not enough: it copied the Chinese of its own rules, so English refusals came back in Chinese. Verified on production (function v3) with English and Chinese questions, refusals and follow-ups.
-
-### 小途 voice input
-
-- The chat input bar has a 🎤 button next to send. Tapping it swaps the bar for a recording bar (✕ discard · red dot and timer · stop). Stop sends the audio to `ask-trip` with `mode: 'transcribe'`; Gemini returns a verbatim transcript, biased toward the trip's plan titles, places and member names for spelling. The transcript fills the text box so the traveller can edit before sending; nothing is sent automatically.
-- `VoiceRecordingControl` gained an optional `cancelLabel` that adds the discard button to its `render` callback. Audio limits match `parse-expense` (mp4/m4a/webm/aac/mpeg, 8 MB base64).
-- Next: deploy `ask-trip` (function v4) before or with the merge; real transcription is only verifiable after deploy.
-
-## October 16 small avatar uploads
-
-- Avatars were stored as the original upload (one was 3648px wide, about 3.3 MB) and every 22–48pt avatar downloaded that file. On web `expo-image-picker` ignores `allowsEditing`, so the 1:1 crop never happened there. `updateProfile` now runs every new avatar through `lib/avatar-image.ts`: centre square crop, at most 256px; JPEG quality 0.8, or PNG when the source is PNG/WebP so transparency is not filled black. Local acceptance: a 3,268,878-byte 3648px original became an 8,737-byte 256px file, rendered at 22, 32, 40 and 48px with no console errors.
-- Supabase image transformations (`/render/image/`) were not used: they need the Pro plan, and the organization appears to be on Free (it holds a paused project, which only Free pauses). Revisit if the plan changes.
-- iOS Simulator acceptance (iPhone 17 Pro, iOS 26.5, fresh dev build): the native picker's 1:1 crop appears, and a 4288×2848 sample photo (about 2 MB) was stored as a 256×256, 22,171-byte JPEG and shown on Profile. Getting there exposed a separate native blocker: `expo-router`'s `<Head>` in `_layout.tsx` throws in dev and alerts in release because `app.json` sets no `expo-router` `origin`. The test baked in `https://tripflow.fun` through a temporary, uncommitted `app.config.js`; the real fix is its own change.
-- Existing avatars are fixed by `scripts/shrink-existing-avatars.mjs` (macOS `sips`, service-role key from the environment, dry run unless `--apply`). It walks the `avatars` bucket because the service role has no table grants, and overwrites each oversized file at its own path, so `profiles` and `trip_member_archives` rows need no change and re-runs skip finished files. Verified on the local stack; the production run is a maintainer step. The public CDN may serve the old bytes for up to an hour after it runs.
-
-## October 16 iOS Expo Head origin
-
-- iOS dev builds stopped at a "Render Error: Expo Head: Add the handoff origin to the Expo Config" on launch (release builds show the same text as an alert). `<Head>` in the root layout needs an origin for iOS handoff, and `app.json` gave the `expo-router` plugin none. The plugin now sets `"origin": "https://tripflow.fun"`. A config change like this needs a native rebuild to reach the app.
-- Web output is unchanged apart from the embedded config string in the entry bundle. In release native builds the origin also becomes the base for relative `fetch` calls; the app makes none.
-
-## October 16 expense composer pickers
-
-- "Who paid" and "Who shares it" chips show each traveller's avatar and a check when picked (`MemberChip` in `expense-pickers.tsx`). The split rule is a 2×2 card picker (`SplitModePicker`): each option has an icon and a one-line example (均分 每人一样多, 指定金额 逐人填金额, 按比例 如 60% / 40%, 按份数 如 2 份 : 1 份). The split preview lists avatars with right-aligned amounts.
-
-## October 16 Trips and Plans visual pass
-
-- Polls: each option shows a 6px vote-share bar (accent for the winner or your pick) with "N 票", larger voter avatars, and a check icon on the decided option. Refresh is an icon button; the tagline only shows before the first poll.
-- Trips: the current-trip card shows a calendar icon with the dates and an avatar stack instead of the DATES/PEOPLE tiles, with no English duplicates (当前行程 ACTIVE). Each trip in 我的行程 has a calendar-leaf start-date badge (`TripDateBadge`) and "range · N 天 · currency". The header keeps only the trip count.
-- Plans: the instruction sentence under 全部安排 is gone, search is a `SearchField` with a magnifier and no visible label, the booking import button has an icon (`ActionButton` gained an optional `symbol`), and the header shows the trip time zone only when it differs from the device.
-
-## October 16 icons, transfers, empty states, and loading
-
-- Add plan: kind chips carry the kind's icon in its colour (`ChoiceChip` gained `symbol` / `symbolColor`). Kind colour keys now live once in `itineraryKindColorKeys` / `itineraryKindSoftColorKeys` (src/constants/options.ts) instead of being copied in Today and 安排.
-- Route segments: the chip shows the travel mode as an icon (`routeTravelModeSymbols`) with the name kept for screen readers, and the mode switch chips have icons too.
-- Settlement: transfers draw as payer avatar → recipient avatar (`TransferPair`) in "pay whom", the remaining-transfers panel, and a new list of what others owe you (it replaced a count sentence).
-- Empty states on Today, 安排, 地图 and 账本 use `EmptyState`: an icon, one line, and the action that fills the space (go to Trips, add plan, add expense).
-- First load shows `ContentSkeleton` via `Screen`'s `loading` prop (only while there is no trip data yet), so the "create or join a trip" empty state no longer flashes before data arrives. The pulse is skipped when reduce-motion is on. The login check still uses its spinner.
-
-## October 16 ledger task row fix
-
-- "My tasks" rows put the payer → recipient avatar pair, the label, the amount and the Mark sent button side by side, so on phones the label collapsed to a few characters per line. Task rows now show the recipient's avatar, "Pay X" with the amount underneath (`SettingsRow` gained `subtitleColor`), and the button. The avatar pair stays only in the group panel, which has no button.
-- Legacy ledger participants missing membership and identity archives are backfilled into `trip_member_archives` from their profiles. The data-only migration covers payers, sharers, and both settlement parties, preserves existing snapshots, and leaves profile and archive RLS unchanged. The existing archive reader works for old and new clients. A direct client profile lookup was rejected because current-peer RLS hides former members.
-- PR #138 landed as `ec48854`; its exact production CD and Vercel deployment passed. The follow-up migration `20261016015056_archive_legacy_ledger_participants` is applied; missing archives decreased from one to zero. Transactional fixtures cover all participant sources, current membership, existing snapshots, avatars, and idempotency. A live rollback rehearsal verifies member access and denial for unrelated and anonymous users. Archive RLS remains enabled and security advisors report only the existing leaked-password-protection warning.
-- Follow-up verification passed TypeScript, lint, 247 Jest tests, Expo Doctor 20/20, web/iOS exports, and independent production mobile/desktop browser smoke checks. Authenticated visual confirmation is unavailable without a test account. Next action is to land the reviewed archive correction and verify its exact production CD. The separate missing-exchange-rate summary issue remains outside this change.
-## October 15 delay shift
-
-- A plan editor row "延误了？顺延后面的安排" (not shown for stays) opens a sheet: choose 30 min, 1, 2 or 3 hours, see every affected plan before → after, then apply once. `features/itinerary/delay-shift.ts` moves the delayed plan by the full delay and pushes later plans only when they would no longer fit, keeping up to 30 minutes of each original gap; stays never block, a stay's check-in follows its linked transfer and its check-out never moves. Moves past the trip dates or past a check-out are refused in the preview.
-- Migration `20261016020809_shift_itinerary_items` applies all moves in one transaction. Each move carries the times the client previewed, so a retry or a concurrent edit fails ("Plans changed since the preview") instead of moving a plan twice; it also re-checks that every hotel transfer still arrives at check-in. `supabase/tests/shift-itinerary-acceptance.sql` covers viewer, transfer-without-hotel rollback, outside-trip, success and retry.
-- Deliberately button-based rather than a free-text AI box, following the owner's feedback on the removed AI edit panel. A typed "航班延误 2 小时" input could later map onto the same planner.
-
-## October 16 delay shift integration
-
-- PR #122 was rebased onto `a61a2f7` without replacing the current plan editor actions. Cascading delays stay within the delayed plan's branch. The preview blocks batches larger than 30, disables delay choices during save, and resets only when selection or visibility changes. Same-plan data refresh preserves the delay sheet and its failure message, covered by an integrated regression that fails on the prior implementation.
-- The shift RPC locks the trip and caller membership before authorization, then locks target plans in UUID order. It rejects duplicate targets, stale endpoints, backward shifts, changed durations, and changed hotel checkout. Hotel arrival validation covers affected links rather than unrelated historical drift.
-- Verification passed TypeScript, scoped lint, 262 Jest tests, Expo Doctor 20/20, web/iOS exports, and all eight public browser checks at mobile and desktop sizes with no runtime errors. Ambiguous save failures ask the traveller to refresh without claiming that no change occurred. The coordinator reported a live transactional migration rehearsal passed and rolled back both functions and fixtures. Production migration `20261016020809_shift_itinerary_items` is now applied. Post-apply transactional acceptance passed; fixture cleanup, anonymous denial, authenticated wrapper access, and itinerary RLS were verified. Refreshed RPC types match the tracked signature. Security advisors report only the existing leaked-password-protection warning. Authenticated delay interactions and a two-session database race remain unverified; target lock ordering and authorization locks were reviewed, and the transactional acceptance covers stale retries and atomic rejection.
-- Independent review returned CLEAR with the authenticated-browser limitation noted. Next action is exact-head CI and Preview, merge, and exact production deployment verification.
-
-## October 16 day briefing
-
-- Today opens with a compact card for the next trip day that still has something ahead (today while plans remain, otherwise the next day): "明天 · 11月14日周六 · 4 项安排", then that day's check-outs, check-ins and when the last plan ends. `features/itinerary/day-briefing.ts` computes it on device in the trip time zone; no AI call.
-- It deliberately leaves out the first plan, which the Next Up card already shows. Opening hours, weather and travel-time warnings would need data the app does not have yet.
-
-- PR #124 was rebased onto `2afdf32` after the delay feature merged while retaining the current Today progress, shared composer and error surfaces. The briefing consumes Today's existing minute clock, so trip switching and elapsed check-in/check-out events refresh without remounting. Tomorrow uses the next trip-local calendar date across daylight-saving changes. Final-plan selection compares instants, and overnight final plans include their end date.
-- Preparation verification passed TypeScript, scoped ESLint, 256 Jest tests, Expo Doctor 20/20, web and iOS exports, and eight exported public-route Chromium checks. The actual briefing component passed isolated synthetic browser coverage at 390px and 1280px in light/dark and Chinese/English, including long hotel-name wrapping and advancing the shared clock. No backend fixture writes were made. Authenticated trip integration and physical-device rendering remain unverified. Independent review returned CLEAR. Final rebase onto the merged delay feature passed TypeScript, lint, all 53 suites and 271 tests, Expo Doctor 20/20, and web/iOS exports; the exported web artifact includes both features. The reviewed briefing source patch is unchanged. Next action is exact-head CI and Preview, then merge and exact production verification. No database migration or Edge Function deployment is required.
-
-## October 16 AI overload recovery
-
-- Production logs show Gemini `503 UNAVAILABLE` responses causing `ask-trip` and `parse-expense` to return 502; booking import also returned 502. Supabase remained healthy. The deployed source matched `origin/main` before the repair.
-- All four Gemini functions now share a bounded generation request: primary `gemini-3.1-flash-lite`, then distinct `gemini-2.5-flash-lite` and `gemini-2.5-flash` fallbacks for missing models, transient upstream errors, network failures, and timeouts. Each attempt includes an 18-second body-read deadline. Backoff includes jitter, respects short `Retry-After`, and stops for waits over two seconds. At most three generation requests occur; invalid requests, credentials, and billing errors are not retried. No database writes are retried.
-- Structured attempt logs contain only model, attempt, and status. Existing authorization, prompts, proposal validation, and confirmation-before-save boundaries remain in place. No migration or frontend deployment is required for the function repair.
-- Local validation: lint, TypeScript, and all 283 tests pass, including overload fallback, retry limits, authorization rejection, and booking draft acceptance. Production functions are ACTIVE at ask-trip v5, parse-expense v20, parse-booking v2, and suggest-itinerary-edit v3. All eight missing/invalid-token checks return 401. Eight production browser smoke cases pass at mobile and desktop widths. The maintainer confirmed both assistant and AI expense entry work after deployment; logs independently show assistant HTTP 200 on the primary model. Live fallback capacity, booking file recognition, and audio acceptance remain unverified. PR #140 CI and merge are pending.
-
-## October 16 Ledger currency settlement recovery
-
-- Live Ledger failures reported `Sender has no outstanding amount to pay`. Historical expenses retained a different base currency after moving trips or changing the trip home currency. The UI fell back to original-currency tasks but formatted and submitted them as current-base amounts; the headline used a different balance calculation.
-- `buildSettlementPlan` now owns the shared accounting mode for the summary, tasks, and group breakdown. Complete conversions use the current home currency. Incomplete conversions show and settle each original currency separately through the existing four-argument settlement RPC, with correct minor units and partial-payment limits. Prior converted settlements require exchange-rate reconciliation before more payments, preventing duplicate repayment through the fallback.
-- `calculateBalancesInCurrency` and private `member_base_currency_balance` now use stored base amounts only when that stored currency matches the requested currency. The additive function-only migration `20261016032222_ledger_currency_balance_recovery` is applied live. It changes no rows, signature, or privileges. Generated database types were refreshed and compared; the only differences were existing explicit nullable RPC annotations, which are retained. Security advisors have no new findings.
-- Regression evidence: the client test and live transactional acceptance both failed before the fix because CNY 92 was treated as HKD 92 instead of HKD 100. After the fix, 290 Jest tests pass. Transactional backend acceptance passes original-currency partial settlement and undo, corrected normalized settlement and undo, and outsider rejection, with zero fixture users remaining. Four isolated browser cases cover 390/1280 widths and light/dark themes, correct JPY 1000 outgoing/HKD 20 incoming summaries, Mark sent, undo, and prior-converted-payment protection, with no console or failed-request errors. These browser cases use synthetic data, not real payments.
-- LedgerScreen shrank from 722 to 680 lines; SettlementWorkspace remains below 500 lines. Frontend production deployment and maintainer acceptance are pending the focused PR.
+Security and data
+
+- Never put a service-role key, database password, or signing secret in the Expo client or Git. The client uses only the project URL and publishable key from ignored env files or deployment variables.
+- Migrations are reviewed before deployment and followed by RLS/security-advisor checks. Acceptance fixtures are rolled back; production holds real user rows.
+- Membership changes go only through validated RPCs. Removing a traveller requires a settled balance and keeps a read-only name/avatar snapshot (`trip_member_archives`) so ledger history never shows an anonymous label.
+- Keep the local security backports (node-forge, braces, sprintf-js) and their regression tests until upstream releases include the fixes; do not add those advisories to the audit allowlist.
+- The lockfile must resolve on Linux x64 with CI's npm (optional `@emnapi/*` peers); a macOS-only lockfile breaks CI.
+
+Product rules
+
+- Auth: open registration, password and email-OTP login; new users verify OTP and set a password and profile before entering. Invite context survives onboarding and still needs explicit acceptance. Apple and Google sign-in follow later.
+- Invites trust only `tripflow.fun`, `www.tripflow.fun`, and the Vercel alias; scanning never auto-joins.
+- Branch data is private by default with optional trip-level read-only visibility. Branches scope people and plans, never money: the ledger stays one ledger per trip.
+- Each trip has a home currency; original transaction currencies are preserved. Money uses integer minor units with deterministic remainder allocation.
+- Settlement is ledger-wide: nothing auto-settles while any balance is open, and manual settled marks are never changed. Expenses that need no transfer settle automatically through triggers.
+- When conversions are incomplete, settle in each original currency; never guess a rate. Prior converted settlements need exchange-rate reconciliation before more payments. `buildSettlementPlan` owns the accounting mode for summary, tasks, and group view.
+- Keep home-currency redenomination out of UI-only work until an atomic backend operation and data-safety acceptance exist.
+- Lodging is one check-in/check-out interval in the trip time zone, not daily rows.
+- AI never writes on its own. Expense drafts, booking previews, and 小途/Tabi proposals (`update_plan`, `add_plan`, `add_expense`; no deletes) are applied only after the traveller confirms through existing save paths. Recordings are not persisted.
+- `ask-trip` reads the trip with the traveller's own token (RLS applies) and picks the reply language on the server from the latest message.
+- The itinerary health check runs on device with no AI call; any Gemini enrichment must be explicit opt-in.
+- The owner removed the single-plan AI edit panel as not useful. Itinerary edits favour buttons (time shifts, one-tap fixes, delay shift); a typed delay could later map onto the delay planner.
+- Booking import takes facts only (flights, stays); it infers no transfers, activities, or expenses. Originals stay uploader-private. Existing plans are not backfilled with destinations.
+- Travel modes use progressive disclosure: the chosen mode stays visible and expands to the four options on tap.
+- UI shows only the active language (no bilingual duplicate labels); icon-only controls keep the text as their accessibility label. Desktop web uses a 200pt sidebar and centred sheets; mobile uses bottom tabs and bottom sheets.
+- Use `Spacing`/`Radius`/`Size` tokens and semantic colours from `src/constants/theme.ts`; convert old literals only when touching a file. The only fixed colour literals are the invite QR pair, the camera viewport, and the splash overlay. `moneyOut` is for owed money; `danger` is for destructive actions only.
+- Avatars are stored as a 256px square. Supabase image transformations need the Pro plan; the organization appears to be on Free, so revisit only if the plan changes.
+- The fictional Loom demo trip in production is kept on purpose for recordings.
+- `app.json` sets the `expo-router` `origin` to `https://tripflow.fun`; native config changes need a rebuild to reach devices.
+
+## Active next milestone
+
+1. Resolve the Apple Developer Program enrollment hold; then sign into Expo/EAS, connect the project, add the public Supabase variables, and ship the first iOS TestFlight build.
+2. Set the public support email (`EXPO_PUBLIC_SUPPORT_EMAIL`), then finish App Privacy disclosures, age rating, and Chinese screenshots.
+3. Run TestFlight and real-account acceptance (owner/editor/viewer): QR camera scanning, avatars, trip/member management, sheets with the soft keyboard, file picking, and pinch zoom.
+4. Finish branches: confirm `split_trip_segment` is live, then branch-scoped Today/Next Step, reunions, and branch-scoped polls.
+5. Extend the ledger: exclusions, item-level sub-splits, partial transfers, richer exchange-rate snapshots.
+6. Fix Supabase performance-advisor warnings before data grows; enable leaked-password protection before a wider password-login beta.
+7. Set conservative Google Places/Routes quotas and budget alerts, then watch usage.
+8. Itinerary: Place details, participant/status controls, booking essentials, lodging notes (confirmation, room, check-in instructions, checkout-to-next-stop), and import from shared links.
+9. Polls: realtime updates, turning a result into a plan, AI ranking of options.
+10. Add commit-bound Vercel Preview browser smoke once CI can resolve the public Preview URL (today the GitHub `Vercel` status exposes only the dashboard link and there is no scoped Vercel credential).
+11. If AI editing returns, build it trip-wide behind one preview; decide then whether to retire `suggest-itinerary-edit` and its privacy-policy mention.
+12. Replace Open-Meteo for destination search, or stop relying on it for Chinese input. Its CJK index is partial (2026-08-17: `东京` returns a town in China, `伦敦` returns London, Ontario, `清邁`, `大阪` and `首尔` return nothing), so every alias-table entry is debt. Google Places already resolves these through `places-autocomplete`, but switching needs a time-zone source (Google Time Zone API or a coordinate table) and a quota decision.
+
+## Open blockers and pending maintainer steps
+
+- Apple Developer Program enrollment hold blocks EAS/TestFlight.
+- Supabase Auth leaked-password protection is off (the only standing security-advisor warning).
+- The Supabase Auth redirect allowlist must include `https://tripflow.fun/reset-password`.
+- Run `scripts/shrink-existing-avatars.mjs --apply` against production (dry run by default; needs the service-role key in the environment). The CDN may serve old bytes for up to an hour.
+- No apply record in this file for `split_trip_segment`, `allow_verified_identity_onboarding`, `trip_polls`, or `auto_settle_on_expense_change`; check the live migration list before relying on them.
+- Maintainer acceptance of the ledger currency-settlement recovery (#141) on real data.
+
+## Known verification gaps
+
+- Isolated worktrees have no public Supabase variables, so signed-in browser QA there needs a configured fixture account.
+- Not yet verified: physical-device sheet keyboard avoidance and long-form scrolling, native file picking, pinch zoom, signed-in dark mode, live Gemini fallback under load, real audio transcription, and a two-session race on the delay-shift RPC.
+- The web console shows a known, harmless native-driver animation fallback warning.

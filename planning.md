@@ -1,5 +1,7 @@
 # TripFlow MVP Planning
 
+Product scope and the forward plan. Current state, standing decisions, and the ordered next steps live in `PROJECT_CONTEXT.md`; what shipped is in Git history.
+
 ## 1. Product definition
 
 TripFlow is a collaborative travel operating system for trips where people may travel together, split into different groups, and reunite later. It combines an executable shared itinerary with fast, context-aware group expense tracking.
@@ -116,7 +118,7 @@ The MVP deliberately does not include group chat, in-app booking, proprietary tu
   - participants included/excluded;
   - split rule and each person's share;
   - category, merchant, time, segment, and optional note.
-- High-confidence simple entries may be saved immediately with a five-second undo; ambiguous entries require confirmation.
+- AI drafts are never saved automatically; the traveller reviews the confirmation card and saves.
 - Support follow-up corrections to the current draft, such as "B did not participate" or "add 10% service charge."
 - Quick actions: "I paid," "Someone else paid," "Unequal split," and "Personal expense."
 
@@ -153,68 +155,24 @@ The MVP deliberately does not include group chat, in-app booking, proprietary tu
 
 ### P1 — add after the core flow is stable
 
-- Receipt and payment-screenshot OCR.
+- Receipt and payment-screenshot OCR. (Shipped: a receipt photo fills an editable expense draft.)
 - AI-assisted recommendation synthesis from poll results, location, opening hours, budget, and travel time.
 - AI-assisted day planning and disruption-based replanning for weather, closures, delays, missed transport, or traveler fatigue; all changes are shown as a reviewable diff before being applied.
 - Camera translation for menus, signs, and essential labels, with side-by-side original/translation and a full-screen "show the other person" mode.
 - Push notifications for departure reminders and material itinerary changes.
 - Richer expense analytics and category budgets.
 - Calendar import/export.
-- Better attachment organization and booking-email parsing.
-
-### Current itinerary experience upgrade
-
-- Completed: replace isolated timestamp entry with a clear start/end range, whole-field picker controls, and quick duration choices.
-- Completed: prioritize an actionable “Up next” destination and show later plans as a continuous timeline instead of a notebook-like card stack.
-- Completed: add persistent Chinese/English switching across navigation, forms, validation fallbacks, privacy, and support pages.
-- Completed: Google Places autocomplete routes through an authenticated Supabase Edge proxy, selected Place IDs persist, and consecutive placed stops show a protected Routes API driving estimate.
-- Completed foundation: an airy coastal palette, stronger spacing, fewer elevated surfaces, and a durable product/design contract.
-- Completed: move the large destination atlas out of Today into a dedicated Map tab, add a complete Plans tab for all itinerary arrangements, and make the map navigable with pan/pinch gestures plus explicit zoom/reset controls.
-- Completed: make destination search resolve common Chinese/English city aliases and use the trip name or plan title to rank ambiguous geocoder matches; this remains a client-side, no-migration enhancement.
-- Next: add Place details, participant status, booking/document essentials, and reviewable photo/file/link itinerary import.
+- Better attachment organization and booking-email parsing. (Shipped: flight/hotel import from a PDF or image; see `docs/booking-import.md`.)
 
 ### Gemini itinerary intelligence
 
-The itinerary is a good place for AI assistance because the model can explain a shared plan without taking control of it. The candidate backlog is:
+AI may explain or propose changes to a shared plan but never takes control of it. Candidate backlog:
 
-- A read-only health check for overlapping times, thin travel buffers, over-packed days, and missing locations.
-- A route-aware day optimizer that uses Google Routes for travel time, then proposes a reviewable reorder/diff.
-- Natural-language edits such as “move dinner to Friday after the museum” with an explicit preview before any write.
-- Reviewable imports from a message, screenshot, calendar, or booking confirmation into editable itinerary drafts.
-- Disruption replanning for delays, closures, weather, or fatigue, with the reason and trade-offs shown before applying.
-- Preference synthesis from votes, budgets, opening hours, and group constraints, producing ranked options rather than a single opaque answer.
-- Expense-to-itinerary linking so a meal, stay, or ticket can be reviewed against the corresponding plan item.
-
-#### Selected first vertical slice: itinerary health check (P1.1)
-
-The first implementation is a compact “行程检查 / itinerary check” action in Today. The initial slice performs deterministic checks on-device and returns the same versioned, read-only report contract that a future, explicitly opt-in Gemini analysis can enrich. Keeping the first pass local means full trip titles, locations, and dates do not leave the device by default. The report may flag `CONFLICT`, `BUFFER`, `DENSE_DAY`, or `MISSING_LOCATION` items, each with a severity, involved itinerary IDs, explanation, and confidence.
-
-Acceptance criteria:
-
-1. A traveller can run the check without leaving Today or opening a permanent form.
-2. Results are tied to real itinerary item IDs and are rendered as a compact review surface in Chinese and English.
-3. Unknown IDs, malformed model output, long text, and low-confidence values are rejected or bounded before display.
-4. The check never creates, moves, deletes, or silently edits an itinerary item; there is no automatic “apply” action in this slice.
-5. Empty itineraries show a quiet no-data state, while the local check remains usable offline; future remote opt-in must provide recoverable unauthorized and provider-error states (“重新检查 / Retry”).
-6. The next slice can add an explicit Gemini opt-in, Google Routes-backed travel gaps, and a reviewable diff without changing this report contract.
-
-Non-goals for P1.1: remote itinerary disclosure without opt-in, route-time invention by Gemini, weather/closure lookup, background checks, notifications, and autonomous itinerary mutation.
-
-#### Selected second vertical slice: natural-language reviewable edit (P1.2)
-
-The next slice adds an explicit “智能调整 / Smart edit” action inside the existing edit composer. An editor opens one existing itinerary item, taps the compact smart-suggestion affordance, and describes one change in Chinese or English by text, push-to-talk voice, or both; Gemini returns a structured proposal tied to that item. Only the selected item's minimum title/time context and the user-provided request are sent; the app shows the exact diff, validates it locally, and writes only after the traveller presses “应用修改”. Voice is an optional input to the same edit flow, and its recording is not persisted. The first version deliberately supports one item and title/time fields only; location and Google Place changes remain manual so the model cannot invent a destination.
-
-Acceptance criteria:
-
-1. The assistant is closed by default inside the edit composer. After the editor explicitly opens the suggestion control and requests a preview, it sends only the current item's title, time, kind, and location context; there is no background processing or automatic save.
-2. The proposal contains at most one known itinerary ID, changed fields only, a bounded reason/confidence, and bilingual recoverable error states when the provider is unavailable or the request is ambiguous.
-3. Local validation checks ISO timestamps, start-before-end, trip-date bounds, and overlap with other items. A blocking conflict disables “应用修改” while keeping the proposal visible for review.
-4. Applying a proposal calls the existing itinerary update RPC only after confirmation; cancelling or closing the assistant performs no write.
-5. Existing locations, Place IDs, route modes, participants, and linked ledger records are preserved. Multi-item reorder, destination guessing, route-time invention, disruption lookup, and autonomous mutation are out of scope.
-
-The payload sent to Gemini is an explicit, user-triggered disclosure of one selected itinerary item and the text or voice request (or both). Voice is sent through the authenticated Supabase Edge Function to Google Gemini only to generate an editable proposal; it is not persisted by TripFlow. The payload must be limited to the fields needed for the requested edit, must not include other itinerary items, profile data, or ledger data, and must be treated as untrusted prompt data on the server.
-
-Presentation decision: keep smart edit out of the Today overview by default. The entry point belongs inside the existing edit composer for the selected item, using a compact icon/button and progressive disclosure so the normal itinerary remains the primary task surface.
+- Shipped: an on-device, read-only health check (conflicts, thin buffers, dense days, missing locations) shown as inline hints with one-tap fixes. Any Gemini enrichment must be explicit opt-in.
+- Shipped: the 小途/Tabi trip assistant, which proposes plan edits, new plans, and expenses as confirmable cards.
+- Shipped: reviewable flight/hotel import from a booking PDF or image.
+- Removed 2026-10-15: the single-plan natural-language edit panel. If AI editing returns, it should work trip-wide behind one preview.
+- Open: a route-aware day optimizer that proposes a reviewable reorder; disruption replanning (delays, closures, weather, fatigue) with reasons and trade-offs; preference synthesis from votes, budgets, opening hours, and constraints into ranked options; imports from messages, calendars, and shared links.
 
 ### Explicitly out of MVP
 
@@ -267,7 +225,7 @@ Presentation decision: keep smart edit out of the Today overview by default. The
 2. Speech is transcribed.
 3. The parser resolves people using active-segment context and returns structured expense data.
 4. The client performs deterministic validation and split calculations.
-5. The traveler reviews the confirmation card or accepts a high-confidence quick save.
+5. The traveler reviews and saves the confirmation card.
 6. The expense is stored with transcript, parser result, any manual corrections, and final ledger entries.
 
 Example:
@@ -301,7 +259,7 @@ Expected result:
 - Names and pronouns are resolved against trip members; unresolved references block saving and request a specific correction.
 - The same expense may include multiple allocation groups, such as drinks shared by two people and food shared by four.
 
-## 6. Proposed technical architecture
+## 6. Technical architecture
 
 ### Client
 
@@ -320,7 +278,6 @@ Expected result:
 - Server/edge functions for invite handling, speech/LLM orchestration, exchange-rate snapshots, and notifications.
 - Google Places autocomplete runs only through an authenticated Supabase Edge Function. Its separately restricted API key is stored server-side as `GOOGLE_PLACE_API_KEY`, never in Expo public variables or the client bundle; manual location entry remains available when the provider is unavailable.
 - Google Routes requests run through an authenticated, trip-membership-checked Edge Function using the server-side `GOOGLE_ROUTES_API_KEY`. Each leg persists Drive, Transit, Walk, or Cycle; only Drive sends the traffic-unaware routing preference. Transit requests use the preceding itinerary item's end time when it is inside Google's supported planning window and return ordered service steps with boarding/arrival times, line or vehicle, stops, stop count, duration, headsign, and walking totals. A mode-and-departure-aware session cache reduces duplicate billable requests.
-- Production acceptance on 2026-08-12 verified Places suggestions, persisted Place IDs and route modes, all four Routes distance/duration modes, authorization and invalid-mode rejection, a real Sydney Opera House to Bondi Beach transit service with schedule and stop details, Gemini text expense parsing, and Gemini Mandarin voice expense parsing.
 - Trip invites retain the same hashed, expiring token and explicit acceptance RPC when represented as a QR code. In-app scanning accepts only a raw token or a trusted TripFlow HTTPS/app link; scanning never auto-joins a trip.
 - Registration is open without an invite. New users verify a six-digit email OTP, set a password and basic profile behind an onboarding gate, then create a trip or explicitly accept their preserved invite. Existing users can sign in by password or email OTP.
 
@@ -332,9 +289,11 @@ Expected result:
 - Store parser confidence and field-level uncertainties so the UI can require confirmation.
 - Initial languages: Mandarin Chinese and English. Cantonese and Japanese recognition should be tested during beta and can be enabled when quality is acceptable.
 - Expense recordings are processed only to create an editable draft and are not persisted by TripFlow.
-- Itinerary intelligence starts with on-device deterministic checks. Sending titles, locations, dates, or route context to Gemini requires a separate, explicit user opt-in and remains read-only until a reviewable diff is confirmed.
+- Itinerary checks run on device. Sending itinerary context to Gemini happens only on an explicit traveller action (assistant chat, booking import) or a future opt-in, and nothing is written until the traveller confirms.
 
 ### Core data entities
+
+Original proposal. The live schema (`supabase/migrations/`, `src/types/database.ts`) differs, for example `profiles`, polls, booking documents, and member archives.
 
 - `users`
 - `trips`
@@ -355,6 +314,8 @@ Expected result:
 
 ## 7. Delivery plan
 
+Status as of 2026-10-16: Milestones 0, 1, and 3 are delivered (Milestone 3 still lacks exclusions, sub-splits, and partial transfers). Milestone 2 has branch creation only. Milestone 4 has text, voice, and receipt-photo drafts but no offline queue. Milestone 5 is in progress, blocked on Apple enrollment. The week numbers are the original estimate.
+
 ### Milestone 0 — product and engineering foundation (Week 1)
 
 - Approve this scope and define the primary test itinerary.
@@ -372,7 +333,7 @@ Exit: the app boots on iOS/Android, CI passes, and data/permission design is rev
 - Shared itinerary CRUD, timeline/day views, and attachments/links.
 - Realtime updates and activity events.
 
-Current implementation and acceptance requirements:
+Shipped rules that later changes must keep:
 
 - A changed profile avatar and display name must propagate to every shared identity surface, including trip rosters and ledger settlement rows; initials remain the accessible fallback.
 - Every row in My Trips opens a dedicated view/manage workspace rather than silently switching context.
@@ -409,7 +370,7 @@ Exit: the 30-day reference scenario works without duplicated trips or leaked pri
 - Balances, minimized settlement suggestions, and partial settlement records.
 - Property-based tests for calculation invariants.
 
-Current implementation and acceptance requirements:
+Shipped rules that later changes must keep:
 
 - Show every outstanding route as an explicit instruction: who must transfer to whom, in which currency, and how much.
 - Show each traveler’s pending outgoing, completed outgoing, pending incoming, and received totals, plus a compact group-wide status view.
@@ -419,7 +380,7 @@ Current implementation and acceptance requirements:
 - Keep receipt files private, bind each upload to an authorized expense, provide full receipt viewing, and preserve payer/split evidence alongside it.
 - Present the journey as “My settlements → Group settlement → Expense activity,” prioritizing personal actions and progressively disclosing financial evidence instead of stacking equal-weight blocks.
 
-The next expansion is multiple payers, exclusions, unequal shares, partial amounts, exchange-rate snapshots, and property-based reconciliation coverage.
+Multiple payers and unequal shares are shipped. Still to do: exclusions, item-level sub-splits, partial amounts, exchange-rate snapshots, and property-based reconciliation coverage.
 
 Exit: a realistic multi-currency fixture reconciles exactly to zero across all participants.
 
@@ -441,24 +402,7 @@ Exit: target simple voice entries are confirmed in under 10 seconds and ambiguou
 
 Exit: the group can rely on the app for a multi-day pilot before the year-end trip.
 
-## 8. Initial backlog
-
-1. Bootstrap Expo/TypeScript app and CI.
-2. Define database schema and migration conventions.
-3. Implement money as integer minor units plus ISO currency code.
-4. Implement and test split/rounding functions independent of UI.
-5. Add authentication and user profiles.
-6. Add trips, roles, invitations, and RLS.
-7. Add segments, members, branches, and reunions.
-8. Add itinerary item CRUD and "Next step."
-9. Add expense draft and manual confirmation card.
-10. Add ledger balances and settlement minimization.
-11. Add voice transcription and structured parsing.
-12. Add offline cache/mutation queue.
-13. Run cross-account authorization and financial-invariant test suites.
-14. Conduct a scripted private-beta trip simulation.
-
-## 9. Risks and mitigations
+## 8. Risks and mitigations
 
 - **Voice ambiguity:** require structured confirmation for uncertain fields and keep editing fast.
 - **Financial correctness:** use integer minor units, deterministic calculations, invariants, and extensive automated tests.
@@ -468,17 +412,14 @@ Exit: the group can rely on the app for a multi-day pilot before the year-end tr
 - **Cross-region services:** abstract speech, AI, maps, and exchange-rate providers and test availability before travel.
 - **Long-trip complexity:** use segments and filters so users see their active branch by default while preserving a master overview.
 
-## 10. Decisions still to make
+## 9. Decisions still to make
 
 - App Store subtitle, screenshots, support contact, and final privacy-policy wording.
 - When Apple and Google sign-in should be added after the email OTP registration and password-login beta is stable.
-- Default cross-branch visibility: private or read-only to all trip members.
-- Home currency and exchange-rate source/override policy.
-- Rounding remainder policy for equal splits.
 - Voice provider availability and data-retention settings in all target regions.
 - Android distribution timing after the first iOS TestFlight beta.
 
-## 11. Definition of done for MVP
+## 10. Definition of done for MVP
 
 The MVP is done when one scripted private-beta journey proves the complete consolidated scope:
 
@@ -491,6 +432,6 @@ The MVP is done when one scripted private-beta journey proves the complete conso
 7. A traveler downloads the correct region/offline pack, accesses essential local-script addresses and selected booking details without connectivity, and creates an offline expense draft that later synchronizes exactly once.
 8. Separate-account tests confirm that branch data and sensitive documents are never exposed outside their explicit permissions.
 
-## Booking-import MVP (October 2026)
+## Booking-import MVP (shipped October 2026)
 
 The first booking slice imports explicit flight/hotel facts from one PDF/image into editable previews. Confirmation atomically creates transport/stay intervals; unknown details stay empty, local zones are checked, originals remain uploader-private, and the trip timeline uses its existing zone. Multi-item AI replanning, inferred airport transfers, receipt OCR and generated daily activities remain future work. See `docs/booking-import.md` for the contract and acceptance gates.
