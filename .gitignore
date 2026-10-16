@@ -41,7 +41,6 @@ coverage/
 playwright-report/
 test-results/
 
-example
 
 # generated native folders
 /ios
@@ -58,3 +57,7 @@ assets/brand/out/
 # Supabase CLI local artifacts (supabase start)
 supabase/.branches/
 supabase/.temp/
+
+# agent worktrees
+.worktrees/
+.claude/worktrees/

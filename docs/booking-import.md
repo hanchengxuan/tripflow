@@ -10,11 +10,11 @@ Only the uploader can read original metadata or get a 60-second signed link. Con
 
 ## Acceptance
 
-`docs/booking-import-acceptance.sql` runs synthetic data in one transaction and rolls everything back. It checks batch import, same-file retry, exact-content dedupe, invalid-range rollback, owner/editor writes, viewer/outsider rejection and original-metadata RLS. Unit tests cover cross-zone/date-line travel and daylight-saving boundaries.
+`supabase/tests/booking-import-acceptance.sql` runs synthetic data in one transaction and rolls everything back. It checks batch import, same-file retry, exact-content dedupe, invalid-range rollback, owner/editor writes, viewer/outsider rejection and original-metadata RLS. Unit tests cover cross-zone/date-line travel and daylight-saving boundaries.
 
 Real browser acceptance must additionally cover PDF and image recognition, missing-field edits, selecting drafts, confirming once, refreshing, duplicate uploads, private original viewing, original deletion, errors and mobile/desktop layout. Use an explicitly supplied test account and a disposable trip. Native file-picker acceptance requires a device or build; an export is compatibility evidence only.
 
-Two fictional Loom samples are under `output/pdf/`. Dates fit a 2026-10-20 to 2026-10-25 trip in Asia/Tokyo. They are clearly labelled synthetic and are not valid travel reservations.
+Two fictional Loom samples are under `docs/booking-import-samples/`. Dates fit a 2026-10-20 to 2026-10-25 trip in Asia/Tokyo. They are clearly labelled synthetic and are not valid travel reservations.
 
 ## Deployment and rollback
 

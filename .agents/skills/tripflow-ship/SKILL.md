@@ -40,7 +40,7 @@ Run `$tripflow-review`. Resolve every `STOP` finding before continuing. Run `$tr
 
 ## Commit and PR
 
-Update `PROJECT_CONTEXT.md` after the milestone with verified current state, next action, decisions, and blockers. Do not add secrets or private discussion details.
+Update `PROJECT_CONTEXT.md` only if the change alters current state, a standing decision, the next-milestone list, or a blocker; edit in place and never append release evidence or a PR summary. Do not add secrets or private discussion details.
 
 Stage files by explicit path. Use a conventional commit that contains implementation, tests, and the matching context update when they form one milestone. Fetch and rebase again if `origin/main` advanced, then rerun relevant checks.
 

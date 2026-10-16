@@ -11,6 +11,7 @@ import { SegmentedControl } from '@/components/segmented-control';
 import {
   SettlementWorkspace,
   amountInputFromMinor,
+  transferKey,
   type SettlementDraft,
 } from '@/components/settlement-workspace';
 import { getCurrencyOptions } from '@/constants/options';
@@ -475,9 +476,9 @@ export default function LedgerScreen() {
   }
 
   async function completeTransfer(transfer: SettlementTransfer & { currency: string }): Promise<boolean> {
-    const transferKey = `${transfer.currency}-${transfer.fromParticipantId}-${transfer.toParticipantId}`;
-    const draft = settlementDrafts[transferKey];
-    setBusySettlementId(transferKey);
+    const key = transferKey(transfer);
+    const draft = settlementDrafts[key];
+    setBusySettlementId(key);
     setFormError(undefined);
     setSuccess(undefined);
     try {
@@ -485,7 +486,7 @@ export default function LedgerScreen() {
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setSettlementDrafts((current) => {
         const next = { ...current };
-        delete next[transferKey];
+        delete next[key];
         return next;
       });
       setSuccess(tx('已标记为已转账，收款方的“已收入”会同步更新。', 'Marked as sent. The recipient’s received total is updated automatically.'));

@@ -48,6 +48,8 @@ jobs:
         run: npm run lint -- --no-cache
       - name: Typecheck
         run: npm run typecheck
+      - name: Unused files, exports and dependencies
+        run: npm run deadcode
       - name: Dependency audit
         shell: bash
         run: |
