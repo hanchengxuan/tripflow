@@ -440,3 +440,7 @@ Temporary acceptance fixtures are removed after each test; production may contai
 
 - iOS dev builds stopped at a "Render Error: Expo Head: Add the handoff origin to the Expo Config" on launch (release builds show the same text as an alert). `<Head>` in the root layout needs an origin for iOS handoff, and `app.json` gave the `expo-router` plugin none. The plugin now sets `"origin": "https://tripflow.fun"`. A config change like this needs a native rebuild to reach the app.
 - Web output is unchanged apart from the embedded config string in the entry bundle. In release native builds the origin also becomes the base for relative `fetch` calls; the app makes none.
+
+## October 16 expense composer pickers
+
+- "Who paid" and "Who shares it" chips show each traveller's avatar and a check when picked (`MemberChip` in `expense-pickers.tsx`). The split rule is a 2×2 card picker (`SplitModePicker`): each option has an icon and a one-line example (均分 每人一样多, 指定金额 逐人填金额, 按比例 如 60% / 40%, 按份数 如 2 份 : 1 份). The split preview lists avatars with right-aligned amounts.
