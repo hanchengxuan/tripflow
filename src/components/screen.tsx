@@ -2,6 +2,7 @@ import type { PropsWithChildren, ReactNode } from 'react';
 import { Platform, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ContentSkeleton } from '@/components/content-skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { Size, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -18,10 +19,12 @@ export function floatingActionBottom(insetBottom: number, width: number) {
 interface ScreenProps extends PropsWithChildren {
   context: readonly string[];
   floatingAction?: ReactNode;
+  /** Shows a skeleton in place of the content, for a first load with nothing to show yet. */
+  loading?: boolean;
   title: string;
 }
 
-export function Screen({ context, floatingAction, title, children }: ScreenProps) {
+export function Screen({ context, floatingAction, loading = false, title, children }: ScreenProps) {
   const insets = useSafeAreaInsets();
   const theme = useTheme();
   const { width } = useWindowDimensions();
@@ -43,7 +46,7 @@ export function Screen({ context, floatingAction, title, children }: ScreenProps
           <ThemedText type="subtitle" style={styles.screenTitle}>{title}</ThemedText>
           <ThemedText type="small" themeColor="textSecondary" style={styles.contextRow}>{context.join(' · ')}</ThemedText>
         </View>
-        {children}
+        {loading ? <ContentSkeleton /> : children}
       </ScrollView>
       {floatingAction ? <View style={[styles.floatingAction, { bottom: floatingActionBottom(insets.bottom, width) }]}>{floatingAction}</View> : null}
     </View>

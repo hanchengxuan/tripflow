@@ -11,7 +11,7 @@ import { LocationField } from '@/components/location-field';
 import { QuickTimeShifts } from '@/components/quick-time-shifts';
 import { SettingsDivider, SettingsGroup, SettingsRow } from '@/components/settings-list';
 import { ThemedText } from '@/components/themed-text';
-import { getCurrencyOptions, getTimeZoneOptions, itineraryKindLabels, itineraryKindLabelsEn, itineraryKinds } from '@/constants/options';
+import { getCurrencyOptions, getTimeZoneOptions, itineraryKindLabels, itineraryKindLabelsEn, itineraryKindColorKeys, itineraryKinds, itineraryKindSymbols } from '@/constants/options';
 import { Spacing } from '@/constants/theme';
 import type { ItineraryDestination, ItineraryItem, ItineraryKind, Trip } from '@/domain/models';
 import { destinationLabel, type DestinationSuggestion } from '@/features/destinations/destination-search';
@@ -340,7 +340,7 @@ export function ItineraryComposerSheet({
         {!editingItem ? (
           <View style={styles.kindChoices}>
             {itineraryKinds.map((itemKind) => (
-              <ChoiceChip key={itemKind} role="radio" selected={kind === itemKind} onPress={() => chooseKind(itemKind)}>
+              <ChoiceChip key={itemKind} role="radio" selected={kind === itemKind} onPress={() => chooseKind(itemKind)} symbol={itineraryKindSymbols[itemKind]} symbolColor={theme[itineraryKindColorKeys[itemKind]]}>
                 {kindLabel(itemKind)}
               </ChoiceChip>
             ))}

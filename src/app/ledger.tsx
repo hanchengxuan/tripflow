@@ -43,6 +43,7 @@ export default function LedgerScreen() {
   const theme = useTheme();
   const { locale, formatDateTime, tx } = useI18n();
   const {
+    loading,
     activeTrip,
     members,
     ledgerMembers,
@@ -571,6 +572,7 @@ export default function LedgerScreen() {
   return (
     <>
       <Screen
+      loading={loading && !activeTrip}
       context={activeTrip
         ? [
             activeTrip.name,
@@ -630,9 +632,11 @@ export default function LedgerScreen() {
           setSettlementDrafts={setSettlementDrafts}
           summaryTransfers={normalizedPendingTransfers}
           undoTransfer={undoTransfer}
+          onAddExpense={toggleComposer}
         />
       ) : (
         <ExpenseActivity
+          onAddExpense={toggleComposer}
           expenses={expenses}
           timeZone={activeTrip.defaultTimeZone}
           names={names}

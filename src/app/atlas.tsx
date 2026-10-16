@@ -1,16 +1,15 @@
 import { useRouter } from 'expo-router';
 
 import { DestinationAtlas } from '@/components/destination-atlas';
-import { InfoCard } from '@/components/info-card';
+import { EmptyState } from '@/components/empty-state';
 import { Screen } from '@/components/screen';
-import { ThemedText } from '@/components/themed-text';
 import { useI18n } from '@/features/i18n/i18n-provider';
 import { useMvp } from '@/features/mvp/mvp-provider';
 
 export default function AtlasScreen() {
   const router = useRouter();
   const { languageTag, tx } = useI18n();
-  const { activeTrip, itineraryItems } = useMvp();
+  const { loading, activeTrip, itineraryItems } = useMvp();
   const context = activeTrip
     ? [
         activeTrip.name,
@@ -19,7 +18,7 @@ export default function AtlasScreen() {
     : [tx('还没有选择行程', 'No trip selected')];
 
   return (
-    <Screen title={tx('地图', 'Map')} context={context}>
+    <Screen loading={loading && !activeTrip} title={tx('地图', 'Map')} context={context}>
       {activeTrip ? (
         <DestinationAtlas
           items={itineraryItems}
@@ -28,11 +27,13 @@ export default function AtlasScreen() {
           onViewItem={(item) => router.push({ pathname: '/itinerary', params: { itemId: item.id } })}
         />
       ) : (
-        <InfoCard title={tx('地图等待行程', 'Map is waiting for a trip')}>
-          <ThemedText themeColor="textSecondary">
-            {tx('创建或加入一个行程后，这里会显示所有已设置目的地。', 'Create or join a trip to see its saved destinations here.')}
-          </ThemedText>
-        </InfoCard>
+        <EmptyState
+          symbol={{ ios: 'map', android: 'map', web: 'map' }}
+          title={tx('地图等待行程', 'Map is waiting for a trip')}
+          body={tx('创建或加入行程后，这里会显示所有目的地。', 'Create or join a trip to see its destinations here.')}
+          actionLabel={tx('去行程', 'Go to Trips')}
+          onAction={() => router.push('/explore')}
+        />
       )}
     </Screen>
   );
