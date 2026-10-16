@@ -15,7 +15,7 @@ Current state only: what is true now, standing decisions, what comes next, and w
 
 TripFlow is a group travel operating system for travellers who split into parallel branches and later reunite: shared trips and executable itineraries, branches with privacy boundaries, Today/Next Step coordination, multi-payer multi-currency expense splitting and settlement, and offline travel information. See `planning.md` for scope, non-goals, and the Definition of Done.
 
-Live today: email-OTP/password auth with onboarding; trips, roles, QR/link invites, trip and member management; Today (Up Next countdown, day briefing, time rail, stays, inline health hints, delay shift); Plans and Map tabs; trip branches (split from the plan editor); polls on Trips; booking import (flight/hotel PDF or image); Ledger with multi-payer/custom splits, multi-currency, receipts, receipt-photo and text/voice quick fill, settlement tasks; the 小途/Tabi assistant on every tab; Chinese (primary) and English.
+Live today: email-OTP/password auth with onboarding; trips, roles, QR/link invites, trip and member management; Today (Up Next countdown, day briefing, time rail, stays, inline health hints, delay shift); Plans and Map tabs; trip branches (split from the plan editor); polls on Trips; booking import (flight/hotel PDF or image); Ledger with multi-payer/custom splits, multi-currency, receipts, receipt-photo and text/voice quick fill, settlement tasks; the 小途/Tabi assistant on every tab (text, voice dictation, and photos of bookings or receipts); Chinese (primary) and English.
 
 ## Technical baseline
 
@@ -57,7 +57,7 @@ Product rules
 - When conversions are incomplete, settle in each original currency; never guess a rate. Prior converted settlements need exchange-rate reconciliation before more payments. `buildSettlementPlan` owns the accounting mode for summary, tasks, and group view.
 - Keep home-currency redenomination out of UI-only work until an atomic backend operation and data-safety acceptance exist.
 - Lodging is one check-in/check-out interval in the trip time zone, not daily rows.
-- AI never writes on its own. Expense drafts, booking previews, and 小途/Tabi proposals (`update_plan`, `add_plan`, `add_expense`; no deletes) are applied only after the traveller confirms through existing save paths. Recordings are not persisted.
+- AI never writes on its own. Expense drafts, booking previews, and 小途/Tabi proposals (`update_plan`, `add_plan`, `add_expense`; no deletes) are applied only after the traveller confirms through existing save paths. Recordings and chat photos are not persisted; a chat photo goes to Gemini once with the message it was attached to.
 - `ask-trip` reads the trip with the traveller's own token (RLS applies) and picks the reply language on the server from the latest message.
 - The itinerary health check runs on device with no AI call; any Gemini enrichment must be explicit opt-in.
 - The owner removed the single-plan AI edit panel as not useful. Itinerary edits favour buttons (time shifts, one-tap fixes, delay shift); a typed delay could later map onto the delay planner.
