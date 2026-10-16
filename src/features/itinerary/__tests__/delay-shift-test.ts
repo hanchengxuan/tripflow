@@ -3,7 +3,7 @@ import { planDelayShift } from '@/features/itinerary/delay-shift';
 
 const trip = { startsOn: '2026-10-20', endsOn: '2026-10-25', defaultTimeZone: 'Asia/Tokyo' };
 const plan = (id: string, kind: ItineraryItem['kind'], startsAt: string, endsAt: string, extra: Partial<ItineraryItem> = {}) =>
-  ({ id, tripId: 't', kind, title: id, startsAt, endsAt, routeTravelMode: 'DRIVE', ...extra }) as ItineraryItem;
+  ({ id, tripId: 't', kind, title: id, startsAt, endsAt, routeTravelMode: 'DRIVE', ...extra }) satisfies ItineraryItem;
 
 // Times in UTC; Tokyo is UTC+9.
 const flight = plan('flight', 'transport', '2026-10-20T09:30:00Z', '2026-10-20T20:30:00Z');
@@ -53,4 +53,23 @@ test('a shift past the last trip day is flagged', () => {
 test('a hotel pushed past its own check-out is flagged as impossible', () => {
   const shortStay = { ...hotel, endsAt: '2026-10-20T23:00:00Z' };
   expect(planDelayShift([flight, transfer, shortStay], 'flight', 120, trip).invalid).toBe(true);
+});
+
+
+test('parallel branches do not delay one another', () => {
+  const branchLunch = { ...lunch, segmentId: 'branch-a' };
+  const otherMuseum = { ...museum, segmentId: 'branch-b' };
+  expect(moved(planDelayShift([branchLunch, otherMuseum], 'lunch', 90, trip))).not.toHaveProperty('museum');
+});
+
+test('trip boundary uses the trip timezone across daylight saving', () => {
+  const item = plan('late', 'activity', '2026-10-24T12:00:00Z', '2026-10-24T12:30:00Z');
+  const sydney = { startsOn: '2026-10-24', endsOn: '2026-10-24', defaultTimeZone: 'Australia/Sydney' };
+  expect(planDelayShift([item], 'late', 15, sydney).outsideTrip).toBe(false);
+  expect(planDelayShift([item], 'late', 60, sydney).outsideTrip).toBe(true);
+});
+
+test('a non-finite delay and a directly selected stay produce no changes', () => {
+  expect(planDelayShift(items, 'flight', Number.NaN, trip).shifts).toEqual([]);
+  expect(planDelayShift(items, 'hotel', 60, trip).shifts).toEqual([]);
 });

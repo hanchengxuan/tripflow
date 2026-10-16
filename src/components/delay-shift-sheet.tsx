@@ -31,7 +31,8 @@ export function DelayShiftSheet({ item, visible, onDismiss, onDone }: {
   if (!activeTrip) return null;
 
   const plan = planDelayShift(itineraryItems, item.id, minutes, activeTrip);
-  const blocked = plan.outsideTrip || plan.invalid;
+  const tooMany = plan.shifts.length > 30;
+  const blocked = plan.outsideTrip || plan.invalid || tooMany;
   const range = (startsAt: string, endsAt: string | undefined, of: ItineraryItem) =>
     formatZonedDateTimeRange(startsAt, endsAt, languageTag, of.destination?.timeZone ?? activeTrip.defaultTimeZone);
   const label = (value: number) => value < 60
@@ -39,13 +40,14 @@ export function DelayShiftSheet({ item, visible, onDismiss, onDone }: {
     : tx(`${value / 60} 小时`, `${value / 60} hr`);
 
   const apply = async () => {
+    if (busy || blocked || plan.shifts.length === 0) return;
     setBusy(true);
     setError(undefined);
     try {
       await shiftItineraryItems(plan.shifts);
       onDone(tx(`已顺延 ${plan.shifts.length} 项安排。`, `Moved ${plan.shifts.length} ${plan.shifts.length === 1 ? 'plan' : 'plans'} later.`));
     } catch (caught) {
-      setError(toUserMessage(caught, tx('顺延失败，安排没有改动。请刷新后重试。', 'Nothing was moved. Refresh and try again.'), locale));
+      setError(toUserMessage(caught, tx('无法确认顺延结果。请先刷新安排，再尝试操作。', 'Could not confirm the update. Refresh plans before trying again.'), locale));
     } finally {
       setBusy(false);
     }
@@ -57,7 +59,7 @@ export function DelayShiftSheet({ item, visible, onDismiss, onDone }: {
         <ThemedText type="small" themeColor="textSecondary">{tx('晚了多久？后面的安排只在来不及时才顺延，空档会先被用掉。', 'How late? Later plans only move when they would no longer fit; free time absorbs the delay first.')}</ThemedText>
         <View style={styles.chips}>
           {delayChoices.map((choice) => (
-            <ChoiceChip key={choice} role="radio" selected={minutes === choice} onPress={() => { setMinutes(choice); setError(undefined); }}>{label(choice)}</ChoiceChip>
+            <ChoiceChip key={choice} role="radio" disabled={busy} selected={minutes === choice} onPress={() => { setMinutes(choice); setError(undefined); }}>{label(choice)}</ChoiceChip>
           ))}
         </View>
         <ListSurface>
@@ -70,6 +72,7 @@ export function DelayShiftSheet({ item, visible, onDismiss, onDone }: {
             </View>
           ))}
         </ListSurface>
+        {tooMany ? <InlineNotice tone="error">{tx('一次最多顺延 30 项安排，请先分段调整。', 'Move at most 30 plans at once. Adjust a smaller section first.')}</InlineNotice> : null}
         {plan.outsideTrip ? <InlineNotice tone="error">{tx('有安排会被推到行程日期之外，请先调整行程日期。', 'A plan would move past the trip dates. Extend the trip first.')}</InlineNotice> : null}
         {plan.invalid ? <InlineNotice tone="error">{tx('酒店入住会晚于退房，请手动调整。', 'A hotel check-in would pass its check-out. Adjust it by hand.')}</InlineNotice> : null}
         {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}

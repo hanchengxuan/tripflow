@@ -31,7 +31,7 @@ $$;
 
 create or replace function pg_temp.check(condition boolean, message text) returns void language plpgsql as $$
 begin
-  if not condition then raise exception 'check failed: %', message; end if;
+  if condition is not true then raise exception 'check failed: %', message; end if;
 end;
 $$;
 
@@ -61,6 +61,14 @@ select pg_temp.check((select starts_at from public.itinerary_items where id = 'a
 -- A shift past the last trip day is refused.
 select pg_temp.expect_error(format('select public.shift_itinerary_items(%L, %L::jsonb)', :'trip_id',
   '[{"itemId":"aaaaaaaa-0000-4000-8000-0000000000a2","fromStartsAt":"2026-10-20T09:30:00Z","fromEndsAt":"2026-10-20T20:30:00Z","startsAt":"2026-10-25T14:00:00Z","endsAt":"2026-10-25T16:00:00Z"}]'), 'outside the trip dates');
+
+-- Duplicate targets, changed durations, and hotel checkout changes fail atomically.
+select pg_temp.expect_error(format('select public.shift_itinerary_items(%L, %L::jsonb)', :'trip_id',
+  '[{"itemId":"aaaaaaaa-0000-4000-8000-0000000000a2"},{"itemId":"aaaaaaaa-0000-4000-8000-0000000000a2"}]'), 'Each plan must appear once');
+select pg_temp.expect_error(format('select public.shift_itinerary_items(%L, %L::jsonb)', :'trip_id',
+  '[{"itemId":"aaaaaaaa-0000-4000-8000-0000000000a2","fromStartsAt":"2026-10-20T09:30:00Z","fromEndsAt":"2026-10-20T20:30:00Z","startsAt":"2026-10-20T10:30:00Z","endsAt":"2026-10-20T20:30:00Z"}]'), 'preserve plan duration');
+select pg_temp.expect_error(format('select public.shift_itinerary_items(%L, %L::jsonb)', :'trip_id',
+  '[{"itemId":"aaaaaaaa-0000-4000-8000-0000000000a1","fromStartsAt":"2026-10-20T22:00:00Z","fromEndsAt":"2026-10-23T02:00:00Z","startsAt":"2026-10-21T00:00:00Z","endsAt":"2026-10-23T03:00:00Z"}]'), 'hotel check-out');
 
 -- The full delay moves flight, transfer and check-in together.
 select pg_temp.check(public.shift_itinerary_items(:'trip_id', :'delay'::jsonb) = 3, 'three plans moved');

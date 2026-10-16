@@ -33,7 +33,7 @@ export function planDelayShift(
   trip: Pick<Trip, 'startsOn' | 'endsOn' | 'defaultTimeZone'>,
 ): DelayShiftPlan {
   const delayed = items.find((item) => item.id === delayedItemId);
-  if (!delayed || delayMinutes <= 0) return { shifts: [], outsideTrip: false, invalid: false };
+  if (!delayed || delayed.kind === 'lodging' || !Number.isFinite(delayMinutes) || delayMinutes <= 0) return { shifts: [], outsideTrip: false, invalid: false };
 
   const moved = new Map<string, { startsAt: number; endsAt: number }>();
   const endOf = (item: ItineraryItem) => time(item.endsAt ?? item.startsAt);
@@ -42,7 +42,7 @@ export function planDelayShift(
 
   let previous = { originalEnd: endOf(delayed), newEnd: endOf(delayed) + delta };
   const following = items
-    .filter((item) => item.id !== delayed.id && item.kind !== 'lodging' && time(item.startsAt) >= time(delayed.startsAt))
+    .filter((item) => item.id !== delayed.id && item.segmentId === delayed.segmentId && item.kind !== 'lodging' && time(item.startsAt) >= time(delayed.startsAt))
     .sort((left, right) => time(left.startsAt) - time(right.startsAt));
   for (const item of following) {
     const start = time(item.startsAt);

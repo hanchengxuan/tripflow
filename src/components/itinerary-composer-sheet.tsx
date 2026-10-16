@@ -161,6 +161,7 @@ export function ItineraryComposerSheet({
       setFormError(undefined);
       setPendingTripRange(undefined);
       setConfirmDeleteItem(false);
+      setDelaying(false);
     }, 0);
     return () => clearTimeout(timeout);
   }, [activeTrip.defaultTimeZone, activeTrip.homeCurrency, activeTrip.id, activeTrip.startsOn, editingItem, visible]);
