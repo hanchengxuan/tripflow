@@ -1,4 +1,5 @@
 import type { Expense, ItineraryDestination, ItineraryItem, Profile, RouteTravelMode, Segment, SegmentMember, SegmentVisibility, Settlement, Trip, TripMember } from '@/domain/models';
+import { unknownLedgerParticipants } from '@/features/ledger/former-participants';
 import { shrinkAvatar } from '@/lib/avatar-image';
 import { getSupabaseClient } from '@/lib/supabase';
 import type { Database, Tables } from '@/types/database';
@@ -130,6 +131,37 @@ export async function listTripMembers(tripId: string): Promise<TripMember[]> {
   });
 }
 
+/** Names ledger participants who are no longer members and were never archived, from their profile. */
+async function listFormerLedgerParticipants(tripId: string, knownUserIds: string[]): Promise<TripMember[]> {
+  const client = getSupabaseClient();
+  const [{ data: expenses, error: expenseError }, { data: settlements, error: settlementError }] = await Promise.all([
+    client.from('expenses').select('expense_payers(user_id),expense_allocation_groups(expense_shares(user_id))').eq('trip_id', tripId),
+    client.from('settlements').select('from_user_id,to_user_id').eq('trip_id', tripId),
+  ]);
+  if (expenseError) throw expenseError;
+  if (settlementError) throw settlementError;
+  const missing = unknownLedgerParticipants(
+    knownUserIds,
+    expenses.map((expense) => ({
+      payerIds: expense.expense_payers.map(({ user_id }) => user_id),
+      shareIds: expense.expense_allocation_groups.flatMap(({ expense_shares }) => expense_shares.map(({ user_id }) => user_id)),
+    })),
+    settlements.map(({ from_user_id, to_user_id }) => ({ fromUserId: from_user_id, toUserId: to_user_id })),
+  );
+  if (missing.length === 0) return [];
+  const { data: profiles, error } = await client.from('profiles').select('id,display_name,avatar_path').in('id', missing);
+  if (error) throw error;
+  return profiles.map((profile) => ({
+    tripId,
+    userId: profile.id,
+    displayName: profile.display_name ?? '旅行者',
+    avatarPath: profile.avatar_path ?? undefined,
+    avatarUrl: profile.avatar_path ? client.storage.from('avatars').getPublicUrl(profile.avatar_path).data.publicUrl : undefined,
+    role: 'viewer' as const,
+    archived: true,
+  }));
+}
+
 export async function listLedgerMembers(tripId: string): Promise<TripMember[]> {
   const client = getSupabaseClient();
   const current = await listTripMembers(tripId);
@@ -139,9 +171,12 @@ export async function listLedgerMembers(tripId: string): Promise<TripMember[]> {
     .eq('trip_id', tripId);
   if (error) throw error;
   const currentIds = new Set(current.map(({ userId }) => userId));
+  const archived = data.filter(({ user_id }) => !currentIds.has(user_id));
+  const former = await listFormerLedgerParticipants(tripId, [...currentIds, ...archived.map(({ user_id }) => user_id)]);
   return [
     ...current,
-    ...data.filter(({ user_id }) => !currentIds.has(user_id)).map((member) => ({
+    ...former,
+    ...archived.map((member) => ({
       tripId: member.trip_id,
       userId: member.user_id,
       displayName: member.display_name,
