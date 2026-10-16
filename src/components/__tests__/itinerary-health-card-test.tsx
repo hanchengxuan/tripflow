@@ -21,7 +21,7 @@ const trip = { startsOn: '2026-10-20', endsOn: '2026-10-25', defaultTimeZone: 'A
 const items = [
   { id: 'transfer', tripId: 't', kind: 'transport', title: 'Airport transfer', locationLabel: 'Haneda', startsAt: '2026-10-21T04:30:00Z', endsAt: '2026-10-21T06:00:00Z' },
   { id: 'hotel', tripId: 't', kind: 'lodging', title: 'Hotel', locationLabel: 'Marunouchi', startsAt: '2026-10-21T06:00:00Z', endsAt: '2026-10-24T02:00:00Z' },
-  { id: 'museum', tripId: 't', kind: 'activity', title: 'Museum', locationLabel: 'Ueno', startsAt: '2026-10-24T05:00:00Z', endsAt: '2026-10-24T07:00:00Z' },
+  { id: 'museum', tripId: 't', kind: 'activity', title: 'Museum', locationLabel: 'Ueno', startsAt: '2026-10-21T06:10:00Z', endsAt: '2026-10-21T08:00:00Z' },
 ] as ItineraryItem[];
 
 function Today({ onApply }: { onApply?: (fix: HealthFix) => Promise<void> }) {
@@ -59,8 +59,8 @@ it('marks only the flagged plans and keeps the details closed until a hint is ta
   await flushCheck();
 
   expect(tree.root.findAllByType(ItineraryHealthHint).map(({ props }) => props.issues[0].itemIds)).toEqual([
-    ['transfer', 'hotel'],
-    ['transfer', 'hotel'],
+    ['transfer', 'museum'],
+    ['transfer', 'museum'],
   ]);
   expect(texts()).toContain('Tight buffer');
   expect(sheetOpen()).toBe(false);
@@ -80,7 +80,7 @@ it('applies the tight-gap fix from the opened sheet', async () => {
   await act(async () => apply?.props.onPress());
 
   expect(onApply).toHaveBeenCalledWith(expect.objectContaining({
-    candidate: expect.objectContaining({ id: 'hotel', startsAt: '2026-10-21T06:30:00.000Z', endsAt: '2026-10-24T02:00:00.000Z' }),
+    candidate: expect.objectContaining({ id: 'museum', startsAt: '2026-10-21T06:30:00.000Z', endsAt: '2026-10-21T08:20:00.000Z' }),
   }));
 });
 

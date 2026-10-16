@@ -1,5 +1,5 @@
 import type { ItineraryItem, Trip } from '@/domain/models';
-import type { ItineraryHealthIssue } from '@/features/ai/itinerary-health';
+import { competesForTime, type ItineraryHealthIssue } from '@/features/ai/itinerary-health';
 import { isoToZonedDateTime } from '@/lib/trip-time';
 
 const bufferMs = 30 * 60 * 1000;
@@ -25,7 +25,7 @@ function fitsSchedule(
   const endDate = isoToZonedDateTime(candidate.endsAt, trip.defaultTimeZone).date;
   if (startDate < trip.startsOn || endDate > trip.endsOn) return false;
   return !items.some((item) => {
-    if (item.id === candidate.id || !item.endsAt) return false;
+    if (item.id === candidate.id || !item.endsAt || !competesForTime(item, candidate)) return false;
     const other = interval(item);
     return moved.startsAt < other.endsAt && moved.endsAt > other.startsAt;
   });
