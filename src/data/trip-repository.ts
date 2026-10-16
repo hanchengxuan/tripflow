@@ -1,4 +1,5 @@
 import type { Expense, ItineraryDestination, ItineraryItem, Profile, RouteTravelMode, Segment, SegmentMember, SegmentVisibility, Settlement, Trip, TripMember } from '@/domain/models';
+import { shrinkAvatar } from '@/lib/avatar-image';
 import { getSupabaseClient } from '@/lib/supabase';
 import type { Database, Tables } from '@/types/database';
 
@@ -215,15 +216,12 @@ export async function updateProfile(
   let avatarPath = input.currentAvatarPath;
 
   if (input.avatar) {
-    const mimeType = input.avatar.mimeType === 'image/png' || input.avatar.mimeType === 'image/webp'
-      ? input.avatar.mimeType
-      : 'image/jpeg';
-    const extension = mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg';
-    const nextPath = `${userId}/avatar-${Date.now()}.${extension}`;
-    const file = await fetch(input.avatar.uri);
+    const avatar = await shrinkAvatar(input.avatar.uri, input.avatar.mimeType);
+    const nextPath = `${userId}/avatar-${Date.now()}.${avatar.extension}`;
+    const file = await fetch(avatar.uri);
     const body = await file.arrayBuffer();
     const { error: uploadError } = await client.storage.from('avatars').upload(nextPath, body, {
-      contentType: mimeType,
+      contentType: avatar.mimeType,
       upsert: false,
     });
     if (uploadError) throw uploadError;
