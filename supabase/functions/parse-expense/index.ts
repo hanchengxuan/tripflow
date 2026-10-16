@@ -1,3 +1,5 @@
+import { generateGemini } from '../_shared/gemini.ts';
+
 declare const Deno: {
   env: { get(name: string): string | undefined };
   serve(handler: (request: Request) => Response | Promise<Response>): void;
@@ -46,27 +48,6 @@ interface GeminiExpenseDraft {
   participantUserIds: string[];
   confidence: number;
   warnings: string[];
-}
-
-const geminiModels = ['gemini-3.1-flash-lite', 'gemini-flash-latest'] as const;
-
-async function findAvailableFlashModel(apiKey: string) {
-  const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=100', {
-    headers: { 'x-goog-api-key': apiKey },
-  });
-  if (!response.ok) return undefined;
-  const body = await response.json() as {
-    models?: { name?: string; supportedGenerationMethods?: string[] }[];
-  };
-  const candidates = (body.models ?? [])
-    .filter(({ name, supportedGenerationMethods }) =>
-      name?.includes('gemini-3') &&
-      name.includes('flash') &&
-      !/(live|image|tts|audio)/i.test(name) &&
-      supportedGenerationMethods?.includes('generateContent'))
-    .map(({ name }) => name?.replace(/^models\//, ''))
-    .filter((name): name is string => Boolean(name));
-  return candidates.find((name) => !/(preview|exp|latest)/i.test(name)) ?? candidates[0];
 }
 
 function json(body: unknown, status = 200) {
@@ -227,81 +208,30 @@ Deno.serve(async (request: Request) => {
         ? [{ inlineData: { mimeType: imageMimeType, data: imageBase64 } }, { text: prompt }]
         : [{ text: prompt }];
 
-    let geminiResponse: Response | undefined;
-    let selectedModel: string = geminiModels[0];
-    for (const model of geminiModels) {
-      selectedModel = model;
-      geminiResponse = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-        {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiApiKey },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: requestParts }],
-          generationConfig: {
-            responseMimeType: 'application/json',
-            responseSchema: {
-              type: 'object',
-              properties: {
-                title: { type: 'string', description: '简短中文支出名称，不含金额。' },
-                amount: { type: 'string', description: '正数十进制金额，不带币种符号，最多两位小数。' },
-                currency: { type: 'string', enum: supportedCurrencies },
-                payerUserId: { type: 'string', description: '付款人的精确 userId。' },
-                participantUserIds: { type: 'array', items: { type: 'string' }, description: '参与均分成员的精确 userId。' },
-                confidence: { type: 'number', minimum: 0, maximum: 1 },
-                warnings: { type: 'array', items: { type: 'string' }, maxItems: 4 },
-              },
-              required: ['title', 'amount', 'currency', 'payerUserId', 'participantUserIds', 'confidence', 'warnings'],
+    const { response: geminiResponse, model: selectedModel } = await generateGemini({
+      apiKey: geminiApiKey,
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: requestParts }],
+        generationConfig: {
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: 'object',
+            properties: {
+              title: { type: 'string', description: '简短中文支出名称，不含金额。' },
+              amount: { type: 'string', description: '正数十进制金额，不带币种符号，最多两位小数。' },
+              currency: { type: 'string', enum: supportedCurrencies },
+              payerUserId: { type: 'string', description: '付款人的精确 userId。' },
+              participantUserIds: { type: 'array', items: { type: 'string' }, description: '参与均分成员的精确 userId。' },
+              confidence: { type: 'number', minimum: 0, maximum: 1 },
+              warnings: { type: 'array', items: { type: 'string' }, maxItems: 4 },
             },
+            required: ['title', 'amount', 'currency', 'payerUserId', 'participantUserIds', 'confidence', 'warnings'],
           },
-        }),
         },
-      );
-      if (geminiResponse.status !== 404) break;
-    }
-
-    if (geminiResponse?.status === 404) {
-      const availableModel = await findAvailableFlashModel(geminiApiKey);
-      if (availableModel && !geminiModels.includes(availableModel as typeof geminiModels[number])) {
-        selectedModel = availableModel;
-        geminiResponse = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${availableModel}:generateContent`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiApiKey },
-            body: JSON.stringify({
-              contents: [{ role: 'user', parts: requestParts }],
-              generationConfig: {
-                responseMimeType: 'application/json',
-                responseSchema: {
-                  type: 'object',
-                  properties: {
-                    title: { type: 'string' }, amount: { type: 'string' },
-                    currency: { type: 'string', enum: supportedCurrencies },
-                    payerUserId: { type: 'string' },
-                    participantUserIds: { type: 'array', items: { type: 'string' } },
-                    confidence: { type: 'number', minimum: 0, maximum: 1 },
-                    warnings: { type: 'array', items: { type: 'string' }, maxItems: 4 },
-                  },
-                  required: ['title', 'amount', 'currency', 'payerUserId', 'participantUserIds', 'confidence', 'warnings'],
-                },
-              },
-            }),
-          },
-        );
-      }
-    }
-
-    if (!geminiResponse) throw new Error('No Gemini model request was made');
+      }),
+    });
 
     if (!geminiResponse.ok) {
-      const upstreamError = await geminiResponse.text();
-      console.error(
-        'Gemini request failed',
-        geminiResponse.status,
-        geminiResponse.statusText,
-        upstreamError.slice(0, 1_000),
-      );
       return json({
         error: 'AI 解析暂时不可用，请稍后重试或手动填写。',
         code: `AI_UPSTREAM_${geminiResponse.status}`,
