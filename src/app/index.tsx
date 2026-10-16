@@ -7,6 +7,7 @@ import { InfoCard } from '@/components/info-card';
 import { ItineraryComposerSheet } from '@/components/itinerary-composer-sheet';
 import { ItineraryHealthHint, ItineraryHealthSheet } from '@/components/itinerary-health-card';
 import { PollNudge } from '@/components/poll-nudge';
+import { TripChatEntry } from '@/components/trip-chat-entry';
 import { MoveItineraryCard } from '@/components/move-itinerary-card';
 import { NextUpCard } from '@/components/next-up-card';
 import { StayCard } from '@/components/stay-card';
@@ -413,6 +414,7 @@ export default function TodayScreen() {
       {success ? <InlineNotice>{success}</InlineNotice> : null}
 
       {activeTrip ? <PollNudge tripId={activeTrip.id} currentUserId={currentUserId} /> : null}
+      {activeTrip ? <TripChatEntry /> : null}
 
       {!activeTrip ? (
         <InfoCard label={tx('暂无行程', 'No trip yet')} title={tx('创建或加入共享行程', 'Create or join a shared trip')}>

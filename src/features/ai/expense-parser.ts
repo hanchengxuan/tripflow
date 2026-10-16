@@ -1,5 +1,5 @@
 import { currencyOptions } from '@/constants/options';
-import { getSupabaseClient } from '@/lib/supabase';
+import { invokeEdgeFunction } from '@/lib/edge-function';
 
 const supportedCurrencies = new Set<string>(currencyOptions.map(({ value }) => value));
 
@@ -44,19 +44,7 @@ export function validateAiExpenseDraft(value: unknown, memberIds: string[]): AiE
 }
 
 async function requestExpenseDraft(body: Record<string, string>, memberIds: string[]) {
-  const { data, error } = await getSupabaseClient().functions.invoke('parse-expense', { body });
-  if (error) {
-    const response = (error as { context?: Response }).context;
-    if (response) {
-      try {
-        const payload = await response.clone().json() as { error?: unknown };
-        if (typeof payload.error === 'string') throw new Error(payload.error);
-      } catch (caught) {
-        if (caught instanceof Error && /[㐀-鿿]/u.test(caught.message)) throw caught;
-      }
-    }
-    throw error;
-  }
+  const data = await invokeEdgeFunction<{ draft?: unknown } | null>('parse-expense', body);
   return validateAiExpenseDraft(data?.draft, memberIds);
 }
 
