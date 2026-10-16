@@ -6,12 +6,12 @@ Read the exact versioned docs at https://docs.expo.dev/versions/v57.0.0/ before 
 
 At the start of every TripFlow task:
 
-1. Read `PROJECT_CONTEXT.md` and `planning.md`.
-2. Check `git status --short --branch` and the latest commits.
+1. Read `PROJECT_CONTEXT.md` (current state, decisions, next steps, blockers). Read the relevant sections of `planning.md` when the task touches product scope.
+2. Check `git status --short --branch` and the latest commits. Git history is the record of what each PR did.
 3. If the request continues a Discord discussion and details are missing, recover the latest 50 messages from the `#tripflow` channel before making assumptions.
 4. Check the live Supabase migration list before changing database objects.
 
-After a meaningful milestone, update `PROJECT_CONTEXT.md` with the verified current state, next action, decisions, and blockers. Commit that update with the implementation. Keep the pinned `#tripflow` summary short and point it back to this file.
+`PROJECT_CONTEXT.md` describes the present, not a changelog. Edit it only when your change alters the current state, a standing decision, the next-milestone list, or a blocker or pending maintainer step. Edit the line that changed in place and delete lines that are no longer true. Never add a dated section, release evidence, or a summary of what a PR did; that belongs in the commit message and PR body. Keep the pinned `#tripflow` summary short and point it back to this file.
 
 Never record credentials, access tokens, database passwords, service-role keys, personal data, or private conversation details in project context.
 
@@ -58,7 +58,7 @@ Never record credentials, access tokens, database passwords, service-role keys, 
 All agents share this checkout, so never develop directly on `main` and never reset or discard another agent's work.
 
 1. Start from a fresh local view of `main`: inspect status and recent commits, then create a focused `codex/<short-topic>` branch.
-2. Every feature, fix, design slice, or workflow change gets its own focused `codex/<short-topic>` branch and its own PR. Keep one coherent change per branch/PR; do not batch unrelated features for a later merge. Commit implementation, tests, and the matching `PROJECT_CONTEXT.md` update together when they belong to the same milestone.
+2. Every feature, fix, design slice, or workflow change gets its own focused `codex/<short-topic>` branch and its own PR. Keep one coherent change per branch/PR; do not batch unrelated features for a later merge. Commit implementation, tests, and any `PROJECT_CONTEXT.md` state change together.
 3. Before pushing, fetch the latest `origin/main`, rebase the branch onto it, and resolve conflicts by preserving the newest compatible behavior from both sides. Run the relevant checks again after the rebase.
 4. Push the branch and open a non-draft PR with a concise summary, verification evidence, migration notes, and any known blockers. Do not claim a PR is mergeable until the live base branch and checks confirm it.
 5. As soon as required CI, preview, and review gates pass, merge that PR into `main` immediately; do not wait to bundle it with later work. Then update local refs and verify the production CD run for the merge commit. A feature is not complete until its production deployment and relevant smoke tests pass.
