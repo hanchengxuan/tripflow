@@ -1,5 +1,6 @@
 import type { SymbolViewProps } from 'expo-symbols';
 
+import type { ThemeColor } from '@/constants/theme';
 import type { ItineraryKind, TripRole } from '@/domain/models';
 
 const currencyNames: Record<string, [string, string]> = {
@@ -88,6 +89,24 @@ export const itineraryKindSymbols: Record<ItineraryKind, SymbolViewProps['name']
   activity: { ios: 'ticket.fill', android: 'local_activity', web: 'local_activity' },
   note: { ios: 'note.text', android: 'sticky_note_2', web: 'sticky_note_2' },
   task: { ios: 'checklist', android: 'checklist', web: 'checklist' },
+};
+
+export const itineraryKindColorKeys: Record<ItineraryKind, ThemeColor> = {
+  transport: 'kindTransport',
+  lodging: 'kindLodging',
+  food: 'kindFood',
+  activity: 'kindActivity',
+  task: 'kindTask',
+  note: 'kindNote',
+};
+
+export const itineraryKindSoftColorKeys: Record<ItineraryKind, ThemeColor> = {
+  transport: 'kindTransportSoft',
+  lodging: 'kindLodgingSoft',
+  food: 'kindFoodSoft',
+  activity: 'kindActivitySoft',
+  task: 'kindTaskSoft',
+  note: 'kindNoteSoft',
 };
 
 export const tripRoleLabels: Record<TripRole, string> = {

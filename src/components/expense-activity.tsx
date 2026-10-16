@@ -3,6 +3,7 @@ import { SymbolView } from 'expo-symbols';
 import { Fragment, useMemo } from 'react';
 import { Linking, Pressable, StyleSheet, View } from 'react-native';
 
+import { EmptyState } from '@/components/empty-state';
 import { ListDivider, ListSurface } from '@/components/list-surface';
 import { MemberAvatar } from '@/components/member-avatar';
 import { ThemedText } from '@/components/themed-text';
@@ -18,6 +19,7 @@ const settledSymbol = { ios: 'checkmark.circle.fill', android: 'check_circle', w
 const attachmentSymbol = { ios: 'paperclip', android: 'attach_file', web: 'attach_file' } as const;
 
 export function ExpenseActivity(props: {
+  onAddExpense: () => void;
   expenses: Expense[];
   itineraryItems: ItineraryItem[];
   timeZone: string;
@@ -41,9 +43,12 @@ export function ExpenseActivity(props: {
   const itemById = useMemo(() => new Map(props.itineraryItems.map((item) => [item.id, item])), [props.itineraryItems]);
   if (props.expenses.length === 0) {
     return (
-      <View style={[styles.quietEmpty, { borderTopColor: theme.border }]}>
-        <ThemedText style={styles.sectionTitle}>{tx('还没有支出', 'No expenses yet')}</ThemedText>
-      </View>
+      <EmptyState
+        symbol={{ ios: 'receipt', android: 'receipt_long', web: 'receipt_long' }}
+        title={tx('还没有支出', 'No expenses yet')}
+        actionLabel={tx('记一笔', 'Add expense')}
+        onAction={props.onAddExpense}
+      />
     );
   }
 
@@ -191,8 +196,6 @@ export function ExpenseActivity(props: {
 }
 
 const styles = StyleSheet.create({
-  quietEmpty: { gap: 4, paddingVertical: 22, borderTopWidth: StyleSheet.hairlineWidth },
-  sectionTitle: { fontSize: 20, lineHeight: 26, letterSpacing: -0.2 },
   activityWorkspace: { gap: 18 },
   day: { gap: 6 },
   dayLabel: { fontSize: 12, lineHeight: 17, fontWeight: '700', letterSpacing: 0.6, paddingHorizontal: 2 },

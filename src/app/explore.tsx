@@ -69,6 +69,7 @@ export default function TripsScreen() {
   const theme = useTheme();
   const { locale, formatDateTime, tx } = useI18n();
   const {
+    loading,
     trips, activeTrip, members, currentUserId, error,
     selectTrip, createTrip, joinTrip, createInvite, saveTrip, deleteTrip, setMemberRole, removeMember,
   } = useMvp();
@@ -250,7 +251,7 @@ export default function TripsScreen() {
     : [tx('还没有行程', 'No trips yet')];
 
   return (
-    <Screen context={context} title={tx('行程', 'Trips')}>
+    <Screen loading={loading && trips.length === 0} context={context} title={tx('行程', 'Trips')}>
       {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
       {success ? <InlineNotice>{success}</InlineNotice> : null}
       {tripOpener.openingTripId ? <ThemedText accessibilityLiveRegion="polite" type="small" themeColor="textSecondary">{tx('正在切换行程…', 'Switching trips…')}</ThemedText> : null}

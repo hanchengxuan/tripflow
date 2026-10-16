@@ -1,3 +1,4 @@
+import { SymbolView, type SymbolViewProps } from 'expo-symbols';
 import type { ReactNode } from 'react';
 import { Linking, Pressable, StyleSheet, View } from 'react-native';
 
@@ -18,19 +19,29 @@ export function routeTravelModeLabel(mode: RouteTravelMode, tx: (zh: string, en:
   }[mode];
 }
 
+export const routeTravelModeSymbols: Record<RouteTravelMode, SymbolViewProps['name']> = {
+  DRIVE: { ios: 'car.fill', android: 'directions_car', web: 'directions_car' },
+  TRANSIT: { ios: 'tram.fill', android: 'directions_transit', web: 'directions_transit' },
+  WALK: { ios: 'figure.walk', android: 'directions_walk', web: 'directions_walk' },
+  BICYCLE: { ios: 'bicycle', android: 'directions_bike', web: 'directions_bike' },
+};
+
 /** Compact travel summary: mode plus distance/duration, or why it is missing. */
-export function RouteEstimateChip({ accessibilityLabel, detail, expanded, modeLabel, onPress }: {
+export function RouteEstimateChip({ accessibilityLabel, detail, expanded, mode, modeLabel, onPress }: {
   accessibilityLabel?: string;
   detail: string;
   expanded?: boolean;
+  mode: RouteTravelMode;
+  /** Spoken mode name; the chip itself shows the mode's icon. */
   modeLabel: string;
   onPress?: () => void;
 }) {
   const theme = useTheme();
   const content: ReactNode = (
     <>
-      <ThemedText style={[styles.chipMode, { color: theme.info }]}>{modeLabel}</ThemedText>
-      <View style={[styles.separator, { backgroundColor: theme.info }]} />
+      <View accessible accessibilityLabel={modeLabel}>
+        <SymbolView name={routeTravelModeSymbols[mode]} size={16} tintColor={theme.info} />
+      </View>
       <ThemedText style={[styles.chipDetail, { color: theme.info }]}>{detail}</ThemedText>
     </>
   );
@@ -121,8 +132,6 @@ export function TransitPlan({
 
 const styles = StyleSheet.create({
   chip: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 7, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7 },
-  separator: { width: 3, height: 3, borderRadius: 2 },
-  chipMode: { fontSize: 12, lineHeight: 16, fontWeight: '600' },
   chipDetail: { fontSize: 12, lineHeight: 16, fontWeight: '500' },
   linkLabel: { fontSize: 12, lineHeight: 16, fontWeight: '600' },
   link: { minHeight: 42, flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 4, paddingVertical: 6 },

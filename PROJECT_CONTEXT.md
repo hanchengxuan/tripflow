@@ -451,3 +451,11 @@ Temporary acceptance fixtures are removed after each test; production may contai
 - Trips: the current-trip card shows a calendar icon with the dates and an avatar stack instead of the DATES/PEOPLE tiles, with no English duplicates (当前行程 ACTIVE). Each trip in 我的行程 has a calendar-leaf start-date badge (`TripDateBadge`) and "range · N 天 · currency". The header keeps only the trip count.
 - Plans: the instruction sentence under 全部安排 is gone, search is a `SearchField` with a magnifier and no visible label, the booking import button has an icon (`ActionButton` gained an optional `symbol`), and the header shows the trip time zone only when it differs from the device.
 - Avatar photos are served at full upload size (one is 3648 px wide), so small avatars load slowly; resizing on upload or using a storage image transform is a separate follow-up.
+
+## October 16 icons, transfers, empty states, and loading
+
+- Add plan: kind chips carry the kind's icon in its colour (`ChoiceChip` gained `symbol` / `symbolColor`). Kind colour keys now live once in `itineraryKindColorKeys` / `itineraryKindSoftColorKeys` (src/constants/options.ts) instead of being copied in Today and 安排.
+- Route segments: the chip shows the travel mode as an icon (`routeTravelModeSymbols`) with the name kept for screen readers, and the mode switch chips have icons too.
+- Settlement: transfers draw as payer avatar → recipient avatar (`TransferPair`) in "pay whom", the remaining-transfers panel, and a new list of what others owe you (it replaced a count sentence).
+- Empty states on Today, 安排, 地图 and 账本 use `EmptyState`: an icon, one line, and the action that fills the space (go to Trips, add plan, add expense).
+- First load shows `ContentSkeleton` via `Screen`'s `loading` prop (only while there is no trip data yet), so the "create or join a trip" empty state no longer flashes before data arrives. The pulse is skipped when reduce-motion is on. The login check still uses its spinner.

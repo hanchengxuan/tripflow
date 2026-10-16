@@ -100,7 +100,17 @@ export function ChoiceChip({
   disabled = false,
   role = 'checkbox',
   onPress,
-}: PropsWithChildren<{ selected: boolean; disabled?: boolean; role?: 'checkbox' | 'radio' | 'tab' | 'button'; onPress: () => void }>) {
+  symbol,
+  symbolColor,
+}: PropsWithChildren<{
+  selected: boolean;
+  disabled?: boolean;
+  role?: 'checkbox' | 'radio' | 'tab' | 'button';
+  onPress: () => void;
+  symbol?: SymbolViewProps['name'];
+  /** Icon colour while unselected, e.g. the plan kind's colour. */
+  symbolColor?: string;
+}>) {
   const theme = useTheme();
   return (
     <Pressable
@@ -111,7 +121,8 @@ export function ChoiceChip({
       disabled={disabled}
       hitSlop={4}
       onPress={onPress}
-      style={[styles.chip, { backgroundColor: selected ? theme.accent : theme.backgroundSubtle }, disabled && styles.dimmed]}>
+      style={[styles.chip, symbol && styles.chipWithSymbol, { backgroundColor: selected ? theme.accent : theme.backgroundSubtle }, disabled && styles.dimmed]}>
+      {symbol ? <SymbolView name={symbol} size={16} tintColor={selected ? theme.textOnAccent : symbolColor ?? theme.textSecondary} /> : null}
       <ThemedText style={[styles.chipLabel, selected && styles.chipLabelSelected, { color: selected ? theme.textOnAccent : theme.text }]}>
         {children}
       </ThemedText>
@@ -161,6 +172,7 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, minWidth: 0, fontSize: 16, lineHeight: 24, paddingVertical: 10 },
   dimmed: { opacity: 0.58 },
   chip: { height: 36, borderRadius: Radius.pill, paddingHorizontal: 14, justifyContent: 'center' },
+  chipWithSymbol: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingLeft: 11 },
   chipLabel: { fontSize: 14, lineHeight: 18, fontWeight: '500' },
   chipLabelSelected: { fontWeight: '600' },
   notice: {
