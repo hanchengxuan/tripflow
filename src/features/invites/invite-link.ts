@@ -14,7 +14,7 @@ function appUrl() {
   return configured?.startsWith('https://') ? configured.replace(/\/$/, '') : defaultAppUrl;
 }
 
-export function isInviteToken(value: string) {
+function isInviteToken(value: string) {
   return inviteTokenPattern.test(value.trim());
 }
 

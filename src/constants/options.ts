@@ -15,14 +15,14 @@ const currencyNames: Record<string, [string, string]> = {
   VND: ['越南盾', 'Vietnamese dong'], ZAR: ['南非兰特', 'South African rand'],
 };
 
-export const currencyCodes = Object.keys(currencyNames);
+const currencyCodes = Object.keys(currencyNames);
 export const currencyOptions = currencyCodes.map((value) => ({ value, label: `${currencyNames[value][0]}（${value}）` }));
 export const getCurrencyOptions = (english: boolean) => currencyCodes.map((value) => ({
   value,
   label: `${currencyNames[value][english ? 1 : 0]} (${value})`,
 }));
 
-export const timeZoneOptions = [
+const timeZoneOptions = [
   { value: 'Asia/Shanghai', label: '中国大陆（上海时间）' },
   { value: 'Asia/Hong_Kong', label: '中国香港' },
   { value: 'Asia/Macau', label: '中国澳门' },
