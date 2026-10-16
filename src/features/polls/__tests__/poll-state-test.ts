@@ -1,5 +1,5 @@
 import type { TripPoll } from '@/domain/models';
-import { cleanPollDraft, pollStatus, pollVoteAction, tallyPoll } from '@/features/polls/poll-state';
+import { canManagePoll, cleanPollDraft, pollStatus, pollVoteAction, tallyPoll } from '@/features/polls/poll-state';
 
 const poll: TripPoll = {
   id: 'poll', tripId: 'trip', createdBy: 'a', question: '晚饭吃什么？', createdAt: '2026-10-15T00:00:00Z',
@@ -19,6 +19,22 @@ test('a passed deadline stops voting until someone decides', () => {
 
 test('a decided poll stays decided even after its deadline', () => {
   expect(pollStatus({ ...poll, selectedOptionId: 'sushi', closesAt: '2026-10-15T11:00:00Z' }, now)).toBe('decided');
+});
+
+test('reopening a decided poll keeps its votes and returns it to open, or to expired once the deadline has passed', () => {
+  const decided = { ...poll, selectedOptionId: 'sushi' };
+  const reopened = { ...decided, selectedOptionId: undefined };
+  expect(pollStatus(reopened, now)).toBe('open');
+  expect(pollStatus({ ...reopened, closesAt: '2026-10-15T11:00:00Z' }, now)).toBe('expired');
+  expect(tallyPoll(reopened, 'c')).toEqual(tallyPoll(decided, 'c'));
+});
+
+test('only the poll creator or a trip owner or editor can manage a poll', () => {
+  expect(canManagePoll(poll, 'a', 'viewer')).toBe(true);
+  expect(canManagePoll(poll, 'z', 'owner')).toBe(true);
+  expect(canManagePoll(poll, 'z', 'editor')).toBe(true);
+  expect(canManagePoll(poll, 'z', 'viewer')).toBe(false);
+  expect(canManagePoll(poll, 'z', undefined)).toBe(false);
 });
 
 test('the tally counts votes per option in display order and finds the leader', () => {

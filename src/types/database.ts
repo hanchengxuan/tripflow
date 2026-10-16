@@ -1336,6 +1336,10 @@ export type Database = {
             }
             Returns: string
           }
+      reopen_trip_poll: {
+        Args: { requested_poll_id: string }
+        Returns: undefined
+      }
       set_expense_itinerary_item: {
         Args: {
           requested_expense_id: string

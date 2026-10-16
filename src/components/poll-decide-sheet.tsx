@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { BottomSheet } from '@/components/bottom-sheet';
-import { InlineNotice } from '@/components/form-controls';
+import { ActionButton, InlineNotice } from '@/components/form-controls';
 import { ListDivider, ListSurface } from '@/components/list-surface';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
@@ -17,16 +17,18 @@ interface PollDecideSheetProps {
   currentUserId: string;
   onDismiss: () => void;
   onDecide: (pollId: string, optionId: string) => Promise<void>;
+  onReopen: (pollId: string) => Promise<void>;
   onDelete: (pollId: string) => Promise<void>;
 }
 
-export function PollDecideSheet({ poll, currentUserId, onDismiss, onDecide, onDelete }: PollDecideSheetProps) {
+export function PollDecideSheet({ poll, currentUserId, onDismiss, onDecide, onReopen, onDelete }: PollDecideSheetProps) {
   const theme = useTheme();
   const { locale, tx } = useI18n();
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState<string>();
   const tally = poll ? tallyPoll(poll, currentUserId) : undefined;
+  const selected = poll?.options.find((option) => option.id === poll.selectedOptionId);
 
   const run = async (action: () => Promise<void>, fallback: string) => {
     setBusy(true);
@@ -43,28 +45,41 @@ export function PollDecideSheet({ poll, currentUserId, onDismiss, onDecide, onDe
   };
 
   return (
-    <BottomSheet title={tx('选定结果', 'Pick the result')} visible={Boolean(poll)} onDismiss={() => { setConfirmDelete(false); onDismiss(); }} dismissDisabled={busy}>
+    <BottomSheet title={selected ? tx('更改结果', 'Change the result') : tx('选定结果', 'Pick the result')} visible={Boolean(poll)} onDismiss={() => { setConfirmDelete(false); onDismiss(); }} dismissDisabled={busy}>
       {poll && tally ? (
         <View style={styles.body}>
           <ThemedText type="smallBold">{poll.question}</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">{tx('选定后投票结束，大家都会看到结果。', 'Picking a result ends the vote and shows it to everyone.')}</ThemedText>
-          <ListSurface>
-            {tally.options.map((option, index) => (
-              <View key={option.id}>
-                {index > 0 ? <ListDivider /> : null}
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={tx(`选定 ${option.label}，${option.count} 票`, `Pick ${option.label}, ${option.count} votes`)}
-                  disabled={busy}
-                  onPress={() => void run(() => onDecide(poll.id, option.id), tx('选定失败，请稍后重试。', 'Could not save the result. Try again later.'))}
-                  style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
-                  <ThemedText style={styles.grow}>{option.label}</ThemedText>
-                  {tally.leaderIds.includes(option.id) ? <ThemedText type="small" style={{ color: theme.accent }}>{tx('票数最多', 'Most votes')}</ThemedText> : null}
-                  <ThemedText type="smallBold">{tx(`${option.count} 票`, `${option.count} ${option.count === 1 ? 'vote' : 'votes'}`)}</ThemedText>
-                </Pressable>
-              </View>
-            ))}
-          </ListSurface>
+          {selected ? (
+            <>
+              <ThemedText type="small" themeColor="textSecondary">
+                {tx(`当前结果：${selected.label}。重新开放后结果会清除，所有投票都会保留。`, `Current result: ${selected.label}. Reopening clears it and keeps every vote.`)}
+              </ThemedText>
+              <ActionButton busy={busy} onPress={() => void run(() => onReopen(poll.id), tx('重新开放失败，请稍后重试。', 'Could not reopen the poll. Try again later.'))}>
+                {tx('重新开放投票', 'Reopen the poll')}
+              </ActionButton>
+            </>
+          ) : (
+            <>
+              <ThemedText type="small" themeColor="textSecondary">{tx('选定后投票结束，大家都会看到结果。', 'Picking a result ends the vote and shows it to everyone.')}</ThemedText>
+              <ListSurface>
+                {tally.options.map((option, index) => (
+                  <View key={option.id}>
+                    {index > 0 ? <ListDivider /> : null}
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={tx(`选定 ${option.label}，${option.count} 票`, `Pick ${option.label}, ${option.count} votes`)}
+                      disabled={busy}
+                      onPress={() => void run(() => onDecide(poll.id, option.id), tx('选定失败，请稍后重试。', 'Could not save the result. Try again later.'))}
+                      style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
+                      <ThemedText style={styles.grow}>{option.label}</ThemedText>
+                      {tally.leaderIds.includes(option.id) ? <ThemedText type="small" style={{ color: theme.accent }}>{tx('票数最多', 'Most votes')}</ThemedText> : null}
+                      <ThemedText type="smallBold">{tx(`${option.count} 票`, `${option.count} ${option.count === 1 ? 'vote' : 'votes'}`)}</ThemedText>
+                    </Pressable>
+                  </View>
+                ))}
+              </ListSurface>
+            </>
+          )}
           {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
           {confirmDelete ? (
             <View style={styles.confirm}>

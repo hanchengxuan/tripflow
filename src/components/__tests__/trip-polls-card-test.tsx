@@ -11,9 +11,10 @@ jest.mock('@/features/i18n/i18n-provider', () => ({ useI18n: () => ({ locale: 'e
 
 const mockVote = jest.fn(async () => {});
 const mockWithdraw = jest.fn(async () => {});
+const mockReopen = jest.fn(async () => {});
 let mockPolls: TripPoll[] = [];
 jest.mock('@/features/polls/use-trip-polls', () => ({
-  useTripPolls: () => ({ polls: mockPolls, refreshing: false, reload: jest.fn(), create: jest.fn(), vote: mockVote, withdraw: mockWithdraw, decide: jest.fn(), remove: jest.fn() }),
+  useTripPolls: () => ({ polls: mockPolls, refreshing: false, reload: jest.fn(), create: jest.fn(), vote: mockVote, withdraw: mockWithdraw, decide: jest.fn(), reopen: mockReopen, remove: jest.fn() }),
 }));
 
 const trip = { id: 'trip', defaultTimeZone: 'Asia/Tokyo' };
@@ -36,6 +37,7 @@ const pressables = () => tree.root.findAll((node) => typeof node.type !== 'strin
 const optionRows = () => [...new Map(pressables()
   .filter((node) => /votes?/.test(node.props.accessibilityLabel ?? ''))
   .map((node) => [node.props.accessibilityLabel, node])).values()];
+const pressText = (text: string) => act(async () => tree.root.findAll((node) => typeof node.props.onPress === 'function' && node.findAll((child) => child.props.children === text).length > 0).at(-1)?.props.onPress());
 const hasText = (text: string) => tree.root.findAll((node) => node.props.children === text).length > 0;
 
 beforeEach(() => { jest.clearAllMocks(); mockPolls = [open, decided]; });
@@ -100,4 +102,23 @@ it('draws each option as a share of the votes', () => {
   const fills = tree.root.findAll((node) => typeof node.type === 'string' && typeof node.props.style === 'object' && JSON.stringify(node.props.style).includes('"width":"'))
     .map((node) => JSON.stringify(node.props.style).match(/"width":"(\d+)%"/)?.[1]);
   expect(fills).toEqual(['67', '33']);
+});
+
+it('lets a manager reopen a decided poll from the sheet', async () => {
+  render('owner');
+  expect(hasText('Change the result')).toBe(true);
+  await pressText('Change the result');
+  expect(hasText('Current result: Udon. Reopening clears it and keeps every vote.')).toBe(true);
+  expect(hasText('Delete this poll')).toBe(true);
+  await pressText('Reopen the poll');
+  expect(mockReopen).toHaveBeenCalledWith('decided');
+});
+
+it('lets the poll creator reopen even as a viewer, but not other viewers', () => {
+  mockPolls = [decided];
+  render('viewer');
+  expect(hasText('Change the result')).toBe(false);
+  act(() => tree.unmount());
+  render('viewer', 'owner');
+  expect(hasText('Change the result')).toBe(true);
 });
