@@ -132,11 +132,15 @@ export function calculateBalancesInCurrency(
       continue;
     }
     for (const payer of expense.payers) {
-      const amount = payer.baseAmountMinor ?? Math.round(totalBaseMinor * payer.amountMinor / expense.totalMinor);
+      const amount = expense.baseCurrency?.toUpperCase() === normalizedCurrency
+        ? payer.baseAmountMinor ?? Math.round(totalBaseMinor * payer.amountMinor / expense.totalMinor)
+        : payer.amountMinor;
       balances.set(payer.userId, (balances.get(payer.userId) ?? 0) + amount);
     }
     for (const share of expense.shares) {
-      const amount = share.baseAmountMinor ?? Math.round(totalBaseMinor * share.amountMinor / expense.totalMinor);
+      const amount = expense.baseCurrency?.toUpperCase() === normalizedCurrency
+        ? share.baseAmountMinor ?? Math.round(totalBaseMinor * share.amountMinor / expense.totalMinor)
+        : share.amountMinor;
       balances.set(share.userId, (balances.get(share.userId) ?? 0) - amount);
     }
   }
