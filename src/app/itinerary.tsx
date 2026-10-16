@@ -12,7 +12,7 @@ import { DaySeparator, TimelineRow } from '@/components/timeline-rail';
 import { Screen } from '@/components/screen';
 import { SectionHeading } from '@/components/section-heading';
 import { ThemedText } from '@/components/themed-text';
-import { itineraryKindLabels, itineraryKindLabelsEn } from '@/constants/options';
+import { itineraryKindLabels, itineraryKindLabelsEn, itineraryKindSymbols } from '@/constants/options';
 import type { ThemeColor } from '@/constants/theme';
 import type { ItineraryItem, ItineraryKind } from '@/domain/models';
 import { useI18n } from '@/features/i18n/i18n-provider';
@@ -235,6 +235,7 @@ export default function ItineraryScreen() {
                         kindColor={theme[kindColorKeys[item.kind]]}
                         kindSoftColor={theme[kindSoftColorKeys[item.kind]]}
                         kindLabel={kindLabel(item.kind)}
+                        kindSymbol={itineraryKindSymbols[item.kind]}
                         last={index === filteredItems.length - 1}
                         onPress={canEdit ? () => openEditComposer(item) : undefined}
                       >
