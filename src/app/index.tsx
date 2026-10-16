@@ -7,7 +7,6 @@ import { InfoCard } from '@/components/info-card';
 import { ItineraryComposerSheet } from '@/components/itinerary-composer-sheet';
 import { ItineraryHealthHint, ItineraryHealthSheet } from '@/components/itinerary-health-card';
 import { PollNudge } from '@/components/poll-nudge';
-import { TripChatEntry } from '@/components/trip-chat-entry';
 import { MoveItineraryCard } from '@/components/move-itinerary-card';
 import { NextUpCard } from '@/components/next-up-card';
 import { StayCard } from '@/components/stay-card';
@@ -431,7 +430,6 @@ export default function TodayScreen() {
       {success ? <InlineNotice>{success}</InlineNotice> : null}
 
       {activeTrip ? <PollNudge tripId={activeTrip.id} currentUserId={currentUserId} /> : null}
-      {activeTrip ? <TripChatEntry /> : null}
 
       {activeTrip && currentTimestamp ? (
         <TripProgress startsOn={activeTrip.startsOn} endsOn={activeTrip.endsOn} timeZone={tripTimeZone} now={currentTimestamp} members={members} />

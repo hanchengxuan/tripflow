@@ -13,6 +13,20 @@ export type TripChatAction =
   | { type: 'add_plan'; kind: ItineraryKind; title: string; startLocal: string; endLocal: string; place?: string }
   | { type: 'add_expense'; title: string; amount: string; currency: string; payerUserId?: string; participantUserIds?: string[] };
 
+/** A proposal as shown in the conversation: what the plan looked like when it was proposed, and whether it was confirmed. */
+export interface TripChatProposal {
+  action: TripChatAction;
+  before?: Pick<ItineraryItem, 'title' | 'startsAt' | 'endsAt'>;
+  status: 'pending' | 'saved' | 'opened';
+}
+
+export function proposalsFromReply(actions: TripChatAction[], items: ItineraryItem[]): TripChatProposal[] {
+  return actions.map((action) => {
+    const item = action.type === 'update_plan' ? items.find(({ id }) => id === action.itemId) : undefined;
+    return { action, status: 'pending', ...(item ? { before: { title: item.title, startsAt: item.startsAt, endsAt: item.endsAt } } : {}) };
+  });
+}
+
 export interface TripChatReply {
   answer: string;
   actions: TripChatAction[];
@@ -68,8 +82,8 @@ export function validateTripChatReply(value: unknown, planIds: string[], memberI
   return { answer, actions };
 }
 
-export async function sendTripChat(input: { tripId: string; messages: TripChatMessage[]; planIds: string[]; memberIds: string[] }) {
-  const data = await invokeEdgeFunction<unknown>('ask-trip', { tripId: input.tripId, messages: input.messages.slice(-12) });
+export async function sendTripChat(input: { tripId: string; messages: TripChatMessage[]; planIds: string[]; memberIds: string[]; locale: 'zh-CN' | 'en' }) {
+  const data = await invokeEdgeFunction<unknown>('ask-trip', { tripId: input.tripId, messages: input.messages.slice(-12), locale: input.locale });
   return validateTripChatReply(data, input.planIds, input.memberIds);
 }
 

@@ -10,6 +10,7 @@ import {
 } from 'expo-router/ui';
 import { Platform, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { TabiButton } from '@/components/tabi-button';
 
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Size, Spacing } from '@/constants/theme';
@@ -46,6 +47,7 @@ export default function AppTabsCustom() {
           </TabTrigger>
         </CustomTabList>
       </TabList>
+      <TabiButton />
     </Tabs>
   );
 }
