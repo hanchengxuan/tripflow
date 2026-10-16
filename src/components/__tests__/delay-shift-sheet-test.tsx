@@ -1,9 +1,13 @@
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 
 import { DelayShiftSheet } from '@/components/delay-shift-sheet';
+import { ItineraryComposerSheet } from '@/components/itinerary-composer-sheet';
+import { SettingsRow } from '@/components/settings-list';
 import { ActionButton, ChoiceChip, InlineNotice } from '@/components/form-controls';
 import type { ItineraryItem } from '@/domain/models';
 
+jest.mock('@/components/location-field', () => ({ LocationField: () => null }));
+jest.mock('@/components/destination-field', () => ({ DestinationField: () => null }));
 jest.mock('@/global.css', () => ({}));
 jest.mock('react-native-safe-area-context', () => ({ useSafeAreaInsets: () => ({ top: 0, bottom: 0 }) }));
 jest.mock('@/features/i18n/i18n-provider', () => ({ useI18n: () => ({ locale: 'en', languageTag: 'en-US', tx: (_zh: string, en: string) => en }) }));
@@ -77,4 +81,24 @@ it('does not claim rollback when the update cannot be confirmed', async () => {
   expect(tree.root.findAllByType(InlineNotice).some((notice) => typeof notice.props.children === 'string')).toBe(true);
   expect(JSON.stringify(tree.toJSON())).not.toContain('Nothing was moved');
   expect(applyButton().props.busy).toBe(false);
+});
+
+it('keeps a failed delay visible when refreshed plan objects arrive', async () => {
+  const trip = { id: 't', createdBy: 'owner', name: 'Tokyo', startsOn: '2026-10-20', endsOn: '2026-10-25', homeCurrency: 'JPY', defaultTimeZone: 'Asia/Tokyo' };
+  const dismiss = jest.fn();
+  const props = { activeTrip: trip, itineraryItems: mockItems, onAdd: jest.fn(), onDelete: jest.fn(), onDismiss: dismiss, onExtendTrip: jest.fn(), onSave: jest.fn(), visible: true };
+  const settle = async () => act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+  await act(async () => { tree = create(<ItineraryComposerSheet {...props} editingItem={mockLunch} />); });
+  await settle();
+  act(() => tree.root.findAllByType(SettingsRow).find((row) => row.props.label === 'Delayed? Move later plans')?.props.onPress());
+  mockShift.mockRejectedValueOnce(new Error('offline'));
+  await act(async () => applyButton().props.onPress());
+  await act(async () => { tree.update(<ItineraryComposerSheet {...props} editingItem={{ ...mockLunch }} itineraryItems={mockItems.map((item) => ({ ...item }))} />); });
+  await settle();
+  expect(tree.root.findAllByType(DelayShiftSheet)).toHaveLength(1);
+  expect(JSON.stringify(tree.toJSON())).toContain('Could not confirm the update');
+  expect(dismiss).not.toHaveBeenCalled();
+  await act(async () => { tree.update(<ItineraryComposerSheet {...props} editingItem={mockMuseum} />); });
+  await settle();
+  expect(tree.root.findAllByType(DelayShiftSheet)).toHaveLength(0);
 });

@@ -1,5 +1,3 @@
--- Acceptance for shift_itinerary_items against a local Supabase stack.
--- Everything runs inside one transaction and is rolled back.
 \set ON_ERROR_STOP on
 begin;
 
@@ -48,21 +46,17 @@ values ('aaaaaaaa-0000-4000-8000-0000000000a3', :'trip_id', '11111111-1111-1111-
 
 \set delay '[{"itemId":"aaaaaaaa-0000-4000-8000-0000000000a2","fromStartsAt":"2026-10-20T09:30:00Z","fromEndsAt":"2026-10-20T20:30:00Z","startsAt":"2026-10-20T11:30:00Z","endsAt":"2026-10-20T22:30:00Z"},{"itemId":"aaaaaaaa-0000-4000-8000-0000000000a3","fromStartsAt":"2026-10-20T21:00:00Z","fromEndsAt":"2026-10-20T22:00:00Z","startsAt":"2026-10-20T23:00:00Z","endsAt":"2026-10-21T00:00:00Z"},{"itemId":"aaaaaaaa-0000-4000-8000-0000000000a1","fromStartsAt":"2026-10-20T22:00:00Z","fromEndsAt":"2026-10-23T02:00:00Z","startsAt":"2026-10-21T00:00:00Z","endsAt":"2026-10-23T02:00:00Z"}]'
 
--- A viewer cannot move plans.
 select pg_temp.act_as('22222222-2222-2222-2222-222222222222');
 select pg_temp.expect_error(format('select public.shift_itinerary_items(%L, %L::jsonb)', :'trip_id', :'delay'), 'Only owners and editors');
 
--- Moving a transfer without its hotel would break the arrival rule, so nothing is saved.
 select pg_temp.act_as('11111111-1111-1111-1111-111111111111');
 select pg_temp.expect_error(format('select public.shift_itinerary_items(%L, %L::jsonb)', :'trip_id',
   '[{"itemId":"aaaaaaaa-0000-4000-8000-0000000000a3","fromStartsAt":"2026-10-20T21:00:00Z","fromEndsAt":"2026-10-20T22:00:00Z","startsAt":"2026-10-20T23:00:00Z","endsAt":"2026-10-21T00:00:00Z"}]'), 'Hotel transfer arrival must match check-in');
 select pg_temp.check((select starts_at from public.itinerary_items where id = 'aaaaaaaa-0000-4000-8000-0000000000a3') = '2026-10-20T21:00:00Z', 'failed shift saves nothing');
 
--- A shift past the last trip day is refused.
 select pg_temp.expect_error(format('select public.shift_itinerary_items(%L, %L::jsonb)', :'trip_id',
   '[{"itemId":"aaaaaaaa-0000-4000-8000-0000000000a2","fromStartsAt":"2026-10-20T09:30:00Z","fromEndsAt":"2026-10-20T20:30:00Z","startsAt":"2026-10-25T14:00:00Z","endsAt":"2026-10-25T16:00:00Z"}]'), 'outside the trip dates');
 
--- Duplicate targets, changed durations, and hotel checkout changes fail atomically.
 select pg_temp.expect_error(format('select public.shift_itinerary_items(%L, %L::jsonb)', :'trip_id',
   '[{"itemId":"aaaaaaaa-0000-4000-8000-0000000000a2"},{"itemId":"aaaaaaaa-0000-4000-8000-0000000000a2"}]'), 'Each plan must appear once');
 select pg_temp.expect_error(format('select public.shift_itinerary_items(%L, %L::jsonb)', :'trip_id',
@@ -70,14 +64,12 @@ select pg_temp.expect_error(format('select public.shift_itinerary_items(%L, %L::
 select pg_temp.expect_error(format('select public.shift_itinerary_items(%L, %L::jsonb)', :'trip_id',
   '[{"itemId":"aaaaaaaa-0000-4000-8000-0000000000a1","fromStartsAt":"2026-10-20T22:00:00Z","fromEndsAt":"2026-10-23T02:00:00Z","startsAt":"2026-10-21T00:00:00Z","endsAt":"2026-10-23T03:00:00Z"}]'), 'hotel check-out');
 
--- The full delay moves flight, transfer and check-in together.
 select pg_temp.check(public.shift_itinerary_items(:'trip_id', :'delay'::jsonb) = 3, 'three plans moved');
 reset role;
 select pg_temp.check((select starts_at from public.itinerary_items where id = 'aaaaaaaa-0000-4000-8000-0000000000a1') = '2026-10-21T00:00:00Z', 'check-in follows the transfer');
 select pg_temp.check((select ends_at from public.itinerary_items where id = 'aaaaaaaa-0000-4000-8000-0000000000a1') = '2026-10-23T02:00:00Z', 'check-out is kept');
 select pg_temp.check((select count(*) from public.itinerary_items where linked_stay_id = 'aaaaaaaa-0000-4000-8000-0000000000a1') = 1, 'the linked transfer is kept');
 
--- Sending the same delay again is refused instead of moving the plans twice.
 select pg_temp.act_as('11111111-1111-1111-1111-111111111111');
 select pg_temp.expect_error(format('select public.shift_itinerary_items(%L, %L::jsonb)', :'trip_id', :'delay'), 'Plans changed since the preview');
 reset role;

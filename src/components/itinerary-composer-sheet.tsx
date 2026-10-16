@@ -161,10 +161,14 @@ export function ItineraryComposerSheet({
       setFormError(undefined);
       setPendingTripRange(undefined);
       setConfirmDeleteItem(false);
-      setDelaying(false);
     }, 0);
     return () => clearTimeout(timeout);
   }, [activeTrip.defaultTimeZone, activeTrip.homeCurrency, activeTrip.id, activeTrip.startsOn, editingItem, visible]);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => setDelaying(false), 0);
+    return () => clearTimeout(timeout);
+  }, [activeTrip.id, editingItem?.id, visible]);
 
   function updatePlanDate(value: string) {
     setDate(value);

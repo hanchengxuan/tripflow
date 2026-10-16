@@ -1,6 +1,3 @@
--- Applies a delay to several plans at once. Each shift names the times the client saw, so a
--- retry or a concurrent edit fails instead of moving a plan twice, and nothing is saved
--- unless every plan moves.
 create function private.shift_itinerary_items(requested_trip_id uuid, shifts jsonb)
 returns integer language plpgsql security definer set search_path = '' as $$
 declare
