@@ -458,3 +458,8 @@ Temporary acceptance fixtures are removed after each test; production may contai
 - Settlement: transfers draw as payer avatar → recipient avatar (`TransferPair`) in "pay whom", the remaining-transfers panel, and a new list of what others owe you (it replaced a count sentence).
 - Empty states on Today, 安排, 地图 and 账本 use `EmptyState`: an icon, one line, and the action that fills the space (go to Trips, add plan, add expense).
 - First load shows `ContentSkeleton` via `Screen`'s `loading` prop (only while there is no trip data yet), so the "create or join a trip" empty state no longer flashes before data arrives. The pulse is skipped when reduce-motion is on. The login check still uses its spinner.
+
+## October 16 ledger task row fix
+
+- "My tasks" rows put the payer → recipient avatar pair, the label, the amount and the Mark sent button side by side, so on phones the label collapsed to a few characters per line. Task rows now show the recipient's avatar, "Pay X" with the amount underneath (`SettingsRow` gained `subtitleColor`), and the button. The avatar pair stays only in the group panel, which has no button.
+- A payer removed before departures were archived (2026-08-11, before the balance guard and `trip_member_archives`) showed as "Traveller". `listLedgerMembers` now also names any expense or settlement participant who is neither a member nor archived from their profile (`unknownLedgerParticipants`).

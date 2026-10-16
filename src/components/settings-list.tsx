@@ -34,6 +34,7 @@ export function SettingsRow({
   leading,
   onPress,
   subtitle,
+  subtitleColor,
   value,
   valueColor,
 }: {
@@ -49,6 +50,8 @@ export function SettingsRow({
   leading?: ReactNode;
   onPress?: () => void;
   subtitle?: string;
+  /** Colour for a subtitle that carries a direction, like an amount owed. */
+  subtitleColor?: string;
   value?: string;
   /** Only where the value carries a direction — money owed out or owed in. */
   valueColor?: string;
@@ -59,7 +62,7 @@ export function SettingsRow({
       {leading}
       <View style={styles.copy}>
         <ThemedText themeColor={labelColor} style={styles.label}>{label}</ThemedText>
-        {subtitle ? <ThemedText type="small" themeColor="textSecondary">{subtitle}</ThemedText> : null}
+        {subtitle ? <ThemedText type={subtitleColor ? 'smallBold' : 'small'} themeColor="textSecondary" style={subtitleColor ? { color: subtitleColor } : null}>{subtitle}</ThemedText> : null}
       </View>
       {value ? (
         <ThemedText type="smallBold" themeColor="textSecondary" style={[styles.value, valueColor ? { color: valueColor } : null]}>{value}</ThemedText>

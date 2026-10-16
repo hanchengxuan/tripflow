@@ -188,7 +188,7 @@ export function SettlementWorkspace({
                   <View key={transferKey(transfer)}>
                     {index > 0 ? <SettingsDivider /> : null}
                     <SettingsRow
-                      leading={<TransferPair from={memberById.get(transfer.fromParticipantId)} to={memberById.get(currentUserId)} fromName={name} toName={tx('你', 'You')} />}
+                      leading={<MemberAvatar avatarUrl={memberById.get(transfer.fromParticipantId)?.avatarUrl} displayName={memberById.get(transfer.fromParticipantId)?.displayName ?? name} size={38} />}
                       label={tx(`${name} 待转给你`, `${name} owes you`)}
                       value={formatMinorAmount(transfer.amountMinor, baseCurrency)}
                       valueColor={theme.moneyIn}
@@ -208,10 +208,10 @@ export function SettlementWorkspace({
               <View key={transferKey(transfer)}>
                 {index > 0 ? <SettingsDivider /> : null}
                 <SettingsRow
-                  leading={<TransferPair from={memberById.get(currentUserId)} to={recipient} fromName={tx('你', 'You')} toName={name} />}
+                  leading={<MemberAvatar avatarUrl={recipient?.avatarUrl} displayName={recipient?.displayName ?? name} size={38} />}
                   label={tx(`转给 ${name}`, `Pay ${name}`)}
-                  value={formatMinorAmount(transfer.amountMinor, baseCurrency)}
-                  valueColor={theme.moneyOut}
+                  subtitle={formatMinorAmount(transfer.amountMinor, baseCurrency)}
+                  subtitleColor={theme.moneyOut}
                   control={
                     <ActionButton
                       size="compact"
