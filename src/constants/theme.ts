@@ -218,4 +218,3 @@ export const Size = {
   railGutter: 46,
   screenGutter: 20,
 } as const;
-
