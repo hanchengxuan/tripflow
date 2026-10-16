@@ -21,8 +21,10 @@ interface VoiceRecordingControlProps {
   recordingLabel: string;
   processingLabel: string;
   failureMessage: string;
+  /** Adds a discard button to `render` while recording. */
+  cancelLabel?: string;
   onAudioReady: (audioBase64: string, audioMimeType: string) => Promise<void>;
-  render?: (button: ReactNode, feedback: ReactNode, active: boolean) => ReactNode;
+  render?: (button: ReactNode, feedback: ReactNode, active: boolean, cancel: ReactNode) => ReactNode;
 }
 
 export function VoiceRecordingControl({
@@ -32,6 +34,7 @@ export function VoiceRecordingControl({
   recordingLabel,
   processingLabel,
   failureMessage,
+  cancelLabel,
   onAudioReady,
   render,
 }: VoiceRecordingControlProps) {
@@ -92,6 +95,13 @@ export function VoiceRecordingControl({
     }
   }
 
+  async function cancelRecording() {
+    setError(undefined);
+    recordingRef.current = false;
+    await recorder.stop().catch(() => undefined);
+    await setAudioModeAsync({ allowsRecording: false }).catch(() => undefined);
+  }
+
   const recording = state.isRecording;
   const busy = disabled || processing;
   const button = (
@@ -118,7 +128,16 @@ export function VoiceRecordingControl({
         {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
       </>
     );
-    return render(button, feedback, recording || processing);
+    const cancel = cancelLabel && recording ? (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={cancelLabel}
+        onPress={() => void cancelRecording()}
+        style={({ pressed }) => [styles.button, { backgroundColor: theme.backgroundSubtle }, pressed && styles.pressed]}>
+        <SymbolView name={{ ios: 'xmark', android: 'close', web: 'close' }} size={16} tintColor={theme.textSecondary} />
+      </Pressable>
+    ) : null;
+    return render(button, feedback, recording || processing, cancel);
   }
   return (
     <View style={styles.root}>

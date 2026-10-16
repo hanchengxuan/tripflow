@@ -89,6 +89,12 @@ export async function sendTripChat(input: { tripId: string; messages: TripChatMe
 
 const toIso = (local: string, timeZone: string) => zonedDateTimeToIso(local.slice(0, 10), local.slice(11, 16), timeZone);
 
+export async function transcribeTripChat(input: { tripId: string; audioBase64: string; audioMimeType: string }) {
+  const data = await invokeEdgeFunction<{ transcript?: unknown }>('ask-trip', { ...input, mode: 'transcribe' });
+  if (typeof data?.transcript !== 'string' || !data.transcript.trim()) throw new Error('Transcript is unavailable');
+  return data.transcript.trim();
+}
+
 export function planTimeZone(item: Pick<ItineraryItem, 'destination'> | undefined, trip: Pick<Trip, 'defaultTimeZone'>) {
   return item?.destination?.timeZone ?? trip.defaultTimeZone;
 }

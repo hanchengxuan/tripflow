@@ -1,5 +1,9 @@
 import type { ItineraryItem } from '@/domain/models';
-import { planChangeFromAction, proposalsFromReply, validateTripChatReply } from '@/features/ai/trip-chat';
+import { planChangeFromAction, proposalsFromReply, transcribeTripChat, validateTripChatReply } from '@/features/ai/trip-chat';
+import { invokeEdgeFunction } from '@/lib/edge-function';
+
+jest.mock('@/lib/edge-function', () => ({ invokeEdgeFunction: jest.fn() }));
+const mockInvoke = jest.mocked(invokeEdgeFunction);
 
 const trip = { defaultTimeZone: 'Asia/Tokyo' };
 const lunch = { id: 'lunch', tripId: 't', kind: 'food', title: 'Lunch', startsAt: '2026-11-14T03:00:00Z', endsAt: '2026-11-14T04:00:00Z', routeTravelMode: 'WALK', locationLabel: 'Dotonbori' } as ItineraryItem;
@@ -70,5 +74,18 @@ describe('proposalsFromReply', () => {
       before: { title: 'Lunch', startsAt: lunch.startsAt, endsAt: lunch.endsAt },
       status: 'pending',
     });
+  });
+});
+
+describe('transcribeTripChat', () => {
+  test('asks ask-trip to transcribe and returns the trimmed text', async () => {
+    mockInvoke.mockResolvedValueOnce({ transcript: '  午饭推迟半小时 ' });
+    await expect(transcribeTripChat({ tripId: 't', audioBase64: 'AAA', audioMimeType: 'audio/webm' })).resolves.toBe('午饭推迟半小时');
+    expect(mockInvoke).toHaveBeenCalledWith('ask-trip', { tripId: 't', audioBase64: 'AAA', audioMimeType: 'audio/webm', mode: 'transcribe' });
+  });
+
+  test('rejects an empty transcript so the recorder shows its retry message', async () => {
+    mockInvoke.mockResolvedValueOnce({ transcript: ' ' });
+    await expect(transcribeTripChat({ tripId: 't', audioBase64: 'AAA', audioMimeType: 'audio/webm' })).rejects.toThrow();
   });
 });
