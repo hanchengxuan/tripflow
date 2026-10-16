@@ -29,6 +29,12 @@ test('no fix is offered when moving the plan would collide with the next one', (
   expect(suggestHealthFix(issue('BUFFER', ['transfer', 'museum']), [transfer, museum, next], trip)).toBeUndefined();
 });
 
+test('a stay around the plans does not block the move', () => {
+  const overlapping = { ...museum, startsAt: '2026-10-21T05:30:00Z' };
+  const fix = suggestHealthFix(issue('CONFLICT', ['transfer', 'museum']), [transfer, overlapping, hotel], trip);
+  expect(fix?.candidate).toMatchObject({ startsAt: '2026-10-21T06:30:00.000Z', endsAt: '2026-10-21T09:00:00.000Z' });
+});
+
 test('no fix is offered when the move would leave the trip dates', () => {
   const lastNight = { ...transfer, startsAt: '2026-10-25T13:00:00Z', endsAt: '2026-10-25T14:50:00Z' };
   const late = { ...museum, startsAt: '2026-10-25T14:55:00Z', endsAt: '2026-10-25T14:58:00Z' };

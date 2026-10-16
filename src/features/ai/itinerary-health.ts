@@ -78,6 +78,11 @@ export function validateItineraryHealthReport(value: unknown, itemIds: string[],
   };
 }
 
+/** A stay spans whole nights, so it only competes for time with another stay, not with the plans inside it. */
+export function competesForTime(left: ItineraryItem, right: ItineraryItem) {
+  return (left.kind === 'lodging') === (right.kind === 'lodging');
+}
+
 function dateKey(value: string) {
   return value.slice(0, 10);
 }
@@ -88,7 +93,9 @@ function localHealthReport(items: ItineraryItem[], locale: AppLocale): Itinerary
   const issues: ItineraryHealthIssue[] = [];
   const requiredLocationKinds = new Set(['transport', 'lodging', 'food', 'activity']);
 
-  scopedItems.forEach((item, index) => {
+  const previousInLane = new Map<boolean, ItineraryItem>();
+
+  scopedItems.forEach((item) => {
     if (requiredLocationKinds.has(item.kind) && !item.locationLabel?.trim() && !item.googlePlaceId) {
       issues.push({
         id: `missing-location-${item.id}`,
@@ -100,7 +107,9 @@ function localHealthReport(items: ItineraryItem[], locale: AppLocale): Itinerary
         confidence: 1,
       });
     }
-    const previous = scopedItems[index - 1];
+    const lane = item.kind === 'lodging';
+    const previous = previousInLane.get(lane);
+    previousInLane.set(lane, item);
     if (!previous?.endsAt) return;
     const previousEnd = new Date(previous.endsAt).getTime();
     const currentStart = new Date(item.startsAt).getTime();

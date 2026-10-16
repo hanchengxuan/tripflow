@@ -48,6 +48,23 @@ describe('itinerary health checks', () => {
     expect(report.issues.some(({ type }) => type === 'BUFFER')).toBe(false);
   });
 
+  it('treats a multi-night stay as a backdrop, not a clash with the plans inside it', async () => {
+    const stay = item({ id: 'stay', kind: 'lodging', title: 'Hotel', locationLabel: 'Hotel', startsAt: '2026-08-14T06:00:00.000Z', endsAt: '2026-08-17T02:00:00.000Z' });
+    const museum = item({ id: 'museum', locationLabel: 'Museum', startsAt: '2026-08-14T05:00:00.000Z', endsAt: '2026-08-14T08:00:00.000Z' });
+    const dinner = item({ id: 'dinner', kind: 'food', locationLabel: 'Izakaya', startsAt: '2026-08-14T07:30:00.000Z', endsAt: '2026-08-14T09:00:00.000Z' });
+    const report = await analyzeItineraryHealth({ locale: 'en', items: [stay, museum, dinner] });
+
+    expect(report.issues.filter(({ type }) => type === 'CONFLICT').map(({ itemIds }) => itemIds)).toEqual([['museum', 'dinner']]);
+  });
+
+  it('still flags two stays that overlap', async () => {
+    const first = item({ id: 'first', kind: 'lodging', locationLabel: 'A', startsAt: '2026-08-14T06:00:00.000Z', endsAt: '2026-08-17T02:00:00.000Z' });
+    const second = item({ id: 'second', kind: 'lodging', locationLabel: 'B', startsAt: '2026-08-16T06:00:00.000Z', endsAt: '2026-08-18T02:00:00.000Z' });
+    const report = await analyzeItineraryHealth({ locale: 'en', items: [first, second] });
+
+    expect(report.issues).toEqual([expect.objectContaining({ type: 'CONFLICT', itemIds: ['first', 'second'] })]);
+  });
+
   it('limits a report to known item IDs and bounded fields', () => {
     const report = validateItineraryHealthReport({
       summary: ' '.repeat(400),
