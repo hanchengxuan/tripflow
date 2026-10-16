@@ -1,3 +1,4 @@
+import { SymbolView } from 'expo-symbols';
 import { useState } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
@@ -13,7 +14,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { convertMinorAmount, currencyAmountPlaceholder, currencyMinorDigits, formatMinorAmount, parseAmountToMinor, parseExchangeRate } from '@/domain/ledger';
 import type { SettlementTransfer } from '@/domain/money';
-import type { Settlement, TripMember } from '@/domain/models';
+import type { Expense, Settlement, TripMember } from '@/domain/models';
 import { useI18n } from '@/features/i18n/i18n-provider';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -67,6 +68,7 @@ export function SettlementWorkspace({
   completeTransfer,
   currencyOptions,
   currentUserId,
+  expenses,
   hasCompleteConversions,
   memberById,
   myIncomingTransfers,
@@ -85,6 +87,7 @@ export function SettlementWorkspace({
   completeTransfer: (transfer: Transfer) => Promise<boolean>;
   currencyOptions: { label: string; value: string }[];
   currentUserId: string;
+  expenses: Expense[];
   hasCompleteConversions: boolean;
   memberById: Map<string, TripMember>;
   myIncomingTransfers: Transfer[];
@@ -105,6 +108,10 @@ export function SettlementWorkspace({
   const mySettlements = settlements.filter(({ fromUserId, toUserId }) => fromUserId === currentUserId || toUserId === currentUserId);
   const pendingOut = sumTransfers(summaryTransfers, 'from', currentUserId);
   const pendingIn = sumTransfers(summaryTransfers, 'to', currentUserId);
+  const settled = pendingOut === 0 && pendingIn === 0 && myPendingTransfers.length === 0 && myIncomingTransfers.length === 0;
+  const spentMinor = expenses.reduce((sum, expense) => sum + (
+    expense.currency === baseCurrency ? expense.totalMinor : expense.baseCurrency === baseCurrency ? expense.baseAmountMinor ?? 0 : 0
+  ), 0);
   const currencyTransfer = myPendingTransfers.find((transfer) => transferKey(transfer) === currencyKey);
   const draftFor = (transfer: Transfer) =>
     settlementDrafts[transferKey(transfer)]
@@ -116,19 +123,29 @@ export function SettlementWorkspace({
         <ThemedText themeColor="textSecondary">
           {tx('记录第一笔共同支出后，这里会生成结算待办。', 'Add the first shared expense to create settlement tasks.')}
         </ThemedText>
+      ) : settled ? (
+        <View style={styles.settled}>
+          <SymbolView name={{ ios: 'checkmark.circle.fill', android: 'check_circle', web: 'check_circle' }} size={28} tintColor={theme.moneyIn} />
+          <View style={styles.settledText}>
+            <ThemedText type="smallBold">{pendingTransfers.length === 0 ? tx('全部结清', 'All settled') : tx('你已结清', 'You are settled')}</ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              {tx(`${expenses.length} 笔支出 · 合计 ${formatMinorAmount(spentMinor, baseCurrency)}`, `${expenses.length} ${expenses.length === 1 ? 'expense' : 'expenses'} · ${formatMinorAmount(spentMinor, baseCurrency)} total`)}
+            </ThemedText>
+          </View>
+        </View>
       ) : (
         <View style={styles.summary}>
           <BalanceBar
-            outLabel={tx('你要付 TO SEND', 'TO SEND')}
+            outLabel={tx('你要付', 'To send')}
             outAmount={formatMinorAmount(pendingOut, baseCurrency)}
             outValue={pendingOut}
-            inLabel={tx('该收 TO RECEIVE', 'TO RECEIVE')}
+            inLabel={tx('该收', 'To receive')}
             inAmount={formatMinorAmount(pendingIn, baseCurrency)}
             inValue={pendingIn}
-            footnote={tx(
-              `净额 Net ${formatMinorAmount(pendingIn - pendingOut, baseCurrency)} · ${mySettlements.length} 笔已完成`,
-              `Net ${formatMinorAmount(pendingIn - pendingOut, baseCurrency)} · ${mySettlements.length} completed`,
-            )}
+            footnote={[
+              tx(`净额 ${formatMinorAmount(pendingIn - pendingOut, baseCurrency)}`, `Net ${formatMinorAmount(pendingIn - pendingOut, baseCurrency)}`),
+              mySettlements.length > 0 ? tx(`${mySettlements.length} 笔已完成`, `${mySettlements.length} completed`) : '',
+            ].filter(Boolean).join(' · ')}
           />
           {!hasCompleteConversions ? (
             <InlineNotice>
@@ -137,15 +154,22 @@ export function SettlementWorkspace({
           ) : null}
         </View>
       )}
+      {settled && balanceSnapshots.length > 0 && !hasCompleteConversions ? (
+        <InlineNotice>
+          {tx('部分外币支出缺少汇率；上方仅汇总已换算金额。', 'Some foreign-currency expenses need a rate; the summary includes converted amounts only.')}
+        </InlineNotice>
+      ) : null}
 
       {/* The heading says what the section is. The sentence explaining how the
           two tabs differ has gone the way of the ones on Plans and the map. */}
-      <SectionHeading
-        title={tx('我的待办', 'My tasks')}
-        trailing={<ThemedText type="small" themeColor="textSecondary">{tx(`${myPendingTransfers.length} 笔`, `${myPendingTransfers.length}`)}</ThemedText>}
-      />
+      {settled ? null : (
+        <SectionHeading
+          title={tx('我的待办', 'My tasks')}
+          trailing={<ThemedText type="small" themeColor="textSecondary">{tx(`${myPendingTransfers.length} 笔`, `${myPendingTransfers.length}`)}</ThemedText>}
+        />
+      )}
 
-      {myPendingTransfers.length === 0 ? (
+      {settled ? null : myPendingTransfers.length === 0 ? (
         <View style={styles.empty}>
           <ThemedText type="smallBold">{tx('待转出已清空', 'Nothing to send')}</ThemedText>
           {myIncomingTransfers.length > 0 ? (
@@ -196,12 +220,16 @@ export function SettlementWorkspace({
             <SettingsDivider />
           </>
         ) : null}
-        <SettingsRow
-          label={tx('已完成', 'Completed')}
-          value={tx(`${mySettlements.length} 笔`, `${mySettlements.length}`)}
-          onPress={mySettlements.length > 0 ? () => setPanel('completed') : undefined}
-        />
-        <SettingsDivider />
+        {mySettlements.length > 0 ? (
+          <>
+            <SettingsRow
+              label={tx('已完成', 'Completed')}
+              value={tx(`${mySettlements.length} 笔`, `${mySettlements.length}`)}
+              onPress={() => setPanel('completed')}
+            />
+            <SettingsDivider />
+          </>
+        ) : null}
         <SettingsRow
           label={tx('全员结算', 'Group settlement')}
           value={tx(`${names.size} 人 · ${balanceSnapshots.length} 种币种`, `${names.size} ${names.size === 1 ? 'person' : 'people'} · ${balanceSnapshots.length} ${balanceSnapshots.length === 1 ? 'currency' : 'currencies'}`)}
@@ -407,6 +435,8 @@ function SettlementPaymentEditor({
 const styles = StyleSheet.create({
   workspace: { gap: Spacing.md },
   summary: { gap: Spacing.sm, paddingVertical: Spacing['2xs'] },
+  settled: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingVertical: Spacing.sm },
+  settledText: { flex: 1, gap: 2 },
   empty: { gap: Spacing['2xs'], paddingVertical: Spacing.lg },
   panel: { width: '100%', gap: Spacing.md },
   group: { gap: Spacing.xs },
