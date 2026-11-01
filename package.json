@@ -40,7 +40,8 @@
     "react-native-svg": "15.15.4",
     "react-native-web": "~0.21.0",
     "react-native-worklets": "0.10.1",
-    "sprintf-js": "file:vendor/security-patches/sprintf-js"
+    "sprintf-js": "file:vendor/security-patches/sprintf-js",
+    "decode-uri-component": "file:vendor/security-patches/decode-uri-component"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
@@ -58,7 +59,11 @@
   "overrides": {
     "node-forge": "$node-forge",
     "braces": "$braces",
-    "sprintf-js": "$sprintf-js"
+    "sprintf-js": "$sprintf-js",
+    "decode-uri-component": "$decode-uri-component",
+    "@expo/cli": {
+      "zod": "4.6.6"
+    }
   },
   "scripts": {
     "start": "expo start",

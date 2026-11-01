@@ -1,6 +1,6 @@
 # Maintained dependency security backports
 
-These three packages are narrow local forks of their upstream npm sources. Each
+These packages are narrow local forks of their upstream npm sources. Each
 fork keeps the upstream license and changes only the affected runtime source.
 The package versions below are TripFlow compatibility versions, not releases
 published by the upstream maintainers. Regression tests exercise the reported
@@ -11,6 +11,10 @@ failure modes through the same public entry points used by the dependency tree.
 | `node-forge` | 1.4.0 | 1.4.1 | GHSA-86W9-CPQP-85RV | Require the nested RSA `DigestAlgorithm` ASN.1 sequence to contain exactly its OID and optional NULL, following [upstream PR #1152](https://github.com/digitalbazaar/forge/pull/1152). |
 | `braces` | 3.0.3 | 3.0.4 | GHSA-VFJ7-8CJW-P6XM | Reject brace or parenthesis AST nesting deeper than 256 before recursive compile/expand walkers run. |
 | `sprintf-js` | 1.0.3 | 1.1.4 | GHSA-HP3W-G68C-FV3C | Clamp numeric precision to JavaScript's supported maximum of 100 and normalize `%g` precision zero to one. |
+
+| `decode-uri-component` | 0.5.1 | 0.5.1 | GHSA-VCC3-GHJQ-M6FR, GHSA-QR28-FPJM-WQ7F | Use the upstream single-pass decoder with a CommonJS export and retain the legacy plus-to-space behavior required by existing callers. |
+
+Expo CLI alone resolves Zod 4.6.6 through a scoped override for GHSA-MRHX-C7XC-M3W5. Regression tests call its actual plugin and command schemas to verify compatibility; other consumers may deduplicate when their declared version range supports it.
 
 Review upstream release notes for every dependency update. Replace each local
 override with an upstream release only after confirming that it includes the
