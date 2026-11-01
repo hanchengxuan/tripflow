@@ -75,6 +75,12 @@ describe('proposalsFromReply', () => {
       status: 'pending',
     });
   });
+
+  test('keeps the server read basis instead of replacing it with a newer client snapshot', () => {
+    const before = { title: lunch.title, startsAt: lunch.startsAt, endsAt: lunch.endsAt, timeZone: 'Asia/Tokyo' };
+    const reply = validateTripChatReply({ answer: 'Review this', actions: [{ type: 'update_plan', itemId: 'lunch', title: 'Ramen', before }] }, ['lunch'], []);
+    expect(proposalsFromReply(reply.actions, [{ ...lunch, title: 'Newer title' }])[0].before).toEqual(before);
+  });
 });
 
 describe('transcribeTripChat', () => {
@@ -105,4 +111,19 @@ describe('sendTripChat', () => {
     await sendTripChat(base);
     expect(mockInvoke).toHaveBeenLastCalledWith('ask-trip', { tripId: 't', messages: base.messages, locale: 'en' });
   });
+});
+
+
+test('keeps validated run metadata and drops invalid run metadata', () => {
+  expect(validateTripChatReply({ answer: 'Partial', run: { status: 'limited', steps: 3, toolCalls: 2 }, warnings: ['provider unavailable', 42] }, [], [])).toEqual({
+    answer: 'Partial', actions: [], run: { status: 'limited', steps: 3, toolCalls: 2 }, warnings: ['provider unavailable'],
+  });
+  expect(validateTripChatReply({ answer: 'OK', run: { status: 'completed', steps: -1, toolCalls: 0 } }, [], [])).toEqual({ answer: 'OK', actions: [] });
+});
+
+test('passes the cancellation signal to the edge function', async () => {
+  mockInvoke.mockResolvedValueOnce({ answer: 'OK', actions: [] });
+  const controller = new AbortController();
+  await sendTripChat({ tripId: 't', messages: [{ role: 'user', text: 'Next?' }], planIds: [], memberIds: [], locale: 'en', signal: controller.signal });
+  expect(mockInvoke).toHaveBeenLastCalledWith('ask-trip', expect.objectContaining({ tripId: 't' }), { signal: controller.signal });
 });

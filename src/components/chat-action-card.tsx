@@ -1,6 +1,6 @@
 import { SymbolView, type SymbolViewProps } from 'expo-symbols';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { ActionButton, InlineNotice } from '@/components/form-controls';
@@ -26,6 +26,7 @@ export function ChatActionCard({ proposal, onStatus }: { proposal: TripChatPropo
   const { languageTag, locale, tx } = useI18n();
   const { activeTrip, itineraryItems, members, currentUserId, saveItineraryItem, addItineraryItem } = useMvp();
   const [busy, setBusy] = useState(false);
+  const confirming = useRef(false);
   const [error, setError] = useState<string>();
   if (!activeTrip) return null;
 
@@ -48,6 +49,12 @@ export function ChatActionCard({ proposal, onStatus }: { proposal: TripChatPropo
     heading = original?.title ?? tx('安排', 'Plan');
     if (!item || !original) {
       blocked = tx('这项安排已不存在。', 'This plan no longer exists.');
+    } else if (proposal.status === 'pending' && proposal.before && (
+      proposal.before.title !== item.title || Date.parse(proposal.before.startsAt) !== Date.parse(item.startsAt)
+      || (proposal.before.endsAt ? Date.parse(proposal.before.endsAt) : undefined) !== (item.endsAt ? Date.parse(item.endsAt) : undefined)
+      || proposal.before.timeZone && proposal.before.timeZone !== planTimeZone(item, activeTrip)
+    )) {
+      blocked = tx('这项安排已更新，请让小途重新建议。', 'This plan changed. Ask Tabi for a fresh suggestion.');
     } else {
       try {
         const timeZone = planTimeZone(item, activeTrip);
@@ -98,13 +105,15 @@ export function ChatActionCard({ proposal, onStatus }: { proposal: TripChatPropo
   }
 
   const confirm = async () => {
-    if (!run) return;
+    if (!run || blocked || confirming.current || proposal.status !== 'pending') return;
+    confirming.current = true;
     setBusy(true);
     setError(undefined);
     try {
       await run();
       onStatus(action.type === 'add_expense' ? 'opened' : 'saved');
     } catch (caught) {
+      confirming.current = false;
       setError(toUserMessage(caught, tx('没能保存，请稍后重试。', 'Could not save. Try again later.'), locale));
     } finally {
       setBusy(false);

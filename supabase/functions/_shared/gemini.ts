@@ -12,17 +12,25 @@ function retryDelay(response: Response, attempt: number) {
   return 750 * 2 ** attempt + Math.floor(Math.random() * 250);
 }
 
-export async function generateGemini({ apiKey, body, model = primaryModel }: {
+export async function generateGemini({ apiKey, body, model = primaryModel, signal, allowFallback = true, maxAttempts = 3 }: {
   apiKey: string;
   body: string;
   model?: string;
+  signal?: AbortSignal;
+  allowFallback?: boolean;
+  maxAttempts?: number;
 }) {
-  const models = [...new Set([model, ...fallbackModels])];
+  const models = [...new Set([model, ...(allowFallback ? fallbackModels : [])])].slice(0, maxAttempts);
   let lastResponse = new Response(null, { status: 504 });
   let selectedModel = model;
+  let attempts = 0;
   for (const [attempt, candidate] of models.entries()) {
+    signal?.throwIfAborted();
+    attempts += 1;
     selectedModel = candidate;
     const controller = new AbortController();
+    const abort = () => controller.abort();
+    signal?.addEventListener('abort', abort, { once: true });
     const timeout = setTimeout(() => controller.abort(), attemptTimeoutMs);
     try {
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${candidate}:generateContent`, {
@@ -35,14 +43,20 @@ export async function generateGemini({ apiKey, body, model = primaryModel }: {
       lastResponse = new Response(null, { status: 504 });
     } finally {
       clearTimeout(timeout);
+      signal?.removeEventListener('abort', abort);
     }
+    signal?.throwIfAborted();
     console.info(JSON.stringify({ event: 'gemini_attempt', model: candidate, attempt: attempt + 1, status: lastResponse.status }));
     if (lastResponse.ok || ![404, 408, 429, 500, 502, 503, 504].includes(lastResponse.status)) break;
     if (attempt === models.length - 1) break;
     const delay = lastResponse.status === 404 ? 0 : retryDelay(lastResponse, attempt);
     // Long quota waits belong in a new user request, not a hidden retry loop.
     if (delay > 2_000) break;
-    if (delay) await new Promise<void>((resolve) => setTimeout(resolve, delay));
+    if (delay) await new Promise<void>((resolve, reject) => {
+      const stop = () => { clearTimeout(timer); reject(signal?.reason); };
+      const timer = setTimeout(() => { signal?.removeEventListener('abort', stop); resolve(); }, delay);
+      signal?.addEventListener('abort', stop, { once: true });
+    });
   }
-  return { response: lastResponse, model: selectedModel };
+  return { response: lastResponse, model: selectedModel, attempts };
 }

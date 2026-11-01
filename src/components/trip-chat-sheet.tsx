@@ -1,6 +1,5 @@
 import { Image } from 'expo-image';
 import { SymbolView } from 'expo-symbols';
-import { useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { BottomSheet } from '@/components/bottom-sheet';
@@ -9,26 +8,20 @@ import { InlineNotice } from '@/components/form-controls';
 import { ThemedText } from '@/components/themed-text';
 import { VoiceRecordingControl } from '@/components/voice-recording-control';
 import { Radius, Size, Spacing } from '@/constants/theme';
-import { proposalsFromReply, sendTripChat, transcribeTripChat, type TripChatMessage, type TripChatProposal } from '@/features/ai/trip-chat';
+import { transcribeTripChat } from '@/features/ai/trip-chat';
+import { useTripChat } from '@/features/ai/use-trip-chat';
 import { useI18n } from '@/features/i18n/i18n-provider';
-import { captureReceiptPhoto, type ReceiptPhotoResult } from '@/features/ledger/receipt-photo';
+import { captureReceiptPhoto } from '@/features/ledger/receipt-photo';
 import { useMvp } from '@/features/mvp/mvp-provider';
 import { useTheme } from '@/hooks/use-theme';
-import { toUserMessage } from '@/lib/user-error';
-
-type Turn = TripChatMessage & { id: number; imageUri?: string; proposals?: TripChatProposal[] };
-type Photo = Extract<ReceiptPhotoResult, { status: 'ok' }>['receipt'];
 
 export function TripChatSheet({ visible, onDismiss }: { visible: boolean; onDismiss: () => void }) {
   const theme = useTheme();
   const { locale, tx } = useI18n();
   const { activeTrip, itineraryItems, members } = useMvp();
-  const [turns, setTurns] = useState<Turn[]>([]);
-  const [draft, setDraft] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string>();
-  const [photo, setPhoto] = useState<Photo>();
-  const nextId = useRef(0);
+  const { turns, draft, setDraft, photo, setPhoto, busy, error, setError, send, stop, setStatus } = useTripChat({
+    tripId: activeTrip?.id, itineraryItems, memberIds: members.map(({ userId }) => userId), locale, tx,
+  });
   const suggestions = [
     { icon: '🕒', text: tx('下一项是什么？', "What's next?") },
     { icon: '✏️', text: tx('午饭推迟半小时', 'Move lunch 30 min later') },
@@ -47,45 +40,8 @@ export function TripChatSheet({ visible, onDismiss }: { visible: boolean; onDism
     }
   };
 
-  const send = async (message: string) => {
-    const attached = photo;
-    const content = message.trim() || (attached ? tx('帮我看看这张图', 'Take a look at this photo') : '');
-    if (!activeTrip || !content || busy) return;
-    nextId.current += 2;
-    const turnId = nextId.current;
-    const history: Turn[] = [...turns, { id: turnId, role: 'user', text: message.trim(), imageUri: attached?.uri }];
-    setTurns(history);
-    setDraft('');
-    setPhoto(undefined);
-    setBusy(true);
-    setError(undefined);
-    try {
-      const reply = await sendTripChat({
-        tripId: activeTrip.id,
-        messages: history.map(({ id, role, text }) => ({ role, text: id === turnId ? content : text })).filter(({ text }) => text),
-        image: attached ? { base64: attached.base64, mimeType: attached.mimeType ?? 'image/jpeg' } : undefined,
-        planIds: itineraryItems.map(({ id }) => id),
-        memberIds: members.map(({ userId }) => userId),
-        locale,
-      });
-      const proposals = proposalsFromReply(reply.actions, itineraryItems);
-      const text = reply.answer || (proposals.length ? tx('这样改可以吗？', 'How about this?') : '');
-      setTurns((current) => [...current, { id: turnId + 1, role: 'assistant', text, proposals }]);
-    } catch (caught) {
-      setError(toUserMessage(caught, tx('小途暂时走神了，请稍后再试。', 'Tabi is unavailable right now. Try again later.'), locale));
-      if (attached) setPhoto(attached);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const setStatus = (turnId: number, index: number, status: TripChatProposal['status']) => setTurns((current) => current.map((turn) => turn.id !== turnId ? turn : {
-    ...turn,
-    proposals: turn.proposals?.map((proposal, proposalIndex) => proposalIndex === index ? { ...proposal, status } : proposal),
-  }));
-
   return (
-    <BottomSheet title={tx('小途', 'Tabi')} visible={visible} onDismiss={onDismiss}>
+    <BottomSheet title={tx('小途', 'Tabi')} visible={visible} onDismiss={() => { stop(); onDismiss(); }}>
       <View style={styles.body}>
         {turns.length === 0 ? (
           <View style={styles.intro}>
@@ -114,6 +70,7 @@ export function TripChatSheet({ visible, onDismiss }: { visible: boolean; onDism
                 <ThemedText type="small">{turn.text}</ThemedText>
               </View>
             ) : null}
+            {turn.run?.status === 'limited' ? <InlineNotice>{tx('小途暂时没能完成全部检查，请稍后重试或缩小问题范围。', 'Tabi could not finish every check. Try again or narrow your question.')}</InlineNotice> : null}
             {turn.proposals?.map((proposal, index) => (
               <ChatActionCard key={`${turn.id}-${index}`} proposal={proposal} onStatus={(status) => setStatus(turn.id, index, status)} />
             ))}
@@ -181,7 +138,15 @@ export function TripChatSheet({ visible, onDismiss }: { visible: boolean; onDism
                     onSubmitEditing={() => void send(draft)}
                     style={[styles.input, { color: theme.text }]}
                   />
-                  {draft.trim() || photo ? (
+                  {busy ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={tx('停止', 'Stop')}
+                      onPress={stop}
+                      style={({ pressed }) => [styles.send, { backgroundColor: theme.accent }, pressed && styles.dimmed]}>
+                      <SymbolView name={{ ios: 'stop.fill', android: 'stop', web: 'stop' }} size={18} tintColor={theme.textOnAccent} />
+                    </Pressable>
+                  ) : draft.trim() || photo ? (
                     <Pressable
                       accessibilityRole="button"
                       accessibilityLabel={tx('发送', 'Send')}
