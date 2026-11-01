@@ -96,7 +96,9 @@ export function createTripTools(context: AgentContext, external: (name: 'places-
   const knownPlaces = new Set(context.plans.flatMap(({ placeId }) => placeId ? [placeId] : []));
   const members = new Set(context.members.map(({ id }) => id));
   const canEdit = context.members.some(({ role, isMe }) => isMe && (role === 'owner' || role === 'editor'));
-  const declarations = Object.entries(tools).map(([name, value]) => ({ name, ...value }));
+  const declarations = Object.entries(tools).map(([name, { description, parameters }]) => ({
+    name, description, ...(Object.keys(parameters.properties).length ? { parameters } : {}),
+  }));
 
   const stage = (action: TripChatAction) => {
     const duplicate = actions.find((existing) => JSON.stringify(existing) === JSON.stringify(action));

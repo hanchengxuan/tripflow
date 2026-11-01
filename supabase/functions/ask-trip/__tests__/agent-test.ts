@@ -44,6 +44,12 @@ function toolResults(body: Body) {
   }));
 }
 
+test('declares a parameterless Gemini tool without an empty object schema', () => {
+  const tools = createTripTools(context(), async () => ({}));
+  expect(tools.declarations.find(({ name }) => name === 'get_members')).not.toHaveProperty('parameters');
+  expect(tools.declarations.find(({ name }) => name === 'get_itinerary')).toHaveProperty('parameters.type', 'object');
+});
+
 test('reads real itinerary data, proposes an edit and finishes without a save or network write', async () => {
   const h = harness([[call('get_itinerary')], [call('update_plan', proposal)], final]);
   const before = JSON.stringify(h.input.context);
