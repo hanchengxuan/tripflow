@@ -95,7 +95,7 @@ Product rules
 
 ## Known verification gaps
 
-- The multi-step Tabi runtime needs maintainer-approved function deployment and authenticated live-model acceptance. Synthetic tests cover handler/loop/tool and client state transitions; public-route browser checks do not cover the signed-in conversation.
+- The multi-step Tabi runtime still needs authenticated live-model acceptance. Synthetic tests cover handler/loop/tool and client state transitions; public-route browser checks do not cover the signed-in conversation.
 - Isolated worktrees have no public Supabase variables, so signed-in browser QA there needs a configured fixture account.
 - Not yet verified: physical-device sheet keyboard avoidance and long-form scrolling, native file picking, pinch zoom, signed-in dark mode, live Gemini fallback under load, real audio transcription, and a two-session race on the delay-shift RPC.
 - The web console shows a known, harmless native-driver animation fallback warning.
