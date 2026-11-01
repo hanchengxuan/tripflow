@@ -44,7 +44,7 @@ Security and data
 - Never put a service-role key, database password, or signing secret in the Expo client or Git. The client uses only the project URL and publishable key from ignored env files or deployment variables.
 - Migrations are reviewed before deployment and followed by RLS/security-advisor checks. Acceptance fixtures are rolled back; production holds real user rows.
 - Membership changes go only through validated RPCs. Removing a traveller requires a settled balance and keeps a read-only name/avatar snapshot (`trip_member_archives`) so ledger history never shows an anonymous label.
-- Keep the local security backports (node-forge, braces, sprintf-js) and their regression tests until upstream releases include the fixes; do not add those advisories to the audit allowlist.
+- Keep the local security backports (node-forge, braces, sprintf-js) and the CommonJS compatibility build of the fixed URI decoder, with their regression tests. Expo CLI uses a scoped Zod 4.6.6 override with CLI schema compatibility checks. Replace local overrides only after compatible upstream fixes are verified; do not add those advisories to the audit allowlist.
 - The lockfile must resolve on Linux x64 with CI's npm (optional `@emnapi/*` peers); a macOS-only lockfile breaks CI.
 
 Product rules

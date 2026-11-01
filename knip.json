@@ -17,7 +17,8 @@
     "sprintf-js",
     "expo-glass-effect",
     "expo-updates",
-    "@jest/globals"
+    "@jest/globals",
+    "decode-uri-component"
   ],
   "rules": {
     "types": "off"

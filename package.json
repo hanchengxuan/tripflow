@@ -3,12 +3,12 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "dependencies": {
-    "@expo/ui": "~57.0.25",
+    "@expo/ui": "~57.0.26",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@supabase/supabase-js": "^2.112.2",
     "@svg-maps/world": "^2.0.0",
     "braces": "file:vendor/security-patches/braces",
-    "expo": "~57.0.30",
+    "expo": "~57.0.31",
     "expo-asset": "~57.0.20",
     "expo-audio": "~57.0.5",
     "expo-camera": "~57.0.6",
@@ -23,7 +23,7 @@
     "expo-image-picker": "~57.0.20",
     "expo-linking": "~57.0.13",
     "expo-localization": "~57.0.2",
-    "expo-router": "~57.0.28",
+    "expo-router": "~57.0.29",
     "expo-splash-screen": "~57.0.10",
     "expo-symbols": "~57.0.3",
     "expo-system-ui": "~57.0.4",
@@ -40,7 +40,8 @@
     "react-native-svg": "15.15.4",
     "react-native-web": "~0.21.0",
     "react-native-worklets": "0.10.1",
-    "sprintf-js": "file:vendor/security-patches/sprintf-js"
+    "sprintf-js": "file:vendor/security-patches/sprintf-js",
+    "decode-uri-component": "file:vendor/security-patches/decode-uri-component"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
@@ -58,7 +59,11 @@
   "overrides": {
     "node-forge": "$node-forge",
     "braces": "$braces",
-    "sprintf-js": "$sprintf-js"
+    "sprintf-js": "$sprintf-js",
+    "decode-uri-component": "$decode-uri-component",
+    "@expo/cli": {
+      "zod": "4.6.6"
+    }
   },
   "scripts": {
     "start": "expo start",

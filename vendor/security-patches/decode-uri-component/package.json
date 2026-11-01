@@ -1,0 +1,10 @@
+{
+  "name": "decode-uri-component",
+  "version": "0.5.1",
+  "description": "TripFlow CommonJS compatibility build of upstream 0.5.1",
+  "license": "MIT",
+  "main": "index.js",
+  "engines": {
+    "node": ">=14.16"
+  }
+}
