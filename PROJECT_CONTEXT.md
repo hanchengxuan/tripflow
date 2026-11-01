@@ -21,7 +21,7 @@ Live today: email-OTP/password auth with onboarding; trips, roles, QR/link invit
 
 - Expo SDK 57, React Native, Expo Router, TypeScript, React 19. Jest (`jest-expo`), ESLint, Playwright.
 - Supabase Postgres, Auth, Storage, RLS, and Edge Functions: `ask-trip`, `parse-expense`, `parse-booking`, `places-autocomplete`, `route-estimate`, `delete-trip`, and `suggest-itinerary-edit` (deployed but no longer called by the app).
-- Gemini calls share one bounded request: primary `gemini-3.1-flash-lite`, fallbacks `gemini-2.5-flash-lite` then `gemini-2.5-flash`, at most three requests. Invalid-request, credential, and billing errors are not retried; database writes are never retried.
+- Gemini calls use primary `gemini-3.1-flash-lite`, fallbacks `gemini-2.5-flash-lite` then `gemini-2.5-flash`. Single-step parsers allow at most three attempts. The Tabi runtime supports a bounded tool-result loop with eight provider attempts across six model steps, fixed-model continuations, and an 85-second request deadline. Invalid-request, credential, and billing errors are not retried; database writes are never retried. See `docs/tabi-agent.md` for tool and rollout boundaries.
 - Google Places and Routes keys stay server-side in the Edge Functions; route estimates need a Google Place ID at both ends.
 - Destination search uses the keyless Open-Meteo geocoder (it returns an IANA time zone) plus a hand-kept alias table in `destination-search.ts`.
 - Exchange rates come from Frankfurter (reference rates, not intraday), cached per pair for offline use, with manual override; edits keep an expense's recorded rate.
@@ -57,7 +57,7 @@ Product rules
 - When conversions are incomplete, settle in each original currency; never guess a rate. Prior converted settlements need exchange-rate reconciliation before more payments. `buildSettlementPlan` owns the accounting mode for summary, tasks, and group view.
 - Keep home-currency redenomination out of UI-only work until an atomic backend operation and data-safety acceptance exist.
 - Lodging is one check-in/check-out interval in the trip time zone, not daily rows.
-- AI never writes on its own. Expense drafts, booking previews, and 小途/Tabi proposals (`update_plan`, `add_plan`, `add_expense`; no deletes) are applied only after the traveller confirms through existing save paths. Recordings and chat photos are not persisted; a chat photo goes to Gemini once with the message it was attached to.
+- AI never writes on its own. Expense drafts, booking previews, and 小途/Tabi proposals (`update_plan`, `add_plan`, `add_expense`; no deletes) are applied only after the traveller confirms through existing save paths. Tabi tools read the RLS-scoped request snapshot or call the fixed Places/Routes endpoints. Recordings and chat photos are not persisted; photos stay in their originating message during bounded internal model continuations and are not attached to later user messages.
 - `ask-trip` reads the trip with the traveller's own token (RLS applies) and picks the reply language on the server from the latest message.
 - The itinerary health check runs on device with no AI call; any Gemini enrichment must be explicit opt-in.
 - The owner removed the single-plan AI edit panel as not useful. Itinerary edits favour buttons (time shifts, one-tap fixes, delay shift); a typed delay could later map onto the delay planner.
@@ -95,6 +95,7 @@ Product rules
 
 ## Known verification gaps
 
+- The multi-step Tabi runtime needs maintainer-approved function deployment and authenticated live-model acceptance. Synthetic tests cover handler/loop/tool and client state transitions; public-route browser checks do not cover the signed-in conversation.
 - Isolated worktrees have no public Supabase variables, so signed-in browser QA there needs a configured fixture account.
 - Not yet verified: physical-device sheet keyboard avoidance and long-form scrolling, native file picking, pinch zoom, signed-in dark mode, live Gemini fallback under load, real audio transcription, and a two-session race on the delay-shift RPC.
 - The web console shows a known, harmless native-driver animation fallback warning.

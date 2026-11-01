@@ -53,6 +53,7 @@ it('after a save and a reopen, shows the original time and no second confirm', (
   expect(rendered).toContain('Sat, Nov 14 · 12:00–13:00');
   expect(rendered).toContain('→ Sat, Nov 14 · 13:00–14:00');
   expect(rendered).toContain('Saved');
+  expect(rendered).not.toContain('This plan changed');
   expect(tree.root.findAllByType(ActionButton)).toHaveLength(0);
 });
 
@@ -73,4 +74,37 @@ it('opens the ledger prefilled for an expense, defaulting payer and split', asyn
   const { pathname, params } = mockPush.mock.calls[0][0];
   expect(pathname).toBe('/ledger');
   expect(JSON.parse(params.chatDraft)).toMatchObject({ title: 'Taxi', amount: '2400', currency: 'JPY', payerUserId: 'me', participantUserIds: ['me', 'sam'] });
+});
+
+it('guards confirmation synchronously and does not repeat a successful addition', async () => {
+  let finish: (() => void) | undefined;
+  mockAdd.mockImplementationOnce(() => new Promise<void>((resolve) => { finish = resolve; }));
+  act(() => {
+    tree = create(<ChatActionCard proposal={{ action: { type: 'add_plan', kind: 'food', title: 'Lunch', startLocal: '2026-11-14 12:00', endLocal: '2026-11-14 13:00' }, status: 'pending' }} onStatus={mockOnStatus} />);
+  });
+  const press = confirmButton().props.onPress;
+  let saving: Promise<void> | undefined;
+  act(() => { saving = press(); void press(); });
+  expect(mockAdd).toHaveBeenCalledTimes(1);
+  await act(async () => { finish?.(); await saving; await press(); });
+  expect(mockAdd).toHaveBeenCalledTimes(1);
+  expect(mockOnStatus).toHaveBeenCalledWith('saved');
+});
+
+it.each([
+  { title: 'Ramen' },
+  { startsAt: '2026-11-14T04:00:00Z' },
+  { endsAt: '2026-11-14T05:00:00Z' },
+])('blocks a pending proposal when its original plan changed by %o', async (change) => {
+  mockItems = [{ ...mockLunch, ...change }];
+  act(() => {
+    tree = create(<ChatActionCard
+      proposal={{ action: { type: 'update_plan', itemId: 'lunch', startLocal: '2026-11-14 13:00' }, before: { title: mockLunch.title, startsAt: mockLunch.startsAt, endsAt: mockLunch.endsAt }, status: 'pending' }}
+      onStatus={mockOnStatus}
+    />);
+  });
+  expect(confirmButton().props.disabled).toBe(true);
+  expect(JSON.stringify(tree.toJSON())).toContain('This plan changed');
+  await act(async () => confirmButton().props.onPress());
+  expect(mockSave).not.toHaveBeenCalled();
 });

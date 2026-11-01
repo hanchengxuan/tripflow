@@ -83,3 +83,41 @@ test('stalled requests abort and the complete retry budget is bounded', async ()
   expect((await result).response.status).toBe(504);
   expect(mockFetch).toHaveBeenCalledTimes(3);
 });
+
+test('a continuation pins the model instead of replaying signed history to a fallback', async () => {
+  mockFetch.mockResolvedValue(response(503));
+  const result = await finish(generateGemini({ apiKey: 'synthetic-key', body, model: 'gemini-3.1-flash-lite', allowFallback: false }));
+  expect(result.attempts).toBe(1);
+  expect(models()).toEqual(['gemini-3.1-flash-lite']);
+});
+
+test('the caller limits provider attempts across multiple agent steps', async () => {
+  mockFetch.mockResolvedValue(response(503));
+  const result = await finish(generateGemini({ apiKey: 'synthetic-key', body, maxAttempts: 2 }));
+  expect(result.attempts).toBe(2);
+  expect(mockFetch).toHaveBeenCalledTimes(2);
+});
+
+test('cancelling a stalled provider request aborts without fallback', async () => {
+  const controller = new AbortController();
+  mockFetch.mockImplementation((_url, init) => new Promise((_resolve, reject) => {
+    init?.signal?.addEventListener('abort', () => reject(new Error('aborted')), { once: true });
+  }));
+  const result = generateGemini({ apiKey: 'synthetic-key', body, signal: controller.signal });
+  const assertion = expect(result).rejects.toThrow();
+  controller.abort(new Error('Stopped'));
+  await assertion;
+  expect(mockFetch).toHaveBeenCalledTimes(1);
+});
+
+test('cancelling a retry wait starts no fallback request', async () => {
+  mockFetch.mockResolvedValue(response(503));
+  const controller = new AbortController();
+  const result = generateGemini({ apiKey: 'synthetic-key', body, signal: controller.signal });
+  const assertion = expect(result).rejects.toThrow();
+  await jest.advanceTimersByTimeAsync(1);
+  controller.abort(new Error('Stopped'));
+  await assertion;
+  await jest.runAllTimersAsync();
+  expect(mockFetch).toHaveBeenCalledTimes(1);
+});

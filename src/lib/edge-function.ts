@@ -1,8 +1,8 @@
 import { getSupabaseClient } from '@/lib/supabase';
 
 /** Calls an Edge Function and surfaces its readable Chinese error message instead of the generic non-2xx error. */
-export async function invokeEdgeFunction<T>(name: string, body: Record<string, unknown>): Promise<T> {
-  const { data, error } = await getSupabaseClient().functions.invoke(name, { body });
+export async function invokeEdgeFunction<T>(name: string, body: Record<string, unknown>, options?: { signal?: AbortSignal }): Promise<T> {
+  const { data, error } = await getSupabaseClient().functions.invoke(name, { body, ...(options?.signal ? { signal: options.signal } : {}) });
   if (error) {
     const response = (error as { context?: Response }).context;
     if (response) {
